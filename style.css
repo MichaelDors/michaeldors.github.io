@@ -6,6 +6,7 @@
 }
 @font-face {
     font-family: GulfsDisplay;
+    font-weight:100;
     src: url('./Fonts/GulfsDisplay.ttf');
 }
 @font-face {
@@ -249,7 +250,6 @@ button2 {
     padding-top: 12px;
     z-index: 500;
     cursor: pointer;
-    style="font-family: Poppins;"
 }
 
 button2:hover{
@@ -269,7 +269,6 @@ button3 {
     padding-top: 12px;
     z-index: 500;
     cursor: pointer;
-    style="font-family: Poppins;"
 }
 
     button3:hover {
@@ -463,7 +462,7 @@ button2 {
     margin-right: 50px;
     text-align: center;
     transition: all 1s ease-in-out;
-    style="font-family: Poppins;"
+    font-family: Poppins;
 }
 
     button2:hover {
@@ -497,7 +496,7 @@ button3 {
     padding: 10px 20px;
     border-color: #ff0040;
     border-style: solid;
-style="font-family: Poppins;"
+font-family: Poppins;
     font-size: 15px;
     font-weight: bolder;
 }
@@ -568,7 +567,6 @@ hr {
     padding: 0 50px;
     height: 100%;
     color: white;
-    font-family: "Sen", sans-serif;
 }
 
 .logo-container {
