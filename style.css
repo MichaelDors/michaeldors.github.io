@@ -178,6 +178,7 @@ h1 {
     font-size: 36px;
     padding-bottom: 15px;
     font-family: GulfsDisplay, sans-serif;
+    font-weight:300;
 }
 h1 span {
     background-color: #001E30
