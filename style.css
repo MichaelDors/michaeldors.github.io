@@ -6,11 +6,11 @@
 }
 @font-face {
     font-family: GulfsDisplay;
-    src: url('Fonts/GulfsDisplay.ttf');
+    src: url('./Fonts/GulfsDisplay.ttf');
 }
 @font-face {
     font-family: Poppins;
-    src: url('Poppins-Regular.ttf');
+    src: url('./Poppins-Regular.ttf');
 }
 
 a{
