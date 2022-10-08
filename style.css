@@ -209,6 +209,7 @@ button {
     z-index: 500;
     cursor: pointer;
     color: #01FF6E;
+    style="font-family: Poppins;"
 }
     button:hover {
         background-color: #002930;
@@ -247,6 +248,7 @@ button2 {
     padding-top: 12px;
     z-index: 500;
     cursor: pointer;
+    style="font-family: Poppins;"
 }
 
 button2:hover{
@@ -266,6 +268,7 @@ button3 {
     padding-top: 12px;
     z-index: 500;
     cursor: pointer;
+    style="font-family: Poppins;"
 }
 
     button3:hover {
@@ -459,6 +462,7 @@ button2 {
     margin-right: 50px;
     text-align: center;
     transition: all 1s ease-in-out;
+    style="font-family: Poppins;"
 }
 
     button2:hover {
@@ -472,6 +476,7 @@ button3 {
     text-align: center;
     margin-bottom:50px;
     transition: all 1s ease-in-out;
+    style="font-family: Poppins;"
 }
 
     button3:hover {
@@ -491,7 +496,7 @@ button3 {
     padding: 10px 20px;
     border-color: #ff0040;
     border-style: solid;
-    font-family: 'Roboto Mono', monospace;
+style="font-family: Poppins;"
     font-size: 15px;
     font-weight: bolder;
 }
