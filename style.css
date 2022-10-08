@@ -766,7 +766,8 @@ img {
 
 @media(max-width: 1000px){
 .cards{
-    padding:0px;
+    left:0px;
+    margin-right:40px;
     }
 }
 
