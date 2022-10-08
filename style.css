@@ -191,7 +191,8 @@ p{
 
 }
 p span {
-    background-color: #001E30
+    background-color: #001E30;
+        font-family: Poppins;
 }
 
 button {
