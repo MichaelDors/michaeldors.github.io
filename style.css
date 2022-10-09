@@ -187,7 +187,6 @@ button2 {
     height: 50px;
     border-radius: 12px;
     position: center;
-    transition-property: background;
     transition-duration: 1s;
     border: none;
     display: inline-block;
@@ -197,7 +196,7 @@ button2 {
 }
 
     button2:hover {
-        background: rgba(61,203,0,1);
+    background: rgba(1,255,110,1);
         margin-right: 50px;
         text-align: center;
     }
