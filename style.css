@@ -102,26 +102,11 @@ img{
     max-height:100%;
 }
 
-    @media(min-width: 1000px){
-        nav .fa-solid {
-            display: none;
-        }
-        nav .fa-regular {
-            display: none;
-        }
-        .nav-links-MOBILE{
-            display:none;
-        }
-    }
+
 
     @media(max-width: 1000px){
-
-
         .h1 {
             font-size: 10px;
-        }
-        .nav-links {
-            display: none;
         }
         .columns{
             display:none;
@@ -130,8 +115,6 @@ img{
             display:none;
         }
         html, body {overflow-x: hidden;}
-
-        
     }
 
 
