@@ -674,11 +674,6 @@ body {
     transform: translateX(-20px);
 }
 
-@media only screen and (max-width: 940px) {
-    .menu-container {
-        display: none;
-    }
-}
 
 main {
     text-align: center;
