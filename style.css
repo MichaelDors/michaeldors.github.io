@@ -1076,8 +1076,4 @@ g-top: 60px;
     color: black;
 }
 
-@media (max-height: 680px), screen and (orientation: portrait) {
-  br{
-      display:none;
-    }
-}
+
