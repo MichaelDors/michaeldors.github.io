@@ -47,6 +47,7 @@ nav img{
     flex:1;
     text-align:right;
     cursor: pointer;
+    padding-top:12px;
 }
 .nav-links ul li{
     list-style:none;
