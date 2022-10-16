@@ -679,7 +679,7 @@ main {
 
 .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
+    grid-template-columns: repeat(auto-fit,minmax(150px,1920px));
     padding: 20px;
     grid-gap: 40px;
     width:75%;
