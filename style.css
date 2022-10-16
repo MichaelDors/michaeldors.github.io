@@ -116,6 +116,8 @@ img{
             display:none;
         }
         html, body {overflow-x: hidden;}
+        
+
     }
 
 
@@ -678,6 +680,7 @@ main {
     grid-template-columns: repeat(auto-fit,minmax(400px,1fr));
     padding: 20px;
     grid-gap: 40px;
+    width:75%;
 }
 
 .card {
