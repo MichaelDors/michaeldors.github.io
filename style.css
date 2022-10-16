@@ -155,6 +155,8 @@ button {
     z-index: 500;
     cursor: pointer;
     color: #01FF6E;
+    padding-top:none;
+    padding-bottom:none;
 }
     button:hover {
         background-color: #002930;
