@@ -671,10 +671,11 @@ main {
 
 .parent {
     display: grid;
-    grid-template-columns: auto auto;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto;
     grid-column-gap: 6px;
     grid-row-gap: 6px;
+    grid-auto-flow: column;
 }
 
 .cards {
