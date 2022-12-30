@@ -289,3 +289,8 @@ z-index: 100;
 right:10px;
 top:10px;
   }
+@media (max-width:768px){
+  #circlelol{
+    display:none;
+  }
+}
