@@ -296,6 +296,7 @@ top:10px;
   top:150px;
     margin-left:240px;
 width: 0px;
+display: none;
 filter:blur(10px);
 z-index: 10;
   animation:blurinout 10s infinite;
