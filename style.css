@@ -289,8 +289,26 @@ z-index: 100;
 right:10px;
 top:10px;
   }
-@media (max-width:768px){
-  #circlelol{
-    display:none;
-  }
+
+@media screen and (orientation:portrait) {
+  .talents{
+  position: absolute;
+  top:150px;
+    margin-left:240px;
+width: 0px;
+filter:blur(10px);
+z-index: 10;
+  animation:blurinout 10s infinite;
+}
+}
+@media screen and (orientation:landscape) {
+  .talents{
+  position: absolute;
+  top:150px;
+    margin-left:240px;
+width: 100%-150px;
+filter:blur(10px);
+z-index: 10;
+  animation:blurinout 10s infinite;
+}
 }
