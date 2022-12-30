@@ -260,6 +260,10 @@ z-index: 10;
                 h1 {
                     font-size: 24px;
                 }
+              
+              .nav{
+                display:none;
+              }
             
             }
             
