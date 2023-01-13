@@ -4,6 +4,9 @@ function work(){
 function home(){
     document.getElementById("home").scrollIntoView({ block: 'end',  behavior: 'smooth' });
 }
+function pricing(){
+    document.getElementById("pricinginfo").scrollIntoView({ block: 'end',  behavior: 'smooth' });
+}
 
 
 window.onscroll = function() {myFunction()};
