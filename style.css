@@ -73,19 +73,17 @@ button{
   padding-right:20px;
   font-family: 'IBM Plex Mono', monospace;
   margin-bottom:50px;
-  box-shadow: 0 0 0px #FF0000;
   transition: all 1s;
 }
 button:hover{
   margin-left:50px;
   color:white;
-  background-color:red;
+  background-color:black;
   border:none;
   height:50px;
   padding-left:20px;
   padding-right:20px;
   font-family: 'IBM Plex Mono', monospace;
-  box-shadow: 0 0 10px #7f1a1a;
   cursor:pointer;
 }
 html, body {
