@@ -74,11 +74,12 @@ button{
   font-family: 'IBM Plex Mono', monospace;
   margin-bottom:50px;
   transition: all 1s;
+  border-radius:5px;
 }
 button:hover{
   margin-left:50px;
   color:white;
-  background-color:black;
+  background-color:#a30000;
   border:none;
   height:50px;
   padding-left:20px;
