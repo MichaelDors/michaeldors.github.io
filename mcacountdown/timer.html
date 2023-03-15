@@ -1,0 +1,252 @@
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />
+<link rel="icon" type="image/x-icon" href="icon.ico">
+<title>Countdown</title>
+</head>
+
+<body style="background-color:#141414; overflow-y:hidden; overflow-x:hidden;">
+<p id="clock"></p>
+
+
+<center id="preloader" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+  <video width="100" height="100" autoplay muted loop>
+    <source src="Preloader.mp4" type="video/mp4">
+  </video>
+</center>
+
+<center class="hidden" id="unfocused" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+<h1>Window Lost Focus</h1>
+<p>We cannot guarantee an accurate countdown once the tab or window loses focus,<br>or if your device locks.<br>To restart the countdown, click this handy button, or reload the page.</p>
+<br>
+<br>
+<a href="">Sync Countdown</a>
+</center>
+
+<center  id="wifi" class="hidden" style="margin: 0; position: absolute; top: 15%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+  <h1 class="wifitext" style="font-size: 20px;">No Internet</h1>
+  </center>
+
+  <center class="hidden" id="ad_container" style="border-radius: 20px; margin: 0; position: absolute; top: 90%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+    <p id="maintainedtext">This AD is promoted in order to maintain the site and cannot be hidden.</p>
+    <img id="ad" src="MICHAELDORS.COM.png">
+    </center>
+
+</body>
+
+<style>
+  .wifitext{
+    z-index: 100;
+    opacity: 0.5;
+    animation: wifidown 50s infinite;
+  }
+
+  @keyframes wifidown{
+    0%{
+      color: #141414;
+    }
+    10%{
+      color: #ff5050;
+    }
+    20%{
+      color: #141414;
+    }
+    30%{
+      color: #ff5050;
+    }
+    40%{
+      color: #141414;
+    }
+    50%{
+      color: #ff5050;
+    }
+    60%{
+      color: #141414;
+    }
+    70%{
+      color: #ff5050;
+    }
+    80%{
+      color: #141414;
+    }
+    90%{
+      color: #ff5050;
+    }
+    100%{
+      color: #141414;
+    }
+  }
+
+  #ad{
+    height:6.6666vh;
+    width:50vw;
+    border-radius: 20px;
+    border: 4px solid white;
+    object-fit: cover;
+    box-shadow: 0 5px 10px black;
+  }
+  #maintainedtext{
+    color:#141414;
+    transition: color 1s;
+  }
+  #ad_container:hover #maintainedtext{
+    color:white;
+  }
+  #maintainedtext:hover{
+    cursor:default;
+  }
+  #clock{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 99%;
+    font-size: 50px;
+    font-family: 'Fredoka One', cursive;
+    animation: backgroundgradient 100s infinite;
+  }
+  .center{
+    margin: auto;
+  width: 50%;
+  text-align:center;
+  }
+  h1{
+    font-family: 'Fredoka One', cursive;
+  color: #fff;
+  }
+  p{
+    font-family: 'Fredoka One', cursive;
+  color:white;
+  }
+  a{
+    font-family: 'Fredoka One', cursive;
+    background-color: #6f00ff;
+    text-decoration: none;
+    color:white;
+    box-shadow: 0 7px 0 #30006e;
+    border-radius:20px;
+    padding:20px;
+    user-select:none;
+    cursor:pointer;
+  }
+  a:active{
+    position:relative;
+    top:7px;
+    margin-top: 7px;
+    box-shadow:none;
+  }
+  .hidden{
+    display:none;
+  }
+  
+
+  @keyframes backgroundgradient{
+    0%{
+      color: #6f00ff;
+    }
+    10%{
+      color: #6f00ff;
+    }
+    25%{
+      color: #3ab6ff;
+    }
+    35%{
+      color: #3ab6ff;
+    }
+    50%{
+      color: #00ff5e;
+    }
+    60%{
+      color: #00ff5e;
+    }
+    75%{
+      color: #ff9900;
+    }
+    85%{
+      color: #ff9900;
+    }
+    100%{
+      color: #6f00ff;
+    }
+  }
+
+  @media only screen and (max-width: 800px) {
+  #ad{
+    width:100vw;
+    height: inherit;
+    border: none;
+    border-top: 4px solid white;
+    object-fit: cover;
+    border-radius: 0%;
+    box-shadow: none;
+  }
+  #ad_container{
+    top: 100%;
+  }
+}
+</style>
+
+<script src="confetti.js"></script>
+
+<script>
+document.addEventListener( 'visibilitychange' , function() {
+    if (document.hidden) {
+      clearInterval(x);
+      document.getElementById("clock").remove();
+      document.getElementById("unfocused").classList.remove("hidden");
+      document.getElementById("preloader").classList.add("hidden");
+      document.getElementById("ad_container").remove();
+
+    }
+}, false );
+
+var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
+
+var x = setInterval(function() {
+
+  document.getElementById("preloader").classList.add("hidden");
+
+  var now = new Date().getTime();
+
+  var distance = countDownDate - now;
+
+  var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+  var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+  var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+  if(days > 0){
+    document.getElementById("clock").innerHTML = days + ":" + hours + ":" + minutes + ":" + seconds;
+    document.getElementById("clock").style.fontSize = '50px';
+  }
+  else if(hours > 0){
+    document.getElementById("clock").innerHTML = hours + ":" + minutes + ":" + seconds;
+    document.getElementById("clock").style.fontSize = '75px';
+  }
+  else if(minutes > 0){
+    document.getElementById("clock").innerHTML = minutes + ":" + seconds;
+    document.getElementById("clock").style.fontSize = '100px';
+  }
+  else if(seconds > 0){
+    document.getElementById("clock").innerHTML = seconds;
+    document.getElementById("clock").style.fontSize = '150px';
+  }
+
+
+
+  if (distance < 0) {
+    clearInterval(x);
+    document.getElementById("clock").remove();
+    document.getElementById("ad_container").remove();
+    startConfetti();
+  }
+  
+}, 1000);
+
+window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
+window.addEventListener('online', () => document.getElementById("wifi").classList.add("hidden"));
+
+
+</script>
