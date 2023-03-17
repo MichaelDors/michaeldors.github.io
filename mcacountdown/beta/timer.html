@@ -1,0 +1,480 @@
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,700,1,0" />
+<link rel="icon" type="image/x-icon" href="icon.ico">
+<title>Countdown</title>
+</head>
+
+<body style="background-color:#141414; overflow-y:hidden; overflow-x:hidden;">
+<p id="clock"></p>
+<a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; top: 95%; left: 2%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"><span id="innergear" class="material-symbols-outlined">
+  settings
+  </span></a>
+
+<center id="preloader" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+  <video width="100" height="100" autoplay muted loop>
+    <source src="Preloader.mp4" type="video/mp4">
+  </video>
+</center>
+
+<center class="hidden" id="unfocused" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+<h1>Window Lost Focus</h1>
+<p>We cannot guarantee an accurate countdown once the tab or window loses focus,<br>or if your device locks.<br>To restart the countdown, click this handy button, or reload the page.</p>
+<br>
+<br>
+<a href="">Sync Countdown</a>
+</center>
+
+<center class="hidden" id="settings" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+  <h1>Settings</h1>
+  <p>These options use cookies to work. If you wish to reject cookies, do not use these settings.</p>
+  <br>
+  <br>
+  <a id="arorf" class="disabled" onclick="arorf();">Automatically Reload When Focus Regained</a>
+  <br>
+  <br>
+  <br>
+  <br>
+  <a id="coce" class="disabled" onclick="coce();">Disable Confetti When Countdown Ends</a>
+  <br>
+  <br>
+  <br>
+  <br>
+  <a id="atc" class="disabled" onclick="atc();">Disable Text Animation On Countdown Clock</a>
+  <br>
+  <br>
+  <br>
+  <br>
+  <a id="plct" class="disabled" onclick="atc();">Prefer Light Color Theme Countdown</a>
+  <br>
+  <br>
+  <br>
+  <br>
+  <br>
+  <br>
+  <br>
+  <br>
+  <a id="atc" class="warning" onclick="cac();">Revert Back To Original Settings</a>
+  </center>
+
+<center  id="wifi" class="hidden" style="margin: 0; position: absolute; top: 15%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+  <h1 class="wifitext" style="font-size: 20px;">No Internet</h1>
+  </center>
+
+  <center class="hidden" id="ad_container" style="border-radius: 20px; margin: 0; position: absolute; top: 88%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+    <p id="maintainedtext">This AD is promoted in order to maintain the site and cannot be hidden.</p>
+    <video id="ad" autoplay muted loop>
+      <source src="ad.mp4" type="video/mp4">
+    </video>
+    </center>
+
+</body>
+
+<style>
+  .wifitext{
+    z-index: 100;
+    opacity: 0.5;
+    animation: wifidown 50s infinite;
+  }
+
+  @keyframes wifidown{
+    0%{
+      color: #141414;
+    }
+    10%{
+      color: #ff5050;
+    }
+    20%{
+      color: #141414;
+    }
+    30%{
+      color: #ff5050;
+    }
+    40%{
+      color: #141414;
+    }
+    50%{
+      color: #ff5050;
+    }
+    60%{
+      color: #141414;
+    }
+    70%{
+      color: #ff5050;
+    }
+    80%{
+      color: #141414;
+    }
+    90%{
+      color: #ff5050;
+    }
+    100%{
+      color: #141414;
+    }
+  }
+
+  #ad{
+    height:10vh;
+    width:50vw;
+    border-radius: 20px;
+    object-fit: cover;
+  }
+  #maintainedtext{
+    color:#141414;
+    transition: color 1s;
+  }
+  #ad_container:hover #maintainedtext{
+    color:white;
+  }
+  #maintainedtext:hover{
+    cursor:default;
+  }
+  #clock{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 99%;
+    font-size: 50px;
+    font-family: 'Fredoka One', cursive;
+    animation: backgroundgradient 100s infinite;
+  }
+  .center{
+    margin: auto;
+  width: 50%;
+  text-align:center;
+  }
+  h1{
+    font-family: 'Fredoka One', cursive;
+  color: #fff;
+  }
+  p{
+    font-family: 'Fredoka One', cursive;
+  color:white;
+  }
+  a{
+    font-family: 'Fredoka One', cursive;
+    background-color: #6f00ff;
+    text-decoration: none;
+    color:white;
+    box-shadow: 0 7px 0 #30006e;
+    border-radius:20px;
+    padding:20px;
+    user-select:none;
+    cursor:pointer;
+  }
+  a:hover{
+    position:relative;
+    top:2px;
+    margin-top: 2px;
+    box-shadow:0 5px 0 #30006e;
+  }
+  a:hover:active{
+    position:relative;
+    top:7px;
+    margin-top: 7px;
+    box-shadow:none;
+  }
+  .enabled{
+    font-family: 'Fredoka One', cursive;
+    background-color: #00ff40;
+    text-decoration: none;
+    color:black;
+    box-shadow: 0 7px 0 #003511;
+    border-radius:20px;
+    padding:20px;
+    user-select:none;
+    cursor:pointer;
+  }
+  .enabled:hover{
+    position:relative;
+    top:2px;
+    margin-top: 2px;
+    box-shadow:0 5px 0 #003511;
+  }
+  .enabled:hover:active{
+    position:relative;
+    top:7px;
+    margin-top: 7px;
+    box-shadow:none;
+  }
+
+  .disabled{
+    font-family: 'Fredoka One', cursive;
+    background-color: #595959;
+    text-decoration: none;
+    color:white;
+    box-shadow: 0 7px 0 #282828;
+    border-radius:20px;
+    padding:20px;
+    user-select:none;
+    cursor:pointer;
+  }
+  .disabled:hover{
+    position:relative;
+    top:2px;
+    margin-top: 2px;
+    box-shadow:0 5px 0 #282828;
+  }
+  .disabled:hover:active{
+    position:relative;
+    top:7px;
+    margin-top: 7px;
+    box-shadow:none;
+  }
+
+
+  .warning{
+    font-family: 'Fredoka One', cursive;
+    background-color: #ff5353;
+    text-decoration: none;
+    color:#ffffff;
+    box-shadow: 0 7px 0 #d00000;
+    border-radius:20px;
+    padding:20px;
+    user-select:none;
+    cursor:pointer;
+  }
+  .warning:hover{
+    position:relative;
+    top:2px;
+    margin-top: 2px;
+    box-shadow:0 5px 0 #d00000;
+  }
+  .warning:hover:active{
+    position:relative;
+    top:7px;
+    margin-top: 7px;
+    box-shadow:none;
+  }
+
+  .settings{
+    font-family: 'Fredoka One', cursive;
+    background-color: transparent;
+    text-decoration: none;
+    color:#ffffff;
+    box-shadow: none;
+    border-radius:20px;
+    padding:20px;
+    user-select:none;
+    cursor:pointer;
+  }
+  .settings:hover{
+    position:relative;
+    top:0px;
+    margin-top: 0px;
+    box-shadow: none;
+    color:#a7a7a7;
+  }
+  .settings:hover:active{
+    position:relative;
+    top:0px;
+    margin-top: 0px;
+    box-shadow:none;
+    color:#00ff88;
+  }
+
+  .hidden{
+    display:none;
+  }  
+  .hiddentext{
+    color:#141414;
+    user-select: none;
+  }
+
+  @keyframes backgroundgradient{
+    0%{
+      color: #6f00ff;
+    }
+    10%{
+      color: #6f00ff;
+    }
+    25%{
+      color: #3ab6ff;
+    }
+    35%{
+      color: #3ab6ff;
+    }
+    50%{
+      color: #00ff5e;
+    }
+    60%{
+      color: #00ff5e;
+    }
+    75%{
+      color: #ff9900;
+    }
+    85%{
+      color: #ff9900;
+    }
+    100%{
+      color: #6f00ff;
+    }
+  }
+
+  @media only screen and (max-width: 800px) {
+  #ad{
+    width:100vw;
+    height: inherit;
+    border: none;
+    border-top: 4px solid white;
+    object-fit: cover;
+    border-radius: 0%;
+    box-shadow: none;
+  }
+  #ad_container{
+    top: 100%;
+  }
+  #clock{
+    font-size: 90pvw;
+  }
+
+}
+</style>
+
+<script src="confetti.js"></script>
+
+<script>
+function setCookie(key, value) {
+            var expires = new Date();
+            expires.setTime(expires.getTime() + (1 * 24 * 60 * 60 * 1000));
+            document.cookie = key + '=' + value + ';expires=' + expires.toUTCString();
+        }
+
+        function getCookie(key) {
+            var keyValue = document.cookie.match('(^|;) ?' + key + '=([^;]*)(;|$)');
+            return keyValue ? keyValue[2] : null;
+        }
+
+document.addEventListener( 'visibilitychange' , function() {
+    if (document.hidden) {
+      clearInterval(x);
+      document.getElementById("clock").remove();
+      document.getElementById("unfocused").classList.remove("hidden");
+      document.getElementById("preloader").classList.add("hidden");
+      document.getElementById("ad_container").remove();
+      document.getElementById("gear").classList.add("hidden");
+      document.getElementById("settings").classList.add("hidden");
+    }
+    if(!document.getElementById("unfocused").classList.contains("hidden") + !document.hidden + getCookie("arorf")){
+    location.reload();
+  }
+}, false );
+
+
+function settings(){
+
+  if(document.getElementById("settings").classList.contains("hidden")){
+
+    document.getElementById("clock").style.display = "none";
+    document.getElementById("settings").classList.remove("hidden");
+    document.getElementById("preloader").classList.add("hidden");
+    document.getElementById("ad_container").classList.add("hidden");
+    document.getElementById("unfocused").classList.add("hidden");
+
+  }
+  else{
+    document.getElementById("clock").style.display = "";
+    document.getElementById("settings").classList.add("hidden");
+    document.getElementById("preloader").classList.add("hidden");
+    document.getElementById("ad_container").classList.remove("hidden");
+    document.getElementById("unfocused").classList.add("hidden");
+  }
+}
+
+var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
+document.getElementById("ad_container").classList.remove("hidden");
+
+var x = setInterval(function() {
+
+  const url = window.location.toString();
+  if (getCookie("arorf")) {
+  document.getElementById("arorf").classList.add("enabled");
+  document.getElementById("arorf").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("arorf").classList.remove("enabled");
+  document.getElementById("arorf").classList.add("disabled");
+  }
+
+  document.getElementById("preloader").classList.add("hidden");
+  document.getElementById("gear").classList.remove("hidden");
+
+  var now = new Date().getTime();
+
+  var distance = countDownDate - now;
+
+  var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+  var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+  var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+  if(days > 0){
+    document.getElementById("clock").innerHTML = days + ":" + hours + ":" + minutes + ":" + seconds;
+    document.getElementById("clock").style.fontSize = '50px';
+  }
+  else if(hours > 0){
+    document.getElementById("clock").innerHTML = hours + ":" + minutes + ":" + seconds;
+    document.getElementById("clock").style.fontSize = '75px';
+  }
+  else if(minutes > 0){
+    document.getElementById("clock").innerHTML = minutes + ":" + seconds;
+    document.getElementById("clock").style.fontSize = '100px';
+  }
+  else if(seconds > 0){
+    document.getElementById("clock").innerHTML = seconds;
+    document.getElementById("clock").style.fontSize = '150px';
+  }
+
+
+
+  if (distance < 0) {
+    clearInterval(x);
+    document.getElementById("clock").remove();
+    document.getElementById("ad_container").remove();
+    startConfetti();
+  }
+  
+}, 1000);
+
+function arorf(){
+  if(getCookie("arorf")){
+    setCookie("arorf, 0");
+  }
+  else{
+    setCookie("arorf,1");
+  }
+}
+function coce(){
+  if(getCookie("coce")){
+    setCookie("coce, 0");
+  }
+  else{
+    setCookie("coce,1");
+  }
+}
+function atc(){
+  if(getCookie("atc")){
+    setCookie("atc, 0");
+  }
+  else{
+    setCookie("atc,1");
+  }
+}
+function plct(){
+  if(getCookie("plct")){
+    setCookie("plct, 0");
+  }
+  else{
+    setCookie("plct,1");
+  }
+}
+
+window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
+window.addEventListener('online', () => document.getElementById("wifi").classList.add("hidden"));
+
+
+</script>
