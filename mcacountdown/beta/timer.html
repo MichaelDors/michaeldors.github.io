@@ -370,9 +370,10 @@ document.addEventListener( 'visibilitychange' , function() {
       document.getElementById("ad_container").remove();
       document.getElementById("gear").classList.add("hidden");
       document.getElementById("settings").classList.add("hidden");
-      if(getCookie('arorf')){
-      location.reload;
     }
+
+    if (document.hidden + getCookie("arorf")) {
+      function reload();
     }
 }, false );
 
@@ -426,7 +427,7 @@ var x = setInterval(function() {
   document.getElementById("atc").classList.remove("enabled");
   document.getElementById("atc").classList.add("disabled");
   }
-if (getCookie("plct")) {
+  if (getCookie("plct")) {
   document.getElementById("plct").classList.add("enabled");
   document.getElementById("plct").classList.remove("disabled");
   }
