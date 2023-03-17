@@ -371,7 +371,7 @@ document.addEventListener( 'visibilitychange' , function() {
       document.getElementById("gear").classList.add("hidden");
       document.getElementById("settings").classList.add("hidden");
     }
-    if(getCookie('arorf')){
+    if(document.hidden + getCookie('arorf')){
       location.reload;
     }
 }, false );
