@@ -402,7 +402,6 @@ document.getElementById("ad_container").classList.remove("hidden");
 
 var x = setInterval(function() {
 
-  const url = window.location.toString();
   if (getCookie("arorf")) {
   document.getElementById("arorf").classList.add("enabled");
   document.getElementById("arorf").classList.remove("disabled");
@@ -411,7 +410,6 @@ var x = setInterval(function() {
   document.getElementById("arorf").classList.remove("enabled");
   document.getElementById("arorf").classList.add("disabled");
   }
-
   if (getCookie("coce")) {
   document.getElementById("coce").classList.add("enabled");
   document.getElementById("coce").classList.remove("disabled");
@@ -420,7 +418,6 @@ var x = setInterval(function() {
   document.getElementById("coce").classList.remove("enabled");
   document.getElementById("coce").classList.add("disabled");
   }
-
   if (getCookie("atc")) {
   document.getElementById("atc").classList.add("enabled");
   document.getElementById("atc").classList.remove("disabled");
@@ -429,16 +426,14 @@ var x = setInterval(function() {
   document.getElementById("atc").classList.remove("enabled");
   document.getElementById("atc").classList.add("disabled");
   }
-
-  if (getCookie("pltc")) {
-  document.getElementById("pltc").classList.add("enabled");
-  document.getElementById("pltc").classList.remove("disabled");
+if (getCookie("plct")) {
+  document.getElementById("plct").classList.add("enabled");
+  document.getElementById("plct").classList.remove("disabled");
   }
   else{
-  document.getElementById("pltc").classList.remove("enabled");
-  document.getElementById("pltc").classList.add("disabled");
+  document.getElementById("plct").classList.remove("enabled");
+  document.getElementById("plct").classList.add("disabled");
   }
-
 
 
   document.getElementById("preloader").classList.add("hidden");
