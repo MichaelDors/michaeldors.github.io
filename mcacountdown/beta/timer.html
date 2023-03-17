@@ -412,6 +412,35 @@ var x = setInterval(function() {
   document.getElementById("arorf").classList.add("disabled");
   }
 
+  if (getCookie("coce")) {
+  document.getElementById("coce").classList.add("enabled");
+  document.getElementById("coce").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("coce").classList.remove("enabled");
+  document.getElementById("coce").classList.add("disabled");
+  }
+
+  if (getCookie("atc")) {
+  document.getElementById("atc").classList.add("enabled");
+  document.getElementById("atc").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("atc").classList.remove("enabled");
+  document.getElementById("atc").classList.add("disabled");
+  }
+
+  if (getCookie("pltc")) {
+  document.getElementById("pltc").classList.add("enabled");
+  document.getElementById("pltc").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("pltc").classList.remove("enabled");
+  document.getElementById("pltc").classList.add("disabled");
+  }
+
+
+
   document.getElementById("preloader").classList.add("hidden");
   document.getElementById("gear").classList.remove("hidden");
 
@@ -454,34 +483,34 @@ var x = setInterval(function() {
 
 function arorf(){
   if(getCookie('arorf')){
-    setCookie('arorf', '0');
+    setCookie('arorf', 'false');
   }
   else{
-    setCookie('arorf', '1');
+    setCookie('arorf', 'true');
   }
 }
 function coce(){
   if(getCookie('coce')){
-    setCookie('coce', '0');
+    setCookie('coce', 'false');
   }
   else{
-    setCookie('coce', '1');
+    setCookie('coce', 'true');
   }
 }
 function atc(){
   if(getCookie('atc')){
-    setCookie('atc', '0');
+    setCookie('atc', 'false');
   }
   else{
-    setCookie('atc', '1');
+    setCookie('atc', 'true');
   }
 }
 function plct(){
   if(getCookie('plct')){
-    setCookie('plct', '0');
+    setCookie('plct', 'false');
   }
   else{
-    setCookie('plct', '1');
+    setCookie('plct', 'true');
   }
 }
 
