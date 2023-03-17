@@ -508,6 +508,12 @@ function plct(){
     setCookie('plct', 'true');
   }
 }
+function reset(){
+  eraseCookie('arorf');
+  eraseCookie('coce');
+  eraseCookie('atc');
+  eraseCookie('plct');
+}
 
 window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
 window.addEventListener('online', () => document.getElementById("wifi").classList.add("hidden"));
