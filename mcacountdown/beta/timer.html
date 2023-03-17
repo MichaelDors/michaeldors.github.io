@@ -371,9 +371,9 @@ document.addEventListener( 'visibilitychange' , function() {
       document.getElementById("gear").classList.add("hidden");
       document.getElementById("settings").classList.add("hidden");
     }
-    if(!document.getElementById("unfocused").classList.contains("hidden") + !document.hidden + getCookie("arorf")){
-    location.reload();
-  }
+    if(getCookie('arorf')){
+      location.reload;
+    }
 }, false );
 
 
