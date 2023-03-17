@@ -57,7 +57,7 @@
   <br>
   <br>
   <br>
-  <a id="atc" class="warning" onclick="cac();">Revert Back To Original Settings</a>
+  <a id="atc" class="warning" onclick="resetcookies();">Revert Back To Original Settings</a>
   </center>
 
 <center  id="wifi" class="hidden" style="margin: 0; position: absolute; top: 15%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
@@ -508,7 +508,7 @@ function plct(){
     setCookie('plct', 'true');
   }
 }
-function reset(){
+function resetcookies(){
   eraseCookie('arorf');
   eraseCookie('coce');
   eraseCookie('atc');
