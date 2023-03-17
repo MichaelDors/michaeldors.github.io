@@ -370,9 +370,9 @@ document.addEventListener( 'visibilitychange' , function() {
       document.getElementById("ad_container").remove();
       document.getElementById("gear").classList.add("hidden");
       document.getElementById("settings").classList.add("hidden");
-    }
-    if(document.hidden + getCookie('arorf')){
+      if(getCookie('arorf')){
       location.reload;
+    }
     }
 }, false );
 
