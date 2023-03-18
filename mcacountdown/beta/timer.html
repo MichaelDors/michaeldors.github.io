@@ -379,6 +379,9 @@ document.addEventListener( 'visibilitychange' , function() {
       document.getElementById("settings").classList.add("hidden");
     }
 
+    if(!document.hidden && getCookie('arorf')){
+        location.reload();
+    }
 
 }, false );
 
@@ -403,8 +406,7 @@ function settings(){
   }
 }
 
-//var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
-var countDownDate = new Date("Mar 17, 2023 20:35:00").getTime();
+var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
 
 document.getElementById("ad_container").classList.remove("hidden");
 
