@@ -48,11 +48,6 @@
   <br>
   <br>
   <br>
-  <a id="plct" class="disabled" onclick="plct();">Prefer Light Color Theme Countdown</a>
-  <br>
-  <br>
-  <br>
-  <br>
   <br>
   <br>
   <br>
@@ -132,6 +127,16 @@
   #maintainedtext:hover{
     cursor:default;
   }
+    .staticclock{
+        display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 99%;
+    font-size: 50px;
+    font-family: 'Fredoka One', cursive;
+    color:white;
+  }
   .clock{
     display: flex;
     justify-content: center;
@@ -141,16 +146,6 @@
     font-size: 50px;
     font-family: 'Fredoka One', cursive;
     animation: backgroundgradient 100s infinite;
-  }
-  .staticclock{
-        display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    min-height: 99%;
-    font-size: 50px;
-    font-family: 'Fredoka One', cursive;
-    color:white;
   }
   .center{
     margin: auto;
@@ -271,7 +266,6 @@
     padding:20px;
     user-select:none;
     cursor:pointer;
-    z-index:200;
   }
   .settings:hover{
     position:relative;
@@ -335,7 +329,6 @@
     object-fit: cover;
     border-radius: 0%;
     box-shadow: none;
-    height:0.5in;
   }
   #ad_container{
     top: 100%;
@@ -343,9 +336,7 @@
   #clock{
     font-size: 90pvw;
   }
-  .settings{
-    font-size:20px;
-  }
+
 }
 </style>
 
@@ -432,7 +423,7 @@ var x = setInterval(function() {
   document.getElementById("coce").classList.add("disabled");
   }
   if (getCookie("atc")) {
-  document.getElementById("atc").classList.add("enabled");
+    document.getElementById("atc").classList.add("enabled");
   document.getElementById("atc").classList.remove("disabled");
   document.getElementById("clock").classList.remove("clock");
   document.getElementById("clock").classList.add("staticclock");
@@ -440,14 +431,8 @@ var x = setInterval(function() {
   else{
   document.getElementById("atc").classList.remove("enabled");
   document.getElementById("atc").classList.add("disabled");
-  }
-  if (getCookie("plct")) {
-  document.getElementById("plct").classList.add("enabled");
-  document.getElementById("plct").classList.remove("disabled");
-  }
-  else{
-  document.getElementById("plct").classList.remove("enabled");
-  document.getElementById("plct").classList.add("disabled");
+  document.getElementById("clock").classList.add("clock");
+  document.getElementById("clock").classList.remove("staticclock");
   }
 
 
@@ -491,6 +476,7 @@ var x = setInterval(function() {
   
 }, 1000);
 
+
 function arorf(){
   if(getCookie('arorf')){
     eraseCookie('arorf');
@@ -515,19 +501,11 @@ function atc(){
     setCookie('atc', 'true');
   }
 }
-function plct(){
-  if(getCookie('plct')){
-    eraseCookie('plct');
-  }
-  else{
-    setCookie('plct', 'true');
-  }
-}
+
 function resetcookies(){
   eraseCookie('arorf');
   eraseCookie('coce');
   eraseCookie('atc');
-  eraseCookie('plct');
 }
 
 window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
