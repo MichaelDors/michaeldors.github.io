@@ -9,7 +9,7 @@
 </head>
 
 <body style="background-color:#141414; overflow-y:hidden; overflow-x:hidden;">
-<p id="clock"></p>
+<p id="clock" class="clock"></p>
 <a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; top: 95%; left: 2%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"><span id="innergear" class="material-symbols-outlined">
   settings
   </span></a>
@@ -132,7 +132,7 @@
   #maintainedtext:hover{
     cursor:default;
   }
-  #clock{
+  .clock{
     display: flex;
     justify-content: center;
     align-items: center;
@@ -141,6 +141,16 @@
     font-size: 50px;
     font-family: 'Fredoka One', cursive;
     animation: backgroundgradient 100s infinite;
+  }
+  .staticclock{
+        display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 99%;
+    font-size: 50px;
+    font-family: 'Fredoka One', cursive;
+    color:white;
   }
   .center{
     margin: auto;
@@ -424,6 +434,8 @@ var x = setInterval(function() {
   if (getCookie("atc")) {
   document.getElementById("atc").classList.add("enabled");
   document.getElementById("atc").classList.remove("disabled");
+  document.getElementById("clock").classList.remove("clock");
+  document.getElementById("clock").classList.add("staticclock");
   }
   else{
   document.getElementById("atc").classList.remove("enabled");
