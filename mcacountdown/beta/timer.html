@@ -10,7 +10,7 @@
 
 <body style="background-color:#141414; overflow-y:hidden; overflow-x:hidden;">
 <p id="clock" class="clock"></p>
-<a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; top: 95%; left: 2%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"><span id="innergear" class="material-symbols-outlined">
+<a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"><span id="innergear" class="material-symbols-outlined">
   settings
   </span></a>
 
@@ -33,17 +33,17 @@
   <p>These options use cookies to work. If you wish to reject cookies, do not use these settings.</p>
   <br>
   <br>
-  <a id="arorf" class="disabled" onclick="arorf();">Automatically Reload When Focus Regained</a>
+  <a id="arorf" class="disabled" onclick="arorf();">Autosync Clock</a>
   <br>
   <br>
   <br>
   <br>
-  <a id="coce" class="disabled" onclick="coce();">Disable Confetti When Countdown Ends</a>
+  <a id="coce" class="disabled" onclick="coce();">Disable Confetti</a>
   <br>
   <br>
   <br>
   <br>
-  <a id="atc" class="disabled" onclick="atc();">Disable Text Animation On Countdown Clock</a>
+  <a id="atc" class="disabled" onclick="atc();">Disable Text Animation</a>
   <br>
   <br>
   <br>
@@ -52,7 +52,7 @@
   <br>
   <br>
   <br>
-  <a id="atc" class="warning" onclick="resetcookies();">Revert Back To Original Settings</a>
+  <a id="atc" class="warning" onclick="resetcookies();">Reset All</a>
   </center>
 
 <center  id="wifi" class="hidden" style="margin: 0; position: absolute; top: 15%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
@@ -111,6 +111,11 @@
     }
   }
 
+  #gear{
+    top: 95%;
+    left: 5%; 
+  }
+
   #ad{
     height:10vh;
     width:50vw;
@@ -133,7 +138,6 @@
     align-items: center;
     text-align: center;
     min-height: 99%;
-    font-size: 50px;
     font-family: 'Fredoka One', cursive;
     color:white;
   }
@@ -143,7 +147,6 @@
     align-items: center;
     text-align: center;
     min-height: 99%;
-    font-size: 50px;
     font-family: 'Fredoka One', cursive;
     animation: backgroundgradient 100s infinite;
   }
@@ -338,8 +341,19 @@
   }
   #gear{
     z-index:100000;
+    top:5%;
+    left: 5%; 
   }
 }
+
+@media only screen and (min-width: 1280px) {
+  #gear{
+    top:95%;
+    left: 3%; 
+  }
+
+}
+
 </style>
 
 <script src="confetti.js"></script>
@@ -456,19 +470,19 @@ var x = setInterval(function() {
 
   if(days > 0){
     document.getElementById("clock").innerHTML = days + ":" + hours + ":" + minutes + ":" + seconds;
-    document.getElementById("clock").style.fontSize = '50px';
+    document.getElementById("clock").style.fontSize = '75px';
   }
   else if(hours > 0){
     document.getElementById("clock").innerHTML = hours + ":" + minutes + ":" + seconds;
-    document.getElementById("clock").style.fontSize = '75px';
+    document.getElementById("clock").style.fontSize = '100px';
   }
   else if(minutes > 0){
     document.getElementById("clock").innerHTML = minutes + ":" + seconds;
-    document.getElementById("clock").style.fontSize = '100px';
+    document.getElementById("clock").style.fontSize = '150px';
   }
   else if(seconds > 0){
     document.getElementById("clock").innerHTML = seconds;
-    document.getElementById("clock").style.fontSize = '150px';
+    document.getElementById("clock").style.fontSize = '175px';
   }
 
 
