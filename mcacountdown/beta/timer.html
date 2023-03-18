@@ -327,7 +327,12 @@
     }
   }
 
-  @media only screen and (max-width: 1290px) {
+
+  @media only screen and (max-width: 1290px) and (orientation:portrait) {
+  body{
+    zoom:150%;
+  }
+
   #ad{
     width:100vw;
     height: 0.5in;
@@ -350,7 +355,7 @@
   }
 
   #innergear{
-    font-size:60px;
+    font-size:30px;
   }
 }
 
