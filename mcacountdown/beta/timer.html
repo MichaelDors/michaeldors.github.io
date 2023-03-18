@@ -323,7 +323,7 @@
   @media only screen and (max-width: 800px) {
   #ad{
     width:100vw;
-    height: inherit;
+    height: 0.5in;
     border: none;
     border-top: 4px solid white;
     object-fit: cover;
@@ -336,7 +336,9 @@
   #clock{
     font-size: 90pvw;
   }
-
+  #gear{
+    z-index:100000;
+  }
 }
 </style>
 
@@ -401,7 +403,9 @@ function settings(){
   }
 }
 
-var countDownDate = new Date("Mar 17, 2023 20:30:00").getTime();
+//var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
+var countDownDate = new Date("Mar 17, 2023 20:35:00").getTime();
+
 document.getElementById("ad_container").classList.remove("hidden");
 
 var x = setInterval(function() {
@@ -471,8 +475,9 @@ var x = setInterval(function() {
     clearInterval(x);
     document.getElementById("clock").remove();
     document.getElementById("ad_container").remove();
-    if(getCookie('coce')){
-    startConfetti();
+    document.getElementById("gear").remove();
+    if(!getCookie('coce')){
+      startConfetti();
     }
   }
   
