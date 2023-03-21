@@ -421,7 +421,7 @@ document.addEventListener( 'visibilitychange' , function() {
     if (document.hidden) {
       clearInterval(x);
       document.getElementById("clock").remove();
-      if(getCookie('arorf')){
+      if(!getCookie('arorf')){
         document.getElementById("unfocused").classList.remove("hidden");
       }
       document.getElementById("preloader").classList.add("hidden");
