@@ -21,16 +21,20 @@
 </center>
 
 <center class="hidden" id="unfocused" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
-<h1>Window Lost Focus</h1>
-<p>We cannot guarantee an accurate countdown once the tab loses focus.<br>To restart the countdown, click this handy button, or reload the page.</p>
+<h1>Focus Lost</h1>
+<p>We can't guarantee an accurate countdown if the tab loses focus.<br>To resync the countdown, click this button or reload the page.</p>
 <br>
 <br>
 <a href="">Sync Countdown</a>
+<br>
+<br>
+<br>
+<br>
+<p style="font-size: 15px; color:#989898">Enable "Autosync Clock" in the options menu to skip this page.</p>
 </center>
 
 <center class="hidden" id="settings" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
-  <h1>Settings</h1>
-  <p>These options use cookies to work. By using them, you agree to cookies.</p>
+  <h1>Options</h1>
   <br>
   <br>
   <a id="arorf" class="disabled" onclick="arorf();">Autosync Clock</a>
@@ -53,6 +57,11 @@
   <br>
   <br>
   <a id="atc" class="warning" onclick="resetcookies();">Reset All</a>
+  <br>
+  <br>
+  <br>
+  <br>
+  <p style="font-size: 15px; color:#989898">By using these options, you agree to cookies, extremely small files that store preferences in a browser. They will automatically be removed after 70 days, or if you disable the setting.</p>
   </center>
 
 <center  id="wifi" class="hidden" style="margin: 0; position: absolute; top: 15%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
@@ -177,6 +186,8 @@
     padding:20px;
     user-select:none;
     cursor:pointer;
+    font-size: 20px;
+  font-weight: 100;
   }
   a:hover{
     position:relative;
@@ -195,17 +206,19 @@
     background-color: #00ff40;
     text-decoration: none;
     color:black;
-    box-shadow: 0 7px 0 #003511;
+    box-shadow: 0 7px 0 #008f2d;
     border-radius:20px;
     padding:20px;
     user-select:none;
     cursor:pointer;
+    font-size: 20px;
+  font-weight: 100;
   }
   .enabled:hover{
     position:relative;
     top:2px;
     margin-top: 2px;
-    box-shadow:0 5px 0 #003511;
+    box-shadow:0 5px 0 #008f2d;
   }
   .enabled:hover:active{
     position:relative;
@@ -224,6 +237,8 @@
     padding:20px;
     user-select:none;
     cursor:pointer;
+    font-size: 20px;
+  font-weight: 100;
   }
   .disabled:hover{
     position:relative;
@@ -249,6 +264,8 @@
     padding:20px;
     user-select:none;
     cursor:pointer;
+    font-size: 20px;
+  font-weight: 100;
   }
   .warning:hover{
     position:relative;
@@ -286,7 +303,7 @@
     top:0px;
     margin-top: 0px;
     box-shadow:none;
-    color:#00ff88;
+    color:#00ff40;
   }
 
   .hidden{
@@ -404,7 +421,9 @@ document.addEventListener( 'visibilitychange' , function() {
     if (document.hidden) {
       clearInterval(x);
       document.getElementById("clock").remove();
-      document.getElementById("unfocused").classList.remove("hidden");
+      if(getCookie('arorf')){
+        document.getElementById("unfocused").classList.remove("hidden");
+      }
       document.getElementById("preloader").classList.add("hidden");
       document.getElementById("ad_container").remove();
       document.getElementById("gear").classList.add("hidden");
@@ -433,14 +452,14 @@ function settings(){
     document.getElementById("clock").style.display = "";
     document.getElementById("settings").classList.add("hidden");
     document.getElementById("preloader").classList.add("hidden");
-    document.getElementById("ad_container").classList.remove("hidden");
+    //document.getElementById("ad_container").classList.remove("hidden");
     document.getElementById("unfocused").classList.add("hidden");
   }
 }
 
 var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
 
-document.getElementById("ad_container").classList.remove("hidden");
+//document.getElementById("ad_container").classList.remove("hidden");
 
 var x = setInterval(function() {
 
