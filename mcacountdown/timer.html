@@ -8,7 +8,7 @@
 <title>Countdown</title>
 </head>
 
-<body style="background-color:#141414; overflow-y:hidden; overflow-x:hidden;">
+<body id="body" style="background-color:#141414;  overflow-x:hidden;">
 <p id="clock" class="clock"></p>
 <a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"><span id="innergear" class="material-symbols-outlined">
   settings
@@ -29,11 +29,18 @@
 <a href="">Sync Countdown</a>
 </center>
 
-<center class="hidden" id="settings" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+<center class="hidden" id="settings" style="margin: 0; position: absolute; left: 50%; -ms-transform: translate(-50%, 0%); transform: translate(-50%, 0%);">
   <h1>Options</h1>
-  <br>
-  <br>
+
+  <p style="font-size: 15px; color:#989898">By using these options, you agree to cookies, extremely small files that store preferences in a browser. They will automatically be removed after 70 days, or if you disable the setting.</p>
+    <br>
+    <Br>
   <a id="arorf" class="disabled" onclick="arorf();">Autosync Clock</a>
+  <br>
+  <br>
+  <br>
+  <br>
+  <a id="lcdu" class="disabled" onclick="lcdu();">Label Countdown Units</a>
   <br>
   <br>
   <br>
@@ -48,15 +55,16 @@
   <br>
   <br>
   <br>
+  <a  href="cookiepolicy.html">Cookie Policy</a> 
+    <br>
+    <br>
+    <br>
+    <br>  
   <a id="atc" class="warning" onclick="resetcookies();">Reset All</a>
   <br>
   <br>
   <br>
   <br>
-  <p style="font-size: 15px; color:#989898">By using these options, you agree to cookies, extremely small files that store preferences in a browser. They will automatically be removed after 70 days, or if you disable the setting.
-  <br>
-  <br>
-  <a class="settings" href="cookiepolicy.html">Cookie Policy</a> </p>
   </center>
 
 <center  id="wifi" class="hidden" style="margin: 0; position: absolute; top: 15%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
@@ -116,9 +124,10 @@
   }
 
   #gear{
-    top: 95%;
-    left: 5%; 
+  top: 95%;
+  left:5%;
   }
+
 
   #ad{
     height:10vh;
@@ -389,6 +398,9 @@
 <script src="confetti.js"></script>
 
 <script>
+    document.getElementById("body").style.overflowY = 'hidden';
+
+
 function setCookie(name,value,days) {
     var expires = "";
     if (days) {
@@ -442,6 +454,9 @@ function settings(){
     document.getElementById("ad_container").classList.add("hidden");
     document.getElementById("unfocused").classList.add("hidden");
 
+
+    document.getElementById("body").style.overflowY = '';
+    document.body.scrollTop = document.documentElement.scrollTop = 0;
   }
   else{
     document.getElementById("clock").style.display = "";
@@ -449,6 +464,9 @@ function settings(){
     document.getElementById("preloader").classList.add("hidden");
     //document.getElementById("ad_container").classList.remove("hidden");
     document.getElementById("unfocused").classList.add("hidden");
+
+    document.getElementById("body").style.overflowY = 'hidden';
+    document.body.scrollTop = document.documentElement.scrollTop = 0;
   }
 }
 
@@ -473,6 +491,22 @@ var x = setInterval(function() {
   else{
   document.getElementById("coce").classList.remove("enabled");
   document.getElementById("coce").classList.add("disabled");
+  }
+  if (getCookie("lcdu")) {
+  document.getElementById("lcdu").classList.add("enabled");
+  document.getElementById("lcdu").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("lcdu").classList.remove("enabled");
+  document.getElementById("lcdu").classList.add("disabled");
+  }
+  if (getCookie("ocwd")) {
+  document.getElementById("ocwd").classList.add("enabled");
+  document.getElementById("ocwd").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("ocwd").classList.remove("enabled");
+  document.getElementById("ocwd").classList.add("disabled");
   }
   if (getCookie("atc")) {
     document.getElementById("atc").classList.add("enabled");
@@ -500,21 +534,54 @@ var x = setInterval(function() {
   var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
   var seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-  if(days > 0){
+  //function getBusinessDatesCount(startDate, endDate) {
+    //let count = 0;
+    //const curDate = new Date(startDate.getTime());
+    //while (curDate <= endDate) {
+      //  const dayOfWeek = curDate.getDay();
+        //if(dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+       // curDate.setDate(curDate.getDate() + 1);
+   // }
+   // alert(count);
+   // return count;
+//}
+
+
+  if(getCookie("lcdu")) {
+    if(days > 0){
+    document.getElementById("clock").innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
+    document.getElementById("clock").style.fontSize = '75px';
+    }
+    else if(hours > 0){
+    document.getElementById("clock").innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
+    document.getElementById("clock").style.fontSize = '100px';
+    }
+    else if(minutes > 0){
+    document.getElementById("clock").innerHTML = minutes + "m " + seconds + "s ";
+    document.getElementById("clock").style.fontSize = '150px';
+   }
+   else if(seconds > 0){
+    document.getElementById("clock").innerHTML = seconds + "s ";
+    document.getElementById("clock").style.fontSize = '175px';
+   }
+  }
+  else{
+    if(days > 0){
     document.getElementById("clock").innerHTML = days + ":" + hours + ":" + minutes + ":" + seconds;
     document.getElementById("clock").style.fontSize = '75px';
-  }
-  else if(hours > 0){
+    }
+    else if(hours > 0){
     document.getElementById("clock").innerHTML = hours + ":" + minutes + ":" + seconds;
     document.getElementById("clock").style.fontSize = '100px';
-  }
-  else if(minutes > 0){
+    }
+    else if(minutes > 0){
     document.getElementById("clock").innerHTML = minutes + ":" + seconds;
     document.getElementById("clock").style.fontSize = '150px';
-  }
-  else if(seconds > 0){
+   }
+   else if(seconds > 0){
     document.getElementById("clock").innerHTML = seconds;
     document.getElementById("clock").style.fontSize = '175px';
+   }
   }
 
 
@@ -556,11 +623,27 @@ function atc(){
     setCookie('atc', 'true', '70');
   }
 }
-
+function ocwd(){
+  if(getCookie('ocwd')){
+    eraseCookie('ocwd');
+  }
+  else{
+    setCookie('ocwd', 'true', '70');
+  }
+}
+function lcdu(){
+  if(getCookie('lcdu')){
+    eraseCookie('lcdu');
+  }
+  else{
+    setCookie('lcdu', 'true', '70');
+  }
+}
 function resetcookies(){
   eraseCookie('arorf');
   eraseCookie('coce');
   eraseCookie('atc');
+  eraseCookie('ocwd');
 }
 
 window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
