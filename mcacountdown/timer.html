@@ -398,9 +398,6 @@
 <script src="confetti.js"></script>
 
 <script>
-    document.getElementById("body").style.overflowY = 'hidden';
-
-
 function setCookie(name,value,days) {
     var expires = "";
     if (days) {
@@ -455,24 +452,17 @@ function settings(){
     document.getElementById("unfocused").classList.add("hidden");
 
 
-    document.getElementById("body").style.overflowY = '';
-    document.body.scrollTop = document.documentElement.scrollTop = 0;
   }
   else{
     document.getElementById("clock").style.display = "";
     document.getElementById("settings").classList.add("hidden");
     document.getElementById("preloader").classList.add("hidden");
-    //document.getElementById("ad_container").classList.remove("hidden");
     document.getElementById("unfocused").classList.add("hidden");
 
-    document.getElementById("body").style.overflowY = 'hidden';
-    document.body.scrollTop = document.documentElement.scrollTop = 0;
   }
 }
 
 var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
-
-//document.getElementById("ad_container").classList.remove("hidden");
 
 var x = setInterval(function() {
 
@@ -499,14 +489,6 @@ var x = setInterval(function() {
   else{
   document.getElementById("lcdu").classList.remove("enabled");
   document.getElementById("lcdu").classList.add("disabled");
-  }
-  if (getCookie("ocwd")) {
-  document.getElementById("ocwd").classList.add("enabled");
-  document.getElementById("ocwd").classList.remove("disabled");
-  }
-  else{
-  document.getElementById("ocwd").classList.remove("enabled");
-  document.getElementById("ocwd").classList.add("disabled");
   }
   if (getCookie("atc")) {
     document.getElementById("atc").classList.add("enabled");
