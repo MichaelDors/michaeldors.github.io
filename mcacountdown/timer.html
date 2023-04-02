@@ -534,18 +534,6 @@ var x = setInterval(function() {
   var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
   var seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-  //function getBusinessDatesCount(startDate, endDate) {
-    //let count = 0;
-    //const curDate = new Date(startDate.getTime());
-    //while (curDate <= endDate) {
-      //  const dayOfWeek = curDate.getDay();
-        //if(dayOfWeek !== 0 && dayOfWeek !== 6) count++;
-       // curDate.setDate(curDate.getDate() + 1);
-   // }
-   // alert(count);
-   // return count;
-//}
-
 
   if(getCookie("lcdu")) {
     if(days > 0){
@@ -621,14 +609,6 @@ function atc(){
   }
   else{
     setCookie('atc', 'true', '70');
-  }
-}
-function ocwd(){
-  if(getCookie('ocwd')){
-    eraseCookie('ocwd');
-  }
-  else{
-    setCookie('ocwd', 'true', '70');
   }
 }
 function lcdu(){
