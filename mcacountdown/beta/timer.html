@@ -61,11 +61,12 @@
   <h2>Only Include</h1>
 <br>
 <br>
-    <a id="lcdu" style="margin-right:10px;" class="disabled" onclick="year();">Year</a>
-    <a id="lcdu" style="margin-right:10px;" class="disabled" onclick="month();">Month</a>
-    <a id="lcdu" style="margin-right:10px;" class="disabled" onclick="day();">Day</a>
-    <a id="lcdu" style="margin-right:10px;" class="disabled" onclick="minute();">Minute</a>
-    <a id="lcdu" style="margin-right:10px;" class="disabled" onclick="second();">Second</a>
+    <a id="year" style="margin-right:10px;" class="disabled" onclick="year();">Year</a>
+    <a id="month" style="margin-right:10px;" class="disabled" onclick="month();">Month</a>
+    <a id="day" style="margin-right:10px;" class="disabled" onclick="day();">Day</a>
+        <a id="hour" style="margin-right:10px;" class="disabled" onclick="hour();">Hour</a>
+    <a id="minute" style="margin-right:10px;" class="disabled" onclick="minute();">Minute</a>
+    <a id="second" style="margin-right:10px;" class="disabled" onclick="second();">Second</a>
     <br>
     <br>
     <Br>
@@ -552,6 +553,52 @@ var x = setInterval(function() {
   document.getElementById("clock").classList.remove("staticclock");
   }
 
+    if (getCookie("second")) {
+    document.getElementById("second").classList.add("enabled");
+  document.getElementById("second").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("second").classList.remove("enabled");
+  document.getElementById("second").classList.add("disabled");
+  }
+
+      if (getCookie("minute")) {
+    document.getElementById("minute").classList.add("enabled");
+  document.getElementById("minute").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("minute").classList.remove("enabled");
+  document.getElementById("minute").classList.add("disabled");
+  }
+
+        if (getCookie("hour")) {
+    document.getElementById("hour").classList.add("enabled");
+  document.getElementById("hour").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("hour").classList.remove("enabled");
+  document.getElementById("hour").classList.add("disabled");
+  }
+
+
+        if (getCookie("minute")) {
+    document.getElementById("minute").classList.add("enabled");
+  document.getElementById("minute").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("minute").classList.remove("enabled");
+  document.getElementById("minute").classList.add("disabled");
+  }
+
+        if (getCookie("second")) {
+    document.getElementById("second").classList.add("enabled");
+  document.getElementById("second").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("second").classList.remove("enabled");
+  document.getElementById("second").classList.add("disabled");
+  }
+
 
   document.getElementById("preloader").classList.add("hidden");
 
@@ -679,6 +726,7 @@ function year(){
     eraseCookie('minute');
     eraseCookie('day');
     eraseCookie('month');
+    eraseCookie('hour');
   }
 }
 function month(){
@@ -691,6 +739,7 @@ function month(){
     eraseCookie('minute');
     eraseCookie('day');
     eraseCookie('year');
+    eraseCookie('hour');
   }
 }
 function day(){
@@ -701,6 +750,19 @@ function day(){
     setCookie('day', 'true', '70');
         eraseCookie('second');
     eraseCookie('minute');
+    eraseCookie('month');
+    eraseCookie('year');
+    eraseCookie('hour');
+  }
+}
+function hour(){
+  if(getCookie('minute')){
+    eraseCookie('minute');
+  }
+  else{
+    setCookie('minute', 'true', '70');
+        eraseCookie('second');
+    eraseCookie('day');
     eraseCookie('month');
     eraseCookie('year');
   }
@@ -715,6 +777,7 @@ function minute(){
     eraseCookie('day');
     eraseCookie('month');
     eraseCookie('year');
+    eraseCookie('hour');
   }
 }
 function second(){
@@ -727,6 +790,7 @@ function second(){
     eraseCookie('day');
     eraseCookie('month');
     eraseCookie('year');
+    eraseCookie('hour');
   }
 }
 function resetcookies(){
@@ -734,6 +798,12 @@ function resetcookies(){
   eraseCookie('coce');
   eraseCookie('atc');
   eraseCookie('ocwd');
+  eraseCookie('minute');
+  eraseCookie('second');
+    eraseCookie('day');
+    eraseCookie('month');
+    eraseCookie('year');
+    eraseCookie('hour');
 }
 
 window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
