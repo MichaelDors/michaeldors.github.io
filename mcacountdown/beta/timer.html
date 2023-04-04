@@ -61,8 +61,6 @@
   <h2>Only Include</h1>
 <br>
 <br>
-    <a id="year" style="margin-right:10px;" class="disabled" onclick="year();">Year</a>
-    <a id="month" style="margin-right:10px;" class="disabled" onclick="month();">Month</a>
     <a id="day" style="margin-right:10px;" class="disabled" onclick="day();">Day</a>
         <a id="hour" style="margin-right:10px;" class="disabled" onclick="hour();">Hour</a>
     <a id="minute" style="margin-right:10px;" class="disabled" onclick="minute();">Minute</a>
@@ -716,32 +714,7 @@ function lcdu(){
     setCookie('lcdu', 'true', '70');
   }
 }
-function year(){
-  if(getCookie('year')){
-    eraseCookie('year');
-  }
-  else{
-    setCookie('year', 'true', '70');
-        eraseCookie('second');
-    eraseCookie('minute');
-    eraseCookie('day');
-    eraseCookie('month');
-    eraseCookie('hour');
-  }
-}
-function month(){
-  if(getCookie('month')){
-    eraseCookie('month');
-  }
-  else{
-    setCookie('month', 'true', '70');
-        eraseCookie('second');
-    eraseCookie('minute');
-    eraseCookie('day');
-    eraseCookie('year');
-    eraseCookie('hour');
-  }
-}
+
 function day(){
   if(getCookie('day')){
     eraseCookie('day');
@@ -750,21 +723,18 @@ function day(){
     setCookie('day', 'true', '70');
         eraseCookie('second');
     eraseCookie('minute');
-    eraseCookie('month');
-    eraseCookie('year');
     eraseCookie('hour');
   }
 }
 function hour(){
-  if(getCookie('minute')){
-    eraseCookie('minute');
+  if(getCookie('hour')){
+    eraseCookie('hour');
   }
   else{
-    setCookie('minute', 'true', '70');
+    setCookie('hour', 'true', '70');
         eraseCookie('second');
     eraseCookie('day');
-    eraseCookie('month');
-    eraseCookie('year');
+    eraseCookie('hour');
   }
 }
 function minute(){
@@ -775,8 +745,6 @@ function minute(){
     setCookie('minute', 'true', '70');
         eraseCookie('second');
     eraseCookie('day');
-    eraseCookie('month');
-    eraseCookie('year');
     eraseCookie('hour');
   }
 }
@@ -788,8 +756,6 @@ function second(){
     setCookie('second', 'true', '70');
     eraseCookie('minute');
     eraseCookie('day');
-    eraseCookie('month');
-    eraseCookie('year');
     eraseCookie('hour');
   }
 }
@@ -801,8 +767,6 @@ function resetcookies(){
   eraseCookie('minute');
   eraseCookie('second');
     eraseCookie('day');
-    eraseCookie('month');
-    eraseCookie('year');
     eraseCookie('hour');
 }
 
