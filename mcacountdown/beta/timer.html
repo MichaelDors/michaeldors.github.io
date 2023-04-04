@@ -579,23 +579,15 @@ var x = setInterval(function() {
   }
 
 
-        if (getCookie("minute")) {
-    document.getElementById("minute").classList.add("enabled");
-  document.getElementById("minute").classList.remove("disabled");
+        if (getCookie("day")) {
+    document.getElementById("day").classList.add("enabled");
+  document.getElementById("day").classList.remove("disabled");
   }
   else{
-  document.getElementById("minute").classList.remove("enabled");
-  document.getElementById("minute").classList.add("disabled");
+  document.getElementById("day").classList.remove("enabled");
+  document.getElementById("day").classList.add("disabled");
   }
 
-        if (getCookie("second")) {
-    document.getElementById("second").classList.add("enabled");
-  document.getElementById("second").classList.remove("disabled");
-  }
-  else{
-  document.getElementById("second").classList.remove("enabled");
-  document.getElementById("second").classList.add("disabled");
-  }
 
 
   document.getElementById("preloader").classList.add("hidden");
