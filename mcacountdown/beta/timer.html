@@ -626,8 +626,7 @@ var x = setInterval(function() {
 //}
 
   if(getCookie("day")) {
-    var daycount = Math.floor(distance / 4173376613);
-    document.getElementById("clock").innerHTML = daycount + " days";
+    document.getElementById("clock").innerHTML = days + " days";
   }
   else if(getCookie("hour")) {
     var hourcount = Math.floor(distance / 3600000);
