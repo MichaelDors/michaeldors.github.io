@@ -22,11 +22,16 @@
 </center>
 
 <center class="hidden" id="unfocused" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
-<h1 class="textelement">Focus Lost</h1>
-<p class="textelement">We can't guarantee an accurate countdown if the tab loses focus.<br>To resync the countdown, click this button or reload the page.<br>Enable "Autosync Clock" in the options menu to skip this page.</p>
+  <div class="box">
+<h1 class="textelement">Memory Saver</h1>
+<p class="textelement">Memory Saver engaged to prevent using system resources when the window is out of focus. You can disable this in settings.</p>
 <br>
 <br>
 <a href="">Sync Countdown</a>
+<br>
+<Br>
+  <br>
+</div>
 </center>
 
 <center class="hidden" id="settings" style="margin: 0; position: absolute; left: 50%; -ms-transform: translate(-50%, 0%); transform: translate(-50%, 0%);">
@@ -44,7 +49,7 @@
       <h2 class="textelement">Ease of Use</h1>
     <br>
     <Br>
-  <a id="arorf" class="disabled" onclick="arorf();">Autosync Clock</a>
+  <a id="memsav" class="disabled" onclick="memsav();">Memory Saver</a>
   <br>
   <br>
   <br>
@@ -159,6 +164,15 @@
   }
   #maintainedtext:hover{
     cursor:default;
+  }
+  .box{
+    background:linear-gradient(to left, rgba(40,23,64,88), #141414);
+    padding-top:50px;
+    padding-bottom: 50px;
+    padding-left:50px;
+    padding-right:50px;
+    border-radius: 35px;
+    border: #8426FF 1px solid;
   }
     .staticclock{
         display: flex;
@@ -449,7 +463,7 @@ document.addEventListener( 'visibilitychange' , function() {
     if (document.hidden) {
       clearInterval(x);
       document.getElementById("clock").remove();
-      if(!getCookie('arorf')){
+      if(getCookie('memsav')){
         document.getElementById("unfocused").classList.remove("hidden");
       }
       document.getElementById("preloader").classList.add("hidden");
@@ -458,7 +472,7 @@ document.addEventListener( 'visibilitychange' , function() {
       document.getElementById("settings").classList.add("hidden");
     }
 
-    if(!document.hidden && getCookie('arorf')){
+    if(!document.hidden && !getCookie('memsav')){
         location.reload();
     }
 
@@ -499,13 +513,13 @@ document.getElementById("ad_container").classList.remove("hidden");
 
 var x = setInterval(function() {
 
-  if (getCookie("arorf")) {
-  document.getElementById("arorf").classList.add("enabled");
-  document.getElementById("arorf").classList.remove("disabled");
+  if (getCookie("memsav")) {
+  document.getElementById("memsav").classList.add("enabled");
+  document.getElementById("memsav").classList.remove("disabled");
   }
   else{
-  document.getElementById("arorf").classList.remove("enabled");
-  document.getElementById("arorf").classList.add("disabled");
+  document.getElementById("memsav").classList.remove("enabled");
+  document.getElementById("memsav").classList.add("disabled");
   }
   if (getCookie("coce")) {
   document.getElementById("coce").classList.add("enabled");
@@ -669,12 +683,12 @@ var x = setInterval(function() {
 }, 1000);
 
 
-function arorf(){
-  if(getCookie('arorf')){
-    eraseCookie('arorf');
+function memsav(){
+  if(getCookie('memsav')){
+    eraseCookie('memsav');
   }
   else{
-    setCookie('arorf', 'true', '70');
+    setCookie('memsav', 'true', '70');
   }
 }
 function coce(){
@@ -750,7 +764,7 @@ function second(){
   }
 }
 function resetcookies(){
-  eraseCookie('arorf');
+  eraseCookie('memsav');
   eraseCookie('coce');
   eraseCookie('atc');
   eraseCookie('minute');
