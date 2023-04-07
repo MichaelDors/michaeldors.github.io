@@ -42,6 +42,10 @@
   <Br>
     <a style="margin-right:10px;" onclick="settings();">Close</a>  
     <a style="margin-right:10px;" id="atc" class="warning" onclick="resetcookies();">Reset All</a>
+      <br>
+  <br>
+  <br>
+  <br>
   <a href="cookiepolicy.html">Cookie Policy</a>
     <Br>
       <br>
@@ -63,6 +67,10 @@
 <br>
     <a id="day" style="margin-right:10px;" class="disabled" onclick="day();">Day</a>
         <a id="hour" style="margin-right:10px;" class="disabled" onclick="hour();">Hour</a>
+          <br>
+  <br>
+  <br>
+  <br>
     <a id="minute" style="margin-right:10px;" class="disabled" onclick="minute();">Minute</a>
     <a id="second" style="margin-right:10px;" class="disabled" onclick="second();">Second</a>
     <br>
@@ -464,6 +472,7 @@ document.addEventListener( 'visibilitychange' , function() {
       clearInterval(x);
       document.getElementById("clock").remove();
       if(getCookie('memsav')){
+        clearInterval(x);
         document.getElementById("unfocused").classList.remove("hidden");
       }
       document.getElementById("preloader").classList.add("hidden");
