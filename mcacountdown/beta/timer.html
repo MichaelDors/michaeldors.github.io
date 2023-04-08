@@ -21,11 +21,12 @@
 
 <center class="hidden" id="unfocused" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
   <div class="box">
+  <i style="font-size:50px; color:white" class="fa-solid fa-gauge"></i>
 <h1 class="textelement">Memory Saver</h1>
 <p class="textelement">Memory Saver engaged to prevent using system resources when the window is out of focus. You can disable this in settings.</p>
 <br>
 <br>
-<a href="">Sync Countdown</a>
+<a href=""><i class="fa-solid fa-arrows-rotate"></i> Sync Countdown</a>
 <br>
 <Br>
   <br>
@@ -34,21 +35,22 @@
 
 <center class="hidden" id="cookiepopup" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index: 10000;">
   <div class="box">
+    <i style="font-size:50px; color:white" class="fa-solid fa-cookie-bite"></i>
 <h1 class="textelement">Cookies Ahead</h1>
 <p class="textelement">We use cookies to save your settings.  To use the options menu, you must approve the use of cookies. </p>
 <br>
 <br>
-<a onclick="acceptcookies()">Accept All Cookies</a>
+<a onclick="acceptcookies()"><i class="fa-solid fa-circle-check"></i> Accept All Cookies</a>
 <Br>
   <br>
   <br>
   <br>
-<a class="outlinebutton" href="cookiepolicy.html">Cookie Policy</a>
+<a class="outlinebutton" href="cookiepolicy.html"><i class="fa-solid fa-graduation-cap"></i> Cookie Policy</a>
 <br>
 <Br>
   <br>
   <br>
-      <a class="outlinebutton" onclick="settings();">Exit Settings</a>  
+      <a class="outlinebutton" onclick="settings();"><i class="fa-solid fa-circle-xmark"></i> Exit Settings</a>  
 <br>
 <Br>
   <br>
@@ -61,13 +63,13 @@
   <p class="textelement" style="font-size: 15px; color:#989898">By using these options, you agree to cookies, extremely small files that store preferences in a browser. They will automatically be removed after 70 days, or if you disable the setting.</p>
   <br>
   <Br>
-    <a style="margin-right:10px;" onclick="settings();">Close</a>  
-    <a style="margin-right:10px;" id="atc" class="warning" onclick="resetcookies();">Reset All</a>
+    <a style="margin-right:10px;" onclick="settings();"><i class="fa-solid fa-gear"></i> Close</a>  
+    <a style="margin-right:10px;" id="atc" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
       <br>
   <br>
   <br>
   <br>
-  <a href="cookiepolicy.html">Cookie Policy</a>
+  <a href="cookiepolicy.html"><i class="fa-solid fa-cookie-bite"></i> Cookie Policy</a>
     <Br>
       <br>
       <br>
@@ -516,6 +518,8 @@
 <script src="confetti.js"></script>
 
 <script>
+updateoptions();
+
 document.getElementById("body").style.overflowY = 'hidden';
 document.getElementById("gear").classList.remove("hidden");
 
@@ -612,6 +616,15 @@ function settings(){
     document.body.scrollTop = document.documentElement.scrollTop = 0;
   }
 }
+
+  if (getCookie("atc")) {
+  document.getElementById("clock").classList.remove("clock");
+  document.getElementById("clock").classList.add("staticclock");
+  }
+  else{
+  document.getElementById("clock").classList.add("clock");
+  document.getElementById("clock").classList.remove("staticclock");
+  }
 
 var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
 
@@ -735,15 +748,11 @@ function updateoptions(){
 
   if (getCookie("atc")) {
     document.getElementById("atc").classList.add("enabled");
-  document.getElementById("atc").classList.remove("disabled");
-  document.getElementById("clock").classList.remove("clock");
-  document.getElementById("clock").classList.add("staticclock");
+    document.getElementById("atc").classList.remove("disabled");
   }
   else{
     document.getElementById("atc").classList.remove("enabled");
-  document.getElementById("atc").classList.add("disabled");
-  document.getElementById("clock").classList.add("clock");
-  document.getElementById("clock").classList.remove("staticclock");
+    document.getElementById("atc").classList.add("disabled");
   }
 
 
