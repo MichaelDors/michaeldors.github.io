@@ -5,6 +5,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,700,1,0" />
 <link rel="icon" type="image/x-icon" href="icon.ico">
+<meta name="theme-color" content="#8426ff" />
 <title>Countdown</title>
 </head>
 
@@ -28,6 +29,29 @@
 <br>
 <br>
 <a href="">Sync Countdown</a>
+<br>
+<Br>
+  <br>
+</div>
+</center>
+
+<center class="hidden" id="cookiepopup" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index: 10000;">
+  <div class="box">
+<h1 class="textelement">Cookies Ahead</h1>
+<p class="textelement">We use cookies to save your settings.  To use the options menu, you must approve the use of cookies. </p>
+<br>
+<br>
+<a onclick="acceptcookies()">Accept All Cookies</a>
+<Br>
+  <br>
+  <br>
+  <br>
+<a class="outlinebutton" href="cookiepolicy.html">Cookie Policy</a>
+<br>
+<Br>
+  <br>
+  <br>
+      <a class="outlinebutton" onclick="settings();">Exit Settings</a>  
 <br>
 <Br>
   <br>
@@ -228,6 +252,20 @@
     background-color: #8426ff;
     text-decoration: none;
     color:white;
+    box-shadow: 0 7px 0 #4d00b2;
+    border-radius:20px;
+    padding:20px;
+    user-select:none;
+    cursor:pointer;
+    font-size: 20px;
+  font-weight: 100;
+  }
+    .outlinebutton{
+    font-family: 'Fredoka One';
+    background-color: #141414;
+    text-decoration: none;
+    color:white;
+    border: #8426ff solid 1px;
     box-shadow: 0 7px 0 #4d00b2;
     border-radius:20px;
     padding:20px;
@@ -489,11 +527,32 @@ document.addEventListener( 'visibilitychange' , function() {
 
 
 function settings(){
+  if(document.getElementById("settings").classList.contains("hidden") && !document.getElementById("cookiepopup").classList.contains("hidden")){
+    document.getElementById("cookiepopup").classList.add("hidden");
+        document.getElementById("clock").style.display = "";
+    document.getElementById("cookiepopup").classList.add("hidden");
+    document.getElementById("settings").classList.add("hidden");
+    document.getElementById("gear").classList.remove("hidden");
+    document.getElementById("preloader").classList.add("hidden");
+    document.getElementById("ad_container").classList.remove("hidden");
+    document.getElementById("unfocused").classList.add("hidden");
 
-  if(document.getElementById("settings").classList.contains("hidden")){
+    document.getElementById("body").style.overflowY = 'hidden';
+    document.body.scrollTop = document.documentElement.scrollTop = 0;
+  }
+  else if(document.getElementById("settings").classList.contains("hidden")){
 
+    if(getCookie("cookiesallowed")){
+      document.getElementById("settings").classList.remove("hidden");
+      document.getElementById("cookiepopup").classList.add("hidden");
+
+    }
+    else{
+      document.getElementById("cookiepopup").classList.remove("hidden");
+      document.getElementById("settings").classList.add("hidden");
+
+    }
     document.getElementById("clock").style.display = "none";
-    document.getElementById("settings").classList.remove("hidden");
     document.getElementById("gear").classList.add("hidden");
     document.getElementById("preloader").classList.add("hidden");
     document.getElementById("ad_container").classList.add("hidden");
@@ -505,6 +564,7 @@ function settings(){
   }
   else{
     document.getElementById("clock").style.display = "";
+    document.getElementById("cookiepopup").classList.add("hidden");
     document.getElementById("settings").classList.add("hidden");
     document.getElementById("gear").classList.remove("hidden");
     document.getElementById("preloader").classList.add("hidden");
@@ -698,6 +758,9 @@ function memsav(){
   else{
     setCookie('memsav', 'true', '70');
   }
+}
+function acceptcookies(){
+  setCookie('cookiesallowed', 'true', '70');
 }
 function coce(){
   if(getCookie('coce')){
