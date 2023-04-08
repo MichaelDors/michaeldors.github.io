@@ -761,6 +761,8 @@ function memsav(){
 }
 function acceptcookies(){
   setCookie('cookiesallowed', 'true', '70');
+        document.getElementById("settings").classList.remove("hidden");
+      document.getElementById("cookiepopup").classList.add("hidden");
 }
 function coce(){
   if(getCookie('coce')){
