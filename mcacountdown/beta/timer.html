@@ -2,8 +2,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,700,1,0" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 <link rel="icon" type="image/x-icon" href="icon.ico">
 <meta name="theme-color" content="#8426ff" />
 <title>Countdown</title>
@@ -11,9 +10,7 @@
 
 <body id="body" style="background-color:#141414;  overflow-x:hidden;">
 <p id="clock" class="clock"></p>
-<a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"><span id="innergear" class="material-symbols-outlined">
-  settings
-  </span></a>
+<a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"><i id="innergear" class="fa-solid fa-gear"></i></a>
 
 
 <center id="preloader" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
@@ -120,7 +117,9 @@
   </center>
 
 <center  id="wifi" class="hidden" style="margin: 0; position: absolute; top: 15%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
-  <h1 class="wifitext" style="font-size: 20px;">No Internet</h1>
+  <div class="box wifibox" style="padding-left:20px; padding-right:20px; padding-top:10px; padding-bottom:10px;">
+  <h1 class="wifitext" style="font-size: 20px;"><i class="fa-solid fa-circle-exclamation"></i> No Internet Connection</h1>
+  </div>
   </center>
 
   <center class="hidden" id="ad_container" style="border-radius: 20px; margin: 0; position: absolute; top: 88%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
@@ -135,8 +134,46 @@
 <style>
   .wifitext{
     z-index: 100;
-    opacity: 0.5;
     animation: wifidown 50s infinite;
+  }
+  .wifibox{
+    animation:wifidown1 50s infinite;
+  }
+
+  @keyframes wifidown1{
+    0%{
+      opacity: 0%;
+    }
+    10%{
+      opacity: 100%;
+    }
+    20%{
+      opacity: 0%;
+    }
+    30%{
+      opacity: 100%;
+    }
+    40%{
+      opacity: 0%;
+    }
+    50%{
+      opacity: 100%;
+    }
+    60%{
+      opacity: 0%;
+    }
+    70%{
+      opacity: 100%;
+    }
+    80%{
+      opacity: 0%;
+    }
+    90%{
+     opacity: 100%;
+    }
+    100%{
+      opacity: 0%;
+    }
   }
 
   @keyframes wifidown{
@@ -144,31 +181,31 @@
       color: #141414;
     }
     10%{
-      color: #ff5050;
+      color: #ffffff;
     }
     20%{
       color: #141414;
     }
     30%{
-      color: #ff5050;
+      color: #ffffff;
     }
     40%{
       color: #141414;
     }
     50%{
-      color: #ff5050;
+      color: #ffffff;
     }
     60%{
       color: #141414;
     }
     70%{
-      color: #ff5050;
+      color: #ffffff;
     }
     80%{
       color: #141414;
     }
     90%{
-      color: #ff5050;
+      color: #ffffff;
     }
     100%{
       color: #141414;
@@ -582,86 +619,6 @@ document.getElementById("ad_container").classList.remove("hidden");
 
 var x = setInterval(function() {
 
-  if (getCookie("memsav")) {
-  document.getElementById("memsav").classList.add("enabled");
-  document.getElementById("memsav").classList.remove("disabled");
-  }
-  else{
-  document.getElementById("memsav").classList.remove("enabled");
-  document.getElementById("memsav").classList.add("disabled");
-  }
-  if (getCookie("coce")) {
-  document.getElementById("coce").classList.add("enabled");
-  document.getElementById("coce").classList.remove("disabled");
-  }
-  else{
-  document.getElementById("coce").classList.remove("enabled");
-  document.getElementById("coce").classList.add("disabled");
-  }
-  if (getCookie("lcdu")) {
-  document.getElementById("lcdu").classList.add("enabled");
-  document.getElementById("lcdu").classList.remove("disabled");
-  }
-  else{
-  document.getElementById("lcdu").classList.remove("enabled");
-  document.getElementById("lcdu").classList.add("disabled");
-  }
-
-  if (getCookie("atc")) {
-    document.getElementById("atc").classList.add("enabled");
-  document.getElementById("atc").classList.remove("disabled");
-  document.getElementById("clock").classList.remove("clock");
-  document.getElementById("clock").classList.add("staticclock");
-  }
-  else{
-  document.getElementById("atc").classList.remove("enabled");
-  document.getElementById("atc").classList.add("disabled");
-  document.getElementById("clock").classList.add("clock");
-  document.getElementById("clock").classList.remove("staticclock");
-  }
-
-
-
-
-    if (getCookie("second")) {
-    document.getElementById("second").classList.add("enabled");
-  document.getElementById("second").classList.remove("disabled");
-  }
-  else{
-  document.getElementById("second").classList.remove("enabled");
-  document.getElementById("second").classList.add("disabled");
-  }
-
-      if (getCookie("minute")) {
-    document.getElementById("minute").classList.add("enabled");
-  document.getElementById("minute").classList.remove("disabled");
-  }
-  else{
-  document.getElementById("minute").classList.remove("enabled");
-  document.getElementById("minute").classList.add("disabled");
-  }
-
-        if (getCookie("hour")) {
-    document.getElementById("hour").classList.add("enabled");
-  document.getElementById("hour").classList.remove("disabled");
-  }
-  else{
-  document.getElementById("hour").classList.remove("enabled");
-  document.getElementById("hour").classList.add("disabled");
-  }
-
-
-        if (getCookie("day")) {
-    document.getElementById("day").classList.add("enabled");
-  document.getElementById("day").classList.remove("disabled");
-  }
-  else{
-  document.getElementById("day").classList.remove("enabled");
-  document.getElementById("day").classList.add("disabled");
-  }
-
-
-
   document.getElementById("preloader").classList.add("hidden");
 
   var now = new Date().getTime();
@@ -750,6 +707,86 @@ var x = setInterval(function() {
   
 }, 1000);
 
+function updateoptions(){
+  if (getCookie("memsav")) {
+  document.getElementById("memsav").classList.add("enabled");
+  document.getElementById("memsav").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("memsav").classList.remove("enabled");
+  document.getElementById("memsav").classList.add("disabled");
+  }
+  if (getCookie("coce")) {
+  document.getElementById("coce").classList.add("enabled");
+  document.getElementById("coce").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("coce").classList.remove("enabled");
+  document.getElementById("coce").classList.add("disabled");
+  }
+  if (getCookie("lcdu")) {
+  document.getElementById("lcdu").classList.add("enabled");
+  document.getElementById("lcdu").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("lcdu").classList.remove("enabled");
+  document.getElementById("lcdu").classList.add("disabled");
+  }
+
+  if (getCookie("atc")) {
+    document.getElementById("atc").classList.add("enabled");
+  document.getElementById("atc").classList.remove("disabled");
+  document.getElementById("clock").classList.remove("clock");
+  document.getElementById("clock").classList.add("staticclock");
+  }
+  else{
+  document.getElementById("atc").classList.remove("enabled");
+  document.getElementById("atc").classList.add("disabled");
+  document.getElementById("clock").classList.add("clock");
+  document.getElementById("clock").classList.remove("staticclock");
+  }
+
+
+
+
+    if (getCookie("second")) {
+    document.getElementById("second").classList.add("enabled");
+  document.getElementById("second").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("second").classList.remove("enabled");
+  document.getElementById("second").classList.add("disabled");
+  }
+
+      if (getCookie("minute")) {
+    document.getElementById("minute").classList.add("enabled");
+  document.getElementById("minute").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("minute").classList.remove("enabled");
+  document.getElementById("minute").classList.add("disabled");
+  }
+
+        if (getCookie("hour")) {
+    document.getElementById("hour").classList.add("enabled");
+  document.getElementById("hour").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("hour").classList.remove("enabled");
+  document.getElementById("hour").classList.add("disabled");
+  }
+
+
+        if (getCookie("day")) {
+    document.getElementById("day").classList.add("enabled");
+  document.getElementById("day").classList.remove("disabled");
+  }
+  else{
+  document.getElementById("day").classList.remove("enabled");
+  document.getElementById("day").classList.add("disabled");
+  }
+
+}
 
 function memsav(){
   if(getCookie('memsav')){
@@ -758,6 +795,7 @@ function memsav(){
   else{
     setCookie('memsav', 'true', '70');
   }
+  updateoptions();
 }
 function acceptcookies(){
   setCookie('cookiesallowed', 'true', '70');
@@ -771,6 +809,7 @@ function coce(){
   else{
     setCookie('coce', 'true', '70');
   }
+  updateoptions();
 }
 function atc(){
   if(getCookie('atc')){
@@ -779,6 +818,7 @@ function atc(){
   else{
     setCookie('atc', 'true', '70');
   }
+  updateoptions();
 }
 
 function lcdu(){
@@ -788,6 +828,7 @@ function lcdu(){
   else{
     setCookie('lcdu', 'true', '70');
   }
+  updateoptions();
 }
 
 
@@ -802,6 +843,7 @@ function day(){
     eraseCookie('minute');
     eraseCookie('hour');
   }
+  updateoptions();
 }
 function hour(){
   if(getCookie('hour')){
@@ -813,6 +855,7 @@ function hour(){
     eraseCookie('day');
     eraseCookie('minute');
   }
+  updateoptions();
 }
 function minute(){
   if(getCookie('minute')){
@@ -824,6 +867,7 @@ function minute(){
     eraseCookie('day');
     eraseCookie('hour');
   }
+  updateoptions();
 }
 function second(){
   if(getCookie('second')){
@@ -835,6 +879,7 @@ function second(){
     eraseCookie('day');
     eraseCookie('hour');
   }
+  updateoptions();
 }
 function resetcookies(){
   eraseCookie('memsav');
