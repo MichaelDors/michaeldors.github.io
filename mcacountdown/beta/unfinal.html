@@ -633,6 +633,8 @@ document.getElementById("ad_container").classList.remove("hidden");
 
 var x = setInterval(function() {
 
+  updateoptions();
+
   if (getCookie("atc")) {
   document.getElementById("clock").classList.remove("clock");
   document.getElementById("clock").classList.add("staticclock");
