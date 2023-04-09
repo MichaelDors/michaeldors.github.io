@@ -26,7 +26,7 @@
 <p class="textelement">Memory Saver engaged to prevent using system resources when the window is out of focus. You can disable this in settings.</p>
 <br>
 <br>
-<a href=""><i class="fa-solid fa-arrows-rotate"></i> Sync Countdown</a>
+<a href="" class="a2"><i class="fa-solid fa-arrows-rotate"></i> Sync</a>
 <br>
 <Br>
   <br>
@@ -40,17 +40,17 @@
 <p class="textelement">We use cookies to save your settings.  To use the options menu, you must approve the use of cookies. </p>
 <br>
 <br>
-<a onclick="acceptcookies()"><i class="fa-solid fa-circle-check"></i> Accept All Cookies</a>
+<a class="a2" onclick="acceptcookies()"><i class="fa-solid fa-circle-check"></i> Accept Cookies</a>
 <Br>
   <br>
   <br>
   <br>
-<a class="outlinebutton" href="cookiepolicy.html"><i class="fa-solid fa-graduation-cap"></i> Cookie Policy</a>
+<a class="a2 outlinebutton" href="cookiepolicy.html"><i class="fa-solid fa-graduation-cap"></i> Cookie Policy</a>
 <br>
 <Br>
   <br>
   <br>
-      <a class="outlinebutton" onclick="settings();"><i class="fa-solid fa-circle-xmark"></i> Exit Settings</a>  
+      <a class="a2 outlinebutton" onclick="settings();"><i class="fa-solid fa-circle-xmark"></i> Exit Settings</a>  
 <br>
 <Br>
   <br>
@@ -63,12 +63,8 @@
   <p class="textelement" style="font-size: 15px; color:#989898">By using these options, you agree to cookies, extremely small files that store preferences in a browser. They will automatically be removed after 70 days, or if you disable the setting.</p>
   <br>
   <Br>
-    <a style="margin-right:10px;" onclick="settings();"><i class="fa-solid fa-gear"></i> Close</a>  
-    <a style="margin-right:10px;" id="atc" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
-      <br>
-  <br>
-  <br>
-  <br>
+    <a onclick="settings();"><i class="fa-solid fa-gear"></i> Close</a>  
+    <a id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
   <a href="cookiepolicy.html"><i class="fa-solid fa-cookie-bite"></i> Cookie Policy</a>
     <Br>
       <br>
@@ -77,41 +73,23 @@
     <br>
     <Br>
   <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
-  <br>
-  <br>
-  <br>
-  <br>
+
   <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Countdown Units</a>
-  <br>
-  <br>
-  <Br>
+
   <h2 class="textelement">Only Include</h1>
 <br>
 <br>
-    <a id="day" style="margin-right:10px;" class="disabled" onclick="day();"><i class="fa-solid fa-calendar-days"></i> Day</a>
-        <a id="hour" style="margin-right:10px;" class="disabled" onclick="hour();"><i class="fa-solid fa-clock"></i> Hour</a>
-          <br>
-  <br>
-  <br>
-  <br>
-    <a id="minute" style="margin-right:10px;" class="disabled" onclick="minute();"><i class="fa-solid fa-hourglass-start"></i> Minute</a>
-    <a id="second" style="margin-right:10px;" class="disabled" onclick="second();"><i class="fa-solid fa-stopwatch-20"></i> Second</a>
-    <br>
-    <br>
-    <Br>
+    <a id="day" class="disabled" onclick="day();"><i class="fa-solid fa-calendar-days"></i> Day</a>
+        <a id="hour" class="disabled" onclick="hour();"><i class="fa-solid fa-clock"></i> Hour</a>
+
+    <a id="minute" class="disabled" onclick="minute();"><i class="fa-solid fa-hourglass-start"></i> Minute</a>
+    <a id="second" class="disabled" onclick="second();"><i class="fa-solid fa-stopwatch-20"></i> Second</a>
+
     <h2 class="textelement">Accessibility</h1>
   <br>
   <br>
   <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
-  <br>
-  <br>
-  <br>
-  <br>
   <a id="atc" class="disabled" onclick="atc();"><i class="fa-solid fa-palette"></i> Disable Text Animation</a>
-  <br>
-  <br>
-  <br>
-  <br>
   <br>
   <br>
   <br>
@@ -298,6 +276,24 @@
     cursor:pointer;
     font-size: 20px;
   font-weight: 100;
+      margin: 0px 5px 25px 5px;
+    display:inline-block;
+    }
+  .a2{
+        font-family: 'Fredoka One';
+    background-color: #8426ff;
+    text-decoration: none;
+    color:white;
+    box-shadow: 0 7px 0 #4d00b2;
+    border-radius:20px;
+    padding:20px;
+    user-select:none;
+    cursor:pointer;
+    font-size: 20px;
+  font-weight: 100;
+      margin: 0px 0px 0px 0px;
+    display:initial;
+    position:relative;
   }
     .outlinebutton{
     font-family: 'Fredoka One';
@@ -315,16 +311,29 @@
   }
   a:hover{
     position:relative;
+    top:4px;
+    box-shadow:0 5px 0 #4d00b2;
+    display:inline-block;
+  }
+  .a2:hover{
+    position:relative;
     top:2px;
     margin-top: 2px;
     box-shadow:0 5px 0 #4d00b2;
+    display:initial;
   }
   a:hover:active{
+    position:relative;
+    top:9px;
+    box-shadow:none;
+    display:inline-block;
+  }
+    .a2:hover:active{
     position:relative;
     top:7px;
     margin-top: 7px;
     box-shadow:none;
-  }
+    }
   .enabled{
     font-family: 'Fredoka One';
     background-color: #00ff40;
@@ -340,14 +349,11 @@
   }
   .enabled:hover{
     position:relative;
-    top:2px;
-    margin-top: 2px;
     box-shadow:0 5px 0 #008f2d;
   }
   .enabled:hover:active{
     position:relative;
-    top:7px;
-    margin-top: 7px;
+
     box-shadow:none;
   }
 
@@ -366,14 +372,12 @@
   }
   .disabled:hover{
     position:relative;
-    top:2px;
-    margin-top: 2px;
+
     box-shadow:0 5px 0 #282828;
   }
   .disabled:hover:active{
     position:relative;
-    top:7px;
-    margin-top: 7px;
+
     box-shadow:none;
   }
 
@@ -393,14 +397,12 @@
   }
   .warning:hover{
     position:relative;
-    top:2px;
-    margin-top: 2px;
+
     box-shadow:0 5px 0 #d00000;
   }
   .warning:hover:active{
     position:relative;
-    top:7px;
-    margin-top: 7px;
+
     box-shadow:none;
   }
 
@@ -574,6 +576,8 @@ function settings(){
     document.getElementById("cookiepopup").classList.add("hidden");
     document.getElementById("settings").classList.add("hidden");
     document.getElementById("gear").classList.remove("hidden");
+    document.getElementById("innergear").classList.remove("hidden");
+
     document.getElementById("preloader").classList.add("hidden");
     document.getElementById("ad_container").classList.remove("hidden");
     document.getElementById("unfocused").classList.add("hidden");
@@ -595,6 +599,8 @@ function settings(){
     }
     document.getElementById("clock").style.display = "none";
     document.getElementById("gear").classList.add("hidden");
+    document.getElementById("innergear").classList.add("hidden");
+
     document.getElementById("preloader").classList.add("hidden");
     document.getElementById("ad_container").classList.add("hidden");
     document.getElementById("unfocused").classList.add("hidden");
@@ -608,6 +614,8 @@ function settings(){
     document.getElementById("cookiepopup").classList.add("hidden");
     document.getElementById("settings").classList.add("hidden");
     document.getElementById("gear").classList.remove("hidden");
+    document.getElementById("innergear").classList.remove("hidden");
+
     document.getElementById("preloader").classList.add("hidden");
     document.getElementById("ad_container").classList.remove("hidden");
     document.getElementById("unfocused").classList.add("hidden");
@@ -617,6 +625,14 @@ function settings(){
   }
 }
 
+var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
+
+document.getElementById("ad_container").classList.remove("hidden");
+
+var x = setInterval(function() {
+
+  updateoptions();
+
   if (getCookie("atc")) {
   document.getElementById("clock").classList.remove("clock");
   document.getElementById("clock").classList.add("staticclock");
@@ -625,12 +641,6 @@ function settings(){
   document.getElementById("clock").classList.add("clock");
   document.getElementById("clock").classList.remove("staticclock");
   }
-
-var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
-
-document.getElementById("ad_container").classList.remove("hidden");
-
-var x = setInterval(function() {
 
   document.getElementById("preloader").classList.add("hidden");
 
@@ -898,6 +908,8 @@ function resetcookies(){
   eraseCookie('second');
     eraseCookie('day');
     eraseCookie('hour');
+    eraseCookie('lcdu');
+    updateoptions();
 }
 
 window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
