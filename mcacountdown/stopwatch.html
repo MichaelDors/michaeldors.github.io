@@ -1,0 +1,433 @@
+<head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="icon" type="image/x-icon" href="icon.ico">
+  <meta name="theme-color" content="#8426ff" />
+  <title>Countdown</title>
+  </head>
+  
+  <body id="body" style="background-color:#141414;  overflow-x:hidden;">
+    <p id="clock" class="clock">00:00</p>
+
+    <center id="preloader" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+        <video width="100" height="100" autoplay muted loop playsinline>
+          <source src="Preloader.mp4" type="video/mp4">
+        </video>
+      </center>
+  </body>
+<style>
+    .wifitext{
+      z-index: 100;
+      animation: wifidown 50s infinite;
+    }
+    .wifibox{
+      animation:wifidown1 50s infinite;
+    }
+  
+    @keyframes wifidown1{
+      0%{
+        opacity: 0%;
+      }
+      10%{
+        opacity: 100%;
+      }
+      20%{
+        opacity: 0%;
+      }
+      30%{
+        opacity: 100%;
+      }
+      40%{
+        opacity: 0%;
+      }
+      50%{
+        opacity: 100%;
+      }
+      60%{
+        opacity: 0%;
+      }
+      70%{
+        opacity: 100%;
+      }
+      80%{
+        opacity: 0%;
+      }
+      90%{
+       opacity: 100%;
+      }
+      100%{
+        opacity: 0%;
+      }
+    }
+  
+    @keyframes wifidown{
+      0%{
+        color: #141414;
+      }
+      10%{
+        color: #ffffff;
+      }
+      20%{
+        color: #141414;
+      }
+      30%{
+        color: #ffffff;
+      }
+      40%{
+        color: #141414;
+      }
+      50%{
+        color: #ffffff;
+      }
+      60%{
+        color: #141414;
+      }
+      70%{
+        color: #ffffff;
+      }
+      80%{
+        color: #141414;
+      }
+      90%{
+        color: #ffffff;
+      }
+      100%{
+        color: #141414;
+      }
+    }
+  
+    #gear{
+    top: 95%;
+    left:5%;
+    }
+  
+  
+    #ad{
+      height:10vh;
+      width:50vw;
+      border-radius: 20px;
+      object-fit: cover;
+    }
+    #maintainedtext{
+      color:#141414;
+      transition: color 1s;
+    }
+    #ad_container:hover #maintainedtext{
+      color:white;
+    }
+    #maintainedtext:hover{
+      cursor:default;
+    }
+    .box{
+      background:linear-gradient(to left, rgba(40,23,64,88), #141414);
+      padding-top:50px;
+      padding-bottom: 50px;
+      padding-left:50px;
+      padding-right:50px;
+      border-radius: 35px;
+      border: #8426FF 1px solid;
+    }
+      .staticclock{
+          display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      min-height: 99%;
+      font-family: 'Fredoka One';
+      color:white;
+    }
+    .clock{
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      min-height: 99%;
+      font-family: 'Fredoka One';
+      animation: backgroundgradient 100s infinite;
+    }
+    .center{
+      margin: auto;
+    width: 50%;
+    text-align:center;
+    }
+    h1{
+      font-size: 42px;
+      font-family: 'Fredoka One';
+    color: #fff;
+    font-weight: 100;
+    }
+    h2{
+      font-size: 30px;
+      font-family: 'Fredoka One';
+    color: #fff;
+    font-weight: 100;
+    }
+    p{
+      font-family: 'Fredoka One';
+    color:white;
+    font-size: 20px;
+    font-weight: 100;
+    }
+    a{
+      font-family: 'Fredoka One';
+      background-color: #8426ff;
+      text-decoration: none;
+      color:white;
+      box-shadow: 0 7px 0 #4d00b2;
+      border-radius:20px;
+      padding:20px;
+      user-select:none;
+      cursor:pointer;
+      font-size: 20px;
+    font-weight: 100;
+        margin: 0px 5px 25px 5px;
+      display:inline-block;
+      }
+    .a2{
+          font-family: 'Fredoka One';
+      background-color: #8426ff;
+      text-decoration: none;
+      color:white;
+      box-shadow: 0 7px 0 #4d00b2;
+      border-radius:20px;
+      padding:20px;
+      user-select:none;
+      cursor:pointer;
+      font-size: 20px;
+    font-weight: 100;
+        margin: 0px 0px 0px 0px;
+      display:initial;
+      position:relative;
+    }
+      .outlinebutton{
+      font-family: 'Fredoka One';
+      background-color: #141414;
+      text-decoration: none;
+      color:white;
+      border: #8426ff solid 1px;
+      box-shadow: 0 7px 0 #4d00b2;
+      border-radius:20px;
+      padding:20px;
+      user-select:none;
+      cursor:pointer;
+      font-size: 20px;
+    font-weight: 100;
+    }
+    a:hover{
+      position:relative;
+      top:4px;
+      box-shadow:0 5px 0 #4d00b2;
+      display:inline-block;
+    }
+    .a2:hover{
+      position:relative;
+      top:2px;
+      margin-top: 2px;
+      box-shadow:0 5px 0 #4d00b2;
+      display:initial;
+    }
+    a:hover:active{
+      position:relative;
+      top:9px;
+      box-shadow:none;
+      display:inline-block;
+    }
+      .a2:hover:active{
+      position:relative;
+      top:7px;
+      margin-top: 7px;
+      box-shadow:none;
+      }
+    .enabled{
+      font-family: 'Fredoka One';
+      background-color: #00ff40;
+      text-decoration: none;
+      color:black;
+      box-shadow: 0 7px 0 #008f2d;
+      border-radius:20px;
+      padding:20px;
+      user-select:none;
+      cursor:pointer;
+      font-size: 20px;
+    font-weight: 100;
+    }
+    .enabled:hover{
+      position:relative;
+      box-shadow:0 5px 0 #008f2d;
+    }
+    .enabled:hover:active{
+      position:relative;
+  
+      box-shadow:none;
+    }
+  
+    .disabled{
+      font-family: 'Fredoka One';
+      background-color: #595959;
+      text-decoration: none;
+      color:white;
+      box-shadow: 0 7px 0 #282828;
+      border-radius:20px;
+      padding:20px;
+      user-select:none;
+      cursor:pointer;
+      font-size: 20px;
+    font-weight: 100;
+    }
+    .disabled:hover{
+      position:relative;
+  
+      box-shadow:0 5px 0 #282828;
+    }
+    .disabled:hover:active{
+      position:relative;
+  
+      box-shadow:none;
+    }
+  
+  
+    .warning{
+      font-family: 'Fredoka One';
+      background-color: #ff5353;
+      text-decoration: none;
+      color:#ffffff;
+      box-shadow: 0 7px 0 #d00000;
+      border-radius:20px;
+      padding:20px;
+      user-select:none;
+      cursor:pointer;
+      font-size: 20px;
+    font-weight: 100;
+    }
+    .warning:hover{
+      position:relative;
+  
+      box-shadow:0 5px 0 #d00000;
+    }
+    .warning:hover:active{
+      position:relative;
+  
+      box-shadow:none;
+    }
+  
+    .settings{
+      font-family: 'Fredoka One';
+      background-color: transparent;
+      text-decoration: none;
+      color:#ffffff;
+      box-shadow: none;
+      border-radius:20px;
+      padding:20px;
+      user-select:none;
+      cursor:pointer;
+    }
+    .settings:hover{
+      position:relative;
+      top:0px;
+      margin-top: 0px;
+      box-shadow: none;
+      color:#a7a7a7;
+    }
+    .settings:hover:active{
+      position:relative;
+      top:0px;
+      margin-top: 0px;
+      box-shadow:none;
+      color:#8426ff;
+    }
+  
+    .hidden{
+      display:none;
+    }  
+    .hiddentext{
+      color:#141414;
+      user-select: none;
+    }
+  
+    @keyframes backgroundgradient{
+      0%{
+        color: #8426ff;
+      }
+      10%{
+        color: #8426ff;
+      }
+      25%{
+        color: #3ab6ff;
+      }
+      35%{
+        color: #3ab6ff;
+      }
+      50%{
+        color: #00ff5e;
+      }
+      60%{
+        color: #00ff5e;
+      }
+      75%{
+        color: #ff9900;
+      }
+      85%{
+        color: #ff9900;
+      }
+      100%{
+        color: #8426ff;
+      }
+    }
+  
+  
+    @media only screen and (max-width: 1290px) and (orientation:portrait) {
+    body{
+      zoom:150%;
+    }
+  
+    #ad{
+      width:100vw;
+      height: 0.5in;
+      border: none;
+      border-top: 4px solid white;
+      object-fit: contain;
+      border-radius: 0%;
+      box-shadow: none;
+    }
+    #ad_container{
+      top: 100%;
+    }
+    #clock{
+      font-size: 90pvw;
+    }
+    #gear{
+      z-index:100000;
+      top:5%;
+      left: 7%; 
+    }
+  
+    #innergear{
+      font-size:30px;
+    }
+  }
+  
+  @media only screen and (min-width: 1300px) {
+    #gear{
+      top:95%;
+      left: 3%; 
+    }
+    #ad{
+      height:10vh;
+      width:50vw;
+      border-radius: 20px;
+      object-fit: cover;
+    }
+  }
+  
+  </style>
+  
+  <script src="confetti.js"></script>
+  
+  <script>
+    var x = setInterval(function() {
+      document.getElementById("preloader").classList.add("hidden");
+      clearInterval(x);
+    }, 1000);
+  </script>
