@@ -37,22 +37,22 @@
 
 <center class="hidden" id="cookiepopup" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index: 10000;">
   <div class="box">
-    <i style="font-size:50px; color:white" class="fa-solid fa-cookie-bite"></i>
-<h1 class="textelement">Cookies Ahead</h1>
-<p class="textelement">This site uses cookies to save your preferences and for advertisement purposes. To use the options menu, you must approve the use of cookies. </p>
+  <i style="font-size:50px; color:white; margin-right:20px;" class="fa-solid fa-shield"></i> <i style="font-size:50px; color:white" class="fa-solid fa-cookie-bite"></i> <i style="font-size:50px; color:white; margin-left:20px;" class="fa-solid fa-rectangle-ad"></i>
+<h1 class="textelement">Privacy, Cookies, and Ads</h1>
+<p style="margin-left: 100px; margin-right: 100px;" class="textelement">This site uses cookies to save your preferences and for advertisement purposes. To use Countdown, you must approve the use of cookies and our privacy policy. </p>
 <br>
 <br>
-<a class="a2" onclick="acceptcookies()"><i class="fa-solid fa-circle-check"></i> Accept Cookies</a>
+<a class="a2" onclick="acceptcookies()"><i class="fa-solid fa-circle-check"></i> Accept All</a>
 <Br>
   <br>
   <br>
   <br>
-<a class="a2 outlinebutton" href="cookiepolicy.html"><i class="fa-solid fa-graduation-cap"></i> Cookie Policy</a>
+<a class="a2 outlinebutton" href="cookiepolicy.html"><i class="fa-solid fa-cookie"></i> Cookie Policy</a>
 <br>
 <Br>
   <br>
   <br>
-      <a class="a2 outlinebutton" onclick="settings();"><i class="fa-solid fa-circle-xmark"></i> Close</a>  
+  <a class="a2 outlinebutton" href="privacypolicy.html"><i class="fa-solid fa-graduation-cap"></i> Privacy Policy</a>
 <br>
 <Br>
   <br>
@@ -68,6 +68,8 @@
     <a onclick="settings();"><i class="fa-solid fa-gear"></i> Close</a>  
     <a id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
   <a href="cookiepolicy.html"><i class="fa-solid fa-cookie-bite"></i> Cookie Policy</a>
+  <a href="privacypolicy.html"><i class="fa-solid fa-shield"></i> Privacy Policy</a>
+
     <Br>
       <br>
       <br>
@@ -518,6 +520,15 @@
   #innergear{
     font-size:30px;
   }
+  .box{
+    background:linear-gradient(to left, rgba(40,23,64,88), #141414);
+    padding-top:10%;
+    padding-left:100px;
+    padding-right: 100px;
+    height:100vh;
+    width:100vw;
+    border: none;
+  }
 }
 
 @media only screen and (min-width: 1300px) {
@@ -531,15 +542,6 @@
     border-radius: 20px;
     object-fit: cover;
   }
-  .box{
-    background:linear-gradient(to left, rgba(40,23,64,88), #141414);
-    padding-top:20%;
-    padding-left:100px;
-    padding-right: 100px;
-    height:100vh;
-    width:100vw;
-    border: none;
-  }
 }
 
 </style>
@@ -547,7 +549,12 @@
 <script src="confetti.js"></script>
 
 <script>
-  document.getElementById("cookiepopup").classList.remove("hidden");
+      if(!getCookie("cookiesallowed")){
+      document.getElementById("cookiepopup").classList.remove("hidden");
+      document.getElementById("preloader").classList.add("hidden");
+      document.getElementById("innergear").classList.add("hidden");
+      document.getElementById("ad").classList.add("hidden");
+    }
 updateoptions();
 
 document.getElementById("body").style.overflowY = 'hidden';
@@ -608,13 +615,13 @@ function settings(){
 
     document.getElementById("preloader").classList.add("hidden");
     document.getElementById("ad_container").classList.remove("hidden");
+document.getElementById("ad").classList.remove("hidden");
     document.getElementById("unfocused").classList.add("hidden");
 
     document.getElementById("body").style.overflowY = 'hidden';
     document.body.scrollTop = document.documentElement.scrollTop = 0;
   }
   else if(document.getElementById("settings").classList.contains("hidden")){
-
     if(getCookie("cookiesallowed")){
       document.getElementById("settings").classList.remove("hidden");
       document.getElementById("cookiepopup").classList.add("hidden");
@@ -638,6 +645,7 @@ function settings(){
     document.body.scrollTop = document.documentElement.scrollTop = 0;
   }
   else{
+
     document.getElementById("clock").style.display = "";
     document.getElementById("cookiepopup").classList.add("hidden");
     document.getElementById("settings").classList.add("hidden");
@@ -655,7 +663,7 @@ function settings(){
 
 var countDownDate = new Date("May 25, 2023 15:00:00").getTime();
 
-document.getElementById("ad_container").classList.remove("hidden");
+
 
 var x = setInterval(function() {
 
@@ -846,8 +854,18 @@ function memsav(){
 }
 function acceptcookies(){
   setCookie('cookiesallowed', 'true', '70');
-        document.getElementById("settings").classList.remove("hidden");
-      document.getElementById("cookiepopup").classList.add("hidden");
+  document.getElementById("cookiepopup").classList.add("hidden");
+        document.getElementById("clock").style.display = "";
+    document.getElementById("gear").classList.remove("hidden");
+    document.getElementById("innergear").classList.remove("hidden");
+
+    document.getElementById("preloader").classList.add("hidden");
+    document.getElementById("ad_container").classList.remove("hidden");
+document.getElementById("ad").classList.remove("hidden");
+    document.getElementById("unfocused").classList.add("hidden");
+
+    document.getElementById("body").style.overflowY = 'hidden';
+    document.body.scrollTop = document.documentElement.scrollTop = 0;
 }
 function coce(){
   if(getCookie('coce')){
@@ -942,6 +960,6 @@ function resetcookies(){
 
 window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
 window.addEventListener('online', () => document.getElementById("wifi").classList.add("hidden"));
-
+    
 
 </script>
