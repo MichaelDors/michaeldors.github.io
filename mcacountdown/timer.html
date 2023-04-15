@@ -554,10 +554,13 @@
       document.getElementById("preloader").classList.add("hidden");
       document.getElementById("innergear").classList.add("hidden");
       document.getElementById("ad").classList.add("hidden");
-    }
-    else{
       document.getElementById("cookiesrejected").classList.remove("hidden");
     }
+    else{
+            document.getElementById("cookiesrejected").classList.add("hidden");
+
+    }
+
 updateoptions();
 
 document.getElementById("body").style.overflowY = 'hidden';
