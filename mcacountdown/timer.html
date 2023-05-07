@@ -10,9 +10,25 @@
             crossorigin="anonymous"></script>
     <script src="Dependencies/confetti.js"></script>
     <script src="Dependencies/blockadblock.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 
 <body id="body" style="background-color:#141414;  overflow-x:hidden;">
+    <div class="wrapper2">
+        <div class="content2">
+            
+            <div class="setting">
+                <ul style="list-style-type:none" class="menu2">
+                    <li class="item">
+                        <i style="font-size:15px; color:white" class="fa-solid fa-gears"></i>
+                        <span onclick="settings()">Settings</span>
+                    </li>
+                    </ul>
+            </div>
+        </div>
+    </div>
+
+
     <p id="clock" class="clock"></p>
     <a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"><i id="innergear" class="fa-solid fa-gear"></i></a>
 
@@ -89,12 +105,58 @@
         <br>
         <br>
         <h2 class="textelement">
-            General
+            Date <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="datetooltip()"></i>
         </h2>
-            <p class="textelement">General settings are currently in beta and do not support saving between sessions or reloads.</p>
+        <dialog id="modal1" class="box">
+            <p>Use countdown for a specific date,<br />or pick from some popular presets.</p>
+            <a onclick="closemodals()">Close</a>
+        </dialog>
         <input class="datepicker" type="datetime-local" />
+        <div class="wrapper">
+            <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
+            <ul class="tabs-box">
+                <li class="tab active">Custom</li>
+                <li class="tab" onclick="NYD()">New Year's Day</li>
+                <li class="tab" onclick="VD()">Valentine's Day</li>
+                <li class="tab" onclick="NDOP()">National Day of Prayer</li>
+                <li class="tab" onclick="ID()">Independence Day</li>
+                <li class="tab" onclick="H()">Halloween</li>
+                <li class="tab" onclick="T()">Thanksgiving</li>
+                <li class="tab" onclick="C()">Christmas</li>
+            </ul>
+            <div class="icon"><i id="right" class="fa-solid fa-angle-right"></i></div>
+        </div>
         <br />
         <br />
+        <h2 class="textelement">
+            Link <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="linktooltip()"></i>
+        </h2>
+        <dialog id="modal2" class="box">
+            <p>Avoid typing in the date each time by going to this link.<br />You can’t edit the countdown for recipients once it’s sent.</p>
+            <a onclick="closemodals()">Close</a>
+        </dialog>
+
+        <input id="linkinput" class="input" />
+        <br />
+        <br />
+        <div style="border-radius:20px; background:white; padding:20px; color:black; height:150px; width:350px;">
+            <div id="qrcode" style="float:left;"></div>
+            <div style="float:left; padding-left:30px; text-align:left;">
+                <p style="color:black; font-size:30px; line-height:0.3">QR Code</p>
+
+            </div>
+
+        </div>
+        <br />
+        <br />
+        <h2 class="textelement">
+            Colors <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="colorstooltip()"></i>
+        </h2>
+        <dialog id="modal3" class="box">
+            <p>Customize your countdown clock to your heart's desire!<br />Make sure to keep contrast in mind so it remains readable.</p>
+            <a onclick="closemodals()">Close</a>
+        </dialog>
+
         <input class="colorpicker" id="color1" type="color" value="#8426ff" />
         <input class="colorpicker" id="color2" type="color" value="#3ab6ff" />
         <input class="colorpicker" id="color3" type="color" value="#00ff5e" />
@@ -119,11 +181,11 @@
         </h2>
         <br>
         <br>
-        <a id="day" class="disabled" onclick="day();"><i class="fa-solid fa-calendar-days"></i> Day</a>
-        <a id="hour" class="disabled" onclick="hour();"><i class="fa-solid fa-clock"></i> Hour</a>
-
-        <a id="minute" class="disabled" onclick="minute();"><i class="fa-solid fa-hourglass-start"></i> Minute</a>
-        <a id="second" class="disabled" onclick="second();"><i class="fa-solid fa-stopwatch-20"></i> Second</a>
+        <a id="week" class="disabled" onclick="week();"><i class="fa-solid fa-calendar-week"></i> Weeks</a>
+        <a id="day" class="disabled" onclick="day();"><i class="fa-solid fa-calendar-days"></i> Days</a>
+        <a id="hour" class="disabled" onclick="hour();"><i class="fa-solid fa-clock"></i> Hours</a>
+        <a id="minute" class="disabled" onclick="minute();"><i class="fa-solid fa-hourglass-start"></i> Minutes</a>
+        <a id="second" class="disabled" onclick="second();"><i class="fa-solid fa-stopwatch-20"></i> Seconds</a>
 
         <h2 class="textelement">
             Accessibility
@@ -190,6 +252,17 @@
             font-family: 'Fredoka One';
             border: 0px transparent;
         }
+    .input {
+        color: white;
+        border-radius: 20px;
+        padding: 20px;
+        font-size: 20px;
+        font-weight: 100;
+        outline: 1px solid #8426ff;
+        background: linear-gradient(to left, rgba(40,23,64,88), #141414);
+        font-family: 'Fredoka One';
+        border: 0px transparent;
+    }
     ::-webkit-calendar-picker-indicator {
         filter:invert();
     }
@@ -287,15 +360,15 @@
     object-fit: cover;
   }
 
-  .box{
-    background:linear-gradient(to left, rgba(40,23,64,88), #141414);
-    padding-top:50px;
-    padding-bottom: 50px;
-    padding-left:50px;
-    padding-right:50px;
-    border-radius: 35px;
-    border: #8426FF 1px solid;
-  }
+    .box {
+        padding-top: 50px;
+        padding-bottom: 50px;
+        padding-left: 50px;
+        padding-right: 50px;
+        border-radius: 35px;
+        background: linear-gradient(to left, rgba(40,23,64,88), #141414);
+        border: #8426FF 1px solid;
+    }
     .staticclock{
         display: flex;
     justify-content: center;
@@ -360,7 +433,7 @@
   cursor:pointer;
   box-shadow:0px transparent;
   padding:0px;
-  margin:none;
+  margin:0px;
   background-color:transparent;
   box-shadow: 0 0px 0 transparent;
     }
@@ -528,6 +601,102 @@
     color:#141414;
     user-select: none;
   }
+    .wrapper {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        padding: 0 10px;
+        align-items: center;
+        justify-content: center;
+        display: flex;
+        padding: 35px;
+        position: relative;
+        overflow-x: hidden;
+        max-width: 1000px;
+        border-radius: 35px;
+    }
+
+        .wrapper .icon {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 120px;
+            display: flex;
+            align-items: center;
+        }
+
+    .icon:first-child {
+        left: 0;
+        display: none;
+        background: linear-gradient(90deg, #141414, transparent);
+    }
+
+    .icon:last-child {
+        right: 0;
+        justify-content: flex-end;
+        background: linear-gradient(-90deg, #141414, transparent);
+    }
+
+    .icon i {
+        width: 45px;
+        height: 50%;
+        cursor: pointer;
+        font-size: 1.2rem;
+        text-align: center;
+        line-height: 75px;
+        color: white;
+        background: #141414;
+        border-radius: 50%;
+    }
+
+
+    .icon:first-child i {
+        margin-left: 15px;
+    }
+
+    .icon:last-child i {
+        margin-right: 15px;
+    }
+
+    .wrapper .tabs-box {
+        display: flex;
+        gap: 12px;
+        list-style: none;
+        overflow-x: hidden;
+        scroll-behavior: smooth;
+    }
+
+    .tabs-box.dragging {
+        scroll-behavior: auto;
+        cursor: grab;
+    }
+
+    .tabs-box .tab {
+        margin: 0px;
+        cursor: pointer;
+        font-size: 1.18rem;
+        white-space: nowrap;
+        background: linear-gradient(to left, rgba(40,23,64,88), #141414);
+        border: #8426FF 1px solid;
+        padding: 13px 20px;
+        border-radius: 30px;
+        transition: 0.5s all;
+        color:white;
+        font-family:'Fredoka One';
+    }
+
+
+    .tabs-box.dragging .tab {
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .tabs-box .tab.active {
+        color: #fff;
+        background: #8426ff;
+        border-color: transparent;
+    }
+
 
   @keyframes backgroundgradient{
     0% {
@@ -610,12 +779,100 @@
   }
 }
 
+
+
+    .wrapper2 {
+        color: white;
+        font-family: 'Fredoka One';
+        visibility: hidden;
+        position: absolute;
+        width: 300px;
+        background: rgba(32, 32, 32, 0.52);
+        border-radius: 16px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(6.9px);
+        -webkit-backdrop-filter: blur(6.9px);
+        border: 1px solid rgba(32, 32, 32, 0.67);
+        z-index:1000;
+    }
+
+        .wrapper2 .menu2 {
+            padding: 10px 12px;
+        }
+
+   
+
+    .content2 .setting {
+        display: flex;
+        margin-top: -6px;
+        cursor:pointer;
+        padding: 6px 12px;
+    }
+
+    #qrcode img{
+        border-radius:10px;
+    }
 </style>
 
 
 
 <script>
 
+
+    if (parameter('date')) {
+        document.querySelector(".datepicker").value = convert(parameter('date')) + 'T00:00';
+        var countDownDate = new Date(document.querySelector(".datepicker").value);
+
+        document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date');
+
+
+        function imgQR(qrCanvas, centerImage, factor) {
+            var h = qrCanvas.height;
+            var cs = h * factor;
+            var co = (h - cs) / 2;
+            var ctx = qrCanvas.getContext("2d");
+            ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
+        }
+        const icon = new Image();
+        icon.onload = function generateQR() {
+            var qrcode = new QRCode(document.getElementById("qrcode"), {
+                text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date'),
+                width: 150,
+                height: 150,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
+        }
+        icon.src = 'icon.ico';
+    }
+    else {
+        document.querySelector(".datepicker").value = '2023-05-25T15:00';
+        var countDownDate = new Date(document.querySelector(".datepicker").value);
+
+        
+        function imgQR(qrCanvas, centerImage, factor) {
+            var h = qrCanvas.height;
+            var cs = h * factor;
+            var co = (h - cs) / 2;
+            var ctx = qrCanvas.getContext("2d");
+            ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
+        }
+        const icon = new Image();
+        icon.onload = function generateQR() {
+            var qrcode = new QRCode(document.getElementById("qrcode"), {
+                text: "https://countdown.michaeldors.com",
+                width: 150,
+                height: 150,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
+        }
+        icon.src = 'icon.ico';
+    }
 
     function adBlockNotDetected() {
         
@@ -638,9 +895,7 @@
     }
 
     
-    document.querySelector(".datepicker").value = '2023-05-25T15:00';
-
-    var countDownDate = new Date(document.querySelector(".datepicker").value);
+ 
 
       if(!getCookie("cookiesallowed")){
       document.getElementById("cookiepopup").classList.remove("hidden");
@@ -694,9 +949,35 @@ function eraseCookie(name) {
         css.style.setProperty('--two', color2);
         css.style.setProperty('--three', color3);
         css.style.setProperty('--four', color4);
-        settings();
+
+        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate);
+        window.history.pushState({ path: refresh }, '', refresh);
+
+        document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date');
+
+        const notification = new Notification("QR Codes are in beta and do not support regneration in the same instance. Reload the page to regenerate the code.");
+        alert("QR Codes are in beta and do not support regneration in the same instance. Reload the page to regenerate the code.");
     }
 
+    function convert(str) {
+        var date = new Date(str),
+            mnth = ("0" + (date.getMonth() + 1)).slice(-2),
+            day = ("0" + date.getDate()).slice(-2);
+        return [date.getFullYear(), mnth, day].join("-");
+    }
+
+    function parameter(name) {
+        var query = window.location.search.substring(1);
+        var parameters = query.split('?');
+        for (var i = 0; i < parameters.length; i++) {
+            var pair = parameters[i].split('=');
+
+            if (pair[0] == name) {
+                return pair[1];
+            }
+        }
+        return null;
+    }
 
 
 document.addEventListener( 'visibilitychange' , function() {
@@ -775,7 +1056,6 @@ document.addEventListener( 'visibilitychange' , function() {
 
 
     var x = setInterval(function () {
-    
 
   updateoptions();
 
@@ -801,25 +1081,21 @@ document.addEventListener( 'visibilitychange' , function() {
   var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
   var seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-  //function getBusinessDatesCount(startDate, endDate) {
-    //let count = 0;
-    //const curDate = new Date(startDate.getTime());
-    //while (curDate <= endDate) {
-      //  const dayOfWeek = curDate.getDay();
-        //if(dayOfWeek !== 0 && dayOfWeek !== 6) count++;
-       // curDate.setDate(curDate.getDate() + 1);
-   // }
-   // alert(count);
-   // return count;
-//}
 
-  if(getCookie("day")) {
-    document.getElementById("clock").innerHTML = days + " days";
-  }
-  else if(getCookie("hour")) {
-    var hourcount = Math.floor(distance / 3600000);
-    document.getElementById("clock").innerHTML = hourcount + " hours";
-  }
+
+
+        if (getCookie("week")) {
+            var weekcount = Math.floor(distance / 604800000);
+            document.getElementById("clock").innerHTML = weekcount + " weeks";
+        }
+
+        if (getCookie("day")) {
+            document.getElementById("clock").innerHTML = days + " days";
+        }
+        else if (getCookie("hour")) {
+            var hourcount = Math.floor(distance / 3600000);
+            document.getElementById("clock").innerHTML = hourcount + " hours";
+        }
   else if(getCookie("minute")) {
     var minutecount = Math.floor(distance / 60000);
     document.getElementById("clock").innerHTML = minutecount + " minutes";
@@ -827,7 +1103,10 @@ document.addEventListener( 'visibilitychange' , function() {
   else if(getCookie("second")) {
         var secondcount = Math.floor(distance / 1000);
     document.getElementById("clock").innerHTML = secondcount + " seconds";
-  }
+        }
+
+
+
   else if(getCookie("lcdu")) {
     if(days > 0){
     document.getElementById("clock").innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
@@ -953,8 +1232,18 @@ function updateoptions(){
   document.getElementById("day").classList.remove("enabled");
   document.getElementById("day").classList.add("disabled");
   }
-
+    if (getCookie("week")) {
+        document.getElementById("week").classList.add("enabled");
+        document.getElementById("week").classList.remove("disabled");
+    }
+    else {
+        document.getElementById("week").classList.remove("enabled");
+        document.getElementById("week").classList.add("disabled");
+    }
 }
+
+
+
 
 function memsav(){
   if(getCookie('memsav')){
@@ -1025,7 +1314,19 @@ function lcdu(){
 }
 
 
-
+    function week() {
+        if (getCookie('week')) {
+            eraseCookie('week');
+        }
+        else {
+            setCookie('week', 'true', '70');
+            eraseCookie('second');
+            eraseCookie('minute');
+            eraseCookie('hour');
+            eraseCookie('day');
+        }
+        updateoptions();
+    }
 function day(){
   if(getCookie('day')){
     eraseCookie('day');
@@ -1033,7 +1334,8 @@ function day(){
   else{
     setCookie('day', 'true', '70');
         eraseCookie('second');
-    eraseCookie('minute');
+      eraseCookie('minute');
+      eraseCookie('week');
     eraseCookie('hour');
   }
   updateoptions();
@@ -1045,7 +1347,8 @@ function hour(){
   else{
     setCookie('hour', 'true', '70');
         eraseCookie('second');
-    eraseCookie('day');
+      eraseCookie('day');
+      eraseCookie('week');
     eraseCookie('minute');
   }
   updateoptions();
@@ -1056,7 +1359,8 @@ function minute(){
   }
   else{
     setCookie('minute', 'true', '70');
-        eraseCookie('second');
+      eraseCookie('second');
+      eraseCookie('week');
     eraseCookie('day');
     eraseCookie('hour');
   }
@@ -1070,7 +1374,8 @@ function second(){
     setCookie('second', 'true', '70');
     eraseCookie('minute');
     eraseCookie('day');
-    eraseCookie('hour');
+      eraseCookie('hour');
+      eraseCookie('week');
   }
   updateoptions();
 }
@@ -1078,7 +1383,8 @@ function resetcookies(){
   eraseCookie('memsav');
   eraseCookie('coce');
   eraseCookie('atc');
-  eraseCookie('minute');
+    eraseCookie('minute');
+    eraseCookie('week');
   eraseCookie('second');
     eraseCookie('day');
     eraseCookie('hour');
@@ -1089,5 +1395,206 @@ function resetcookies(){
 window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
 window.addEventListener('online', () => document.getElementById("wifi").classList.add("hidden"));
     
+    const tabsBox = document.querySelector(".tabs-box"),
+        allTabs = tabsBox.querySelectorAll(".tab"),
+        arrowIcons = document.querySelectorAll(".icon i");
+    let isDragging = false;
+    const handleIcons = (scrollVal) => {
+        let maxScrollableWidth = tabsBox.scrollWidth - tabsBox.clientWidth;
+        arrowIcons[0].parentElement.style.display = scrollVal <= 0 ? "none" : "flex";
+        arrowIcons[1].parentElement.style.display = maxScrollableWidth - scrollVal <= 1 ? "none" : "flex";
+    }
+    arrowIcons.forEach(icon => {
+        icon.addEventListener("click", () => {
+            // if clicked icon is left, reduce 350 from tabsBox scrollLeft else add
+            let scrollWidth = tabsBox.scrollLeft += icon.id === "left" ? -340 : 340;
+            handleIcons(scrollWidth);
+        });
+    });
+    allTabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            tabsBox.querySelector(".active").classList.remove("active");
+            tab.classList.add("active");
+        });
+    });
+    const dragging = (e) => {
+        if (!isDragging) return;
+        tabsBox.classList.add("dragging");
+        tabsBox.scrollLeft -= e.movementX;
+        handleIcons(tabsBox.scrollLeft)
+    }
+    const dragStop = () => {
+        isDragging = false;
+        tabsBox.classList.remove("dragging");
+    }
+    tabsBox.addEventListener("mousedown", () => isDragging = true);
+    tabsBox.addEventListener("mousemove", dragging);
+    document.addEventListener("mouseup", dragStop);
+
+
+    const holidays = { // keys are formatted as month,week,day
+    "0,2,1": "Martin Luther King, Jr. Day",
+    "1,2,1": "President's Day",
+    "2,1,0": "Daylight Savings Time Begins",
+    "3,3,3": "Administrative Assistants Day",
+    "4,1,0": "Mother's Day",
+    "4,-1,1": "Memorial Day",
+    "5,2,0": "Father's Day",
+    "6,2,0": "Parents Day",
+    "8,0,1": "Labor Day",
+    "8,1,0": "Grandparents Day",
+    "8,-1,0": "Gold Star Mothers Day",
+    "9,1,1": "Columbus Day",
+    "10,0,0": "Daylight Savings Time Ends",
+    "10,3,4": "Thanksgiving Day"
+};
+function getDate(year, month, week, day) {
+    const firstDay = 1;
+    if (week < 0) {
+        month++;
+    }
+    const date = new Date(year, month, (week * 7) + firstDay);
+    if (day < date.getDay()) {
+        day += 7;
+    }
+    date.setDate(date.getDate() - date.getDay() + day);
+    return date;
+}
+
+function getDateString(year, month, week, day) {
+    const date = getDate(year, month, week, day);
+    let dateString = date.toLocaleDateString();
+
+    return dateString;
+}
+
+    function formatDate(userDate) {
+        var dateArr = userDate.split('/');
+        if (dateArr[0].length == 1) {
+            dateArr[0] = '0' + dateArr[0];
+        } else if (dateArr[1].length == 1) {
+            dateArr[1] = '0' + dateArr[1];
+        }
+        userDate = dateArr[2] + "-" + dateArr[0] + "-" + dateArr[1];
+        console.log(userDate);
+        return userDate + 'T00:00';
+    }
+
+    var now = new Date().getTime();
+    var nextyear = new Date().getFullYear() + 1;
+    var thisyear = new Date().getFullYear();
+
+
+    function NYD() {
+        var newyearsthisyear = new Date(thisyear + "-01-01T00:00");
+        if (newyearsthisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-01-01T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-01-01T00:00';
+        }
+    }
+    function VD() {
+        var valentinesthisyear = new Date(thisyear + "-02-14T00:00");
+        if (valentinesthisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-02-14T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-02-14T00:00';
+        }
+    }
+    function NDOP() {
+        var ndopthisyear = new Date(formatDate(getDateString(thisyear, 5, 2, 4)));
+        if (ndopthisyear - now < 0) {
+            document.querySelector(".datepicker").value = formatDate(getDateString(nextyear, 5, 2, 4));
+        }
+        else {
+            document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 5, 2, 4));
+        }
+    }
+    function ID() {
+        var independencethisyear = new Date(thisyear + "-07-04T00:00");
+        if (independencethisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-07-04T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-07-04T00:00';
+        }
+    }
+    function H() {;
+        var halloweenthisyear = new Date(thisyear + "-10-31T00:00");
+        if (halloweenthisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-10-31T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-10-31T00:00';
+        }
+    }
+    function T() {
+        var thanksgivingthisyear = new Date(formatDate(getDateString(thisyear, 10, 3, 4)));
+        if (thanksgivingthisyear - now < 0) {
+            document.querySelector(".datepicker").value = formatDate(getDateString(nextyear, 10, 3, 4));
+        }
+        else {
+            document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 10, 3, 4));
+        }
+    }
+    function C() {
+        var christmasthisyear = new Date(thisyear + "-12-25T00:00");
+        if (christmasthisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-12-25T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-12-25T00:00';
+        }
+    }
+
+    document.getElementById("modal1");
+    document.getElementById("modal2");
+    document.getElementById("modal3");
+
+    function colorstooltip() {
+        closemodals();
+        modal3.showModal();
+    }
+    function linktooltip() {
+        closemodals();
+        modal2.showModal();
+    }
+    function datetooltip() {
+        closemodals();
+        modal1.showModal();
+    }
+    function closemodals() {
+        modal1.close();
+        modal2.close();
+        modal3.close();
+    }
+           //         <li class="tab" onclick="NYD">New Year's Day</li>
+           //     <li class="tab" onclick="VD">Valentine's Day</li>
+      //          <li class="tab" onclick="E">Easter</li>
+           //     <li class="tab" onclick="NDOP">National Day of Prayer</li>
+     //           <li class="tab" onclick="ID">Independence Day</li>
+      //          <li class="tab" onclick="H">Halloween</li>
+         //       <li class="tab" onclick="T">Thanksgiving</li>
+             //   <li class="tab" onclick="C">Christmas</li>
+
+
+
+    const contextMenu = document.querySelector(".wrapper2"),
+        shareMenu = contextMenu.querySelector(".share-menu");
+
+    window.addEventListener("contextmenu", e => {
+        e.preventDefault();
+        let x = e.offsetX, y = e.offsetY,
+            winWidth = window.innerWidth,
+            winHeight = window.winHeight,
+            cmWidth = contextMenu.offsetWidth,
+            cmHeight = contextMenu.offsetHeight;
+
+        x = x > winWidth - cmWidth ? winWidth - cmWidth - 5 : x;
+        y = y > winHeight - cmHeight ? winHeight - cmHeight - 5 : y;
+
+        contextMenu.style.left = `${x}px`;
+        contextMenu.style.top = `${y}px`;
+        contextMenu.style.visibility = "visible";
+    });
+    document.addEventListener("click", () => contextMenu.style.visibility = "hidden");
+
 
 </script>
