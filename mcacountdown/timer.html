@@ -959,8 +959,7 @@ function eraseCookie(name) {
         var date = new Date(str),
             mnth = ("0" + (date.getMonth() + 1)).slice(-2),
             day = ("0" + date.getDate()).slice(-2);
-            var daynum = parseInt(day) + 1;
-        return [date.getFullYear(), mnth, daynum].join("-");
+        return [date.getFullYear(), mnth, parseInt(day) + 1].join("-");
     }
 
     function parameter(name) {
