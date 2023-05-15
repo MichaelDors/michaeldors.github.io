@@ -135,7 +135,6 @@
             <p>Avoid typing in the date each time by going to this link.<br />You can’t edit the countdown for recipients once it’s sent.</p>
             <a onclick="closemodals()">Close</a>
         </dialog>
-            <p>Links are currently broken. This includes the ability to reload and be on the same countdown. We are working on the issue.</p>
         <input id="linkinput" class="input" />
         <br />
         <br />
@@ -825,7 +824,6 @@
 
         document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date');
 
-
         function imgQR(qrCanvas, centerImage, factor) {
             var h = qrCanvas.height;
             var cs = h * factor;
@@ -961,7 +959,7 @@ function eraseCookie(name) {
     function convert(str) {
         var date = new Date(str),
             mnth = ("0" + (date.getMonth() + 1)).slice(-2),
-            day = ("0" + date.getDate()).slice(-2);
+            day = ("0" + date.getDate() + 1).slice(-2);
         return [date.getFullYear(), mnth, day].join("-");
     }
 
