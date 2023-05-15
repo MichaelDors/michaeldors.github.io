@@ -52,6 +52,20 @@
             <br>
         </div>
     </center>
+        
+            <center class="hidden" id="linkerror" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
+        <div class="box">
+            <img src="icon.ico" style="height:50px;">
+            <h1 class="textelement">Error</h1>
+            <p class="textelement">We're currently experiencing some issues with the new link system.</p>
+            <br>
+            <br>
+            <a class="a2" onclick="window.location.replace("countdown.michaeldors.com")"><i class="fa-solid fa-arrows-rotate"></i>Try Again</a>
+            <br>
+            <Br>
+            <br>
+        </div>
+    </center>
 
     <center class="hidden" id="cookiepopup" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index: 10000;">
         <div class="box">
@@ -817,6 +831,7 @@
 
 <script>
     if (parameter('date')) {
+        document.getElementById("linkerror").classList.remove("hidden");
         document.querySelector(".datepicker").value = convert(parameter('date')) + 'T00:00';
         var countDownDate = new Date(document.querySelector(".datepicker").value);
 
@@ -828,6 +843,7 @@
             var co = (h - cs) / 2;
             var ctx = qrCanvas.getContext("2d");
             ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
+           
         }
         const icon = new Image();
         icon.onload = function generateQR() {
