@@ -816,8 +816,6 @@
 
 
 <script>
-
-
     if (parameter('date')) {
         document.querySelector(".datepicker").value = convert(parameter('date')) + 'T00:00';
         var countDownDate = new Date(document.querySelector(".datepicker").value);
@@ -959,7 +957,7 @@ function eraseCookie(name) {
     function convert(str) {
         var date = new Date(str),
             mnth = ("0" + (date.getMonth() + 1)).slice(-2),
-            day = ("0" + date.getDate() + 1).slice(-2);
+            day = ("0" + date.getDate()).slice(-2);
         return [date.getFullYear(), mnth, day].join("-");
     }
 
