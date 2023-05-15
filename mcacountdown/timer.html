@@ -135,7 +135,7 @@
             <p>Avoid typing in the date each time by going to this link.<br />You can’t edit the countdown for recipients once it’s sent.</p>
             <a onclick="closemodals()">Close</a>
         </dialog>
-        <input id="linkinput" class="input" /> <i class="fa-regular fa-clone" onclick="copylink"></i>
+        <input id="linkinput" class="input" />
         <br />
         <br />
         <div style="border-radius:20px; background:white; padding:20px; color:black; height:150px; width:350px;">
@@ -954,16 +954,13 @@ function eraseCookie(name) {
 
     }
     
-    function copylink(){
-        navigator.clipboard.writeText(document.getElementById("linkinput").value);
-    }
 
     function convert(str) {
         var date = new Date(str),
             mnth = ("0" + (date.getMonth() + 1)).slice(-2),
             day = ("0" + date.getDate()).slice(-2);
             var daynum = parseInt(day) + 1;
-        return [date.getFullYear(), mnth, daynum].join("-");
+        return [date.getFullYear(), mnth, day].join("-");
     }
 
     function parameter(name) {
