@@ -58,9 +58,7 @@
             <img src="icon.ico" style="height:50px;">
             <h1 class="textelement">Error</h1>
             <p class="textelement">We're currently experiencing some issues with the new link system.</p>
-            <br>
-            <br>
-            <a class="a2" onclick="window.location.replace("countdown.michaeldors.com")"><i class="fa-solid fa-arrows-rotate"></i>Try Again</a>
+            <p>Links have been disabled until further notice. Head to countdown.michaeldors.com to get back to the linkless version.</p>
             <br>
             <Br>
             <br>
@@ -142,17 +140,17 @@
         </div>
         <br />
         <br />
-        <h2 class="textelement">
+        <h2 class="textelement hidden">
             Link <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="linktooltip()"></i>
         </h2>
         <dialog id="modal2" class="box">
             <p>Avoid typing in the date each time by going to this link.<br />You can’t edit the countdown for recipients once it’s sent.</p>
             <a onclick="closemodals()">Close</a>
         </dialog>
-        <input id="linkinput" class="input" />
+        <input id="linkinput" class="input hidden" />
         <br />
         <br />
-        <div style="border-radius:20px; background:white; padding:20px; color:black; height:150px; width:350px;">
+        <div class="hidden" style="border-radius:20px; background:white; padding:20px; color:black; height:150px; width:350px;">
             <div id="qrcode" style="float:left;"></div>
             <div style="float:left; padding-left:30px; text-align:left;">
                 <p style="color:black; font-size:30px; line-height:0.3">QR Code</p>
@@ -962,8 +960,8 @@ function eraseCookie(name) {
         css.style.setProperty('--three', color3);
         css.style.setProperty('--four', color4);
 
-        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate);
-        window.history.pushState({ path: refresh }, '', refresh);
+        //var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate);
+        //window.history.pushState({ path: refresh }, '', refresh);
 
         document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date');
 
