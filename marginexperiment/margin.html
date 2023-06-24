@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+        <style>
+            * {   
+                margin: 0;
+                padding: 0;
+            }   
+            .lead{
+                background:linear-gradient(to right, #7A01FC, #FD5002);
+                min-height: 75vh;
+                padding:50px;
+                margin:0px;
+                z-index: 0;
+            }
+            a{
+                background-color: #EEEFF3;
+                color:black;
+                outline: 2px solid black;
+                box-shadow: 5px 5px 0px  black;
+                padding:20px;
+                border-radius: 20px;
+                cursor:pointer;
+                font-family: 'Space Mono', monospace;
+                transition:0.1s all;
+            }
+            .a{
+                background-color: transparent;
+                color:white;
+                outline: 0px solid transparent;
+                box-shadow: 0px 0px 0px transparent;
+                padding:20px;
+                border-radius: 0px;
+                cursor:pointer;
+                font-family: 'Space Mono', monospace;
+                transition:0.1s all;
+                margin-top:4px;
+            }
+            a:active{
+                box-shadow: 1px 1px 0px  black;
+                margin-left:1px;
+                margin-top:1px;
+            }
+            .a:active{
+                box-shadow:0px 0px 0px  transparent;
+                margin-left:0px;
+                margin-top:0px;
+            }
+            p{
+                font-family: 'Space Mono', monospace;
+            }
+            h1{
+                font-family: 'Space Mono', monospace;
+            }
+            h2{
+                font-family: 'Space Mono', monospace;
+                line-height: 1;
+            }
+            h3{
+                font-family: 'Space Mono', monospace;
+            }
+            .header{
+                outline: 2px solid black;
+                z-index: 15;
+                display: inline;
+            }
+            .reviews{
+                padding:50px;
+            }
+            .review{
+                margin-top:20px;
+                background-color: #EEEFF3;
+                background: linear-gradient(90deg, #EEEFF3, transparent);
+                color:black;
+                outline: 2px solid black;
+                box-shadow: 5px 5px 0px  black;
+                padding:20px;
+                border-radius: 20px;
+                font-family: 'Space Mono', monospace;
+                transition:1s all;
+                width:25%;
+                display: inline-block;
+                margin-left:20px;
+                margin-right: 20px;
+            }
+            .review:hover{
+                box-shadow: 1px 1px 0px  black;
+                background-color:#ffc2a6;
+            }
+            .review:nth-child(0){
+                margin-left:0px;
+            }
+            .reviewtrack{
+                padding-bottom:20px;
+            }
+            @media screen and (min-width: 100px) {
+                .review{
+                    width:90%;
+                }
+                .fa-heart{
+                    display:none;
+                }
+                .a{
+                    margin-top:-4px;
+                }
+            }
+            @media screen and (min-width: 1000px) {
+                .review{
+                    width:25%;
+                }
+                .fa-heart{
+                    display:initial;
+                }
+                .a{
+                    margin-top:4px;
+                }
+            }
+        </style>
+    </head>
+    <title>Margin</title>
+    <body style="background-color: #EEEFF3;">
+        <div class="header">
+            <div class="leftpurple" style="background: #7A01FC; height:75px; width:25%; float:left; display: flex; justify-content: center;"><a class="a">Learn More</a></div>
+            <div class="middlelogo" style="background:#EEEFF3; height:75px; width:50%; float: left; display: flex; justify-content: center;"><img class="marginwordmark" style="height: 60px;  padding-top:10px;" src="marginwordmark.png"></div>
+            <div class="rightorange" style="background: #FD5002; height:75px; width:25%; float:right; display: flex; justify-content: center;"><a class="a">Join Margin</a></div>
+        </div>
+        <div class="lead" style="box-shadow: 00px 80px 50px -10px black inset;">
+            <h1 style="color:white; margin-top:100px; margin-bottom:70px;">Keep tabs on your money and spendings- without giving up your privacy.</h1>
+            <a>Get Started</a>
+        </div>
+        <div class="reviews">
+            <div>
+                <img class="marginicon" src="marginicon.png" style="height:50px; width:50px; padding-left:20px; ">   
+                <i class="fa-solid fa-heart" style="color:rgb(0, 0, 0); padding-left:20px; font-size: 30px; position:absolute; top:655px; left:90px; text-shadow: -2px 0px 0px #EEEFF3;"></i>
+            </div>
+            <br>
+            <br>
+            <h3 style="padding-left:20px;">Tons of people love Margin!</h3>
+            <div class="reviewtrack">
+                <div class="review">
+                    <h3>@Izzy</h3>
+                    <p style="margin-bottom:20px;">via <span style="color:green">google.com</span></p>
+                    <h2>I can't imagine going back to life without @margin.</h2>
+                    <p style="margin-top:20px; color:#FD5002">
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-regular fa-star" style="color: #7A01FC;"></i>
+                    </p>
+                </div>
+                <div class="review">
+                    <h3>@Joe</h3>
+                    <p style="margin-bottom:20px;">via <span style="color:rebeccapurple">twitter.com</span></p>
+                    <h2>Margin is an amazing site that I can't see myself ceasing to use.</h2>
+                    <p style="margin-top:20px; color:#FD5002">
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                    </p>
+                </div>
+                <div class="review">
+                    <h3>@Michael</h3>
+                    <p style="margin-bottom:20px;">via <span style="color:blue">twitter.com</span></p>
+                    <h2>Margin has saved my life!</h2>
+                    <p style="margin-top:20px; color:#FD5002">
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                    </p>
+                </div>
+                <div class="review">
+                    <h3>@Bill</h3>
+                    <p style="margin-bottom:20px;">via <span style="color:blue">twitter.com</span></p>
+                    <h2>Have you guys heard of Margin? It's awesome!</h2>
+                    <p style="margin-top:20px; color:#FD5002">
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                    </p>
+                </div>
+                <div class="review">
+                    <h3>@Beth</h3>
+                    <p style="margin-bottom:20px;">via <span style="color:rebeccapurple">instagram.com</span></p>
+                    <h2>9/10 you HAVE to try Margin.</h2>
+                    <p style="margin-top:20px; color:#FD5002">
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-regular fa-star" style="color: #7A01FC;"></i>
+                    </p>
+                </div>
+                <div class="review">
+                    <h3>@Jerry</h3>
+                    <p style="margin-bottom:20px;">via <span style="color:blue">twitter.com</span></p>
+                    <h2>Margin is really nice.</h2>
+                    <p style="margin-top:20px; color:#FD5002">
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                        <i class="fa-solid fa-star"></i>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="lead">
+            <h1 style="color:white;">
+                Margin is in beta.
+                <br>
+                If you want to try it, let's talk!
+                <br>
+                Or we can tell you when it's out of beta.
+            </h1>
+            <br>
+            <br>
+            <br>
+            <a>Contact Us</a>
+            <br>
+            <br>
+            <br>
+            <br>
+            <a>Notify Me When It's Ready</a>
+        </div>
+        <div class="footer" style="border-top:4px solid black;">
+            <img src="marginfull.png" style="width:170px; float:left;">
+            <p style="float:right; margin-top:60px; margin-right: 20px;">(C) Margin MMXXIII <br> All rights reserved <br></p>
+        </div>
+    </body>
+</html>
