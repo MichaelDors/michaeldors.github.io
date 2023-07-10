@@ -1241,11 +1241,11 @@
 
         if (getCookie("atc")) {
             document.getElementById("animatedbackground").classList.remove("hidden");
-
+            document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414');
         }
         else {
             document.getElementById("animatedbackground").classList.add("hidden");
-
+            document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff');
         }
 
         var x = setInterval(function () {
@@ -1257,13 +1257,14 @@
           document.getElementById("clock").classList.add("staticclock");
           if (document.getElementById("settings").classList.contains("hidden")) {
               document.getElementById("animatedbackground").classList.remove("hidden");
+              document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414');
           }
       }
       else{
       document.getElementById("clock").classList.add("clock");
           document.getElementById("clock").classList.remove("staticclock");
           document.getElementById("animatedbackground").classList.add("hidden");
-
+          document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff');
       }
 
             document.getElementById("preloader").classList.add("hidden");
