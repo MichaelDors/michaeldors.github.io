@@ -108,7 +108,7 @@
         </p>
         <br>
         <Br>
-        <a onclick="settings();"><i class="fa-solid fa-gear"></i> Close</a>
+        <a onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
         <a id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
 
         <Br>
@@ -181,7 +181,6 @@
         <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">Keep contrast in mind when choosing colors.</p>
         <br />
         <br />
-        <a onclick="SetCountDowngeneral()"><i class="fa-solid fa-check" id="submitdate"></i> Confirm Changes</a>
         <br>
         <br>
         <h2 class="textelement">
@@ -253,6 +252,10 @@
             background: #8426ff;
         }
 
+        input[type="color"] {
+            transition:0.5s all;
+        }
+
         ::selection {
             color: white;
             background: #8426ff;
@@ -269,6 +272,37 @@
             background: #141414;
             border: none;
         }
+        .disabledcolorpicker {
+            margin: 10px;
+            height: 0.5in;
+            width: 1in;
+            font-size: 20px;
+            font-weight: 100;
+            border-radius: 20px;
+            outline: 1px solid #202020;
+            background: #141414;
+            border: none;
+            opacity:0.5;
+            cursor:not-allowed;
+            pointer-events:none;
+        }
+        .disabledcolorpicker::-webkit-color-swatch {
+            border-radius: 15px;
+            border: none;
+            width: 35px;
+            margin-left: 1px;
+            margin-right: 1px;
+            filter:grayscale();
+        }
+
+            .disabledcolorpicker::-moz-color-swatch {
+                border-radius: 15px;
+                border: none;
+                width: 35px;
+                margin-left: 1px;
+                margin-right: 1px;
+                filter: grayscale();
+            }
             .colorpicker:focus {
                 margin: 10px;
                 height: 0.5in;
@@ -1242,11 +1276,29 @@
         if (getCookie("atc")) {
             document.getElementById("animatedbackground").classList.remove("hidden");
             document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414');
+            document.getElementById("color1").classList.remove("colorpicker");
+            document.getElementById("color1").classList.add("disabledcolorpicker");
+            document.getElementById("color2").classList.remove("colorpicker");
+            document.getElementById("color2").classList.add("disabledcolorpicker");
+            document.getElementById("color3").classList.remove("colorpicker");
+            document.getElementById("color3").classList.add("disabledcolorpicker");
+            document.getElementById("color4").classList.remove("colorpicker");
+            document.getElementById("color4").classList.add("disabledcolorpicker");
         }
         else {
             document.getElementById("animatedbackground").classList.add("hidden");
             document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff');
+            document.getElementById("color1").classList.add("colorpicker");
+            document.getElementById("color1").classList.remove("disabledcolorpicker");
+            document.getElementById("color2").classList.add("colorpicker");
+            document.getElementById("color2").classList.remove("disabledcolorpicker");
+            document.getElementById("color3").classList.add("colorpicker");
+            document.getElementById("color3").classList.remove("disabledcolorpicker");
+            document.getElementById("color4").classList.add("colorpicker");
+            document.getElementById("color4").classList.remove("disabledcolorpicker");
         }
+
+
 
         var x = setInterval(function () {
 
@@ -1258,6 +1310,14 @@
           if (document.getElementById("settings").classList.contains("hidden")) {
               document.getElementById("animatedbackground").classList.remove("hidden");
               document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414');
+              document.getElementById("color1").classList.remove("colorpicker");
+              document.getElementById("color1").classList.add("disabledcolorpicker");
+              document.getElementById("color2").classList.remove("colorpicker");
+              document.getElementById("color2").classList.add("disabledcolorpicker");
+              document.getElementById("color3").classList.remove("colorpicker");
+              document.getElementById("color3").classList.add("disabledcolorpicker");
+              document.getElementById("color4").classList.remove("colorpicker");
+              document.getElementById("color4").classList.add("disabledcolorpicker");
           }
       }
       else{
@@ -1265,6 +1325,14 @@
           document.getElementById("clock").classList.remove("staticclock");
           document.getElementById("animatedbackground").classList.add("hidden");
           document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff');
+          document.getElementById("color1").classList.add("colorpicker");
+          document.getElementById("color1").classList.remove("disabledcolorpicker");
+          document.getElementById("color2").classList.add("colorpicker");
+          document.getElementById("color2").classList.remove("disabledcolorpicker");
+          document.getElementById("color3").classList.add("colorpicker");
+          document.getElementById("color3").classList.remove("disabledcolorpicker");
+          document.getElementById("color4").classList.add("colorpicker");
+          document.getElementById("color4").classList.remove("disabledcolorpicker");
       }
 
             document.getElementById("preloader").classList.add("hidden");
@@ -1280,8 +1348,21 @@
       var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
       var seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-
-
+            if (days > 0) {
+                document.title = "Countdown for " + days + " days";
+            }
+            else if (hours > 0) {
+                document.title = "Countdown for " + hours + " hours";
+            }
+            else if (minutes > 0) {
+                document.title = "Countdown for " + minutes + " minutes";
+            }
+            else if (seconds > 0) {
+                document.title = "Countdown for " + seconds + " seconds";
+            }
+            else {
+                document.title = "Countdown";
+            }
 
             if (getCookie("week")) {
                 var weekcount = Math.floor(distance / 604800000);
@@ -1350,7 +1431,7 @@
                 document.getElementById("settings").remove();
                 document.getElementById("gear").remove();
                 if (!getCookie('coce')) {
-
+                    document.getElementById("animatedbackground").classList.add("hidden");
                     startConfetti();
                 }
             }
@@ -1496,10 +1577,26 @@
     }
     function atc(){
       if(getCookie('atc')){
-        eraseCookie('atc');
+          eraseCookie('atc');
+          document.getElementById("color1").classList.add("colorpicker");
+          document.getElementById("color1").classList.remove("disabledcolorpicker");
+          document.getElementById("color2").classList.add("colorpicker");
+          document.getElementById("color2").classList.remove("disabledcolorpicker");
+          document.getElementById("color3").classList.add("colorpicker");
+          document.getElementById("color3").classList.remove("disabledcolorpicker");
+          document.getElementById("color4").classList.add("colorpicker");
+          document.getElementById("color4").classList.remove("disabledcolorpicker");
       }
       else{
-        setCookie('atc', 'true', '70');
+          setCookie('atc', 'true', '70');
+              document.getElementById("color1").classList.remove("colorpicker");
+              document.getElementById("color1").classList.add("disabledcolorpicker");
+              document.getElementById("color2").classList.remove("colorpicker");
+              document.getElementById("color2").classList.add("disabledcolorpicker");
+              document.getElementById("color3").classList.remove("colorpicker");
+              document.getElementById("color3").classList.add("disabledcolorpicker");
+              document.getElementById("color4").classList.remove("colorpicker");
+              document.getElementById("color4").classList.add("disabledcolorpicker");
       }
       updateoptions();
     }
