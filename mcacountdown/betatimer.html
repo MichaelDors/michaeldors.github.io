@@ -66,7 +66,7 @@
     <center class="hidden" id="cookiepopup" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index: 10000;">
         <div class="box">
             <i style="font-size:50px; color:white; margin-right:20px;" class="fa-solid fa-shield"></i> <i style="font-size:50px; color:white" class="fa-solid fa-cookie-bite"></i> <i style="font-size:50px; color:white; margin-left:20px;" class="fa-solid fa-rectangle-ad"></i>
-            <h1 class="textelement">Privacy, Cookies, and Ads</h1>
+            <h1 class="textelement">For your information...</h1>
             <p style="margin-left: 100px; margin-right: 100px;" class="textelement">This site uses cookies to save your preferences and for advertisement purposes. To use Countdown, you must approve the use of cookies and our privacy policy. </p>
             <br>
             <br>
@@ -770,6 +770,10 @@
             margin-right: 15px;
         }
 
+        .wrapper{
+            max-width: 70%;
+        }
+
         .wrapper .tabs-box {
             display: flex;
             gap: 12px;
@@ -777,6 +781,7 @@
             overflow-x: hidden;
             overflow-y:hidden;
             scroll-behavior: smooth;
+            max-width: 90%;
         }
 
         .tabs-box.dragging {
@@ -1029,6 +1034,36 @@
     <script>
         document.body.scrollTop = document.documentElement.scrollTop = 0;
 
+
+        if(parameter('colorone')){
+            var css = document.querySelector(':root');
+
+            var coloronetouse = '#' + parameter('colorone')
+            document.getElementById("color1").value = coloronetouse;
+            css.style.setProperty('--one', coloronetouse);
+        }
+        if(parameter('colortwo')){
+            var css = document.querySelector(':root');
+
+            var colortwotouse = '#' + parameter('colortwo')
+            document.getElementById("color2").value = colortwotouse;
+            css.style.setProperty('--two', colortwotouse);
+        }
+        if(parameter('colorthree')){
+            var css = document.querySelector(':root');
+
+            var colorthreetouse = '#' + parameter('colorthree')
+            document.getElementById("color3").value = colorthreetouse;
+            css.style.setProperty('--three', colorthreetouse);
+        }
+        if(parameter('colorthree')){
+            var css = document.querySelector(':root');
+
+            var colorfourtouse = '#' + parameter('colorthree')
+            document.getElementById("color3").value = colorfourtouse;
+            css.style.setProperty('--four', colorfourtouse);
+        }
+
         if (parameter('date')) {
             document.querySelector(".datepicker").value = convert(parameter('date')) + 'T00:00';
             var countDownDate = new Date(document.querySelector(".datepicker").value);
@@ -1160,7 +1195,12 @@
             css.style.setProperty('--three', color3);
             css.style.setProperty('--four', color4);
 
-            var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate);
+            var color1normalized = color1.replace("#", "");
+            var color2normalized = color2.replace("#", "");
+            var color3normalized = color3.replace("#", "");
+            var color4normalized = color4.replace("#", "");
+
+            var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate) + '?colorone=' + color1normalized + '?colortwo=' + color2normalized + '?colorthree=' + color3normalized + '?colorfour=' + color4normalized;
             window.history.pushState({ path: refresh }, '', refresh);
 
             document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date');
@@ -1688,6 +1728,19 @@
         eraseCookie('hour');
         eraseCookie('lcdu');
         updateoptions();
+
+            var css = document.querySelector(':root');
+            document.getElementById("color1").value = "#8426ff";
+            document.getElementById("color2").value = "#3ab6ff";
+            document.getElementById("color3").value = "#00ff5e";
+            document.getElementById("color4").value = "#ff9900";
+            css.style.setProperty('--one', "#8426ff");
+            css.style.setProperty('--two', "#3ab6ff");
+            css.style.setProperty('--three', "#00ff5e");
+            css.style.setProperty('--four', "#ff9900");
+
+            window.location.href = window.location.origin + window.location.pathname;
+
     }
 
     window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
