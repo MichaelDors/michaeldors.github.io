@@ -1068,7 +1068,7 @@
             document.querySelector(".datepicker").value = parameter('date') + 'T00:00';
             var countDownDate = new Date(document.querySelector(".datepicker").value);
 
-            document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date');
+            document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
 
 
             function imgQR(qrCanvas, centerImage, factor) {
@@ -1081,7 +1081,7 @@
             const icon = new Image();
             icon.onload = function generateQR() {
                 var qrcode = new QRCode(document.getElementById("qrcode"), {
-                    text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date'),
+                    text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
                     width: 150,
                     height: 150,
                     colorDark: "#000000",
