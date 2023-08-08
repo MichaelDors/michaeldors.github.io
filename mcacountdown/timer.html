@@ -174,15 +174,41 @@
             <a onclick="closemodals()">Close</a>
         </dialog>
 
-        <input class="colorpicker" id="color1" type="color" value="#8426ff" />
-        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" />
-        <input class="colorpicker" id="color3" type="color" value="#00ff5e" />
-        <input class="colorpicker" id="color4" type="color" value="#ff9900" />
+        <input class="colorpicker" id="color1" type="color" value="#8426ff" oninput="SetCountDowngeneral();"/>
+        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" oninput="SetCountDowngeneral();"/>
+        <input class="colorpicker" id="color3" type="color" value="#00ff5e" oninput="SetCountDowngeneral();"/>
+        <input class="colorpicker" id="color4" type="color" value="#ff9900" oninput="SetCountDowngeneral();"/>
         <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">Keep contrast in mind when choosing colors.</p>
         <br />
         <br />
         <br>
         <br>
+        <h2 class="textelement">
+            Animation Speed <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="animationspeedtooltip()"></i>
+        </h2>
+        <dialog id="modal4" class="box">
+            <p>Change how fast color/background animations run.<br /><br><br><i class="fa-solid fa-gauge"></i> Default<br><i class="fa-solid fa-seedling"></i> Slow<br><i class="fa-solid fa-bolt"></i> Fast<br><br></p>
+            <a onclick="closemodals()">Close</a>
+        </dialog>
+        <form action="" id="searchTypeToggle">
+            <div></div>
+            <label class="selected">
+              <input type="radio" name="searchtype" data-location="0" value="one" id="speed1">
+              <div><i class="fa-solid fa-gauge"></i></div>
+            </label>
+            <label>
+              <input type="radio" name="searchtype" data-location="calc(100% - 8px)" value="two" id="speed2">
+              <div><i class="fa-solid fa-seedling"></i></div>
+            </label>
+            <label>
+              <input type="radio" name="searchtype" data-location="calc(200% - 12px)" value="three" id="speed3">
+              <div><i class="fa-solid fa-bolt"></i></div>
+            </label>
+          </form>
+        <br>
+        <Br>
+        <Br>
+        <Br>
         <h2 class="textelement">
             Appearance
         </h2>
@@ -366,6 +392,70 @@
             filter:invert();
         }
 
+        form {
+  width:70%;
+  box-sizing:border-box;
+  background-color:#141414;
+  text-align:center;
+  position:relative;
+  border-radius:100px;
+  border: 1px solid #4d00b2;
+  color:white;
+}
+
+form > div {
+  color:white;
+  display:block;
+  position:absolute;
+  top:-4px;
+  left:-4px;
+  bottom:-4px;
+  width:calc(33.33% + 8px);
+  background: linear-gradient(to left, #141414,#4d00b2);
+  border-radius:100px;
+  z-index:1;
+  pointer-events:none;
+  border: 1px solid #8426FF;
+
+  transition:transform 0.3s;
+}
+
+form::after {
+  content:"";
+  display:block;
+  clear:both;
+}
+
+form label {
+  float:left;
+  width:calc(33.333% - 1px);
+  position:relative;
+  padding:20px 0px 40px;
+  overflow:hidden;
+  border-left:solid 1px rgba(0,0,0,0.2);
+  transition:color 0.3s;
+  cursor:pointer;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+}
+
+form label:first-child {
+  border-left:none;
+}
+
+form label input {
+  position:absolute;
+  top:-200%;
+}
+
+form label div {
+  z-index: 5;
+  position: absolute;
+  width: 100%;
+}
+
+form label.selected {
+  color:white;
+}
       .wifitext{
         z-index: 100;
         animation: wifidown 50s infinite;
@@ -496,6 +586,26 @@
         min-height: 99%;
         font-family: 'Fredoka One';
         animation: backgroundgradient 100s infinite;
+        z-index:1000000;
+      }
+      .clockslow{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        min-height: 99%;
+        font-family: 'Fredoka One';
+        animation: backgroundgradient 200s infinite;
+        z-index:1000000;
+      }
+      .clockfast{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        min-height: 99%;
+        font-family: 'Fredoka One';
+        animation: backgroundgradient 5s infinite;
         z-index:1000000;
       }
       .center{
@@ -1036,32 +1146,53 @@
 
 
         if(parameter('colorone')){
-            var css = document.querySelector(':root');
+            if(parameter('colorone') == "null"){
+                console.log("Colors(1) could not be imported properly.");
+            }
+            else{
+                var css = document.querySelector(':root');
 
-            var coloronetouse = '#' + parameter('colorone')
-            document.getElementById("color1").value = coloronetouse;
-            css.style.setProperty('--one', coloronetouse);
+                var coloronetouse = '#' + parameter('colorone')
+                document.getElementById("color1").value = coloronetouse;
+                css.style.setProperty('--one', coloronetouse);
+            }
+
         }
         if(parameter('colortwo')){
-            var css = document.querySelector(':root');
+            if(parameter('colortwo') == "null"){
+                console.log("Colors(2) could not be imported properly.");
+            }
+            else{
+                var css = document.querySelector(':root');
 
-            var colortwotouse = '#' + parameter('colortwo')
-            document.getElementById("color2").value = colortwotouse;
-            css.style.setProperty('--two', colortwotouse);
+                var colortwotouse = '#' + parameter('colortwo')
+                document.getElementById("color2").value = colortwotouse;
+                css.style.setProperty('--two', colortwotouse);
+            }
         }
         if(parameter('colorthree')){
-            var css = document.querySelector(':root');
+            if(parameter('colorthree') == "null"){
+                console.log("Colors(3) could not be imported properly.");
+            }
+            else{
+                var css = document.querySelector(':root');
 
-            var colorthreetouse = '#' + parameter('colorthree')
-            document.getElementById("color3").value = colorthreetouse;
-            css.style.setProperty('--three', colorthreetouse);
+                var colorthreetouse = '#' + parameter('colorthree')
+                document.getElementById("color3").value = colorthreetouse;
+                css.style.setProperty('--three', colorthreetouse);
+            }
         }
-        if(parameter('colorthree')){
-            var css = document.querySelector(':root');
+        if(parameter('colorfour')){
+            if(parameter('colorfour') == "null"){
+                console.log("Colors(4) could not be imported properly.");
+            }
+            else{
+                var css = document.querySelector(':root');
 
-            var colorfourtouse = '#' + parameter('colorthree')
-            document.getElementById("color3").value = colorfourtouse;
-            css.style.setProperty('--four', colorfourtouse);
+                var colorfourtouse = '#' + parameter('colorfour')
+                document.getElementById("color4").value = colorfourtouse;
+                css.style.setProperty('--four', colorfourtouse);
+            }
         }
 
         if (parameter('date')) {
@@ -1140,7 +1271,41 @@
         }
 
 
+        document.querySelector('#searchTypeToggle').addEventListener('click', function(event){
 
+    if (event.target.tagName.toLowerCase() == 'input') {
+        
+        let input = event.target;
+        let slider = this.querySelector('div');
+        let labels = this.querySelectorAll('label');
+        
+        slider.style.transform = `translateX(${input.dataset.location})`;
+        labels.forEach(function(label){
+            if ( label == input.parentElement ) {
+                label.classList.add('selected');
+            } else {
+                label.classList.remove('selected');
+            }
+        });
+        
+        if(event.target == document.getElementById("speed1")){
+            document.getElementById("clock").classList.remove("clockslow");
+            document.getElementById("clock").classList.remove("clockfast");
+            document.getElementById("clock").classList.add("clock");
+        }
+        if(event.target == document.getElementById("speed2")){
+            document.getElementById("clock").classList.add("clockslow");
+            document.getElementById("clock").classList.remove("clockfast");
+            document.getElementById("clock").classList.remove("clock");
+        }
+        if(event.target == document.getElementById("speed3")){
+            document.getElementById("clock").classList.remove("clockslow");
+            document.getElementById("clock").classList.add("clockfast");
+            document.getElementById("clock").classList.remove("clock");
+        }
+    }
+    
+});
 
           if(!getCookie("cookiesallowed")){
           document.getElementById("cookiepopup").classList.remove("hidden");
@@ -1203,10 +1368,8 @@
             var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate) + '?colorone=' + color1normalized + '?colortwo=' + color2normalized + '?colorthree=' + color3normalized + '?colorfour=' + color4normalized;
             window.history.pushState({ path: refresh }, '', refresh);
 
-            document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date');
-
-            const notification = new Notification("QR Codes are in beta and do not support regneration in the same instance. Reload the page to regenerate the code.");
-            alert("QR Codes are in beta and do not support regneration in the same instance. Reload the page to regenerate the code.");
+            document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
+            qrcode.makeCode("https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'));
         }
 
         function convert(str) {
@@ -1265,6 +1428,7 @@
                 document.getElementById("preloader").classList.add("hidden");
                 document.getElementById("unfocused").classList.add("hidden");
                 document.getElementById("body").style.overflowY = 'hidden';
+
                 document.body.scrollTop = document.documentElement.scrollTop = 0;
             }
             else if (document.getElementById("settings").classList.contains("hidden")) {
@@ -1838,25 +2002,26 @@
 
 
         function NYD() {
-            SetCountDowngeneral();
             var newyearsthisyear = new Date(thisyear + "-01-01T00:00");
             if (newyearsthisyear - now < 0) {
                 document.querySelector(".datepicker").value = nextyear + '-01-01T00:00';
             } else {
                 document.querySelector(".datepicker").value = thisyear + '-01-01T00:00';
             }
+            SetCountDowngeneral();
+
         }
         function VD() {
-            SetCountDowngeneral();
             var valentinesthisyear = new Date(thisyear + "-02-14T00:00");
             if (valentinesthisyear - now < 0) {
                 document.querySelector(".datepicker").value = nextyear + '-02-14T00:00';
             } else {
                 document.querySelector(".datepicker").value = thisyear + '-02-14T00:00';
             }
+            SetCountDowngeneral();
+
         }
         function NDOP() {
-            SetCountDowngeneral();
             var ndopthisyear = new Date(formatDate(getDateString(thisyear, 5, 2, 4)));
             if (ndopthisyear - now < 0) {
                 document.querySelector(".datepicker").value = formatDate(getDateString(nextyear, 5, 2, 4));
@@ -1864,27 +2029,30 @@
             else {
                 document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 5, 2, 4));
             }
+            SetCountDowngeneral();
+
         }
         function ID() {
-            SetCountDowngeneral();
             var independencethisyear = new Date(thisyear + "-07-04T00:00");
             if (independencethisyear - now < 0) {
                 document.querySelector(".datepicker").value = nextyear + '-07-04T00:00';
             } else {
                 document.querySelector(".datepicker").value = thisyear + '-07-04T00:00';
             }
+            SetCountDowngeneral();
+
         }
         function H() {
-            SetCountDowngeneral();
             var halloweenthisyear = new Date(thisyear + "-10-31T00:00");
             if (halloweenthisyear - now < 0) {
                 document.querySelector(".datepicker").value = nextyear + '-10-31T00:00';
             } else {
                 document.querySelector(".datepicker").value = thisyear + '-10-31T00:00';
             }
+            SetCountDowngeneral();
+
         }
         function T() {
-            SetCountDowngeneral();
             var thanksgivingthisyear = new Date(formatDate(getDateString(thisyear, 10, 3, 4)));
             if (thanksgivingthisyear - now < 0) {
                 document.querySelector(".datepicker").value = formatDate(getDateString(nextyear, 10, 3, 4));
@@ -1892,15 +2060,18 @@
             else {
                 document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 10, 3, 4));
             }
+            SetCountDowngeneral();
+
         }
         function C() {
-            SetCountDowngeneral();
             var christmasthisyear = new Date(thisyear + "-12-25T00:00");
             if (christmasthisyear - now < 0) {
                 document.querySelector(".datepicker").value = nextyear + '-12-25T00:00';
             } else {
                 document.querySelector(".datepicker").value = thisyear + '-12-25T00:00';
             }
+            SetCountDowngeneral();
+
         }
 
         document.getElementById("modal1");
@@ -1920,10 +2091,15 @@
             closemodals();
             modal1.showModal();
         }
+        function animationspeedtooltip() {
+            closemodals();
+            modal4.showModal();
+        }
         function closemodals() {
             modal1.close();
             modal2.close();
             modal3.close();
+            modal4.close();
         }
 
 
