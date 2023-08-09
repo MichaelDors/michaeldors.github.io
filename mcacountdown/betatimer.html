@@ -167,7 +167,7 @@
         <br />
         <br />
         <h2 class="textelement">
-            Colors <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="colorstooltip()"></i>
+            Text Colors <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="colorstooltip()"></i>
         </h2>
         <dialog id="modal3" class="box">
             <p>Customize your countdown clock to your heart's desire!<br />Make sure to keep contrast in mind so it remains readable.</p>
@@ -179,6 +179,21 @@
         <input class="colorpicker" id="color3" type="color" value="#00ff5e" oninput="SetCountDowngeneral();"/>
         <input class="colorpicker" id="color4" type="color" value="#ff9900" oninput="SetCountDowngeneral();"/>
         <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">Keep contrast in mind when choosing colors.</p>
+        <br />
+        <br />
+        <br>
+        <br>
+        <h2 class="textelement">
+            Backgrounds <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="colorstooltip()"></i>
+        </h2>
+        <dialog id="modal3" class="box">
+            <p>Customize your countdown clock to your heart's desire!<br />Make sure to keep contrast in mind so it remains readable.</p>
+            <a onclick="closemodals()">Close</a>
+        </dialog>
+        <a class="aintext" onclick="defaultbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground.png"></div></a>
+        <a class="aintext" onclick="xmasgb()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_christmas.png"></div></a>
+        <a class="aintext" onclick="fourthbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_fourth.png"></div></a>
+        <a class="aintext" onclick="fallbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_thanksgiving.png"></div></a>
         <br />
         <br />
         <br>
@@ -209,10 +224,6 @@
         <Br>
         <Br>
         <Br>
-            <a onclick="defaultbg()">default</a>
-            <a onclick="xmasgb()">christmas</a>
-            <a onclick="fourthbg()">july 4th</a>
-            <a onclick="fallbg()">fall</a>
         <h2 class="textelement">
             Appearance
         </h2>
@@ -302,6 +313,18 @@
             background: #141414;
             border: none;
         }
+        .backgroundpicker {
+            margin: 10px;
+            height: 0.5in;
+            width: 1in;
+            font-size: 20px;
+            font-weight: 100;
+            border-radius: 20px;
+            outline: 1px solid #8426ff;
+            background: #141414;
+            border: none;
+        }
+
         .disabledcolorpicker {
             margin: 10px;
             height: 0.5in;
@@ -1864,31 +1887,7 @@ form label.selected {
       }
       updateoptions();
     }
-    function atc(){
-      if(getCookie('atc')){
-          eraseCookie('atc');
-          document.getElementById("color1").classList.add("colorpicker");
-          document.getElementById("color1").classList.remove("disabledcolorpicker");
-          document.getElementById("color2").classList.add("colorpicker");
-          document.getElementById("color2").classList.remove("disabledcolorpicker");
-          document.getElementById("color3").classList.add("colorpicker");
-          document.getElementById("color3").classList.remove("disabledcolorpicker");
-          document.getElementById("color4").classList.add("colorpicker");
-          document.getElementById("color4").classList.remove("disabledcolorpicker");
-      }
-      else{
-          setCookie('atc', 'true', '70');
-              document.getElementById("color1").classList.remove("colorpicker");
-              document.getElementById("color1").classList.add("disabledcolorpicker");
-              document.getElementById("color2").classList.remove("colorpicker");
-              document.getElementById("color2").classList.add("disabledcolorpicker");
-              document.getElementById("color3").classList.remove("colorpicker");
-              document.getElementById("color3").classList.add("disabledcolorpicker");
-              document.getElementById("color4").classList.remove("colorpicker");
-              document.getElementById("color4").classList.add("disabledcolorpicker");
-      }
-      updateoptions();
-    }
+
 
     function lcdu(){
       if(getCookie('lcdu')){
@@ -2229,21 +2228,79 @@ form label.selected {
             }
         });
 
+
+        function enablecolor(){
+            document.getElementById("color1").classList.add("colorpicker");
+          document.getElementById("color1").classList.remove("disabledcolorpicker");
+          document.getElementById("color2").classList.add("colorpicker");
+          document.getElementById("color2").classList.remove("disabledcolorpicker");
+          document.getElementById("color3").classList.add("colorpicker");
+          document.getElementById("color3").classList.remove("disabledcolorpicker");
+          document.getElementById("color4").classList.add("colorpicker");
+          document.getElementById("color4").classList.remove("disabledcolorpicker");
+        }
+
+        function disablecolor(){
+            document.getElementById("color1").classList.remove("colorpicker");
+              document.getElementById("color1").classList.add("disabledcolorpicker");
+              document.getElementById("color2").classList.remove("colorpicker");
+              document.getElementById("color2").classList.add("disabledcolorpicker");
+              document.getElementById("color3").classList.remove("colorpicker");
+              document.getElementById("color3").classList.add("disabledcolorpicker");
+              document.getElementById("color4").classList.remove("colorpicker");
+              document.getElementById("color4").classList.add("disabledcolorpicker");
+        }
+
+
         function defaultbg(){
-            document.getElementById("bg1").src = "enhancedbackground.png";
-            document.getElementById("bg2").src = "enhancedbackground.png";
+            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground.png"){
+                eraseCookie('atc');
+                enablecolor();
+            }
+            else{
+                setCookie('atc', 'true', '70');
+                document.getElementById("bg1").src = "enhancedbackground.png";
+                document.getElementById("bg2").src = "enhancedbackground.png";
+                disablecolor()
+            }
+            updateoptions();
         }
         function xmasgb(){
-            document.getElementById("bg1").src = "enhancedbackground_christmas.png";
-            document.getElementById("bg2").src = "enhancedbackground_christmas.png";
+            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_christmas.png"){
+                eraseCookie('atc');
+                enablecolor();
+            }
+            else{
+                setCookie('atc', 'true', '70');
+                document.getElementById("bg1").src = "enhancedbackground_christmas.png";
+                document.getElementById("bg2").src = "enhancedbackground_christmas.png";
+                disablecolor();
+            }
+            updateoptions();
         }
         function fourthbg(){
-            document.getElementById("bg1").src = "enhancedbackground_fourth.png";
-            document.getElementById("bg2").src = "enhancedbackground_fourth.png";
+            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_fourth.png"){
+                eraseCookie('atc');
+                enablecolor();
+            }
+            else{
+                document.getElementById("bg1").src = "enhancedbackground_fourth.png";
+                document.getElementById("bg2").src = "enhancedbackground_fourth.png";
+                disablecolor();
+            }
+            updateoptions();
         }
         function fallbg(){
-            document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
-            document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
+            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_thanksgiving.png"){
+                eraseCookie('atc');
+                enablecolor();
+            }
+            else{
+                document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
+                document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
+                disablecolor();
+            }
         }
+        updateoptions();
     </script>
 
