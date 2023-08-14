@@ -18,8 +18,8 @@
     <p id="clock" class="clock"></p>
     <div class="backgroundframe" id="animatedbackground">
         <div class="backgroundframe-bg">
-            <img class="bg-color album-artwork" src="enhancedbackground.png" />
-            <img class="bg-black album-artwork" src="enhancedbackground.png" />
+            <img class="bg-color album-artwork" id="bg1" src="enhancedbackground.png" />
+            <img class="bg-black album-artwork" id="bg2" src="enhancedbackground.png" />
         </div>
     </div>
 
@@ -126,6 +126,7 @@
             <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
             <ul class="tabs-box" id="tabs-box">
                 <!--<li id="customtab" class="tab active">Custom</li>-->
+                <li id="endtab" class="mcatab" onclick="MES()">MCA End of School</li>
                 <li id="nydtab" class="tab" onclick="NYD()">New Year's Day</li>
                 <li id="vdtab" class="tab" onclick="VD()">Valentine's Day</li>
                 <li id="ndoptab" class="tab" onclick="NDOP()">National Day of Prayer</li>
@@ -167,7 +168,7 @@
         <br />
         <br />
         <h2 class="textelement">
-            Colors <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="colorstooltip()"></i>
+            Text Colors <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="colorstooltip()"></i>
         </h2>
         <dialog id="modal3" class="box">
             <p>Customize your countdown clock to your heart's desire!<br />Make sure to keep contrast in mind so it remains readable.</p>
@@ -179,6 +180,21 @@
         <input class="colorpicker" id="color3" type="color" value="#00ff5e" oninput="SetCountDowngeneral();"/>
         <input class="colorpicker" id="color4" type="color" value="#ff9900" oninput="SetCountDowngeneral();"/>
         <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">Keep contrast in mind when choosing colors.</p>
+        <br />
+        <br />
+        <br>
+        <br>
+        <h2 class="textelement">
+            Backgrounds <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="colorstooltip()"></i>
+        </h2>
+        <dialog id="modal3" class="box">
+            <p>Customize your countdown clock to your heart's desire!<br />Make sure to keep contrast in mind so it remains readable.</p>
+            <a onclick="closemodals()">Close</a>
+        </dialog>
+        <a class="aintext" onclick="defaultbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground.png"></div></a>
+        <a class="aintext" onclick="xmasgb()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_christmas.png"></div></a>
+        <a class="aintext" onclick="fourthbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_fourth.png"></div></a>
+        <a class="aintext" onclick="fallbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_thanksgiving.png"></div></a>
         <br />
         <br />
         <br>
@@ -215,7 +231,8 @@
         <br>
         <br>
         <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
-        <a id="atc" class="disabled" onclick="atc();"><i class="fa-solid fa-palette"></i> Background Animation</a>
+        <a class="disabled" ><i class="fa-solid fa-palette"></i> Unanimated Text <p style="font-size: 15px; line-height: 15px;">coming soon</p></a>
+        <a class="disabled" ><i class="fa-solid fa-sun"></i> Prefer Light Mode <p style="font-size: 15px; line-height: 15px;">coming soon</p></a>
         <br>
         <br>
         <br>
@@ -298,6 +315,18 @@
             background: #141414;
             border: none;
         }
+        .backgroundpicker {
+            margin: 10px;
+            height: 0.5in;
+            width: 1in;
+            font-size: 20px;
+            font-weight: 100;
+            border-radius: 20px;
+            outline: 1px solid #8426ff;
+            background: #141414;
+            border: none;
+        }
+
         .disabledcolorpicker {
             margin: 10px;
             height: 0.5in;
@@ -914,6 +943,20 @@ form label.selected {
            
         }
 
+        .tabs-box .mcatab {
+            margin: 0px;
+            cursor: pointer;
+            font-size: 1.18rem;
+            white-space: nowrap;
+            background: linear-gradient(to left, rgba(31,179,255,0.5), #141414);
+            border: #26b3ff 1px solid;
+            padding: 13px 20px;
+            border-radius: 30px;
+            transition: 0.5s all;
+            color:white;
+            font-family:'Fredoka One';
+           
+        }
 
         .tabs-box.dragging .tab {
             user-select: none;
@@ -928,6 +971,28 @@ form label.selected {
         .tabs-box .tab:hover {
             color: #fff;
             background: #8426ff;
+            border-color: transparent;
+            border: #141414 1px solid;
+            transform: scale(0.9);
+            animation: jiggle 0.6s infinite;
+            overflow-y:visible;
+            
+        }
+
+
+        .tabs-box.dragging .mcatab {
+            user-select: none;
+            pointer-events: none;
+            filter:brightness(0.8);
+        }
+        .tabs-box .mcatab.active {
+            color: #fff;
+            background: #26b3ff;
+            border-color: transparent;
+        }
+        .tabs-box .mcatab:hover {
+            color: #fff;
+            background: #26b3ff;
             border-color: transparent;
             border: #141414 1px solid;
             transform: scale(0.9);
@@ -1116,6 +1181,28 @@ form label.selected {
             animation: rotate 35s linear infinite;
         }
 
+        .bg-color-fast {
+            right: 0;
+            top: 0;
+            filter: blur(100px);
+            z-index: -1;
+            mix-blend-mode: luminosity;
+            width: 200%;
+            position: absolute;
+            animation: rotate 15s linear infinite;
+        }
+
+        .bg-color-slow {
+            right: 0;
+            top: 0;
+            filter: blur(100px);
+            z-index: -1;
+            mix-blend-mode: luminosity;
+            width: 200%;
+            position: absolute;
+            animation: rotate 70s linear infinite;
+        }
+
         .bg-black {
             left: 0;
             bottom: 0;
@@ -1126,6 +1213,30 @@ form label.selected {
             width: 200%;
             position: absolute;
             animation: rotate 35s linear infinite;
+        }
+
+        .bg-black-fast {
+            left: 0;
+            bottom: 0;
+            filter: blur(100px);
+            z-index: -10;
+            animation-direction: reverse;
+            animation-delay: 10s;
+            width: 200%;
+            position: absolute;
+            animation: rotate 15s linear infinite;
+        }
+
+        .bg-black-slow {
+            left: 0;
+            bottom: 0;
+            filter: blur(100px);
+            z-index: -10;
+            animation-direction: reverse;
+            animation-delay: 10s;
+            width: 200%;
+            position: absolute;
+            animation: rotate 70s linear infinite;
         }
 
         @keyframes rotate {
@@ -1289,19 +1400,52 @@ form label.selected {
         });
         
         if(event.target == document.getElementById("speed1")){
-            document.getElementById("clock").classList.remove("clockslow");
-            document.getElementById("clock").classList.remove("clockfast");
-            document.getElementById("clock").classList.add("clock");
+            if(getCookie("atc")){
+                document.getElementById("clock").classList.add("staticclock");
+                document.getElementById("bg1").classList.add("bg-color");
+                document.getElementById("bg1").classList.remove("bg-color-slow");
+                document.getElementById("bg1").classList.remove("bg-color-fast");
+                document.getElementById("bg2").classList.add("bg-black");
+                document.getElementById("bg2").classList.remove("bg-black-slow");
+                document.getElementById("bg2").classList.remove("bg-black-fast");
+            }
+            else{
+                document.getElementById("clock").classList.remove("clockslow");
+                document.getElementById("clock").classList.remove("clockfast");
+                document.getElementById("clock").classList.add("clock");
+            }
         }
         if(event.target == document.getElementById("speed2")){
-            document.getElementById("clock").classList.add("clockslow");
-            document.getElementById("clock").classList.remove("clockfast");
-            document.getElementById("clock").classList.remove("clock");
+            if(getCookie("atc")){
+                document.getElementById("clock").classList.add("staticclock");
+                document.getElementById("bg1").classList.remove("bg-color");
+                document.getElementById("bg1").classList.add("bg-color-slow");
+                document.getElementById("bg1").classList.remove("bg-color-fast");
+                document.getElementById("bg2").classList.remove("bg-black");
+                document.getElementById("bg2").classList.add("bg-black-slow");
+                document.getElementById("bg2").classList.remove("bg-black-fast");
+            }
+            else{
+                document.getElementById("clock").classList.add("clockslow");
+                document.getElementById("clock").classList.remove("clockfast");
+                document.getElementById("clock").classList.remove("clock");
+            }
         }
         if(event.target == document.getElementById("speed3")){
-            document.getElementById("clock").classList.remove("clockslow");
-            document.getElementById("clock").classList.add("clockfast");
-            document.getElementById("clock").classList.remove("clock");
+            if(getCookie("atc")){
+                document.getElementById("clock").classList.add("staticclock");
+                document.getElementById("bg1").classList.remove("bg-color");
+                document.getElementById("bg1").classList.remove("bg-color-slow");
+                document.getElementById("bg1").classList.add("bg-color-fast");
+                document.getElementById("bg2").classList.remove("bg-black");
+                document.getElementById("bg2").classList.remove("bg-black-slow");
+                document.getElementById("bg2").classList.add("bg-black-fast");
+            }
+            else{
+                document.getElementById("clock").classList.remove("clockslow");
+                document.getElementById("clock").classList.add("clockfast");
+                document.getElementById("clock").classList.remove("clock");
+            }
         }
     }
     
@@ -1510,6 +1654,8 @@ form label.selected {
 
       if (getCookie("atc")) {
       document.getElementById("clock").classList.remove("clock");
+      document.getElementById("clock").classList.remove("clockslow");
+      document.getElementById("clock").classList.remove("clockfast");
           document.getElementById("clock").classList.add("staticclock");
           if (document.getElementById("settings").classList.contains("hidden")) {
               document.getElementById("animatedbackground").classList.remove("hidden");
@@ -1670,14 +1816,7 @@ form label.selected {
       document.getElementById("lcdu").classList.add("disabled");
       }
 
-      if (getCookie("atc")) {
-        document.getElementById("atc").classList.add("enabled");
-        document.getElementById("atc").classList.remove("disabled");
-      }
-      else{
-        document.getElementById("atc").classList.remove("enabled");
-        document.getElementById("atc").classList.add("disabled");
-      }
+
 
 
 
@@ -1779,31 +1918,7 @@ form label.selected {
       }
       updateoptions();
     }
-    function atc(){
-      if(getCookie('atc')){
-          eraseCookie('atc');
-          document.getElementById("color1").classList.add("colorpicker");
-          document.getElementById("color1").classList.remove("disabledcolorpicker");
-          document.getElementById("color2").classList.add("colorpicker");
-          document.getElementById("color2").classList.remove("disabledcolorpicker");
-          document.getElementById("color3").classList.add("colorpicker");
-          document.getElementById("color3").classList.remove("disabledcolorpicker");
-          document.getElementById("color4").classList.add("colorpicker");
-          document.getElementById("color4").classList.remove("disabledcolorpicker");
-      }
-      else{
-          setCookie('atc', 'true', '70');
-              document.getElementById("color1").classList.remove("colorpicker");
-              document.getElementById("color1").classList.add("disabledcolorpicker");
-              document.getElementById("color2").classList.remove("colorpicker");
-              document.getElementById("color2").classList.add("disabledcolorpicker");
-              document.getElementById("color3").classList.remove("colorpicker");
-              document.getElementById("color3").classList.add("disabledcolorpicker");
-              document.getElementById("color4").classList.remove("colorpicker");
-              document.getElementById("color4").classList.add("disabledcolorpicker");
-      }
-      updateoptions();
-    }
+
 
     function lcdu(){
       if(getCookie('lcdu')){
@@ -2000,7 +2115,10 @@ form label.selected {
         var thisyear = new Date().getFullYear();
 
 
-
+        function MES() {
+            document.querySelector(".datepicker").value = '2024-05-22T11:00';
+            SetCountDowngeneral();
+        }
         function NYD() {
             var newyearsthisyear = new Date(thisyear + "-01-01T00:00");
             if (newyearsthisyear - now < 0) {
@@ -2143,4 +2261,80 @@ form label.selected {
                 e.preventDefault();
             }
         });
+
+
+        function enablecolor(){
+            document.getElementById("color1").classList.add("colorpicker");
+          document.getElementById("color1").classList.remove("disabledcolorpicker");
+          document.getElementById("color2").classList.add("colorpicker");
+          document.getElementById("color2").classList.remove("disabledcolorpicker");
+          document.getElementById("color3").classList.add("colorpicker");
+          document.getElementById("color3").classList.remove("disabledcolorpicker");
+          document.getElementById("color4").classList.add("colorpicker");
+          document.getElementById("color4").classList.remove("disabledcolorpicker");
+        }
+
+        function disablecolor(){
+            document.getElementById("color1").classList.remove("colorpicker");
+              document.getElementById("color1").classList.add("disabledcolorpicker");
+              document.getElementById("color2").classList.remove("colorpicker");
+              document.getElementById("color2").classList.add("disabledcolorpicker");
+              document.getElementById("color3").classList.remove("colorpicker");
+              document.getElementById("color3").classList.add("disabledcolorpicker");
+              document.getElementById("color4").classList.remove("colorpicker");
+              document.getElementById("color4").classList.add("disabledcolorpicker");
+        }
+
+
+        function defaultbg(){
+            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground.png"){
+                eraseCookie('atc');
+                enablecolor();
+            }
+            else{
+                setCookie('atc', 'true', '70');
+                document.getElementById("bg1").src = "enhancedbackground.png";
+                document.getElementById("bg2").src = "enhancedbackground.png";
+                disablecolor()
+            }
+            updateoptions();
+        }
+        function xmasgb(){
+            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_christmas.png"){
+                eraseCookie('atc');
+                enablecolor();
+            }
+            else{
+                setCookie('atc', 'true', '70');
+                document.getElementById("bg1").src = "enhancedbackground_christmas.png";
+                document.getElementById("bg2").src = "enhancedbackground_christmas.png";
+                disablecolor();
+            }
+            updateoptions();
+        }
+        function fourthbg(){
+            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_fourth.png"){
+                eraseCookie('atc');
+                enablecolor();
+            }
+            else{
+                document.getElementById("bg1").src = "enhancedbackground_fourth.png";
+                document.getElementById("bg2").src = "enhancedbackground_fourth.png";
+                disablecolor();
+            }
+            updateoptions();
+        }
+        function fallbg(){
+            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_thanksgiving.png"){
+                eraseCookie('atc');
+                enablecolor();
+            }
+            else{
+                document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
+                document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
+                disablecolor();
+            }
+        }
+        updateoptions();
     </script>
+
