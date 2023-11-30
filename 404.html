@@ -2,47 +2,78 @@
 <html>
 
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width">
-  <title>Michael Dors</title>
-  <link href="style.css" rel="stylesheet" type="text/css" />
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Libre+Barcode+39&display=swap"
-    rel="stylesheet">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Michael Dors</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Libre+Barcode+39&display=swap"
+          rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
-<script src="app.js"></script>
-  <link rel="icon" type="image/x-icon" href="Images/fav.ico">
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8617127534193636"
-     crossorigin="anonymous"></script>
+    <script src="app.js"></script>
+    <link rel="icon" type="image/x-icon" href="Images/fav.ico">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8617127534193636"
+            crossorigin="anonymous"></script>
 </head>
 
-<body>
-
-    <div>
-        <svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-             viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
-            <defs>
-                <path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
-            </defs>
-            <g class="parallax">
-                <use xlink:href="#gentle-wave" x="48" y="0" fill="#a40000" />
-                <use xlink:href="#gentle-wave" x="48" y="3" fill="#ff0000" />
-                <use xlink:href="#gentle-wave" x="48" y="5" fill="#6a0000" />
-                <use xlink:href="#gentle-wave" x="48" y="7" fill="#ff0000" />
-            </g>
-        </svg>
-    </div>
-  </section>
-  <section class="HireMe" style="background-color: #ff0000; height:900px;">
-    <h1 style="color:#ffffff; padding-top:50px; padding-bottom:30px; font-size: 50px;">
-        Oops... The requested file was not found.
-    </h1>
-    <br>
-        <a style="font-size: 25px; border-radius: 10px; background-color: white; color:black; margin-left:50px; height:120px; width:100ox;" href="https://michaeldors.com">Head Home</a>
-    <section>
-
+<body style="background-color: #202020;">
+    <h1>404</h1>
+    <p>Page not found... <b id="randomarea" style="font-weight:100"></b></p>
 </body>
 
 </html>
+<style>
+    h1{
+        margin-left:20px;
+        font-family:'IBM Plex Mono';
+        color:white;
+    }
+    p{
+        margin-left:20px;
+        font-family:'IBM Plex Mono';
+        color:white;
+    }
+</style>
+<script>
+    texttoreplace = document.getElementById("randomarea");
+    const options = [
+        "have you checked under the virtual couch cushions?",
+        "have you emptied your pockets?",
+        "have you looked on top of your nightstand?",
+        "have you checked at a different URL?",
+        "have you retraced its steps?",
+        "have you searched far and wide for it?",
+        "have you tried turning it off and on again?",
+        "did you bring your glasses? It may be hiding.",
+        "are you sure you're not in a parallel internet universe?",
+        "try asking your router if it knows where the page went...",
+        "have you considered bribing it with cookies?",
+        "maybe it's on a coffee break. Try again after a cup.",
+        "have you asked your grandma for tech support?",
+        "did you scare it away?",
+        "JOHN DID YOU REALLY MAKE OUR SERVERS CRASH AGAIN?!!?",
+        "the internet overlords really must not like us :/",
+        "maybe it's on vacation. Send a postcard, and it might come back.",
+        "have you tried negotiating with the internet gnomes?",
+        "maybe it's at a virtual costume party. Dress up as a browser and try again.",
+        "did you consult the ancient scrolls of HTML for guidance?",
+        "did you check the spam folder??",
+        "did you consult the IT leprechaun at the end of the cyber rainbow?",
+        "did someone tell it a bedtime story and put it to sleep?",
+        "have you checked if it's stuck in a digital traffic jam?",
+        "maybe it's attending a support group for lost web pages. They meet on Wednesdays.",
+        "have you considered offering it virtual therapy sessions? Websites have feelings too.",
+        "maybe it's on strike. Negotiate better browsing conditions.",
+        "did you give it a cat video break?",
+        "have you looked in the dark corners of the internet? Bring a flashlight- it's scary out there.",
+        "snacks may lure it back",
+        "maybe it's in witness protection...",
+        "did you try to bring it back? Abracadabra might do the trick.",
+        "have you considered offering it a virtual map? It might be lost.",
+        "did you try convincing it with a persuasive PowerPoint presentation?",
+        "maybe it's on a quest for the Holy Grail of web pages. It's a tough journey."
+    ]
+    const random = Math.floor(Math.random() * options.length);
+    texttoreplace.innerHTML = options[random];
+</script>
