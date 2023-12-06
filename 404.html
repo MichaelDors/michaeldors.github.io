@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Page Not Found | Michael Dors</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Libre+Barcode+39&display=swap"
+          rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <script src="app.js"></script>
+    <link rel="icon" type="image/x-icon" href="Images/fav.ico">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8617127534193636"
+            crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <h1>404</h1>
+    <p>Page not found... <b id="randomarea" style="font-weight:100"></b></p>
+    <p id="addedcontext"><a id="addedcontextlink" target="_blank" rel="noopener noreferrer" href="mailto:contact@michaeldors.com?subject=Page%20Recently%20Removed%20Request%20|%20ADD%20URL"></a></p>
+    <div id="bottombar">
+        <a class="glowbutton" target="_blank" rel="noopener noreferrer" href="mailto:contact@michaeldors.com?subject=404%20Inquiry%20For%20ADD_URL">Let Us Know</a>
+    </div>
+</body>
+
+</html>
+<style>
+    *{
+        font-family:'IBM Plex Mono';
+    }
+    .glowbutton {
+        text-decoration: none;
+        display: block;
+        width: 25%;
+        height: 25px;
+        background: #FF2121;
+        padding: 15px 30px 15px 30px;
+        text-align: center;
+        border-radius: 14px;
+        color: white;
+        line-height: 25px;
+        margin-left:40px;
+        margin-right:40px;
+        box-shadow: 0 0 10px 5px rgba(120, 15, 15, 0.703);
+        z-index: 1000;
+        margin-bottom:40px;
+        margin-top:100vh;
+        transform:scale(1);
+        transition:0.5s all;
+    }
+    .glowbutton:hover {
+        background: #ff3131;
+        box-shadow: 0 0 10px 5px rgba(197, 28, 28, 0.203);
+        transform: scale(1.1);
+    }
+    @media (max-width:1000px){
+        .glowbutton{
+            text-decoration: none;
+            display: block;
+            width: 80%;
+            height: 25px;
+            background: #FF2121;
+            padding: 15px 0px 15px 0px;
+            text-align: center;
+            border-radius: 14px;
+            color: white;
+            line-height: 25px;
+            margin-left:10%;
+            margin-right:10%;
+            box-shadow: 0 0 10px 5px rgba(120, 15, 15, 0.703);
+            z-index: 1000;
+            margin-bottom:40px;
+            margin-top:100vh;
+        }
+    }
+    #bottombar{
+        z-index: -1;
+        width:100%;
+        position:fixed;
+        bottom:0px;
+        background-image: url(background.png);
+        background-size:cover;
+        background-repeat:no-repeat;
+        background-position: bottom center;
+    }
+    body{
+        background-color: #202020;
+        width:100%;
+        height:100%;
+        margin:0px;
+    }
+    h1{
+        padding-top:40px;
+        margin-left:40px;
+        margin-right:40px;
+        color:white;
+    }
+    p{
+        margin-left:40px;
+        margin-right:40px;
+        color:white;
+    }
+    b {
+        color: white;
+    }
+    a{
+        color: #FF2121;
+        text-decoration-color: #FF2121;
+    }
+</style>
+<script>
+
+    if(document.URL.includes("mcachristmas") || document.URL.includes("highschool") || document.URL.includes("middleschool") || document.URL.includes("wiffdle") || document.URL.includes("nebula") || document.URL.includes("christmas")){
+        document.getElementById("addedcontext").innerHTML = "You just missed it- this page or a related one was live but has been archived. If you would like more information and possibly the contents of said webpage, please contact us at " + document.getElementById("addedcontext").innerHTML + ". Thank you for your patience.";
+        document.getElementById("addedcontextlink").innerHTML = "contact@michaeldors.com";
+        document.getElementById("randomarea").remove();
+    }
+
+    texttoreplace = document.getElementById("randomarea");
+    const options = [
+        "have you checked under the virtual couch cushions?",
+        "have you checked your left pocket?",
+        "have you looked on top of your nightstand?",
+        "have you checked at a different URL?",
+        "have you retraced its steps?",
+        "have you searched far and wide for it?",
+        "have you tried turning it off and on again?",
+        "did you bring your glasses? It may be hiding.",
+        "are you sure you're not in a parallel internet universe?",
+        "try asking your router if it knows where the page went...",
+        "have you considered bribing it with cookies?",
+        "maybe it's on a coffee break. Try again after a cup.",
+        "have you asked your grandma for tech support?",
+        "did you scare it away?",
+        "JOHN DID YOU REALLY MAKE OUR SERVERS CRASH AGAIN?!?!",
+        "the internet overlords really must not like us.",
+        "maybe it's on vacation. Send a postcard, and it might come back.",
+        "have you tried negotiating with the internet gnomes?",
+        "maybe it's at a virtual costume party. Dress up as a browser and try again.",
+        "did you consult the ancient scrolls of HTML for guidance?",
+        "did you check the spam folder??",
+        "did you consult the IT leprechaun at the end of the cyber rainbow?",
+        "did someone tell it a bedtime story and put it to sleep?",
+        "have you checked if it's stuck in a digital traffic jam?",
+        "maybe it's attending a support group for lost web pages. They meet on Wednesdays.",
+        "have you considered offering it virtual therapy sessions? Websites have feelings too.",
+        "maybe it's on strike. Negotiate better browsing conditions.",
+        "did you give it a cat video break?",
+        "have you looked in the dark corners of the internet? Bring a flashlight- it's scary out there.",
+        "snacks may lure it back...",
+        "maybe it's in witness protection...",
+        "did you try to bring it back? Abracadabra might do the trick.",
+        "have you considered offering it a virtual map? It might be lost.",
+        "did you try convincing it with a persuasive PowerPoint presentation?",
+        "maybe it's on a quest for the Holy Grail of web pages. It's a tough journey.",
+        "it knew too much...",
+        "that's probably no bueno.",
+        "who let the elves in the data center!?",
+        "oopsie...",
+        "it probably went to pursue a new career field.",
+        "well this is awkward...",
+        "it got too powerful.",
+        "maybe we can ressurect it if we try hard enough.",
+        "it's off to learn how to play the violin.",
+        "stay calm everyone it'll be ok- I hope.",
+        "email us to try to get things sorted out.",
+        "time for customer service to apologize for a thing they didn't do!!",
+        "oh no.",
+        "whoopsie.",
+        "that's not great.",
+        "that's not good.",
+        "why not let us know so we can try to bring it back?",
+        "time to pretend we're detectives solving the case of the missing webpage- complete with a magnifying glass.",
+        "why not invent a wild conspiracy theory about why the page disappeared and document it in a makeshift detective journal?",
+        "you should start a support group for those who have experienced lost webpages and encourage them to share their 404 encounters.",
+        "take a joke break- laughter is the best medicine for internet hiccups.",
+        "looks like this page pulled a disappearing act.",
+        "it's off honing its invisibility skills.",
+        "this page is playing hide and seek. You're still searching, but it may be a master of disguise.",
+        "this page is MIA - Missing in the Internet Abyss. We recommend sending it a card to let it know you care.",
+        "this page hasn't been returning our calls...",
+        "the page has taken up a new career in professional hide-and-seek. It's undefeated so far. Can you find it?",
+        "it's at a costume party, dressed as a '404, not found' sign.",
+        "maybe it's posting on Facebook about how much it hates Mondays...",
+        "let us know and we'll get right on it.",
+        "I mean seriously, did you expect it to be that easy?",
+        "just like your da-",
+        "it's probably texting its friends to come over tonight... they're having a LAN party.",
+        "kinda spooky if you ask me.",
+        "time to resort to bribery",
+        "hmmmmmmmm",
+        "how did that happen?!",
+        "new conspiracy theory just dropped: it was kidnapped by the government.",
+        "do you really blame it for running away?",
+        "it probably ran away- it was insecure just because there was no S after the HTTP...",
+        "I guess it just doesn't like you."        
+    ]
+    const random = Math.floor(Math.random() * options.length);
+    texttoreplace.innerHTML = options[random];
+</script>
