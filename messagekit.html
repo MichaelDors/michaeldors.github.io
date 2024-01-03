@@ -141,11 +141,11 @@
             const litecodes = ["JYF5A80VQ08N"];
 
 
-            if(codes.includes(document.getElementById("codepicker").value)){
+            if(codes.includes(document.getElementById("codepicker").value.toUpperCase())){
                 document.getElementById("success").style.display = "flex";
                 document.getElementById("codearea").style.display = "none";            
             }
-            else if(litecodes.includes(document.getElementById("codepicker").value)){
+            else if(litecodes.includes(document.getElementById("codepicker").value.toUpperCase())){
                 document.getElementById("litesuccess").style.display = "flex";
                 document.getElementById("codearea").style.display = "none";          
             }
