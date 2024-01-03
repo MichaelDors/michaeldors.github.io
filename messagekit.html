@@ -47,10 +47,43 @@
             text-align: center;
         }
 
+        input{
+            height:50px;
+            width:60%;
+            display: flex;
+            border: double 3px transparent;
+            border-radius: 20px;
+            background-image: linear-gradient(black, black), linear-gradient(to bottom right, #FFB25F, #F49F43, #FF8500);
+            background-origin: border-box;
+             background-clip: content-box, border-box;
+             color:white;
+             text-emphasis-color: white;
+             font-size:30px;
+             text-align: center;
+        }
+
         h2{
             margin: 0;
             color: white;
             padding:40px;
+        }
+        p{
+            margin: 0;
+            color: white;
+            margin-top:-30px;
+        }
+        .a{
+            background:linear-gradient(to bottom right, #FFB25F, #F49F43, #FF8500);
+            height:75px;
+            line-height: 75px;
+            padding:10px;
+            padding-left:100px;
+            padding-right:100px;
+            color:white;
+            border:5px solid #D47223;
+            border-radius: 20px;
+            font-size: 20px;
+            cursor:pointer;
         }
     </style>
 </head>
@@ -62,19 +95,67 @@
         <h1 class="logotext">MessageKit</h1>
     </header>
     <center>
+        <div>
+        <div class="centered-div" id="failed" style="display: none;">
+            <h2>That code didn't seem to work, refresh the page and try again.</h2>
+        </div>
+        </div>
+        <div id="success" class="centered-div" style="display: none;">
+            <div>
+                <h2>You've unlocked MessageKit Mark I.</h2>
+                <div style="display:block">
+                    <br>
+                    <a class="a" href="">Download</a>
+                </div>
+            </div>
+        </div>
+        <div id="litesuccess" class="centered-div" style="display: none;">
+            <div>
+                <h2>You've unlocked MessageKit Mark I Lite.</h2>
+                <div style="display:block">
+                    <br>
+                    <a class="a" href="">Download</a>
+                </div>
+            </div>
+        </div>
+        <br>
+        <br>
+        <br>
+        <div id="codearea">
+            <h2>Redeem a code</h2>
+            <p style="color:white;">You can currently only access MessageKit with a unique redeem code.</p>
+            <br>
+            <input id="codepicker" type="text" style="text-transform:uppercase">
+            <a class="a" onclick="submit()">Submit</a>
+        </div>
+
         <div style="display: none;">
-        <div class="centered-div">
-            <h2>The best place for helpful message utilities and fun tools.</h2>
-        </div>
-        </div>
-        <br>
-        <br>
-        <br>
-        <br>
         <h2>This page is under construction. If you came here for a download link, ask Michael.</h2>
         <h2>Thank you, Team MessageKit<img src="icon.svg" alt="Logo" width="6px"></h2>
+        </div>
     </center>
     <script>
+        function submit()
+        {
+            const codes = ["12TRKF7GD8DF", "AMO9ZEOX900E", "S6ZJ0R3N17IT", "KQ18E9238T35", "28A9K98F8Y5R", "L5G593VG8XX8"];
+            const litecodes = ["JYF5A80VQ08N"];
+
+
+            if(codes.includes(document.getElementById("codepicker").value)){
+                document.getElementById("success").style.display = "flex";
+                document.getElementById("codearea").style.display = "none";            
+            }
+            else if(litecodes.includes(document.getElementById("codepicker").value)){
+                document.getElementById("litesuccess").style.display = "flex";
+                document.getElementById("codearea").style.display = "none";          
+            }
+            else{
+                document.getElementById("failed").style.display = "";
+                document.getElementById("codearea").style.display = "none";
+            }
+
+        }
+        
     </script>
 </body>
 </html>
