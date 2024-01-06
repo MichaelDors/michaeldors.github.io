@@ -93,7 +93,8 @@
         <h1 class="logotext">MessageKit</h1>
     </header>
     <center>
-        <img id="updatebannerimg" onclick="downloadnew()" class="banner" src="messagekitnewestbanner.png" style="width:90%; border-radius: 20px; margin-top:30px;">
+        <img id="updatebannerimg" class="banner" src="messagekitnewestbanner.png" style="width:90%; border-radius: 20px; margin-top:30px;">
+        <a class="a" onclick="downloadnew()" href="https://www.icloud.com/shortcuts/f97b0389652c48dbb540d1fb48501175">Update</a>
 
         <h2 style="padding-bottom:0px">Enjoying MessageKit?</h2>
         <a class="a" href="https://www.reddit.com/r/shortcuts/comments/18zi7t4/messagekit_stuff_you_wish_was_built_into_imessage/">Upvote on r/Shortcuts</a>
@@ -159,10 +160,6 @@
         }
 
         function downloadnew(){
-            var link = document.createElement("a")
-            link.href = "https://www.icloud.com/shortcuts/f97b0389652c48dbb540d1fb48501175"
-            link.target = "_blank"
-            link.click()
             document.getElementById("updatebannerimg").src="messagekitclickdone.png";
         }
         
