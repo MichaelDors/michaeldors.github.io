@@ -83,6 +83,12 @@
             font-size: 20px;
             cursor:pointer;
         }
+
+        @media only screen and (max-width: 768px) {
+            .banner{
+                width:90%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -93,9 +99,13 @@
         <h1 class="logotext">MessageKit</h1>
     </header>
     <center>
+        <a href="https://www.icloud.com/shortcuts/f97b0389652c48dbb540d1fb48501175"><img class="banner" src="messagekitnewestbanner.png" style="width:500px; border-radius: 20px; margin-top:30px;"></a>
+
+        <h2 style="padding-bottom:0px">Enjoying MessageKit?</h2>
+        <a class="a" href="https://www.reddit.com/r/shortcuts/comments/18zi7t4/messagekit_stuff_you_wish_was_built_into_imessage/">Upvote on r/Shortcuts</a>
         <div>
         <div class="centered-div" id="failed" style="display: none;">
-            <h2>That code is invalid or has already been used. Please reload to retry.</h2>
+            <h2>That code didn't seem to work, refresh the page and try again.</h2>
         </div>
         </div>
         <div id="success" class="centered-div" style="display: none;">
@@ -103,7 +113,7 @@
                 <h2>You've unlocked MessageKit Mark I.</h2>
                 <div style="display:block">
                     <br>
-                    <a class="a" href="https://www.icloud.com/shortcuts/dcfa8cba68eb4775b5153638a25b3696">Download</a>
+                    <a class="a" href="">Download</a>
                 </div>
             </div>
         </div>
@@ -112,14 +122,14 @@
                 <h2>You've unlocked MessageKit Mark I Lite.</h2>
                 <div style="display:block">
                     <br>
-                    <a class="a" href="https://www.icloud.com/shortcuts/a50eef95b0264168aa2a9cbd3778d77c">Download</a>
+                    <a class="a" href="">Download</a>
                 </div>
             </div>
         </div>
         <br>
         <br>
         <br>
-        <div id="codearea">
+        <div id="codearea" style="display: none;">
             <h2>Redeem a code</h2>
             <p style="color:white;">You can currently only access MessageKit with a unique redeem code.</p>
             <br>
@@ -135,11 +145,9 @@
         </div>
     </center>
     <script>
-        function submit()
-        {
-            const codes = ["AMO9ZEOX900E", "S6ZJ0R3N17IT", "KQ18E9238T35", "28A9K98F8Y5R", "L5G593VG8XX8"];
+        function submit(){
+            const codes = [];
             const litecodes = [];
-
 
             if(codes.includes(document.getElementById("codepicker").value.toUpperCase())){
                 document.getElementById("success").style.display = "flex";
