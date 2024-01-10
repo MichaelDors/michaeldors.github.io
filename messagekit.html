@@ -146,6 +146,15 @@
         </div>
     </center>
     <script>
+        var divWidth = document.body.clientWidth;
+        var text = $("#text");
+        var fontSize = 12;
+
+        while (text.width() > divWidth)
+          text.css("font-size", fontSize -= 0.5);
+
+        text.css("display", "inline");
+        
         function submit(){
             const codes = [];
             const litecodes = [];
