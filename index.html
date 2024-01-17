@@ -1,41 +1,108 @@
-<html>
-    <head>
-        <title>Be Right Back</title>
-    </head>
-<body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Michael Dors</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Libre+Barcode+39&display=swap"
+          rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="Images/fav.ico">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+</head>
+<body id="body">
+    <nav>
+        <a href=""><img src="logo.svg" /></a>
+    </nav>
+    <section>
+        <div class="top" style="background-color: #F6EEE3">
+            <div style="height: 100px; padding-top:100px;"><p style=" color:#F6EEE3">hi</p></div>
+            <h1 style="color:red;" data-aos="fade-up" id="home">Hi, I'm<br /><span style="color:#000000; padding-top:70px; padding-bottom:70px; font-weight:900; font-size:30px;">Michael Dors</span></h1>
+            <p data-aos="fade-up" class="barcode">MICHAELDORS.COM</p>
 
-    <video id="player" autoplay muted loop playsinline>
-        <source src="down.mp4" type="video/mp4">
-    </video>
+            <div class="marquee">
+                <p data-aos="fade-up">Websites | Designs | Video Editing | 3D Animations</p>
+            </div>
+            <img class="talents" style="width:300px; border-radius:50%; filter:blur(5px);" src="talents.png" />
+            <br>
+            <br>
 
+            <br>
+            <div>
+                <svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                     viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
+                    <defs>
+                        <path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+                    </defs>
+                    <g class="parallax">
+                        <use xlink:href="#gentle-wave" x="48" y="0" fill="#000000" />
+                        <use xlink:href="#gentle-wave" x="48" y="3" fill="#141414" />
+                        <use xlink:href="#gentle-wave" x="48" y="5" fill="#303030" />
+                        <use xlink:href="#gentle-wave" x="48" y="7" fill="#202020" />
+                    </g>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+
+    <div class="projects">
+        <section class="projectarea">
+            <img data-aos="fade-up" class="headerimgglow" src="headers/messagekit.png" />
+            <h1 data-aos="fade-up"><span>NEW</span>MessageKit</h1>
+            <h2 data-aos="fade-up" style="padding-left:115px;">Siri Shortcut</h2>
+            <img data-aos="fade-up" class="headerimg" src="headers/messagekit.png" />
+            <p data-aos="fade-up">
+                Tons of tools for iMessage (or anywhere you share stuff) including various spamming modes, scheduling messages, converting to GIF, changing the font of text, making QR codes, translating to other languages or binary, some ASCII art presets, sending the same message to multiple people but swapping the name based on the contact, text to speech, AI responses, slowly sending a chunk of text, and a bunch more.
+                <br />
+                <br />
+                <br />
+                You can pin people to a preset for quick access to your favorite contacts, choose from a contact picker, or skip to bring up a share sheet at the end.
+            </p>
+            <a class="glowbutton" target="_blank" rel="noopener noreferrer" href="http://mk.michaeldors.com">Get It Free</a>
+        </section>
+        <section class="projectarea">
+            <img data-aos="fade-up" class="headerimgglow" src="headers/countdown.png" />
+            <h1 data-aos="fade-up">Countdown</h1>
+            <h2 data-aos="fade-up">Website</h2>
+            <img data-aos="fade-up" class="headerimg" src="headers/countdown.png" />
+            <p data-aos="fade-up">
+                Tons of tools for iMessage (or anywhere you share stuff) including various spamming modes, scheduling messages, converting to GIF, changing the font of text, making QR codes, translating to other languages or binary, some ASCII art presets, sending the same message to multiple people but swapping the name based on the contact, text to speech, AI responses, slowly sending a chunk of text, and a bunch more.
+                <br />
+                <br />
+                <br />
+                You can pin people to a preset for quick access to your favorite contacts, choose from a contact picker, or skip to bring up a share sheet at the end.
+            </p>
+            <a class="glowbutton" target="_blank" rel="noopener noreferrer" href="http://countdown.michaeldors.com">Try It Out</a>
+        </section>
+        <section class="considering">
+            <h1>Let's make something cool together. <a style="color: #240200;" target="_blank" rel="noopener noreferrer" href="mailto:contact@michaeldors.com">Get In Touch<i style="margin-left:10px;" class="fa-solid fa-chevron-right"></i></a></h1>
+        </section>
+        <section class="projectarea">
+            <p>this portfolio is a work in progress. expect updates to come.</p>
+        </section>
+    </div>
+    <section>
+        <div class="footer">
+            <p>created with <i class="fa-solid fa-heart"></i>, <i class="fa-solid fa-code"></i>, and <i class="fa-solid fa-photo-film"></i> by michaeldors</p>
+            <br />
+            <div id="playcontain">
+                <video id="player" autoplay muted loop playsinline>
+                    <source src="images/glowing.mp4" type="video/mp4">
+                </video>
+            </div>
+            <i class="fa-solid fa-cross"></i>
+        </div>
+    </section>
+
+    <script src="script.js"></script>
 </body>
-
 </html>
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 
-<style>
-    #player {
-        border-radius: 200px;
-        width: 90vw;
-        overflow: hidden;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%,-50%);
-    }
-
-    body {
-        background-color: #020202;
-        overflow: hidden;
-    }
-
-    .container {
-        height: 100vh;
-        width: 100vw;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-</style>
 <script>
-    document.getElementByID("player").play();
+    AOS.init();
 </script>
