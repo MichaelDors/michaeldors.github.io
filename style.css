@@ -1,314 +1,363 @@
+body {
+    font-family: 'IBM Plex Mono', sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    background-color:#202020;
+    overflow-x:hidden;
+}
+
 * {
-  margin: 0;
-  padding: 0;
-  font-family: Poppins;
-  box-sizing: border-box;
+    padding: 0px;
+    margin: 0px;
 }
 
-@font-face {
-  font-family: GulfsDisplay;
-  src: url('./Fonts/GulfsDisplay.ttf');
+html {
+    scroll-snap-type: y proximity;
 }
 
-@font-face {
-  font-family: Poppins;
-  src: url('./Fonts/Poppins-Regular.ttf');
+
+
+section {
+    scroll-snap-align: start;
+    background: #202020;
+    width: 100%;
+    color: white;
 }
 
-a {
-  font-family: Poppins;
+.projectarea h1{
+    padding-left:30px;
+    padding-top:120px;
 }
 
+.headerimg{
+    height:250px;
+    border-radius:20px;
+    margin:30px;
+}
+
+.headerimgglow {
+    position:relative;
+    filter:blur(100px);
+    overflow-x:hidden;
+    width:50%;
+    float:right;
+    left:200px;
+    z-index:50;
+}
+
+.projectarea h2 {
+    border-radius: 20px;
+    margin-right: 20px;
+    padding-top: 05px;
+    padding-left: 30px;
+    color: white;
+    font-size: 15px;
+    font-weight: 100;
+}
+.projectarea p {
+    padding-left: 30px;
+    padding-bottom: 30px;
+    padding-right: 70px;
+}
+
+.projectarea h1 span {
+    border-radius: 20px;
+    margin-right: 20px;
+    background-color: #ff2d2d;
+    padding-top: 05px;
+    padding-bottom: 05px;
+    padding-left: 10px;
+    padding-right: 10px;
+    color: #202020;
+}
 
 nav {
-  display: flex;
-  align-items: center;
-  position: sticky;
-}
-
-.nav-links{
-  padding-top: 20px;
-  text-align:right;
-  cursor: pointer;
-  color:black;
-  padding-bottom: 20px;
-}
-.nav-links ul li{
-  list-style:none;
-  display:inline-block;
-  position:relative;
-}
-.nav-links ul li a{
-  color: #000000;
-  text-decoration:none;
-  font-size:20px;
-}
-
-::-moz-selection { /* Code for Firefox */
-  color: #F6EEE3;
-  background: #FF0000;
-}
-
-::selection {
-  color: #F6EEE3;
-  background: #FF0000;
-}
-
-a{
-  color: #000000;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  padding-left: 40px;
-  padding-right: 40px;
-  text-decoration: underline;
-}
-
-button{
-  margin-left:50px;
-  color:white;
-  background-color:red;
-  border:none;
-  height:50px;
-  padding-left:20px;
-  padding-right:20px;
-  font-family: 'IBM Plex Mono', monospace;
-  margin-bottom:50px;
-  transition: all 1s;
-  border-radius:5px;
-}
-button:hover{
-  margin-left:50px;
-  color:white;
-  background-color:#a30000;
-  border:none;
-  height:50px;
-  padding-left:20px;
-  padding-right:20px;
-  font-family: 'IBM Plex Mono', monospace;
-  cursor:pointer;
-}
-html, body {
-  height: 100%;
-  width: 100%;
-  background-color: #F6EEE3;
-  color:#FF0000;
-}
-h1{
-  margin-left:50px;
-  font-family: 'IBM Plex Mono', monospace;
-}
-p{
-    margin-left:50px;
-
-    font-family: 'IBM Plex Mono', monospace;
-color:black;
-}
-.barcode{
-    margin-left:50px;
-  font-family: 'Libre Barcode 39', cursive;
-  font-size:50px;
-  padding-bottom: 159px;
-}
-.talents{
-  position: absolute;
-  top:150px;
-    margin-left:240px;
-width: 100%-150px;
-filter:blur(10px);
-z-index: 10;
-  animation:blurinout 10s infinite;
-}
-
-@keyframes blurinout{
-  0%{
-    filter:blur(10px);
-  }
-  50%{
-    filter:blur(5px);
-  }
-  100%{
-    filter:blur(10px);
-  }
-}
-
-
-.marquee {
-                height: 100px;
-                overflow: hidden;
-                position: relative;
-                color: #ff0000;
-  background:#000000;
-  margin:0px;
-  padding:0px;
-  width: 100%;
-            }
-            
-            .marquee p {
-              color:#ffffff;
-                position: absolute;
-                width: 100%;
-                height: 100%;
-                margin: 0;
-                line-height: 100px;
-                text-align: center;
-                -moz-transform: translateX(100%);
-                -webkit-transform: translateX(100%);
-                transform: translateX(100%);
-                -moz-animation: scroll-left 2s linear infinite;
-                -webkit-animation: scroll-left 2s linear infinite;
-                animation: scroll-left 8s linear infinite;
-            }
-            
-            @-moz-keyframes scroll-left {
-                0% {
-                    -moz-transform: translateX(-100%);
-                }
-                100% {
-                    -moz-transform: translateX(100%);
-                }
-            }
-            
-            @-webkit-keyframes scroll-left {
-                0% {
-                    -webkit-transform: translateX(-100%);
-                }
-                100% {
-                    -webkit-transform: translateX(100%);
-                }
-            }
-            
-            @keyframes scroll-left {
-                0% {
-                    -moz-transform: translateX(-100%);
-                    -webkit-transform: translateX(-100%);
-                    transform: translateX(-100%);
-                }
-                100% {
-                    -moz-transform: translateX(100%);
-                    -webkit-transform: translateX(100%);
-                    transform: translateX(100%);
-                }
-            
-
-              }
-
-              .waves {
-                position: relative;
-                width: 100%;
-                height: 15vh;
-                margin-bottom: -7px; /*Fix for safari gap*/
-                min-height: 100px;
-                max-height: 150px;
-            }
-            
-            .content {
-                position: relative;
-                height: 20vh;
-                text-align: center;
-                background-color: white;
-            }
-            
-            /* Animation */
-            
-            .parallax > use {
-                animation: move-forever 25s cubic-bezier(.55,.5,.45,.5) infinite;
-            }
-            
-                .parallax > use:nth-child(1) {
-                    animation-delay: -2s;
-                    animation-duration: 7s;
-                }
-            
-                .parallax > use:nth-child(2) {
-                    animation-delay: -3s;
-                    animation-duration: 10s;
-                }
-            
-                .parallax > use:nth-child(3) {
-                    animation-delay: -4s;
-                    animation-duration: 13s;
-                }
-            
-                .parallax > use:nth-child(4) {
-                    animation-delay: -5s;
-                    animation-duration: 20s;
-                }
-            
-            @keyframes move-forever {
-                0% {
-                    transform: translate3d(-90px,0,0);
-                }
-            
-                100% {
-                    transform: translate3d(85px,0,0);
-                }
-            }
-            /*Shrinking for mobile*/
-            @media (max-width: 768px) {
-                .waves {
-                    height: 40px;
-                    min-height: 40px;
-                }
-            
-                .content {
-                    height: 30vh;
-                }
-            
-                h1 {
-                    font-size: 24px;
-                }
-            
-            }
-            
-  #portfolio{
-    min-width: 90%;
-    min-height: 720px;
-    border-radius: 10px;
-  }
-  .center {
-    margin: auto;
-    width: 50%;
-  }
-
-  .sticky {
+    z-index:100;
+    display:flex;
     position: fixed;
     top: 0;
-    width: 100%
-  }
+    width: 100%;
+    height:100px;
+    /* From https://css.glass */
+    background: rgba(0, 0, 0, 0.65);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(7.6px);
+    -webkit-backdrop-filter: blur(7.6px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.34);
+}
 
-  .header {
-background: rgba(246, 238, 227, 0.778);
-border-radius: 16px;
-box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-backdrop-filter: blur(4.1px);
--webkit-backdrop-filter: blur(4.1px);
-border: 1px solid rgba(246, 238, 227, 0.3);
-position: fixed;
-z-index: 100;
-right:10px;
-top:10px;
-  }
+@media (min-width:320px) and (max-width:1024px) { /* smartphones, iPhone, portrait 480x320 phones */
+    nav{
+        justify-content:center;
+    }
+    nav img{
+        margin-top:07px;
+    }
+}
 
-@media screen and (orientation:portrait) {
-  .talents{
-  position: absolute;
-  top:150px;
-    margin-left:240px;
-width: 0px;
-display: none;
-filter:blur(10px);
-z-index: 10;
-  animation:blurinout 10s infinite;
+
+@media (min-width:1025px) { /* big landscape tablets, laptops, and desktops */
+    nav img {
+        margin: 10px;
+    }
 }
+
+
+nav img{
+    width:1.5in;
 }
-@media screen and (orientation:landscape) {
-  .talents{
-  position: absolute;
-  top:150px;
-    margin-left:240px;
-width: 100%-150px;
-filter:blur(10px);
-z-index: 10;
-  animation:blurinout 10s infinite;
+
+.glowbutton {
+    text-decoration: none;
+    display: block;
+    width: 25%;
+    height: 25px;
+    background: #FF2121;
+    padding: 15px 30px 15px 30px;
+    text-align: center;
+    border-radius: 14px;
+    color: white;
+    line-height: 25px;
+    margin-left: 30px;
+    margin-right: 40px;
+    box-shadow: 0 0 10px 5px rgba(120, 15, 15, 0.703);
+
+    transform: scale(1);
+    transition: 0.5s all;
+    margin-bottom:100px;
 }
+
+    .glowbutton:hover {
+        background: #ff3131;
+        box-shadow: 0 0 10px 5px rgba(197, 28, 28, 0.203);
+        transform: scale(1.1);
+    }
+
+@media (max-width:1000px) {
+    .glowbutton {
+        text-decoration: none;
+        display: block;
+        width: 80%;
+        height: 25px;
+        background: #FF2121;
+        padding: 15px 0px 15px 0px;
+        text-align: center;
+        border-radius: 14px;
+        color: white;
+        line-height: 25px;
+        margin-left: 10%;
+        margin-right: 10%;
+        box-shadow: 0 0 10px 5px rgba(120, 15, 15, 0.703);
+
+    }
+}
+
+.top .barcode {
+    margin-left: 50px;
+    font-family: 'Libre Barcode 39', cursive;
+    font-size: 50px;
+    padding-bottom: 159px;
+}
+
+.top h1 {
+    margin-left: 50px;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.top p {
+    margin-left: 50px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: black;
+}
+
+.talents {
+    position: absolute;
+    top: 150px;
+    margin-left: 300px;
+    width: 100%-150px;
+    filter: blur(10px);
+    z-index: 10;
+    animation: blurinout 10s infinite;
+    overflow-x:hidden;
+}
+
+@keyframes blurinout {
+    0% {
+        filter: blur(10px);
+    }
+
+    50% {
+        filter: blur(5px);
+    }
+
+    100% {
+        filter: blur(10px);
+    }
+}
+
+.marquee {
+    height: 100px;
+    overflow: hidden;
+    position: relative;
+    color: #ff0000;
+    background: #000000;
+    margin: 0px;
+    padding: 0px;
+    width: 100%;
+    overflow-x:hidden;
+}
+
+    .marquee p {
+        color: #ffffff;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        line-height: 100px;
+        text-align: center;
+        -moz-transform: translateX(100%);
+        -webkit-transform: translateX(100%);
+        transform: translateX(100%);
+        -moz-animation: scroll-left 2s linear infinite;
+        -webkit-animation: scroll-left 2s linear infinite;
+        animation: scroll-left 8s linear infinite;
+    }
+
+@-moz-keyframes scroll-left {
+    0% {
+        -moz-transform: translateX(-100%);
+    }
+
+    100% {
+        -moz-transform: translateX(100%);
+    }
+}
+
+@-webkit-keyframes scroll-left {
+    0% {
+        -webkit-transform: translateX(-100%);
+    }
+
+    100% {
+        -webkit-transform: translateX(100%);
+    }
+}
+
+@keyframes scroll-left {
+    0% {
+        -moz-transform: translateX(-100%);
+        -webkit-transform: translateX(-100%);
+        transform: translateX(-100%);
+    }
+
+    100% {
+        -moz-transform: translateX(100%);
+        -webkit-transform: translateX(100%);
+        transform: translateX(100%);
+    }
+}
+
+.waves {
+    position: relative;
+    width: 100%;
+    height: 15vh;
+    margin-bottom: -7px; /*Fix for safari gap*/
+    min-height: 100px;
+    max-height: 150px;
+}
+
+.content {
+    position: relative;
+    height: 20vh;
+    text-align: center;
+    background-color: white;
+}
+
+.top{
+    overflow-y:hidden
+}
+
+/* Animation */
+
+.parallax > use {
+    animation: move-forever 25s cubic-bezier(.55,.5,.45,.5) infinite;
+}
+
+    .parallax > use:nth-child(1) {
+        animation-delay: -2s;
+        animation-duration: 7s;
+    }
+
+    .parallax > use:nth-child(2) {
+        animation-delay: -3s;
+        animation-duration: 10s;
+    }
+
+    .parallax > use:nth-child(3) {
+        animation-delay: -4s;
+        animation-duration: 13s;
+    }
+
+    .parallax > use:nth-child(4) {
+        animation-delay: -5s;
+        animation-duration: 20s;
+    }
+
+@keyframes move-forever {
+    0% {
+        transform: translate3d(-90px,0,0);
+    }
+
+    100% {
+        transform: translate3d(85px,0,0);
+    }
+}
+/*Shrinking for mobile*/
+@media (max-width: 768px) {
+    .waves {
+        height: 40px;
+        min-height: 40px;
+    }
+
+    .content {
+        height: 30vh;
+    }
+
+    h1 {
+        font-size: 24px;
+    }
+}
+
+.footer {
+    height: 100vh;
+    background-color: #030303;
+    display: flex;
+    justify-content: center;
+    align-content:center;
+    flex-wrap:wrap;
+}
+
+#player{
+    border-radius:1000px;
+    height:3in;
+}
+
+#playcontain{
+    width:100%;
+    margin-left:calc(50% - 1.5in);
+    margin-top:1in;
+    margin-bottom:1in;
+}
+
+.considering {
+    height: 75vh;
+    background-color: #FF2121;
+    scroll-snap-align: center;
+    display:flex;
+    justify-content:center;
+}
+
+.considering h1{
+    padding-top:32vh;
 }
