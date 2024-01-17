@@ -1335,7 +1335,7 @@ form label.selected {
             icon.src = 'icon.ico';
         }
         else {
-            document.querySelector(".datepicker").value = '2023-10-31T00:00';
+            document.querySelector(".datepicker").value = getDate() + 1;
             var countDownDate = new Date(document.querySelector(".datepicker").value);
 
 
