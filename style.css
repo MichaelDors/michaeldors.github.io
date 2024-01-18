@@ -329,7 +329,7 @@ nav img{
 }
 
 .footer {
-    height: 100vh;
+    height: calc(100vh - 100px);
     background-color: #030303;
     display: flex;
     justify-content: center;
