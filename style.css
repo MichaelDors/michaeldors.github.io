@@ -30,10 +30,13 @@ section {
     padding-top:120px;
 }
 
-.headerimg{
-    height:250px;
-    border-radius:20px;
-    margin:30px;
+.headerimg {
+    height: 250px;
+    border-radius: 20px;
+    margin: 10px;
+    margin-left:30px;
+    object-fit: cover;
+    transition:1s all;
 }
 
 .headerimgglow {
@@ -95,9 +98,7 @@ nav {
         margin-top:07px;
     }
 
-    headerimg{
-        width:80%;
-    }
+
 }
 
 
@@ -185,6 +186,32 @@ nav img{
     animation: blurinout 10s infinite;
     overflow-x:hidden;
 }
+
+@media screen and (orientation:portrait) {
+    .talents {
+        position: absolute;
+        top: 150px;
+        margin-left: 240px;
+        width: 0px;
+        display: none;
+        filter: blur(10px);
+        z-index: 10;
+        animation: blurinout 10s infinite;
+    }
+}
+
+@media screen and (orientation:landscape) {
+    .talents {
+        position: absolute;
+        top: 150px;
+        margin-left: 240px;
+        width: 100%-150px;
+        filter: blur(10px);
+        z-index: 10;
+        animation: blurinout 10s infinite;
+    }
+}
+
 
 @keyframes blurinout {
     0% {
@@ -330,6 +357,11 @@ nav img{
 
     h1 {
         font-size: 24px;
+    }
+
+    .headerimg {
+        width:80%;
+        object-fit:cover;
     }
 }
 
