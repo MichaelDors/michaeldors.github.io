@@ -173,6 +173,15 @@ nav img{
     p{
         margin-left:4%;
     }
+
+    .headerimgglow {
+        position: relative;
+        filter: blur(100px);
+        overflow-x: hidden;
+        width: 50%;
+        left: 0px;
+        z-index: 50;
+    }
 }
 
 .top .barcode {
