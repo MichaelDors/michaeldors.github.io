@@ -156,6 +156,23 @@ nav img{
         box-shadow: 0 0 10px 5px rgba(120, 15, 15, 0.703);
 
     }
+
+    .headerimg {
+        width: 80%;
+        margin-left: 10%;
+        margin-right: 10%;
+        object-fit: cover;
+    }
+
+    h1{
+        margin-left:4%;
+    }
+    h2{
+        margin-left:4%;
+    }
+    p{
+        margin-left:4%;
+    }
 }
 
 .top .barcode {
@@ -357,11 +374,6 @@ nav img{
 
     h1 {
         font-size: 24px;
-    }
-
-    .headerimg {
-        width:80%;
-        object-fit:cover;
     }
 }
 
