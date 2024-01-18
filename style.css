@@ -31,7 +31,7 @@ section {
 }
 
 .headerimg{
-    width:80%;
+    height:250px;
     border-radius:20px;
     margin:30px;
 }
@@ -93,6 +93,10 @@ nav {
     }
     nav img{
         margin-top:07px;
+    }
+
+    headerimg{
+        width:80%;
     }
 }
 
@@ -205,6 +209,7 @@ nav img{
     margin: 0px;
     padding: 0px;
     width: 100%;
+    overflow-x:hidden;
 }
 
     .marquee p {
@@ -329,7 +334,7 @@ nav img{
 }
 
 .footer {
-    height: calc(100vh - 100px);
+    height: 100vh;
     background-color: #030303;
     display: flex;
     justify-content: center;
@@ -350,7 +355,7 @@ nav img{
 }
 
 .considering {
-    height: 75vh;
+    height: 100vh;
     background-color: #FF2121;
     scroll-snap-align: center;
     display:flex;
@@ -358,5 +363,5 @@ nav img{
 }
 
 .considering h1{
-    padding-top:32vh;
+    padding-top:45vh;
 }
