@@ -11,13 +11,10 @@ body {
 * {
     padding: 0px;
     margin: 0px;
-    overflow-x:hidden;
 }
 
 html {
     scroll-snap-type: y mandatory;
-    overflow-x:hidden;
-    width:100%;
 }
 
 
