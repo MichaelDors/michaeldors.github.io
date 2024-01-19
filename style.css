@@ -23,6 +23,7 @@ section {
     background: #202020;
     width: 100%;
     color: white;
+    overflow-x:hidden;
 }
 
 .projectarea h1{
