@@ -1286,7 +1286,6 @@
 
 <script>
     document.body.scrollTop = document.documentElement.scrollTop = 0;
-    document.getElementById("ad_container").classList.remove("hidden");
 
     if (parameter('colorone')) {
         if (parameter('colorone') == "null") {
@@ -1549,7 +1548,6 @@
                 document.getElementById("unfocused").classList.remove("hidden");
             }
             document.getElementById("preloader").classList.add("hidden");
-            document.getElementById("ad_container").classList.add("hidden");
             document.getElementById("gear").classList.add("hidden");
             document.getElementById("settings").classList.add("hidden");
         }
@@ -1569,7 +1567,6 @@
             document.getElementById("gear").classList.add("hidden");
             document.getElementById("innergear").classList.add("hidden");
             document.getElementById("preloader").classList.add("hidden");
-            document.getElementById("ad_container").classList.add("hidden");
             document.getElementById("unfocused").classList.add("hidden");
             document.getElementById("body").style.overflowY = '';
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -1582,7 +1579,6 @@
             document.getElementById("preloader").classList.add("hidden");
             document.getElementById("unfocused").classList.add("hidden");
             document.getElementById("body").style.overflowY = 'hidden';
-            document.getElementById("ad_container").classList.remove("hidden");
 
             document.body.scrollTop = document.documentElement.scrollTop = 0;
         }
