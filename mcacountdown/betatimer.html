@@ -1272,6 +1272,16 @@
 <script>
     document.body.scrollTop = document.documentElement.scrollTop = 0;
 
+    if(getCookie("speed1")){
+        document.getElementById("speed1").click();
+    }
+    else if (getCookie("speed2")){
+        document.getElementById("speed2").click();
+    }
+    else if (getCookie("speed3")){
+        document.getElementById("speed3").click();
+    }
+
     if (parameter('colorone')) {
         if (parameter('colorone') == "null") {
             console.log("Colors(1) could not be imported properly.");
@@ -1468,7 +1478,30 @@
             });
 
             if (event.target == document.getElementById("speed1")) {
-                if (getCookie("atc")) {
+                eraseCookie('speed2');
+                eraseCookie('speed3');
+                setCookie('speed1', 'true', '70');
+                speed1();
+            }
+            if (event.target == document.getElementById("speed2")) {
+                eraseCookie('speed1');
+                eraseCookie('speed3');
+                setCookie('speed2', 'true', '70');
+                speed2();
+            }
+            if (event.target == document.getElementById("speed3")) {
+                eraseCookie('speed2');
+                eraseCookie('speed1');
+                setCookie('speed3', 'true', '70');
+                speed3();
+            }
+        }
+
+    });
+
+
+    function speed1(){
+        if (getCookie("atc")) {
                     document.getElementById("clock").classList.add("staticclock");
                     document.getElementById("bg1").classList.add("bg-color");
                     document.getElementById("bg1").classList.remove("bg-color-slow");
@@ -1482,9 +1515,9 @@
                     document.getElementById("clock").classList.remove("clockfast");
                     document.getElementById("clock").classList.add("clock");
                 }
-            }
-            if (event.target == document.getElementById("speed2")) {
-                if (getCookie("atc")) {
+    }
+    function speed2(){
+        if (getCookie("atc")) {
                     document.getElementById("clock").classList.add("staticclock");
                     document.getElementById("bg1").classList.remove("bg-color");
                     document.getElementById("bg1").classList.add("bg-color-slow");
@@ -1498,9 +1531,9 @@
                     document.getElementById("clock").classList.remove("clockfast");
                     document.getElementById("clock").classList.remove("clock");
                 }
-            }
-            if (event.target == document.getElementById("speed3")) {
-                if (getCookie("atc")) {
+    }
+    function speed3(){
+        if (getCookie("atc")) {
                     document.getElementById("clock").classList.add("staticclock");
                     document.getElementById("bg1").classList.remove("bg-color");
                     document.getElementById("bg1").classList.remove("bg-color-slow");
@@ -1514,12 +1547,7 @@
                     document.getElementById("clock").classList.add("clockfast");
                     document.getElementById("clock").classList.remove("clock");
                 }
-            }
-        }
-
-    });
-
-
+    }
 
     updateoptions();
 
