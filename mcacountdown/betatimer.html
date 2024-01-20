@@ -7,10 +7,8 @@
     <link rel="icon" type="image/x-icon" href="icon.ico">
     <meta name="theme-color" content="#8426ff" />
     <title>Countdown</title>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8617127534193636"
-            crossorigin="anonymous"></script>
+
     <script src="Dependencies/confetti.js"></script>
-    <script src="Dependencies/blockadblock.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 
@@ -63,47 +61,13 @@
         </div>
     </center>
 
-    <center class="hidden" id="cookiepopup" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index: 10000;">
-        <div class="box">
-            <i style="font-size:50px; color:white; margin-right:20px;" class="fa-solid fa-shield"></i> <i style="font-size:50px; color:white" class="fa-solid fa-cookie-bite"></i> <i style="font-size:50px; color:white; margin-left:20px;" class="fa-solid fa-rectangle-ad"></i>
-            <h1 class="textelement">For your information...</h1>
-            <p style="margin-left: 100px; margin-right: 100px;" class="textelement">This site uses cookies to save your preferences and for advertisement purposes. To use Countdown, you must approve the use of cookies and our privacy policy. </p>
-            <br>
-            <br>
-            <a class="a2" onclick="acceptcookies()"><i class="fa-solid fa-circle-check"></i> Accept All</a>
-            <a class="a2 warning" onclick="rejectcookies()"><i class="fa-solid fa-circle-xmark"></i> Reject All</a>
 
-            <Br>
-            <br>
-            <br>
-            <br>
-            <a class="a2 outlinebutton" href="Information/cookiepolicy.html"><i class="fa-solid fa-cookie"></i> Cookie Policy</a>
-            <br>
-            <Br>
-            <br>
-            <br>
-            <a class="a2 outlinebutton" href="Information/privacypolicy.html"><i class="fa-solid fa-graduation-cap"></i> Privacy Policy</a>
-            <br>
-            <Br>
-            <br>
-        </div>
-    </center>
-
-    <center class="hidden" id="detectedpop" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index: 10000;">
-        <div class="box">
-            <i style="font-size:50px; color:white;" class="fa-solid fa-triangle-exclamation"></i>
-            <h1 class="textelement">It Appears You're Blocking Ads</h1>
-            <p style="margin-left: 100px; margin-right: 100px;" class="textelement">This site is made possible for free by showing ads. Please whitelist Countdown from your ad blocker.</p>
-
-        </div>
-    </center>
 
     <center class="hidden" id="settings" style="margin: 0; position: absolute; left: 50%; -ms-transform: translate(-50%, 0%); transform: translate(-50%, 0%);">
         <h1 class="textelement">Options</h1>
 
         <p class="textelement" style="font-size: 15px; color:#989898">
             <a style="margin-right:20px; font-family: 'Dosis' , sans-serif;" class="aintext" href="Information/cookiepolicy.html"><i class="fa-solid fa-cookie-bite"></i> Cookie Policy</a>
-            <a style="font-family: 'Dosis', sans-serif;" class="aintext" href="Information/privacypolicy.html"><i class="fa-solid fa-shield"></i> Privacy Policy</a>
             <a style="margin-left: 20px; font-family: 'Dosis', sans-serif;" class="aintext" href="Information/dependencies.html"><i class="fa-solid fa-file-code"></i> Open Source Dependencies</a>
         </p>
         <br>
@@ -115,12 +79,9 @@
         <br>
         <br>
         <h2 class="textelement">
-            Date <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="datetooltip()"></i>
+            Date
         </h2>
-        <dialog id="modal1" class="box">
-            <p>Use countdown for a specific date,<br />or pick from some popular presets.</p>
-            <a onclick="closemodals()">Close</a>
-        </dialog>
+
         <input class="datepicker" type="datetime-local" />
         <div class="wrapper">
             <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
@@ -129,7 +90,6 @@
                 <li id="endtab" class="mcatab" onclick="MES()">MCA End of School</li>
                 <li id="nydtab" class="tab" onclick="NYD()">New Year's Day</li>
                 <li id="vdtab" class="tab" onclick="VD()">Valentine's Day</li>
-                <li id="ndoptab" class="tab" onclick="NDOP()">National Day of Prayer</li>
                 <li id="idtab" class="tab" onclick="ID()">Independence Day</li>
                 <li id="htab" class="tab" onclick="H()">Halloween</li>
                 <li id="ttab" class="tab" onclick="T()">Thanksgiving</li>
@@ -140,12 +100,9 @@
         <br />
         <br />
         <h2 class="textelement">
-            Link <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="linktooltip()"></i>
+            Link
         </h2>
-        <dialog id="modal2" class="box">
-            <p>Avoid typing in the date each time by going to this link.<br />You can’t edit the countdown for recipients once it’s sent.</p>
-            <a onclick="closemodals()">Close</a>
-        </dialog>
+
 
         <input id="linkinput" class="input" />
         <button style="background:#141414; color:white; border:none; outline:none; cursor:pointer">
@@ -168,59 +125,50 @@
         <br />
         <br />
         <h2 class="textelement">
-            Text Colors <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="colorstooltip()"></i>
+            Text Colors
         </h2>
-        <dialog id="modal3" class="box">
-            <p>Customize your countdown clock to your heart's desire!<br />Make sure to keep contrast in mind so it remains readable.</p>
-            <a onclick="closemodals()">Close</a>
-        </dialog>
 
-        <input class="colorpicker" id="color1" type="color" value="#8426ff" oninput="SetCountDowngeneral();"/>
-        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" oninput="SetCountDowngeneral();"/>
-        <input class="colorpicker" id="color3" type="color" value="#00ff5e" oninput="SetCountDowngeneral();"/>
-        <input class="colorpicker" id="color4" type="color" value="#ff9900" oninput="SetCountDowngeneral();"/>
+
+        <input class="colorpicker" id="color1" type="color" value="#8426ff" oninput="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" oninput="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color3" type="color" value="#00ff5e" oninput="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color4" type="color" value="#ff9900" oninput="SetCountDowngeneral();" />
         <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">Keep contrast in mind when choosing colors.</p>
         <br />
         <br />
         <br>
         <br>
         <h2 class="textelement">
-            Backgrounds <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="colorstooltip()"></i>
+            Backgrounds
         </h2>
-        <dialog id="modal3" class="box">
-            <p>Customize your countdown clock to your heart's desire!<br />Make sure to keep contrast in mind so it remains readable.</p>
-            <a onclick="closemodals()">Close</a>
-        </dialog>
-        <a class="aintext" onclick="defaultbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground.png"></div></a>
-        <a class="aintext" onclick="xmasgb()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_christmas.png"></div></a>
-        <a class="aintext" onclick="fourthbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_fourth.png"></div></a>
-        <a class="aintext" onclick="fallbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_thanksgiving.png"></div></a>
+
+        <a class="aintext" onmouseup="defaultbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground.png"></div></a>
+        <a class="aintext" onmouseup="xmasgb()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_christmas.png"></div></a>
+        <a class="aintext" onmouseup="fourthbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_fourth.png"></div></a>
+        <a class="aintext" onmouseup="fallbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_thanksgiving.png"></div></a>
         <br />
         <br />
         <br>
         <br>
         <h2 class="textelement">
-            Animation Speed <i style="font-size:15px;" class="fa-solid fa-circle-info" onclick="animationspeedtooltip()"></i>
+            Animation Speed
         </h2>
-        <dialog id="modal4" class="box">
-            <p>Change how fast color/background animations run.<br /><br><br><i class="fa-solid fa-gauge"></i> Default<br><i class="fa-solid fa-seedling"></i> Slow<br><i class="fa-solid fa-bolt"></i> Fast<br><br></p>
-            <a onclick="closemodals()">Close</a>
-        </dialog>
+
         <form action="" id="searchTypeToggle">
             <div></div>
             <label class="selected">
-              <input type="radio" name="searchtype" data-location="0" value="one" id="speed1">
-              <div><i class="fa-solid fa-gauge"></i></div>
+                <input type="radio" name="searchtype" data-location="0" value="one" id="speed1">
+                <div><i class="fa-solid fa-gauge"></i></div>
             </label>
             <label>
-              <input type="radio" name="searchtype" data-location="calc(100% - 8px)" value="two" id="speed2">
-              <div><i class="fa-solid fa-seedling"></i></div>
+                <input type="radio" name="searchtype" data-location="calc(100% - 8px)" value="two" id="speed2">
+                <div><i class="fa-solid fa-seedling"></i></div>
             </label>
             <label>
-              <input type="radio" name="searchtype" data-location="calc(200% - 12px)" value="three" id="speed3">
-              <div><i class="fa-solid fa-bolt"></i></div>
+                <input type="radio" name="searchtype" data-location="calc(200% - 12px)" value="three" id="speed3">
+                <div><i class="fa-solid fa-bolt"></i></div>
             </label>
-          </form>
+        </form>
         <br>
         <Br>
         <Br>
@@ -231,8 +179,8 @@
         <br>
         <br>
         <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
-        <a class="disabled" ><i class="fa-solid fa-palette"></i> Unanimated Text <p style="font-size: 15px; line-height: 15px;">coming soon</p></a>
-        <a class="disabled" ><i class="fa-solid fa-sun"></i> Prefer Light Mode <p style="font-size: 15px; line-height: 15px;">coming soon</p></a>
+        <a class="disabled"><i class="fa-solid fa-palette"></i> Unanimated Text <p style="font-size: 15px; line-height: 15px;">coming soon</p></a>
+        <a class="disabled"><i class="fa-solid fa-sun"></i> Prefer Light Mode <p style="font-size: 15px; line-height: 15px;">coming soon</p></a>
         <br>
         <br>
         <br>
@@ -272,342 +220,378 @@
         </div>
     </center>
 
-    <center class="hidden" id="ad_container" style="border-radius: 20px; margin: 0; position: absolute; top: 88%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"> <video id="ad" autoplay muted loop> <source src="ad.mp4" type="video/mp4"> </video> </center>
+    <center class="hidden" id="ad_container" style="border-radius: 20px; margin: 0; position: absolute; top: 88%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"> <video id="ad" autoplay muted loop playsinline> <source src="ad.mp4" type="video/mp4"> </video> </center>
 
 </body>
 
-    <style>
+<style>
 
-        :root {
-            --one: #8426ff;
-            --two: #3ab6ff;
-            --three: #00ff5e;
-            --four: #ff9900;
-        }
+    :root {
+        --one: #8426ff;
+        --two: #3ab6ff;
+        --three: #00ff5e;
+        --four: #ff9900;
+    }
 
-        * {
-            scrollbar-width: auto;
-            scrollbar-color: #8426ff #0d0d0d;
-        }
+    * {
+        scrollbar-width: auto;
+        scrollbar-color: #8426ff #0d0d0d;
+    }
 
-        ::-moz-selection {
-            color: white;
-            background: #8426ff;
-        }
+    ::-moz-selection {
+        color: white;
+        background: #8426ff;
+    }
 
-        input[type="color"] {
-            transition:0.5s all;
-        }
+    input[type="color"] {
+        transition: 0.5s all;
+    }
 
-        ::selection {
-            color: white;
-            background: #8426ff;
-        }
+    ::selection {
+        color: white;
+        background: #8426ff;
+    }
 
-        .colorpicker {
-            margin: 10px;
-            height: 0.5in;
-            width: 1in;
-            font-size: 20px;
-            font-weight: 100;
-            border-radius: 20px;
-            outline: 1px solid #8426ff;
-            background: #141414;
-            border: none;
-        }
-        .backgroundpicker {
-            margin: 10px;
-            height: 0.5in;
-            width: 1in;
-            font-size: 20px;
-            font-weight: 100;
-            border-radius: 20px;
-            outline: 1px solid #8426ff;
-            background: #141414;
-            border: none;
-        }
+    .colorpicker {
+        margin: 10px;
+        height: 0.5in;
+        width: 1in;
+        font-size: 20px;
+        font-weight: 100;
+        border-radius: 20px;
+        outline: 1px solid #8426ff;
+        background: #141414;
+        border: none;
+    }
 
-        .disabledcolorpicker {
-            margin: 10px;
-            height: 0.5in;
-            width: 1in;
-            font-size: 20px;
-            font-weight: 100;
-            border-radius: 20px;
-            outline: 1px solid #202020;
-            background: #141414;
-            border: none;
-            opacity:0.5;
-            cursor:not-allowed;
-            pointer-events:none;
-        }
+    .backgroundpicker {
+        margin: 10px;
+        height: 0.5in;
+        width: 1in;
+        font-size: 20px;
+        font-weight: 100;
+        border-radius: 20px;
+        outline: 1px solid #8426ff;
+        background: #141414;
+        border: none;
+    }
+
+    .disabledcolorpicker {
+        margin: 10px;
+        height: 0.5in;
+        width: 1in;
+        font-size: 20px;
+        font-weight: 100;
+        border-radius: 20px;
+        outline: 1px solid #202020;
+        background: #141414;
+        border: none;
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
         .disabledcolorpicker::-webkit-color-swatch {
             border-radius: 15px;
             border: none;
             width: 35px;
             margin-left: 1px;
             margin-right: 1px;
-            filter:grayscale();
+            filter: grayscale();
         }
 
-            .disabledcolorpicker::-moz-color-swatch {
-                border-radius: 15px;
-                border: none;
-                width: 35px;
-                margin-left: 1px;
-                margin-right: 1px;
-                filter: grayscale();
-            }
-            .colorpicker:focus {
-                margin: 10px;
-                height: 0.5in;
-                width: 1in;
-                font-size: 20px;
-                font-weight: 100;
-                border-radius: 20px;
-                outline: 1px solid #8426ff;
-                background: #141414;
-                animation: pulseborder 2s infinite;
-            }
-            @keyframes pulseborder{
-                1% {
-                    outline: 1px solid #8426ff;
-                }
-                50% {
-                    outline: 1px solid #141414;
-                }
-                100% {
-                    outline: 1px solid #8426ff;
-                }
-            }
-        .colorpicker::-webkit-color-swatch {
-            border-radius: 15px;
-            border: none;
-            width: 35px;
-            margin-left:1px;
-            margin-right:1px;
-        }
-        .colorpicker::-moz-color-swatch {
+        .disabledcolorpicker::-moz-color-swatch {
             border-radius: 15px;
             border: none;
             width: 35px;
             margin-left: 1px;
             margin-right: 1px;
+            filter: grayscale();
         }
-            .datepicker {
-                color: white;
-                border-radius: 20px;
-                padding: 20px;
-                font-size: 20px;
-                font-weight: 100;
-                outline: 1px solid #8426ff;
-                background: linear-gradient(to left, rgba(40,23,64,88), #141414);
-                font-family: 'Fredoka One';
-                border: 0px transparent;
-            }
-        .input {
-            color: white;
-            border-radius: 20px;
-            padding: 20px;
-            font-size: 20px;
-            font-weight: 100;
+
+    .colorpicker:focus {
+        margin: 10px;
+        height: 0.5in;
+        width: 1in;
+        font-size: 20px;
+        font-weight: 100;
+        border-radius: 20px;
+        outline: 1px solid #8426ff;
+        background: #141414;
+        animation: pulseborder 2s infinite;
+    }
+
+    @keyframes pulseborder {
+        1% {
             outline: 1px solid #8426ff;
-            background: linear-gradient(to left, rgba(40,23,64,88), #141414);
-            font-family: 'Fredoka One';
-            border: 0px transparent;
-            transition:0.5s all;
-        }
-        ::-webkit-calendar-picker-indicator {
-            filter:invert();
         }
 
-        form {
-  width:70%;
-  box-sizing:border-box;
-  background-color:#141414;
-  text-align:center;
-  position:relative;
-  border-radius:100px;
-  border: 1px solid #4d00b2;
-  color:white;
-}
+        50% {
+            outline: 1px solid #141414;
+        }
 
-form > div {
-  color:white;
-  display:block;
-  position:absolute;
-  top:-4px;
-  left:-4px;
-  bottom:-4px;
-  width:calc(33.33% + 8px);
-  background: linear-gradient(to left, #141414,#4d00b2);
-  border-radius:100px;
-  z-index:1;
-  pointer-events:none;
-  border: 1px solid #8426FF;
+        100% {
+            outline: 1px solid #8426ff;
+        }
+    }
 
-  transition:transform 0.3s;
-}
+    .colorpicker::-webkit-color-swatch {
+        border-radius: 15px;
+        border: none;
+        width: 35px;
+        margin-left: 1px;
+        margin-right: 1px;
+    }
 
-form::after {
-  content:"";
-  display:block;
-  clear:both;
-}
+    .colorpicker::-moz-color-swatch {
+        border-radius: 15px;
+        border: none;
+        width: 35px;
+        margin-left: 1px;
+        margin-right: 1px;
+    }
 
-form label {
-  float:left;
-  width:calc(33.333% - 1px);
-  position:relative;
-  padding:20px 0px 40px;
-  overflow:hidden;
-  border-left:solid 1px rgba(0,0,0,0.2);
-  transition:color 0.3s;
-  cursor:pointer;
-  -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
-}
+    .datepicker {
+        color: white;
+        border-radius: 20px;
+        padding: 20px;
+        font-size: 20px;
+        font-weight: 100;
+        outline: 1px solid #8426ff;
+        background: linear-gradient(to left, rgba(40,23,64,88), #141414);
+        font-family: 'Fredoka One';
+        border: 0px transparent;
+    }
 
-form label:first-child {
-  border-left:none;
-}
+    .input {
+        color: white;
+        border-radius: 20px;
+        padding: 20px;
+        font-size: 20px;
+        font-weight: 100;
+        outline: 1px solid #8426ff;
+        background: linear-gradient(to left, rgba(40,23,64,88), #141414);
+        font-family: 'Fredoka One';
+        border: 0px transparent;
+        transition: 0.5s all;
+    }
 
-form label input {
-  position:absolute;
-  top:-200%;
-}
+    ::-webkit-calendar-picker-indicator {
+        filter: invert();
+    }
 
-form label div {
-  z-index: 5;
-  position: absolute;
-  width: 100%;
-}
+    form {
+        width: 70%;
+        box-sizing: border-box;
+        background-color: #141414;
+        text-align: center;
+        position: relative;
+        border-radius: 100px;
+        border: 1px solid #4d00b2;
+        color: white;
+    }
 
-form label.selected {
-  color:white;
-}
-      .wifitext{
+        form > div {
+            color: white;
+            display: block;
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            bottom: -4px;
+            width: calc(33.33% + 8px);
+            background: linear-gradient(to left, #141414,#4d00b2);
+            border-radius: 100px;
+            z-index: 1;
+            pointer-events: none;
+            border: 1px solid #8426FF;
+            transition: transform 0.3s;
+        }
+
+        form::after {
+            content: "";
+            display: block;
+            clear: both;
+        }
+
+        form label {
+            float: left;
+            width: calc(33.333% - 1px);
+            position: relative;
+            padding: 20px 0px 40px;
+            overflow: hidden;
+            border-left: solid 1px rgba(0,0,0,0.2);
+            transition: color 0.3s;
+            cursor: pointer;
+            -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+        }
+
+            form label:first-child {
+                border-left: none;
+            }
+
+            form label input {
+                position: absolute;
+                top: -200%;
+            }
+
+            form label div {
+                z-index: 5;
+                position: absolute;
+                width: 100%;
+            }
+
+            form label.selected {
+                color: white;
+            }
+
+    .wifitext {
         z-index: 100;
         animation: wifidown 50s infinite;
-      }
-      .wifibox{
-        animation:wifidown1 50s infinite;
-      }
+    }
 
-      .fa-clone{
-          transition:0.5s;
-      }
-      .fa-clone:active{
-          color:#00ff72;
-      }
-        .fa-clone:active #linkinput{
-            outline-color: #00ff72;
+    .wifibox {
+        animation: wifidown1 50s infinite;
+    }
+
+    .fa-clone {
+        transition: 0.5s;
+    }
+
+        .fa-clone:active {
+            color: #00ff72;
         }
 
-      @keyframes wifidown1{
-        0%{
-          opacity: 0%;
-        }
-        10%{
-          opacity: 100%;
-        }
-        20%{
-          opacity: 0%;
-        }
-        30%{
-          opacity: 100%;
-        }
-        40%{
-          opacity: 0%;
-        }
-        50%{
-          opacity: 100%;
-        }
-        60%{
-          opacity: 0%;
-        }
-        70%{
-          opacity: 100%;
-        }
-        80%{
-          opacity: 0%;
-        }
-        90%{
-         opacity: 100%;
-        }
-        100%{
-          opacity: 0%;
-        }
-      }
+            .fa-clone:active #linkinput {
+                outline-color: #00ff72;
+            }
 
-      @keyframes wifidown{
-        0%{
-          color: #141414;
+    @keyframes wifidown1 {
+        0% {
+            opacity: 0%;
         }
-        10%{
-          color: #ffffff;
-        }
-        20%{
-          color: #141414;
-        }
-        30%{
-          color: #ffffff;
-        }
-        40%{
-          color: #141414;
-        }
-        50%{
-          color: #ffffff;
-        }
-        60%{
-          color: #141414;
-        }
-        70%{
-          color: #ffffff;
-        }
-        80%{
-          color: #141414;
-        }
-        90%{
-          color: #ffffff;
-        }
-        100%{
-          color: #141414;
-        }
-      }
 
-      #gear{
-      top: 95%;
-      left:5%;
-      }
+        10% {
+            opacity: 100%;
+        }
+
+        20% {
+            opacity: 0%;
+        }
+
+        30% {
+            opacity: 100%;
+        }
+
+        40% {
+            opacity: 0%;
+        }
+
+        50% {
+            opacity: 100%;
+        }
+
+        60% {
+            opacity: 0%;
+        }
+
+        70% {
+            opacity: 100%;
+        }
+
+        80% {
+            opacity: 0%;
+        }
+
+        90% {
+            opacity: 100%;
+        }
+
+        100% {
+            opacity: 0%;
+        }
+    }
+
+    @keyframes wifidown {
+        0% {
+            color: #141414;
+        }
+
+        10% {
+            color: #ffffff;
+        }
+
+        20% {
+            color: #141414;
+        }
+
+        30% {
+            color: #ffffff;
+        }
+
+        40% {
+            color: #141414;
+        }
+
+        50% {
+            color: #ffffff;
+        }
+
+        60% {
+            color: #141414;
+        }
+
+        70% {
+            color: #ffffff;
+        }
+
+        80% {
+            color: #141414;
+        }
+
+        90% {
+            color: #ffffff;
+        }
+
+        100% {
+            color: #141414;
+        }
+    }
+
+    #gear {
+        top: 95%;
+        left: 5%;
+    }
 
 
-      #ad{
-        height:10vh;
-        width:50vw;
+    #ad {
+        height: 10vh;
+        width: 50vw;
         border-radius: 20px;
         object-fit: cover;
-      }
+    }
 
-        .box {
-            padding-top: 50px;
-            padding-bottom: 50px;
-            padding-left: 50px;
-            padding-right: 50px;
-            border-radius: 35px;
-            background: linear-gradient(to left, rgba(40,23,64,88), #141414);
-            border: #8426FF 1px solid;
-        }
-        .staticclock{
-            display: flex;
+    .box {
+        padding-top: 50px;
+        padding-bottom: 50px;
+        padding-left: 50px;
+        padding-right: 50px;
+        border-radius: 35px;
+        background: linear-gradient(to left, rgba(40,23,64,88), #141414);
+        border: #8426FF 1px solid;
+    }
+
+    .staticclock {
+        display: flex;
         justify-content: center;
         align-items: center;
         text-align: center;
         min-height: 99%;
         font-family: 'Fredoka One';
-        color:#ffffff;
+        color: #ffffff;
         /*mix-blend-mode:difference;*/
-      }
-      .clock{
+    }
+
+    .clock {
         display: flex;
         justify-content: center;
         align-items: center;
@@ -615,9 +599,10 @@ form label.selected {
         min-height: 99%;
         font-family: 'Fredoka One';
         animation: backgroundgradient 100s infinite;
-        z-index:1000000;
-      }
-      .clockslow{
+        z-index: 1000000;
+    }
+
+    .clockslow {
         display: flex;
         justify-content: center;
         align-items: center;
@@ -625,9 +610,10 @@ form label.selected {
         min-height: 99%;
         font-family: 'Fredoka One';
         animation: backgroundgradient 200s infinite;
-        z-index:1000000;
-      }
-      .clockfast{
+        z-index: 1000000;
+    }
+
+    .clockfast {
         display: flex;
         justify-content: center;
         align-items: center;
@@ -635,1005 +621,1119 @@ form label.selected {
         min-height: 99%;
         font-family: 'Fredoka One';
         animation: backgroundgradient 5s infinite;
-        z-index:1000000;
-      }
-      .center{
+        z-index: 1000000;
+    }
+
+    .center {
         margin: auto;
-      width: 50%;
-      text-align:center;
-      }
-      h1{
+        width: 50%;
+        text-align: center;
+    }
+
+    h1 {
         font-size: 42px;
         font-family: 'Fredoka One';
-      color: #fff;
-      font-weight: 100;
-      }
-      h2{
+        color: #fff;
+        font-weight: 100;
+    }
+
+    h2 {
         font-size: 30px;
         font-family: 'Fredoka One';
-      color: #fff;
-      font-weight: 100;
-      }
-      p{
-        font-family: 'Fredoka One';
-      color:white;
-      font-size: 20px;
-      font-weight: 100;
-      }
-      a{
-        font-family: 'Fredoka One';
-        background-color: #8426ff;
-        text-decoration: none;
-        color:white;
-        box-shadow: 0 7px 0 #4d00b2;
-        border-radius:20px;
-        padding:20px;
-        user-select:none;
-        cursor:pointer;
-        font-size: 20px;
-      font-weight: 100;
-          margin: 0px 5px 25px 5px;
-        display:inline-block;
-        }
-        .aintext{
-          font-family: 'Fredoka One';
-      color:#8426ff;
-      font-size: 20px;
-      font-weight: 100;
-      cursor:pointer;
-      box-shadow:0px transparent;
-      padding:0px;
-      margin:0px;
-      background-color:transparent;
-      box-shadow: 0 0px 0 transparent;
-        }
-        .aintext:hover{
-          box-shadow: 0 0px 0 transparent;
+        color: #fff;
+        font-weight: 100;
+    }
 
-        }
-      .a2{
-            font-family: 'Fredoka One';
+    p {
+        font-family: 'Fredoka One';
+        color: white;
+        font-size: 20px;
+        font-weight: 100;
+    }
+
+    a {
+        font-family: 'Fredoka One';
         background-color: #8426ff;
         text-decoration: none;
-        color:white;
+        color: white;
         box-shadow: 0 7px 0 #4d00b2;
-        border-radius:20px;
-        padding:20px;
-        user-select:none;
-        cursor:pointer;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
         font-size: 20px;
-      font-weight: 100;
-          margin: 0px 0px 0px 0px;
-        display:initial;
-        position:relative;
-        
-      }
-        .outlinebutton{
+        font-weight: 100;
+        margin: 0px 5px 25px 5px;
+        display: inline-block;
+    }
+
+    .aintext {
+        font-family: 'Fredoka One';
+        color: #8426ff;
+        font-size: 20px;
+        font-weight: 100;
+        cursor: pointer;
+        box-shadow: 0px transparent;
+        padding: 0px;
+        margin: 0px;
+        background-color: transparent;
+        box-shadow: 0 0px 0 transparent;
+    }
+
+        .aintext:hover {
+            box-shadow: 0 0px 0 transparent;
+        }
+
+    .a2 {
+        font-family: 'Fredoka One';
+        background-color: #8426ff;
+        text-decoration: none;
+        color: white;
+        box-shadow: 0 7px 0 #4d00b2;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+        margin: 0px 0px 0px 0px;
+        display: initial;
+        position: relative;
+    }
+
+    .outlinebutton {
         font-family: 'Fredoka One';
         background-color: #141414;
         text-decoration: none;
-        color:white;
+        color: white;
         border: #8426ff solid 1px;
         box-shadow: 0 7px 0 #4d00b2;
-        border-radius:20px;
-        padding:20px;
-        user-select:none;
-        cursor:pointer;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
         font-size: 20px;
-      font-weight: 100;
-      }
-      a:hover{
-        position:relative;
-        top:4px;
-        box-shadow:0 5px 0 #4d00b2;
-        display:inline-block;
-      }
-      .a2:hover{
-        position:relative;
-        top:2px;
+        font-weight: 100;
+    }
+
+    a:hover {
+        position: relative;
+        top: 4px;
+        box-shadow: 0 5px 0 #4d00b2;
+        display: inline-block;
+    }
+
+    .a2:hover {
+        position: relative;
+        top: 2px;
         margin-top: 2px;
-        box-shadow:0 5px 0 #4d00b2;
-        display:initial;
-      }
-      a:hover:active{
-        position:relative;
-        top:9px;
-        box-shadow:none;
-        display:inline-block;
-      }
-        .a2:hover:active{
-        position:relative;
-        top:7px;
+        box-shadow: 0 5px 0 #4d00b2;
+        display: initial;
+    }
+
+    a:hover:active {
+        position: relative;
+        top: 9px;
+        box-shadow: none;
+        display: inline-block;
+    }
+
+    .a2:hover:active {
+        position: relative;
+        top: 7px;
         margin-top: 7px;
-        box-shadow:none;
-        }
-      .enabled{
+        box-shadow: none;
+    }
+
+    .enabled {
         font-family: 'Fredoka One';
         background-color: #00ff40;
         text-decoration: none;
-        color:black;
+        color: black;
         box-shadow: 0 7px 0 #008f2d;
-        border-radius:20px;
-        padding:20px;
-        user-select:none;
-        cursor:pointer;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
         font-size: 20px;
-      font-weight: 100;
-      }
-      .enabled:hover{
-        position:relative;
-        box-shadow:0 5px 0 #008f2d;
-      }
-      .enabled:hover:active{
-        position:relative;
+        font-weight: 100;
+    }
 
-        box-shadow:none;
-      }
+        .enabled:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #008f2d;
+        }
 
-      .disabled{
+            .enabled:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
+
+    .disabled {
         font-family: 'Fredoka One';
         background-color: #595959;
         text-decoration: none;
-        color:white;
+        color: white;
         box-shadow: 0 7px 0 #282828;
-        border-radius:20px;
-        padding:20px;
-        user-select:none;
-        cursor:pointer;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
         font-size: 20px;
-      font-weight: 100;
-      }
-      .disabled:hover{
-        position:relative;
+        font-weight: 100;
+    }
 
-        box-shadow:0 5px 0 #282828;
-      }
-      .disabled:hover:active{
-        position:relative;
-
-        box-shadow:none;
-      }
-
-
-        .warning {
-            font-family: 'Fredoka One';
-            background-color: #ff5353;
-            text-decoration: none;
-            color: #ffffff;
-            box-shadow: 0 7px 0 #d00000;
-            border-radius: 20px;
-            padding: 20px;
-            user-select: none;
-            cursor: pointer;
-            font-size: 20px;
-            font-weight: 100;
+        .disabled:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #282828;
         }
-      .warning:hover{
-        position:relative;
 
-        box-shadow:0 5px 0 #d00000;
-      }
-      .warning:hover:active{
-        position:relative;
+            .disabled:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
 
-        box-shadow:none;
-      }
 
-      .settings{
+    .warning {
+        font-family: 'Fredoka One';
+        background-color: #ff5353;
+        text-decoration: none;
+        color: #ffffff;
+        box-shadow: 0 7px 0 #d00000;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+    }
+
+        .warning:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #d00000;
+        }
+
+            .warning:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
+
+    .settings {
         font-family: 'Fredoka One';
         background-color: transparent;
         text-decoration: none;
-        color:#ffffff;
+        color: #ffffff;
         box-shadow: none;
-        border-radius:20px;
-        padding:20px;
-        user-select:none;
-        cursor:pointer;
-      }
-      .settings:hover{
-        position:relative;
-        top:0px;
-        margin-top: 0px;
-        box-shadow: none;
-        color:#a7a7a7;
-      }
-      .settings:hover:active{
-        position:relative;
-        top:0px;
-        margin-top: 0px;
-        box-shadow:none;
-        color:#8426ff;
-      }
-
-      .hidden{
-        display:none;
-      }
-      .hiddentext{
-        color:#141414;
+        border-radius: 20px;
+        padding: 20px;
         user-select: none;
-      }
-        .wrapper {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            padding: 0 10px;
-            align-items: center;
-            justify-content: center;
-            display: flex;
-            padding: 35px;
+        cursor: pointer;
+    }
+
+        .settings:hover {
             position: relative;
-            overflow-x: hidden;
-            max-width: 1000px;
-            border-radius: 35px;
+            top: 0px;
+            margin-top: 0px;
+            box-shadow: none;
+            color: #a7a7a7;
         }
 
-            .wrapper .icon {
-                position: absolute;
-                top: 0;
-                height: 100%;
-                width: 120px;
-                display: flex;
-                align-items: center;
+            .settings:hover:active {
+                position: relative;
+                top: 0px;
+                margin-top: 0px;
+                box-shadow: none;
+                color: #8426ff;
             }
 
-        .icon:first-child {
-            left: 0;
-            display: none;
-            background: linear-gradient(90deg, #141414, transparent);
+    .hidden {
+        display: none;
+    }
+
+    .hiddentext {
+        color: #141414;
+        user-select: none;
+    }
+
+    .wrapper {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        padding: 0 10px;
+        align-items: center;
+        justify-content: center;
+        display: flex;
+        padding: 35px;
+        position: relative;
+        overflow-x: hidden;
+        max-width: 1000px;
+        border-radius: 35px;
+    }
+
+        .wrapper .icon {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 120px;
+            display: flex;
+            align-items: center;
         }
 
-        .icon:last-child {
-            right: 0;
-            justify-content: flex-end;
-            background: linear-gradient(-90deg, #141414, transparent);
-        }
+    .icon:first-child {
+        left: 0;
+        display: none;
+        background: linear-gradient(90deg, #141414, transparent);
+    }
 
-        .icon i {
-            width: 45px;
-            height: 50%;
-            cursor: pointer;
-            font-size: 1.2rem;
-            text-align: center;
-            line-height: 75px;
-            color: white;
-            background: #141414;
-            border-radius: 50%;
-        }
+    .icon:last-child {
+        right: 0;
+        justify-content: flex-end;
+        background: linear-gradient(-90deg, #141414, transparent);
+    }
+
+    .icon i {
+        width: 45px;
+        height: 50%;
+        cursor: pointer;
+        font-size: 1.2rem;
+        text-align: center;
+        line-height: 75px;
+        color: white;
+        background: #141414;
+        border-radius: 50%;
+    }
 
 
-        .icon:first-child i {
-            margin-left: 15px;
-        }
+    .icon:first-child i {
+        margin-left: 15px;
+    }
 
-        .icon:last-child i {
-            margin-right: 15px;
-        }
+    .icon:last-child i {
+        margin-right: 15px;
+    }
 
-        .wrapper{
-            max-width: 70%;
-        }
+    .wrapper {
+        max-width: 70%;
+    }
 
         .wrapper .tabs-box {
             display: flex;
             gap: 12px;
             list-style: none;
             overflow-x: hidden;
-            overflow-y:hidden;
+            overflow-y: hidden;
             scroll-behavior: smooth;
             max-width: 90%;
         }
 
-        .tabs-box.dragging {
-            scroll-behavior: auto;
-            cursor: grab;
-        }
+    .tabs-box.dragging {
+        scroll-behavior: auto;
+        cursor: grab;
+    }
 
-        .tabs-box .tab {
-            margin: 0px;
-            cursor: pointer;
-            font-size: 1.18rem;
-            white-space: nowrap;
-            background: linear-gradient(to left, rgba(40,23,64,88), #141414);
-            border: #8426FF 1px solid;
-            padding: 13px 20px;
-            border-radius: 30px;
-            transition: 0.5s all;
-            color:white;
-            font-family:'Fredoka One';
-           
-        }
+    .tabs-box .tab {
+        margin: 0px;
+        cursor: pointer;
+        font-size: 1.18rem;
+        white-space: nowrap;
+        background: linear-gradient(to left, rgba(40,23,64,88), #141414);
+        border: #8426FF 1px solid;
+        padding: 13px 20px;
+        border-radius: 30px;
+        transition: 0.5s all;
+        color: white;
+        font-family: 'Fredoka One';
+    }
 
-        .tabs-box .mcatab {
-            margin: 0px;
-            cursor: pointer;
-            font-size: 1.18rem;
-            white-space: nowrap;
-            background: linear-gradient(to left, rgba(31,179,255,0.5), #141414);
-            border: #26b3ff 1px solid;
-            padding: 13px 20px;
-            border-radius: 30px;
-            transition: 0.5s all;
-            color:white;
-            font-family:'Fredoka One';
-           
-        }
+    .tabs-box .mcatab {
+        margin: 0px;
+        cursor: pointer;
+        font-size: 1.18rem;
+        white-space: nowrap;
+        background: linear-gradient(to left, rgba(31,179,255,0.5), #141414);
+        border: #26b3ff 1px solid;
+        padding: 13px 20px;
+        border-radius: 30px;
+        transition: 0.5s all;
+        color: white;
+        font-family: 'Fredoka One';
+    }
 
-        .tabs-box.dragging .tab {
-            user-select: none;
-            pointer-events: none;
-            filter:brightness(0.8);
-        }
-        .tabs-box .tab.active {
-            color: #fff;
-            background: #8426ff;
-            border-color: transparent;
-        }
-        .tabs-box .tab:hover {
-            color: #fff;
-            background: #8426ff;
-            border-color: transparent;
-            border: #141414 1px solid;
-            transform: scale(0.9);
-            animation: jiggle 0.6s infinite;
-            overflow-y:visible;
-            
-        }
+    .tabs-box.dragging .tab {
+        user-select: none;
+        pointer-events: none;
+        filter: brightness(0.8);
+    }
 
+    .tabs-box .tab.active {
+        color: #fff;
+        background: #8426ff;
+        border-color: transparent;
+    }
 
-        .tabs-box.dragging .mcatab {
-            user-select: none;
-            pointer-events: none;
-            filter:brightness(0.8);
-        }
-        .tabs-box .mcatab.active {
-            color: #fff;
-            background: #26b3ff;
-            border-color: transparent;
-        }
-        .tabs-box .mcatab:hover {
-            color: #fff;
-            background: #26b3ff;
-            border-color: transparent;
-            border: #141414 1px solid;
-            transform: scale(0.9);
-            animation: jiggle 0.6s infinite;
-            overflow-y:visible;
-            
-        }
-
-        @keyframes jiggle {
-            0% {
-                transform: rotate(-0.5deg);
-            }
-
-            50% {
-                transform: rotate(0.5deg);
-                
-            }
-            100% {
-                transform: rotate(-0.5deg);
-            }
-        }
+    .tabs-box .tab:hover {
+        color: #fff;
+        background: #8426ff;
+        border-color: transparent;
+        border: #141414 1px solid;
+        transform: scale(0.9);
+        animation: jiggle 0.6s infinite;
+        overflow-y: visible;
+    }
 
 
-      @keyframes backgroundgradient{
+    .tabs-box.dragging .mcatab {
+        user-select: none;
+        pointer-events: none;
+        filter: brightness(0.8);
+    }
+
+    .tabs-box .mcatab.active {
+        color: #fff;
+        background: #26b3ff;
+        border-color: transparent;
+    }
+
+    .tabs-box .mcatab:hover {
+        color: #fff;
+        background: #26b3ff;
+        border-color: transparent;
+        border: #141414 1px solid;
+        transform: scale(0.9);
+        animation: jiggle 0.6s infinite;
+        overflow-y: visible;
+    }
+
+    @keyframes jiggle {
+        0% {
+            transform: rotate(-0.5deg);
+        }
+
+        50% {
+            transform: rotate(0.5deg);
+        }
+
+        100% {
+            transform: rotate(-0.5deg);
+        }
+    }
+
+
+    @keyframes backgroundgradient {
         0% {
             color: var(--one);
         }
+
         10% {
             color: var(--one);
         }
+
         25% {
             color: var(--two);
         }
+
         35% {
             color: var(--two);
         }
+
         50% {
             color: var(--three);
         }
+
         60% {
             color: var(--three);
         }
+
         75% {
             color: var(--four);
         }
+
         85% {
             color: var(--four);
         }
+
         100% {
             color: var(--one);
         }
-      }
+    }
 
 
-      @media only screen and (max-width: 1290px) and (orientation:portrait) {
-      body{
-        zoom:150%;
-      }
+    @media only screen and (max-width: 1290px) and (orientation:portrait) {
+        body {
+            zoom: 150%;
+        }
 
-      #ad{
-        width:100vw;
-        height: 0.5in;
-        border: none;
-        border-top: 4px solid white;
-        object-fit: contain;
-        border-radius: 0%;
-        box-shadow: none;
-      }
+        #ad {
+            width: 100vw;
+
+            border: none;
+            border-top: 4px solid white;
+            object-fit: contain;
+            border-radius: 0%;
+            box-shadow: none;
+        }
+
         #ad_container {
             top: 100%;
         }
-      #clock{
-        font-size: 90vw;
-      }
-      #gear{
-        z-index:100000;
-        top:5%;
-        left: 7%;
-      }
+
+        #clock {
+            font-size: 90vw;
+        }
+
+        #gear {
+            z-index: 100000;
+            top: 5%;
+            left: 7%;
+        }
 
 
 
-      #innergear{
-        font-size:30px;
-      }
-      .datepicker{
-          margin-bottom:20px;
-      }
-        #submitdate{
-            width:1in;
+        #innergear {
+            font-size: 30px;
+        }
+
+        .datepicker {
+            margin-bottom: 20px;
+        }
+
+        #submitdate {
+            width: 1in;
         }
     }
 
     @media only screen and (min-width: 1300px) {
-      #gear{
-        top:95%;
-        left: 3%;
-      }
-      #ad{
-        height:10vh;
-        width:50vw;
-        border-radius: 20px;
-        object-fit: cover;
-      }
+        #gear {
+            top: 95%;
+            left: 3%;
+        }
+
+        #ad {
+            height: 10vh;
+            width: 50vw;
+            border-radius: 20px;
+            object-fit: cover;
+        }
     }
 
 
 
-        .wrapper2 {
-            color: white;
-            font-family: 'Fredoka One';
-            visibility: hidden;
-            position: absolute;
-            width: 300px;
-            background: rgba(32, 32, 32, 0.52);
-            border-radius: 16px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(6.9px);
-            -webkit-backdrop-filter: blur(6.9px);
-            border: 1px solid rgba(32, 32, 32, 0.67);
-            z-index:1000;
-        }
+    .wrapper2 {
+        color: white;
+        font-family: 'Fredoka One';
+        visibility: hidden;
+        position: absolute;
+        width: 300px;
+        background: rgba(32, 32, 32, 0.52);
+        border-radius: 16px;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(6.9px);
+        -webkit-backdrop-filter: blur(6.9px);
+        border: 1px solid rgba(32, 32, 32, 0.67);
+        z-index: 1000;
+    }
 
-            .wrapper2 .menu2 {
-                padding: 10px 12px;
-            }
-
-
-
-        .content2 .setting {
-            display: flex;
-            margin-top: -6px;
-            cursor:pointer;
-            padding: 6px 12px;
-        }
-
-        #qrcode img{
-            border-radius:10px;
+        .wrapper2 .menu2 {
+            padding: 10px 12px;
         }
 
 
-            *::-webkit-scrollbar {
-                width: 16px;
-            }
 
-            *::-webkit-scrollbar-track {
-                background: #0d0d0d;
-            }
+    .content2 .setting {
+        display: flex;
+        margin-top: -6px;
+        cursor: pointer;
+        padding: 6px 12px;
+    }
 
-            *::-webkit-scrollbar-thumb {
-                background-color: #8426ff;
-                border-radius: 14px;
-                border: 2px solid #0d0d0d;
-            }
+    #qrcode img {
+        border-radius: 10px;
+    }
 
 
-        .backgroundframe {
-            margin: 0px;
-            padding: 0px;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            z-index:-14;
-            position:inherit;
+    *::-webkit-scrollbar {
+        width: 16px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: #0d0d0d;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        box-shadow: #8426ff 1px 1px 25px;
+        background-color: #8426ff;
+        border-radius: 14px;
+    }
+
+
+    .backgroundframe {
+        margin: 0px;
+        padding: 0px;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        z-index: -14;
+        position: inherit;
+    }
+
+    .backgroundframe-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: 0;
+        z-index: -14;
+        overflow: hidden;
+    }
+
+    .bg-color {
+        right: 0;
+        top: 0;
+        filter: blur(100px);
+        z-index: -1;
+        mix-blend-mode: luminosity;
+        width: 200%;
+        position: absolute;
+        animation: rotate 35s linear infinite;
+    }
+
+    .bg-color-fast {
+        right: 0;
+        top: 0;
+        filter: blur(100px);
+        z-index: -1;
+        mix-blend-mode: luminosity;
+        width: 200%;
+        position: absolute;
+        animation: rotate 15s linear infinite;
+    }
+
+    .bg-color-slow {
+        right: 0;
+        top: 0;
+        filter: blur(100px);
+        z-index: -1;
+        mix-blend-mode: luminosity;
+        width: 200%;
+        position: absolute;
+        animation: rotate 70s linear infinite;
+    }
+
+    .bg-black {
+        left: 0;
+        bottom: 0;
+        filter: blur(100px);
+        z-index: -10;
+        animation-direction: reverse;
+        animation-delay: 10s;
+        width: 200%;
+        position: absolute;
+        animation: rotate 35s linear infinite;
+    }
+
+    .bg-black-fast {
+        left: 0;
+        bottom: 0;
+        filter: blur(100px);
+        z-index: -10;
+        animation-direction: reverse;
+        animation-delay: 10s;
+        width: 200%;
+        position: absolute;
+        animation: rotate 15s linear infinite;
+    }
+
+    .bg-black-slow {
+        left: 0;
+        bottom: 0;
+        filter: blur(100px);
+        z-index: -10;
+        animation-direction: reverse;
+        animation-delay: 10s;
+        width: 200%;
+        position: absolute;
+        animation: rotate 70s linear infinite;
+    }
+
+    @keyframes rotate {
+        0% {
+            transform: rotate(0deg);
         }
 
-        .backgroundframe-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: 0;
-            z-index:-14;
-            overflow: hidden;
+        100% {
+            transform: rotate(360deg);
         }
-
-        .bg-color {
-            right: 0;
-            top: 0;
-            filter: blur(100px);
-            z-index: -1;
-            mix-blend-mode: luminosity;
-            width: 200%;
-            position: absolute;
-            animation: rotate 35s linear infinite;
-        }
-
-        .bg-color-fast {
-            right: 0;
-            top: 0;
-            filter: blur(100px);
-            z-index: -1;
-            mix-blend-mode: luminosity;
-            width: 200%;
-            position: absolute;
-            animation: rotate 15s linear infinite;
-        }
-
-        .bg-color-slow {
-            right: 0;
-            top: 0;
-            filter: blur(100px);
-            z-index: -1;
-            mix-blend-mode: luminosity;
-            width: 200%;
-            position: absolute;
-            animation: rotate 70s linear infinite;
-        }
-
-        .bg-black {
-            left: 0;
-            bottom: 0;
-            filter: blur(100px);
-            z-index: -10;
-            animation-direction: reverse;
-            animation-delay: 10s;
-            width: 200%;
-            position: absolute;
-            animation: rotate 35s linear infinite;
-        }
-
-        .bg-black-fast {
-            left: 0;
-            bottom: 0;
-            filter: blur(100px);
-            z-index: -10;
-            animation-direction: reverse;
-            animation-delay: 10s;
-            width: 200%;
-            position: absolute;
-            animation: rotate 15s linear infinite;
-        }
-
-        .bg-black-slow {
-            left: 0;
-            bottom: 0;
-            filter: blur(100px);
-            z-index: -10;
-            animation-direction: reverse;
-            animation-delay: 10s;
-            width: 200%;
-            position: absolute;
-            animation: rotate 70s linear infinite;
-        }
-
-        @keyframes rotate {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-    </style>
+    }
+</style>
 
 
 
-    <script>
-        document.body.scrollTop = document.documentElement.scrollTop = 0;
+<script>
+    document.body.scrollTop = document.documentElement.scrollTop = 0;
 
-
-        if(parameter('colorone')){
-            if(parameter('colorone') == "null"){
-                console.log("Colors(1) could not be imported properly.");
-            }
-            else{
-                var css = document.querySelector(':root');
-
-                var coloronetouse = '#' + parameter('colorone')
-                document.getElementById("color1").value = coloronetouse;
-                css.style.setProperty('--one', coloronetouse);
-            }
-
-        }
-        if(parameter('colortwo')){
-            if(parameter('colortwo') == "null"){
-                console.log("Colors(2) could not be imported properly.");
-            }
-            else{
-                var css = document.querySelector(':root');
-
-                var colortwotouse = '#' + parameter('colortwo')
-                document.getElementById("color2").value = colortwotouse;
-                css.style.setProperty('--two', colortwotouse);
-            }
-        }
-        if(parameter('colorthree')){
-            if(parameter('colorthree') == "null"){
-                console.log("Colors(3) could not be imported properly.");
-            }
-            else{
-                var css = document.querySelector(':root');
-
-                var colorthreetouse = '#' + parameter('colorthree')
-                document.getElementById("color3").value = colorthreetouse;
-                css.style.setProperty('--three', colorthreetouse);
-            }
-        }
-        if(parameter('colorfour')){
-            if(parameter('colorfour') == "null"){
-                console.log("Colors(4) could not be imported properly.");
-            }
-            else{
-                var css = document.querySelector(':root');
-
-                var colorfourtouse = '#' + parameter('colorfour')
-                document.getElementById("color4").value = colorfourtouse;
-                css.style.setProperty('--four', colorfourtouse);
-            }
-        }
-
-        if (parameter('date')) {
-            document.querySelector(".datepicker").value = parameter('date') + 'T00:00';
-            var countDownDate = new Date(document.querySelector(".datepicker").value);
-
-            document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
-
-
-            function imgQR(qrCanvas, centerImage, factor) {
-                var h = qrCanvas.height;
-                var cs = h * factor;
-                var co = (h - cs) / 2;
-                var ctx = qrCanvas.getContext("2d");
-                ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
-            }
-            const icon = new Image();
-            icon.onload = function generateQR() {
-                var qrcode = new QRCode(document.getElementById("qrcode"), {
-                    text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
-                    width: 150,
-                    height: 150,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-                imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
-            }
-            icon.src = 'icon.ico';
+    if (parameter('colorone')) {
+        if (parameter('colorone') == "null") {
+            console.log("Colors(1) could not be imported properly.");
         }
         else {
-            document.querySelector(".datepicker").value = '2023-10-31T00:00';
-            var countDownDate = new Date(document.querySelector(".datepicker").value);
+            var css = document.querySelector(':root');
 
-
-            function imgQR(qrCanvas, centerImage, factor) {
-                var h = qrCanvas.height;
-                var cs = h * factor;
-                var co = (h - cs) / 2;
-                var ctx = qrCanvas.getContext("2d");
-                ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
-            }
-            const icon = new Image();
-            icon.onload = function generateQR() {
-                var qrcode = new QRCode(document.getElementById("qrcode"), {
-                    text: "https://countdown.michaeldors.com",
-                    width: 150,
-                    height: 150,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-                imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
-            }
-            icon.src = 'icon.ico';
+            var coloronetouse = '#' + parameter('colorone')
+            document.getElementById("color1").value = coloronetouse;
+            css.style.setProperty('--one', coloronetouse);
         }
 
-        function adBlockNotDetected() {
-
+    }
+    if (parameter('colortwo')) {
+        if (parameter('colortwo') == "null") {
+            console.log("Colors(2) could not be imported properly.");
         }
-        function adBlockDetected() {
-            document.getElementById("detectedpop").classList.remove("hidden");
-            document.getElementById("gear").remove();
-            document.getElementById("clock").remove();
-        }
-        if (typeof blockAdBlock === 'undefined') {
-            adBlockDetected();
-        } else {
-            blockAdBlock.onDetected(adBlockDetected);
-            blockAdBlock.onNotDetected(adBlockNotDetected);
+        else {
+            var css = document.querySelector(':root');
 
-            blockAdBlock.on(true, adBlockDetected);
-            blockAdBlock.on(false, adBlockNotDetected);
-
-            blockAdBlock.on(true, adBlockDetected).onNotDetected(adBlockNotDetected);
-        }
-
-
-        document.querySelector('#searchTypeToggle').addEventListener('click', function(event){
-
-    if (event.target.tagName.toLowerCase() == 'input') {
-        
-        let input = event.target;
-        let slider = this.querySelector('div');
-        let labels = this.querySelectorAll('label');
-        
-        slider.style.transform = `translateX(${input.dataset.location})`;
-        labels.forEach(function(label){
-            if ( label == input.parentElement ) {
-                label.classList.add('selected');
-            } else {
-                label.classList.remove('selected');
-            }
-        });
-        
-        if(event.target == document.getElementById("speed1")){
-            if(getCookie("atc")){
-                document.getElementById("clock").classList.add("staticclock");
-                document.getElementById("bg1").classList.add("bg-color");
-                document.getElementById("bg1").classList.remove("bg-color-slow");
-                document.getElementById("bg1").classList.remove("bg-color-fast");
-                document.getElementById("bg2").classList.add("bg-black");
-                document.getElementById("bg2").classList.remove("bg-black-slow");
-                document.getElementById("bg2").classList.remove("bg-black-fast");
-            }
-            else{
-                document.getElementById("clock").classList.remove("clockslow");
-                document.getElementById("clock").classList.remove("clockfast");
-                document.getElementById("clock").classList.add("clock");
-            }
-        }
-        if(event.target == document.getElementById("speed2")){
-            if(getCookie("atc")){
-                document.getElementById("clock").classList.add("staticclock");
-                document.getElementById("bg1").classList.remove("bg-color");
-                document.getElementById("bg1").classList.add("bg-color-slow");
-                document.getElementById("bg1").classList.remove("bg-color-fast");
-                document.getElementById("bg2").classList.remove("bg-black");
-                document.getElementById("bg2").classList.add("bg-black-slow");
-                document.getElementById("bg2").classList.remove("bg-black-fast");
-            }
-            else{
-                document.getElementById("clock").classList.add("clockslow");
-                document.getElementById("clock").classList.remove("clockfast");
-                document.getElementById("clock").classList.remove("clock");
-            }
-        }
-        if(event.target == document.getElementById("speed3")){
-            if(getCookie("atc")){
-                document.getElementById("clock").classList.add("staticclock");
-                document.getElementById("bg1").classList.remove("bg-color");
-                document.getElementById("bg1").classList.remove("bg-color-slow");
-                document.getElementById("bg1").classList.add("bg-color-fast");
-                document.getElementById("bg2").classList.remove("bg-black");
-                document.getElementById("bg2").classList.remove("bg-black-slow");
-                document.getElementById("bg2").classList.add("bg-black-fast");
-            }
-            else{
-                document.getElementById("clock").classList.remove("clockslow");
-                document.getElementById("clock").classList.add("clockfast");
-                document.getElementById("clock").classList.remove("clock");
-            }
+            var colortwotouse = '#' + parameter('colortwo')
+            document.getElementById("color2").value = colortwotouse;
+            css.style.setProperty('--two', colortwotouse);
         }
     }
-    
-});
-
-          if(!getCookie("cookiesallowed")){
-          document.getElementById("cookiepopup").classList.remove("hidden");
-          document.getElementById("preloader").classList.add("hidden");
-          document.getElementById("innergear").classList.add("hidden");
-          document.getElementById("ad").classList.add("hidden");
-          document.getElementById("cookiesrejected").classList.remove("hidden");
+    if (parameter('colorthree')) {
+        if (parameter('colorthree') == "null") {
+            console.log("Colors(3) could not be imported properly.");
         }
-        else{
-          document.getElementById("cookiesrejected").classList.add("hidden");
+        else {
+            var css = document.querySelector(':root');
 
+            var colorthreetouse = '#' + parameter('colorthree')
+            document.getElementById("color3").value = colorthreetouse;
+            css.style.setProperty('--three', colorthreetouse);
         }
+    }
+    if (parameter('colorfour')) {
+        if (parameter('colorfour') == "null") {
+            console.log("Colors(4) could not be imported properly.");
+        }
+        else {
+            var css = document.querySelector(':root');
+
+            var colorfourtouse = '#' + parameter('colorfour')
+            document.getElementById("color4").value = colorfourtouse;
+            css.style.setProperty('--four', colorfourtouse);
+        }
+    }
+
+    if (parameter('date')) {
+        document.querySelector(".datepicker").value = parameter('date') + 'T00:00';
+        var countDownDate = new Date(document.querySelector(".datepicker").value);
+
+        document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
+
+
+        function imgQR(qrCanvas, centerImage, factor) {
+            var h = qrCanvas.height;
+            var cs = h * factor;
+            var co = (h - cs) / 2;
+            var ctx = qrCanvas.getContext("2d");
+            ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
+        }
+        const icon = new Image();
+        icon.onload = function generateQR() {
+            var qrcode = new QRCode(document.getElementById("qrcode"), {
+                text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
+                width: 150,
+                height: 150,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
+        }
+        icon.src = 'icon.ico';
+    }
+    else {
+        var now = new Date();
+        var nextyear = new Date().getFullYear() + 1;
+        var thisyear = new Date().getFullYear();
+
+        //new years
+        var newyearsthisyear = new Date(thisyear + "-01-01T00:00");
+        if (newyearsthisyear - now < 0) {
+            newyearsday = new Date(nextyear + '-01-01T00:00');
+        } else {
+            newyearsday = new Date(thisyear + '-01-01T00:00');
+        }
+
+        //valentines
+        var valentinesthisyear = new Date(thisyear + "-02-14T00:00");
+        if (valentinesthisyear - now < 0) {
+            valentinessday = new Date(nextyear + '-02-14T00:00');
+        } else {
+            valentinessday = new Date(thisyear + '-02-14T00:00');
+        }
+
+        //independence
+        var independencethisyear = new Date(thisyear + "-07-04T00:00");
+        if (independencethisyear - now < 0) {
+            independenceday = new Date(nextyear + '-07-04T00:00');
+        } else {
+            independenceday = new Date(thisyear + '-07-04T00:00');
+        }
+
+        //halloween
+        var halloweenthisyear = new Date(thisyear + "-10-31T00:00");
+        if (halloweenthisyear - now < 0) {
+            halloweenday = new Date(nextyear + '-10-31T00:00');
+        } else {
+            halloweenday = new Date(thisyear + '-10-31T00:00');
+        }
+
+        //thanksgiving
+        var thanksgivingthisyear = new Date(formatDate(getDateString(thisyear, 10, 3, 4)));
+        if (thanksgivingthisyear - now < 0) {
+            thanksgivingday = new Date(formatDate(getDateString(nextyear, 10, 3, 4)));
+        }
+        else {
+            thanksgivingday = new Date(formatDate(getDateString(thisyear, 10, 3, 4)));
+        }
+
+        //christmas
+        var christmasthisyear = new Date(thisyear + "-12-25T00:00");
+        if (christmasthisyear - now < 0) {
+            christmasday = new Date(nextyear + '-12-25T00:00');
+        } else {
+            christmasday = new Date(thisyear + '-12-25T00:00');
+        }
+
+
+        // List of holiday dates
+        const holidays = [
+            {
+                name: 'newyear',
+                date: newyearsday
+            },
+            {
+                name: 'valentines',
+                date: valentinessday
+            },
+            {
+                name:'independence',
+                date: independenceday
+            },
+            {
+                name:'halloween',
+                date: halloweenday
+            },
+            {
+                name:'thanksgiving',
+                date: thanksgivingday
+            },
+            {
+                name:'christmas',
+                date: christmasday
+            }
+        ];
+
+        // Find the next holiday
+        var nextHoliday = holidays.reduce(function (closest, holiday) {
+            var timeDiff = holiday - now;
+            return timeDiff > 0 && timeDiff < (closest - now) ? holiday : closest;
+        }, holidays[0]);
+
+        alert(nextHoliday.name);
+
+        if (nextHoliday.name == 'newyear') {
+            NYD();
+        }
+        else if (nextHoliday.name == 'valentines') {
+            VD();
+        }
+        else if (nextHoliday.name == 'independence') {
+            ID();
+        }
+        else if (nextHoliday.name == 'halloween') {
+            H();
+        }
+        else if (nextHoliday.name == 'thanksgiving') {
+            T();
+        }
+        else if (nextHoliday.name == 'christmas') {
+            C();
+        }
+
+
+        var countDownDate = new Date(document.querySelector(".datepicker").value);
+
+
+        function imgQR(qrCanvas, centerImage, factor) {
+            var h = qrCanvas.height;
+            var cs = h * factor;
+            var co = (h - cs) / 2;
+            var ctx = qrCanvas.getContext("2d");
+            ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
+        }
+        const icon = new Image();
+        icon.onload = function generateQR() {
+            var qrcode = new QRCode(document.getElementById("qrcode"), {
+                text: "https://countdown.michaeldors.com",
+                width: 150,
+                height: 150,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
+        }
+        icon.src = 'icon.ico';
+    }
+
+
+
+    document.querySelector('#searchTypeToggle').addEventListener('click', function (event) {
+
+        if (event.target.tagName.toLowerCase() == 'input') {
+
+            let input = event.target;
+            let slider = this.querySelector('div');
+            let labels = this.querySelectorAll('label');
+
+            slider.style.transform = `translateX(${input.dataset.location})`;
+            labels.forEach(function (label) {
+                if (label == input.parentElement) {
+                    label.classList.add('selected');
+                } else {
+                    label.classList.remove('selected');
+                }
+            });
+
+            if (event.target == document.getElementById("speed1")) {
+                if (getCookie("atc")) {
+                    document.getElementById("clock").classList.add("staticclock");
+                    document.getElementById("bg1").classList.add("bg-color");
+                    document.getElementById("bg1").classList.remove("bg-color-slow");
+                    document.getElementById("bg1").classList.remove("bg-color-fast");
+                    document.getElementById("bg2").classList.add("bg-black");
+                    document.getElementById("bg2").classList.remove("bg-black-slow");
+                    document.getElementById("bg2").classList.remove("bg-black-fast");
+                }
+                else {
+                    document.getElementById("clock").classList.remove("clockslow");
+                    document.getElementById("clock").classList.remove("clockfast");
+                    document.getElementById("clock").classList.add("clock");
+                }
+            }
+            if (event.target == document.getElementById("speed2")) {
+                if (getCookie("atc")) {
+                    document.getElementById("clock").classList.add("staticclock");
+                    document.getElementById("bg1").classList.remove("bg-color");
+                    document.getElementById("bg1").classList.add("bg-color-slow");
+                    document.getElementById("bg1").classList.remove("bg-color-fast");
+                    document.getElementById("bg2").classList.remove("bg-black");
+                    document.getElementById("bg2").classList.add("bg-black-slow");
+                    document.getElementById("bg2").classList.remove("bg-black-fast");
+                }
+                else {
+                    document.getElementById("clock").classList.add("clockslow");
+                    document.getElementById("clock").classList.remove("clockfast");
+                    document.getElementById("clock").classList.remove("clock");
+                }
+            }
+            if (event.target == document.getElementById("speed3")) {
+                if (getCookie("atc")) {
+                    document.getElementById("clock").classList.add("staticclock");
+                    document.getElementById("bg1").classList.remove("bg-color");
+                    document.getElementById("bg1").classList.remove("bg-color-slow");
+                    document.getElementById("bg1").classList.add("bg-color-fast");
+                    document.getElementById("bg2").classList.remove("bg-black");
+                    document.getElementById("bg2").classList.remove("bg-black-slow");
+                    document.getElementById("bg2").classList.add("bg-black-fast");
+                }
+                else {
+                    document.getElementById("clock").classList.remove("clockslow");
+                    document.getElementById("clock").classList.add("clockfast");
+                    document.getElementById("clock").classList.remove("clock");
+                }
+            }
+        }
+
+    });
+
+
 
     updateoptions();
 
     document.getElementById("body").style.overflowY = 'hidden';
     document.getElementById("gear").classList.remove("hidden");
 
-    function setCookie(name,value,days) {
+    function setCookie(name, value, days) {
         var expires = "";
         if (days) {
             var date = new Date();
-            date.setTime(date.getTime() + (days*24*60*60*1000));
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
             expires = "; expires=" + date.toUTCString();
         }
-        document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
     }
     function getCookie(name) {
         var nameEQ = name + "=";
         var ca = document.cookie.split(';');
-        for(var i=0;i < ca.length;i++) {
+        for (var i = 0; i < ca.length; i++) {
             var c = ca[i];
-            while (c.charAt(0)==' ') c = c.substring(1,c.length);
-            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
         }
         return null;
     }
     function eraseCookie(name) {
-        document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     }
 
 
-        function SetCountDowngeneral() {
-            countDownDate = new Date(document.querySelector(".datepicker").value);
-            var css = document.querySelector(':root');
-            var color1 = document.getElementById("color1").value;
-            var color2 = document.getElementById("color2").value;
-            var color3 = document.getElementById("color3").value;
-            var color4 = document.getElementById("color4").value;
-            css.style.setProperty('--one', color1);
-            css.style.setProperty('--two', color2);
-            css.style.setProperty('--three', color3);
-            css.style.setProperty('--four', color4);
+    function SetCountDowngeneral() {
+        countDownDate = new Date(document.querySelector(".datepicker").value);
+        var css = document.querySelector(':root');
+        var color1 = document.getElementById("color1").value;
+        var color2 = document.getElementById("color2").value;
+        var color3 = document.getElementById("color3").value;
+        var color4 = document.getElementById("color4").value;
+        css.style.setProperty('--one', color1);
+        css.style.setProperty('--two', color2);
+        css.style.setProperty('--three', color3);
+        css.style.setProperty('--four', color4);
 
-            var color1normalized = color1.replace("#", "");
-            var color2normalized = color2.replace("#", "");
-            var color3normalized = color3.replace("#", "");
-            var color4normalized = color4.replace("#", "");
+        var color1normalized = color1.replace("#", "");
+        var color2normalized = color2.replace("#", "");
+        var color3normalized = color3.replace("#", "");
+        var color4normalized = color4.replace("#", "");
 
-            var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate) + '?colorone=' + color1normalized + '?colortwo=' + color2normalized + '?colorthree=' + color3normalized + '?colorfour=' + color4normalized;
-            window.history.pushState({ path: refresh }, '', refresh);
+        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate) + '?colorone=' + color1normalized + '?colortwo=' + color2normalized + '?colorthree=' + color3normalized + '?colorfour=' + color4normalized;
+        window.history.pushState({ path: refresh }, '', refresh);
 
-            document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
-            qrcode.makeCode("https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'));
-        }
+        document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
+        qrcode.makeCode("https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'));
+    }
 
-        function convert(str) {
-            var date = new Date(str),
-                mnth = ("0" + (date.getMonth() +1)).slice(-2),
-                day = ("0" + date.getDate()).slice(-2);
-            return [date.getFullYear(), mnth, day].join("-");
-        }
+    function convert(str) {
+        var date = new Date(str),
+            mnth = ("0" + (date.getMonth() + 1)).slice(-2),
+            day = ("0" + date.getDate()).slice(-2);
+        return [date.getFullYear(), mnth, day].join("-");
+    }
 
-        function parameter(name) {
-            var query = window.location.search.substring(1);
-            var parameters = query.split('?');
-            for (var i = 0; i < parameters.length; i++) {
-                var pair = parameters[i].split('=');
+    function parameter(name) {
+        var query = window.location.search.substring(1);
+        var parameters = query.split('?');
+        for (var i = 0; i < parameters.length; i++) {
+            var pair = parameters[i].split('=');
 
-                if (pair[0] == name) {
-                    return pair[1];
-                }
+            if (pair[0] == name) {
+                return pair[1];
             }
-            return null;
         }
+        return null;
+    }
 
 
-    document.addEventListener( 'visibilitychange' , function() {
+    document.addEventListener('visibilitychange', function () {
         if (document.hidden) {
-          clearInterval(x);
-          document.getElementById("clock").remove();
-          if(getCookie('memsav')){
-            clearInterval(x);
-            document.getElementById("unfocused").classList.remove("hidden");
-          }
-          document.getElementById("preloader").classList.add("hidden");
-          document.getElementById("ad_container").remove();
-          document.getElementById("gear").classList.add("hidden");
-          document.getElementById("settings").classList.add("hidden");
+            if (getCookie('memsav')) {
+                clearInterval(x);
+                document.getElementById("clock").remove();
+                document.getElementById("unfocused").classList.remove("hidden");
+            }
         }
 
-        if(!document.hidden && !getCookie('memsav')){
+        if (!document.hidden && getCookie('memsav')) {
             location.reload();
         }
 
-    }, false );
+    }, false);
 
 
-        function settings() {
+    function settings() {
 
-            if (document.getElementById("settings").classList.contains("hidden") && !document.getElementById("cookiepopup").classList.contains("hidden")) {
-                document.getElementById("cookiepopup").classList.add("hidden");
-                document.getElementById("clock").style.display = "";
-                document.getElementById("cookiepopup").classList.add("hidden");
-                document.getElementById("settings").classList.add("hidden");
-                document.querySelector(".backgroundframe").classList.remove("hidden");
-                document.getElementById("gear").classList.remove("hidden");
-                document.getElementById("innergear").classList.remove("hidden");
-
-                document.getElementById("preloader").classList.add("hidden");
-                document.getElementById("unfocused").classList.add("hidden");
-                document.getElementById("body").style.overflowY = 'hidden';
-
-                document.body.scrollTop = document.documentElement.scrollTop = 0;
-            }
-            else if (document.getElementById("settings").classList.contains("hidden")) {
-                if (getCookie("cookiesallowed")) {
-                    document.getElementById("settings").classList.remove("hidden");
-                    document.getElementById("cookiepopup").classList.add("hidden");
-
-                }
-                else {
-                    document.getElementById("cookiepopup").classList.remove("hidden");
-                    document.getElementById("settings").classList.add("hidden");
-
-                }
-                document.getElementById("clock").style.display = "none";
-                document.getElementById("gear").classList.add("hidden");
-                document.getElementById("innergear").classList.add("hidden");
-
-                document.getElementById("preloader").classList.add("hidden");
-                document.getElementById("unfocused").classList.add("hidden");
-
-
-                document.getElementById("body").style.overflowY = '';
-                document.body.scrollTop = document.documentElement.scrollTop = 0;
-            }
-            else {
-
-                document.getElementById("clock").style.display = "";
-                document.getElementById("cookiepopup").classList.add("hidden");
-                document.getElementById("settings").classList.add("hidden");
-                document.getElementById("gear").classList.remove("hidden");
-                document.getElementById("innergear").classList.remove("hidden");
-
-                document.getElementById("preloader").classList.add("hidden");
-                document.getElementById("unfocused").classList.add("hidden");
-
-                document.getElementById("body").style.overflowY = 'hidden';
-                document.body.scrollTop = document.documentElement.scrollTop = 0;
-            }
-
-
-            if (document.getElementById("clock").style.display=="") {
-                document.getElementById("animatedbackground").style.display = "";
-            }
-            else if (getCookie("atc")) {
-                document.getElementById("animatedbackground").style.display="none";
-            }
-        }
-
-        if (getCookie("atc")) {
-            document.getElementById("animatedbackground").classList.remove("hidden");
-            document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414');
-            document.getElementById("color1").classList.remove("colorpicker");
-            document.getElementById("color1").classList.add("disabledcolorpicker");
-            document.getElementById("color2").classList.remove("colorpicker");
-            document.getElementById("color2").classList.add("disabledcolorpicker");
-            document.getElementById("color3").classList.remove("colorpicker");
-            document.getElementById("color3").classList.add("disabledcolorpicker");
-            document.getElementById("color4").classList.remove("colorpicker");
-            document.getElementById("color4").classList.add("disabledcolorpicker");
+        if (document.getElementById("settings").classList.contains("hidden")) {
+            document.getElementById("settings").classList.remove("hidden");
+            document.getElementById("clock").style.display = "none";
+            document.getElementById("gear").classList.add("hidden");
+            document.getElementById("innergear").classList.add("hidden");
+            document.getElementById("preloader").classList.add("hidden");
+            document.getElementById("unfocused").classList.add("hidden");
+            document.getElementById("body").style.overflowY = '';
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
         }
         else {
+            document.getElementById("clock").style.display = "";
+            document.getElementById("settings").classList.add("hidden");
+            document.getElementById("gear").classList.remove("hidden");
+            document.getElementById("innergear").classList.remove("hidden");
+            document.getElementById("preloader").classList.add("hidden");
+            document.getElementById("unfocused").classList.add("hidden");
+            document.getElementById("body").style.overflowY = 'hidden';
+
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+        }
+
+
+        if (document.getElementById("clock").style.display == "") {
+            document.getElementById("animatedbackground").style.display = "";
+        }
+        else if (getCookie("atc")) {
+            document.getElementById("animatedbackground").style.display = "none";
+        }
+    }
+
+    if (getCookie("atc")) {
+        document.getElementById("animatedbackground").classList.remove("hidden");
+        document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414');
+        document.getElementById("color1").classList.remove("colorpicker");
+        document.getElementById("color1").classList.add("disabledcolorpicker");
+        document.getElementById("color2").classList.remove("colorpicker");
+        document.getElementById("color2").classList.add("disabledcolorpicker");
+        document.getElementById("color3").classList.remove("colorpicker");
+        document.getElementById("color3").classList.add("disabledcolorpicker");
+        document.getElementById("color4").classList.remove("colorpicker");
+        document.getElementById("color4").classList.add("disabledcolorpicker");
+    }
+    else {
+        document.getElementById("animatedbackground").classList.add("hidden");
+        document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff');
+        document.getElementById("color1").classList.add("colorpicker");
+        document.getElementById("color1").classList.remove("disabledcolorpicker");
+        document.getElementById("color2").classList.add("colorpicker");
+        document.getElementById("color2").classList.remove("disabledcolorpicker");
+        document.getElementById("color3").classList.add("colorpicker");
+        document.getElementById("color3").classList.remove("disabledcolorpicker");
+        document.getElementById("color4").classList.add("colorpicker");
+        document.getElementById("color4").classList.remove("disabledcolorpicker");
+    }
+
+
+
+    var x = setInterval(function () {
+
+        updateoptions();
+
+        if (getCookie("atc")) {
+            document.getElementById("clock").classList.remove("clock");
+            document.getElementById("clock").classList.remove("clockslow");
+            document.getElementById("clock").classList.remove("clockfast");
+            document.getElementById("clock").classList.add("staticclock");
+            if (document.getElementById("settings").classList.contains("hidden")) {
+                document.getElementById("animatedbackground").classList.remove("hidden");
+                document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414');
+                document.getElementById("color1").classList.remove("colorpicker");
+                document.getElementById("color1").classList.add("disabledcolorpicker");
+                document.getElementById("color2").classList.remove("colorpicker");
+                document.getElementById("color2").classList.add("disabledcolorpicker");
+                document.getElementById("color3").classList.remove("colorpicker");
+                document.getElementById("color3").classList.add("disabledcolorpicker");
+                document.getElementById("color4").classList.remove("colorpicker");
+                document.getElementById("color4").classList.add("disabledcolorpicker");
+            }
+        }
+        else {
+            document.getElementById("clock").classList.add("clock");
+            document.getElementById("clock").classList.remove("staticclock");
             document.getElementById("animatedbackground").classList.add("hidden");
             document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff');
             document.getElementById("color1").classList.add("colorpicker");
@@ -1646,175 +1746,135 @@ form label.selected {
             document.getElementById("color4").classList.remove("disabledcolorpicker");
         }
 
+        document.getElementById("preloader").classList.add("hidden");
 
 
-        var x = setInterval(function () {
+        var now = new Date().getTime();
 
-      updateoptions();
+        var distance = countDownDate - now;
 
-      if (getCookie("atc")) {
-      document.getElementById("clock").classList.remove("clock");
-      document.getElementById("clock").classList.remove("clockslow");
-      document.getElementById("clock").classList.remove("clockfast");
-          document.getElementById("clock").classList.add("staticclock");
-          if (document.getElementById("settings").classList.contains("hidden")) {
-              document.getElementById("animatedbackground").classList.remove("hidden");
-              document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414');
-              document.getElementById("color1").classList.remove("colorpicker");
-              document.getElementById("color1").classList.add("disabledcolorpicker");
-              document.getElementById("color2").classList.remove("colorpicker");
-              document.getElementById("color2").classList.add("disabledcolorpicker");
-              document.getElementById("color3").classList.remove("colorpicker");
-              document.getElementById("color3").classList.add("disabledcolorpicker");
-              document.getElementById("color4").classList.remove("colorpicker");
-              document.getElementById("color4").classList.add("disabledcolorpicker");
-          }
-      }
-      else{
-      document.getElementById("clock").classList.add("clock");
-          document.getElementById("clock").classList.remove("staticclock");
-          document.getElementById("animatedbackground").classList.add("hidden");
-          document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff');
-          document.getElementById("color1").classList.add("colorpicker");
-          document.getElementById("color1").classList.remove("disabledcolorpicker");
-          document.getElementById("color2").classList.add("colorpicker");
-          document.getElementById("color2").classList.remove("disabledcolorpicker");
-          document.getElementById("color3").classList.add("colorpicker");
-          document.getElementById("color3").classList.remove("disabledcolorpicker");
-          document.getElementById("color4").classList.add("colorpicker");
-          document.getElementById("color4").classList.remove("disabledcolorpicker");
-      }
+        var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-            document.getElementById("preloader").classList.add("hidden");
+        if (days > 0) {
+            document.title = "Countdown for " + days + " days";
+        }
+        else if (hours > 0) {
+            document.title = "Countdown for " + hours + " hours";
+        }
+        else if (minutes > 0) {
+            document.title = "Countdown for " + minutes + " minutes";
+        }
+        else if (seconds > 0) {
+            document.title = "Countdown for " + seconds + " seconds";
+        }
+        else {
+            document.title = "Countdown";
+        }
+
+        if (getCookie("week")) {
+            var weekcount = Math.floor(distance / 604800000);
+            document.getElementById("clock").innerHTML = weekcount + " weeks";
+        }
+
+        if (getCookie("day")) {
+            document.getElementById("clock").innerHTML = days + " days";
+        }
+        else if (getCookie("hour")) {
+            var hourcount = Math.floor(distance / 3600000);
+            document.getElementById("clock").innerHTML = hourcount + " hours";
+        }
+        else if (getCookie("minute")) {
+            var minutecount = Math.floor(distance / 60000);
+            document.getElementById("clock").innerHTML = minutecount + " minutes";
+        }
+        else if (getCookie("second")) {
+            var secondcount = Math.floor(distance / 1000);
+            document.getElementById("clock").innerHTML = secondcount + " seconds";
+        }
 
 
 
-      var now = new Date().getTime();
-
-      var distance = countDownDate - now;
-
-      var days = Math.floor(distance / (1000 * 60 * 60 * 24));
-      var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      var seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
+        else if (getCookie("lcdu")) {
             if (days > 0) {
-                document.title = "Countdown for " + days + " days";
+                document.getElementById("clock").innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
+                document.getElementById("clock").style.fontSize = '75px';
             }
             else if (hours > 0) {
-                document.title = "Countdown for " + hours + " hours";
+                document.getElementById("clock").innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
+                document.getElementById("clock").style.fontSize = '100px';
             }
             else if (minutes > 0) {
-                document.title = "Countdown for " + minutes + " minutes";
+                document.getElementById("clock").innerHTML = minutes + "m " + seconds + "s ";
+                document.getElementById("clock").style.fontSize = '150px';
             }
             else if (seconds > 0) {
-                document.title = "Countdown for " + seconds + " seconds";
+                document.getElementById("clock").innerHTML = seconds + "s ";
+                document.getElementById("clock").style.fontSize = '175px';
             }
-            else {
-                document.title = "Countdown";
-            }
-
-            if (getCookie("week")) {
-                var weekcount = Math.floor(distance / 604800000);
-                document.getElementById("clock").innerHTML = weekcount + " weeks";
-            }
-
-            if (getCookie("day")) {
-                document.getElementById("clock").innerHTML = days + " days";
-            }
-            else if (getCookie("hour")) {
-                var hourcount = Math.floor(distance / 3600000);
-                document.getElementById("clock").innerHTML = hourcount + " hours";
-            }
-      else if(getCookie("minute")) {
-        var minutecount = Math.floor(distance / 60000);
-        document.getElementById("clock").innerHTML = minutecount + " minutes";
-      }
-      else if(getCookie("second")) {
-            var secondcount = Math.floor(distance / 1000);
-        document.getElementById("clock").innerHTML = secondcount + " seconds";
-            }
-
-
-
-      else if(getCookie("lcdu")) {
-        if(days > 0){
-        document.getElementById("clock").innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
-        document.getElementById("clock").style.fontSize = '75px';
         }
-        else if(hours > 0){
-        document.getElementById("clock").innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
-        document.getElementById("clock").style.fontSize = '100px';
-        }
-        else if(minutes > 0){
-        document.getElementById("clock").innerHTML = minutes + "m " + seconds + "s ";
-        document.getElementById("clock").style.fontSize = '150px';
-       }
-       else if(seconds > 0){
-        document.getElementById("clock").innerHTML = seconds + "s ";
-        document.getElementById("clock").style.fontSize = '175px';
-       }
-      }
-      else{
-        if(days > 0){
-        document.getElementById("clock").innerHTML = days + ":" + hours + ":" + minutes + ":" + seconds;
-        document.getElementById("clock").style.fontSize = '75px';
-        }
-        else if(hours > 0){
-        document.getElementById("clock").innerHTML = hours + ":" + minutes + ":" + seconds;
-        document.getElementById("clock").style.fontSize = '100px';
-        }
-        else if(minutes > 0){
-        document.getElementById("clock").innerHTML = minutes + ":" + seconds;
-        document.getElementById("clock").style.fontSize = '150px';
-       }
-       else if(seconds > 0){
-        document.getElementById("clock").innerHTML = seconds;
-        document.getElementById("clock").style.fontSize = '175px';
-       }
-      }
-
-
-            if (distance < 0) {
-                clearInterval(x);
-                document.getElementById("clock").remove();
-                document.getElementById("settings").remove();
-                document.getElementById("gear").remove();
-                if (!getCookie('coce')) {
-                    document.getElementById("animatedbackground").classList.add("hidden");
-                    startConfetti();
-                }
+        else {
+            if (days > 0) {
+                document.getElementById("clock").innerHTML = days + ":" + hours + ":" + minutes + ":" + seconds;
+                document.getElementById("clock").style.fontSize = '75px';
             }
+            else if (hours > 0) {
+                document.getElementById("clock").innerHTML = hours + ":" + minutes + ":" + seconds;
+                document.getElementById("clock").style.fontSize = '100px';
+            }
+            else if (minutes > 0) {
+                document.getElementById("clock").innerHTML = minutes + ":" + seconds;
+                document.getElementById("clock").style.fontSize = '150px';
+            }
+            else if (seconds > 0) {
+                document.getElementById("clock").innerHTML = seconds;
+                document.getElementById("clock").style.fontSize = '175px';
+            }
+        }
+
+
+        if (distance < 0) {
+            clearInterval(x);
+            document.getElementById("clock").remove();
+            document.getElementById("settings").remove();
+            document.getElementById("gear").remove();
+            if (!getCookie('coce')) {
+                document.getElementById("animatedbackground").classList.add("hidden");
+                startConfetti();
+            }
+        }
 
 
 
     }, 1000);
 
-    function updateoptions(){
-      if (getCookie("memsav")) {
-      document.getElementById("memsav").classList.add("enabled");
-      document.getElementById("memsav").classList.remove("disabled");
-      }
-      else{
-      document.getElementById("memsav").classList.remove("enabled");
-      document.getElementById("memsav").classList.add("disabled");
-      }
-      if (getCookie("coce")) {
-      document.getElementById("coce").classList.add("enabled");
-      document.getElementById("coce").classList.remove("disabled");
-      }
-      else{
-      document.getElementById("coce").classList.remove("enabled");
-      document.getElementById("coce").classList.add("disabled");
-      }
-      if (getCookie("lcdu")) {
-      document.getElementById("lcdu").classList.add("enabled");
-      document.getElementById("lcdu").classList.remove("disabled");
-      }
-      else{
-      document.getElementById("lcdu").classList.remove("enabled");
-      document.getElementById("lcdu").classList.add("disabled");
-      }
+    function updateoptions() {
+        if (getCookie("memsav")) {
+            document.getElementById("memsav").classList.add("enabled");
+            document.getElementById("memsav").classList.remove("disabled");
+        }
+        else {
+            document.getElementById("memsav").classList.remove("enabled");
+            document.getElementById("memsav").classList.add("disabled");
+        }
+        if (getCookie("coce")) {
+            document.getElementById("coce").classList.add("enabled");
+            document.getElementById("coce").classList.remove("disabled");
+        }
+        else {
+            document.getElementById("coce").classList.remove("enabled");
+            document.getElementById("coce").classList.add("disabled");
+        }
+        if (getCookie("lcdu")) {
+            document.getElementById("lcdu").classList.add("enabled");
+            document.getElementById("lcdu").classList.remove("disabled");
+        }
+        else {
+            document.getElementById("lcdu").classList.remove("enabled");
+            document.getElementById("lcdu").classList.add("disabled");
+        }
 
 
 
@@ -1822,41 +1882,41 @@ form label.selected {
 
 
         if (getCookie("second")) {
-        document.getElementById("second").classList.add("enabled");
-      document.getElementById("second").classList.remove("disabled");
-      }
-      else{
-      document.getElementById("second").classList.remove("enabled");
-      document.getElementById("second").classList.add("disabled");
-      }
+            document.getElementById("second").classList.add("enabled");
+            document.getElementById("second").classList.remove("disabled");
+        }
+        else {
+            document.getElementById("second").classList.remove("enabled");
+            document.getElementById("second").classList.add("disabled");
+        }
 
-          if (getCookie("minute")) {
-        document.getElementById("minute").classList.add("enabled");
-      document.getElementById("minute").classList.remove("disabled");
-      }
-      else{
-      document.getElementById("minute").classList.remove("enabled");
-      document.getElementById("minute").classList.add("disabled");
-      }
+        if (getCookie("minute")) {
+            document.getElementById("minute").classList.add("enabled");
+            document.getElementById("minute").classList.remove("disabled");
+        }
+        else {
+            document.getElementById("minute").classList.remove("enabled");
+            document.getElementById("minute").classList.add("disabled");
+        }
 
-            if (getCookie("hour")) {
-        document.getElementById("hour").classList.add("enabled");
-      document.getElementById("hour").classList.remove("disabled");
-      }
-      else{
-      document.getElementById("hour").classList.remove("enabled");
-      document.getElementById("hour").classList.add("disabled");
-      }
+        if (getCookie("hour")) {
+            document.getElementById("hour").classList.add("enabled");
+            document.getElementById("hour").classList.remove("disabled");
+        }
+        else {
+            document.getElementById("hour").classList.remove("enabled");
+            document.getElementById("hour").classList.add("disabled");
+        }
 
 
-            if (getCookie("day")) {
-        document.getElementById("day").classList.add("enabled");
-      document.getElementById("day").classList.remove("disabled");
-      }
-      else{
-      document.getElementById("day").classList.remove("enabled");
-      document.getElementById("day").classList.add("disabled");
-      }
+        if (getCookie("day")) {
+            document.getElementById("day").classList.add("enabled");
+            document.getElementById("day").classList.remove("disabled");
+        }
+        else {
+            document.getElementById("day").classList.remove("enabled");
+            document.getElementById("day").classList.add("disabled");
+        }
         if (getCookie("week")) {
             document.getElementById("week").classList.add("enabled");
             document.getElementById("week").classList.remove("disabled");
@@ -1870,199 +1930,172 @@ form label.selected {
 
 
 
-    function memsav(){
-      if(getCookie('memsav')){
-        eraseCookie('memsav');
-      }
-      else{
-        setCookie('memsav', 'true', '70');
-      }
-      updateoptions();
-    }
-    function acceptcookies(){
-      setCookie('cookiesallowed', 'true', '70');
-      document.getElementById("cookiepopup").classList.add("hidden");
-            document.getElementById("clock").style.display = "";
-        document.getElementById("gear").classList.remove("hidden");
-        document.getElementById("innergear").classList.remove("hidden");
-        document.getElementById("preloader").classList.add("hidden");
-        document.getElementById("ad_container").classList.remove("hidden");
-    document.getElementById("ad").classList.remove("hidden");
-        document.getElementById("unfocused").classList.add("hidden");
-
-        document.getElementById("body").style.overflowY = 'hidden';
-        document.body.scrollTop = document.documentElement.scrollTop = 0;
-    }
-
-    function rejectcookies(){
-      document.getElementById("cookiesrejected").classList.remove("hidden");
-      document.getElementById("cookiepopup").classList.add("hidden");
-            document.getElementById("clock").style.display = "";
-        document.getElementById("gear").classList.remove("hidden");
-        document.getElementById("innergear").classList.remove("hidden");
-
-        document.getElementById("preloader").classList.add("hidden");
-        document.getElementById("ad_container").classList.remove("hidden");
-    document.getElementById("ad").classList.remove("hidden");
-        document.getElementById("unfocused").classList.add("hidden");
-
-        document.getElementById("body").style.overflowY = 'hidden';
-        document.body.scrollTop = document.documentElement.scrollTop = 0;
-    }
-    function coce(){
-      if(getCookie('coce')){
-        eraseCookie('coce');
-      }
-      else{
-        setCookie('coce', 'true', '70');
-      }
-      updateoptions();
-    }
-
-
-    function lcdu(){
-      if(getCookie('lcdu')){
-        eraseCookie('lcdu');
-      }
-      else{
-        setCookie('lcdu', 'true', '70');
-      }
-      updateoptions();
-    }
-
-
-        function week() {
-            if (getCookie('week')) {
-                eraseCookie('week');
-            }
-            else {
-                setCookie('week', 'true', '70');
-                eraseCookie('second');
-                eraseCookie('minute');
-                eraseCookie('hour');
-                eraseCookie('day');
-            }
-            updateoptions();
+    function memsav() {
+        if (getCookie('memsav')) {
+            eraseCookie('memsav');
         }
-    function day(){
-      if(getCookie('day')){
-        eraseCookie('day');
-      }
-      else{
-        setCookie('day', 'true', '70');
+        else {
+            setCookie('memsav', 'true', '70');
+        }
+        updateoptions();
+    }
+
+
+
+    function coce() {
+        if (getCookie('coce')) {
+            eraseCookie('coce');
+        }
+        else {
+            setCookie('coce', 'true', '70');
+        }
+        updateoptions();
+    }
+
+
+    function lcdu() {
+        if (getCookie('lcdu')) {
+            eraseCookie('lcdu');
+        }
+        else {
+            setCookie('lcdu', 'true', '70');
+        }
+        updateoptions();
+    }
+
+
+    function week() {
+        if (getCookie('week')) {
+            eraseCookie('week');
+        }
+        else {
+            setCookie('week', 'true', '70');
             eraseCookie('second');
-          eraseCookie('minute');
-          eraseCookie('week');
-        eraseCookie('hour');
-      }
-      updateoptions();
+            eraseCookie('minute');
+            eraseCookie('hour');
+            eraseCookie('day');
+        }
+        updateoptions();
     }
-    function hour(){
-      if(getCookie('hour')){
-        eraseCookie('hour');
-      }
-      else{
-        setCookie('hour', 'true', '70');
+    function day() {
+        if (getCookie('day')) {
+            eraseCookie('day');
+        }
+        else {
+            setCookie('day', 'true', '70');
             eraseCookie('second');
-          eraseCookie('day');
-          eraseCookie('week');
-        eraseCookie('minute');
-      }
-      updateoptions();
+            eraseCookie('minute');
+            eraseCookie('week');
+            eraseCookie('hour');
+        }
+        updateoptions();
     }
-    function minute(){
-      if(getCookie('minute')){
-        eraseCookie('minute');
-      }
-      else{
-        setCookie('minute', 'true', '70');
-          eraseCookie('second');
-          eraseCookie('week');
-        eraseCookie('day');
-        eraseCookie('hour');
-      }
-      updateoptions();
+    function hour() {
+        if (getCookie('hour')) {
+            eraseCookie('hour');
+        }
+        else {
+            setCookie('hour', 'true', '70');
+            eraseCookie('second');
+            eraseCookie('day');
+            eraseCookie('week');
+            eraseCookie('minute');
+        }
+        updateoptions();
     }
-    function second(){
-      if(getCookie('second')){
-        eraseCookie('second');
-      }
-      else{
-        setCookie('second', 'true', '70');
-        eraseCookie('minute');
-        eraseCookie('day');
-          eraseCookie('hour');
-          eraseCookie('week');
-      }
-      updateoptions();
+    function minute() {
+        if (getCookie('minute')) {
+            eraseCookie('minute');
+        }
+        else {
+            setCookie('minute', 'true', '70');
+            eraseCookie('second');
+            eraseCookie('week');
+            eraseCookie('day');
+            eraseCookie('hour');
+        }
+        updateoptions();
     }
-    function resetcookies(){
-      eraseCookie('memsav');
-      eraseCookie('coce');
-      eraseCookie('atc');
+    function second() {
+        if (getCookie('second')) {
+            eraseCookie('second');
+        }
+        else {
+            setCookie('second', 'true', '70');
+            eraseCookie('minute');
+            eraseCookie('day');
+            eraseCookie('hour');
+            eraseCookie('week');
+        }
+        updateoptions();
+    }
+    function resetcookies() {
+        eraseCookie('memsav');
+        eraseCookie('coce');
+        eraseCookie('atc');
         eraseCookie('minute');
         eraseCookie('week');
-      eraseCookie('second');
+        eraseCookie('second');
         eraseCookie('day');
         eraseCookie('hour');
         eraseCookie('lcdu');
         updateoptions();
 
-            var css = document.querySelector(':root');
-            document.getElementById("color1").value = "#8426ff";
-            document.getElementById("color2").value = "#3ab6ff";
-            document.getElementById("color3").value = "#00ff5e";
-            document.getElementById("color4").value = "#ff9900";
-            css.style.setProperty('--one', "#8426ff");
-            css.style.setProperty('--two', "#3ab6ff");
-            css.style.setProperty('--three', "#00ff5e");
-            css.style.setProperty('--four', "#ff9900");
+        var css = document.querySelector(':root');
+        document.getElementById("color1").value = "#8426ff";
+        document.getElementById("color2").value = "#3ab6ff";
+        document.getElementById("color3").value = "#00ff5e";
+        document.getElementById("color4").value = "#ff9900";
+        css.style.setProperty('--one', "#8426ff");
+        css.style.setProperty('--two', "#3ab6ff");
+        css.style.setProperty('--three', "#00ff5e");
+        css.style.setProperty('--four', "#ff9900");
 
-            window.location.href = window.location.origin + window.location.pathname;
+        window.location.href = window.location.origin + window.location.pathname;
 
     }
 
     window.addEventListener('offline', () => document.getElementById("wifi").classList.remove("hidden"));
     window.addEventListener('online', () => document.getElementById("wifi").classList.add("hidden"));
 
-        const tabsBox = document.querySelector(".tabs-box"),
-            allTabs = tabsBox.querySelectorAll(".tab"),
-            arrowIcons = document.querySelectorAll(".icon i");
-        let isDragging = false;
-        const handleIcons = (scrollVal) => {
-            let maxScrollableWidth = tabsBox.scrollWidth - tabsBox.clientWidth;
-            arrowIcons[0].parentElement.style.display = scrollVal <= 0 ? "none" : "flex";
-            arrowIcons[1].parentElement.style.display = maxScrollableWidth - scrollVal <= 1 ? "none" : "flex";
-        }
-        arrowIcons.forEach(icon => {
-            icon.addEventListener("click", () => {
-                // if clicked icon is left, reduce 350 from tabsBox scrollLeft else add
-                let scrollWidth = tabsBox.scrollLeft += icon.id === "left" ? -340 : 340;
-                handleIcons(scrollWidth);
-            });
+    const tabsBox = document.querySelector(".tabs-box"),
+        allTabs = tabsBox.querySelectorAll(".tab"),
+        arrowIcons = document.querySelectorAll(".icon i");
+    let isDragging = false;
+    const handleIcons = (scrollVal) => {
+        let maxScrollableWidth = tabsBox.scrollWidth - tabsBox.clientWidth;
+        arrowIcons[0].parentElement.style.display = scrollVal <= 0 ? "none" : "flex";
+        arrowIcons[1].parentElement.style.display = maxScrollableWidth - scrollVal <= 1 ? "none" : "flex";
+    }
+    arrowIcons.forEach(icon => {
+        icon.addEventListener("click", () => {
+            // if clicked icon is left, reduce 350 from tabsBox scrollLeft else add
+            let scrollWidth = tabsBox.scrollLeft += icon.id === "left" ? -340 : 340;
+            handleIcons(scrollWidth);
         });
-        allTabs.forEach(tab => {
-            tab.addEventListener("click", () => {
-                tabsBox.querySelector(".active").classList.remove("active");
-                tab.classList.add("active");
-            });
+    });
+    allTabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            tabsBox.querySelector(".active").classList.remove("active");
+            tab.classList.add("active");
         });
-        const dragging = (e) => {
-            if (!isDragging) return;
-            tabsBox.classList.add("dragging");
-            tabsBox.scrollLeft -= e.movementX;
-            handleIcons(tabsBox.scrollLeft)
-        }
-        const dragStop = () => {
-            isDragging = false;
-            tabsBox.classList.remove("dragging");
-        }
-        tabsBox.addEventListener("mousedown", () => isDragging = true);
-        tabsBox.addEventListener("mousemove", dragging);
-        document.addEventListener("mouseup", dragStop);
+    });
+    const dragging = (e) => {
+        if (!isDragging) return;
+        tabsBox.classList.add("dragging");
+        tabsBox.scrollLeft -= e.movementX;
+        handleIcons(tabsBox.scrollLeft)
+    }
+    const dragStop = () => {
+        isDragging = false;
+        tabsBox.classList.remove("dragging");
+    }
+    tabsBox.addEventListener("mousedown", () => isDragging = true);
+    tabsBox.addEventListener("mousemove", dragging);
+    document.addEventListener("mouseup", dragStop);
 
 
-        const holidays = { // keys are formatted as month,week,day
+    const holidays = { // keys are formatted as month,week,day
         "0,2,1": "Martin Luther King, Jr. Day",
         "1,2,1": "President's Day",
         "2,1,0": "Daylight Savings Time Begins",
@@ -2098,243 +2131,209 @@ form label.selected {
         return dateString;
     }
 
-        function formatDate(userDate) {
-            var dateArr = userDate.split('/');
-            if (dateArr[0].length == 1) {
-                dateArr[0] = '0' + dateArr[0];
-            } else if (dateArr[1].length == 1) {
-                dateArr[1] = '0' + dateArr[1];
-            }
-            userDate = dateArr[2] + "-" + dateArr[0] + "-" + dateArr[1];
-            console.log(userDate);
-            return userDate + 'T00:00';
+    function formatDate(userDate) {
+        var dateArr = userDate.split('/');
+        if (dateArr[0].length == 1) {
+            dateArr[0] = '0' + dateArr[0];
+        } else if (dateArr[1].length == 1) {
+            dateArr[1] = '0' + dateArr[1];
         }
+        userDate = dateArr[2] + "-" + dateArr[0] + "-" + dateArr[1];
+        console.log(userDate);
+        return userDate + 'T00:00';
+    }
 
-        var now = new Date().getTime();
-        var nextyear = new Date().getFullYear() + 1;
-        var thisyear = new Date().getFullYear();
+    var now = new Date().getTime();
+    var nextyear = new Date().getFullYear() + 1;
+    var thisyear = new Date().getFullYear();
 
 
-        function MES() {
-            document.querySelector(".datepicker").value = '2024-05-22T11:00';
-            SetCountDowngeneral();
+    function MES() {
+        document.querySelector(".datepicker").value = '2024-05-22T11:00';
+        SetCountDowngeneral();
+    }
+    function NYD() {
+        var newyearsthisyear = new Date(thisyear + "-01-01T00:00");
+        if (newyearsthisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-01-01T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-01-01T00:00';
         }
-        function NYD() {
-            var newyearsthisyear = new Date(thisyear + "-01-01T00:00");
-            if (newyearsthisyear - now < 0) {
-                document.querySelector(".datepicker").value = nextyear + '-01-01T00:00';
-            } else {
-                document.querySelector(".datepicker").value = thisyear + '-01-01T00:00';
-            }
-            SetCountDowngeneral();
+        SetCountDowngeneral();
 
+    }
+    function VD() {
+        var valentinesthisyear = new Date(thisyear + "-02-14T00:00");
+        if (valentinesthisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-02-14T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-02-14T00:00';
         }
-        function VD() {
-            var valentinesthisyear = new Date(thisyear + "-02-14T00:00");
-            if (valentinesthisyear - now < 0) {
-                document.querySelector(".datepicker").value = nextyear + '-02-14T00:00';
-            } else {
-                document.querySelector(".datepicker").value = thisyear + '-02-14T00:00';
-            }
-            SetCountDowngeneral();
+        SetCountDowngeneral();
 
+    }
+
+    function ID() {
+        var independencethisyear = new Date(thisyear + "-07-04T00:00");
+        if (independencethisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-07-04T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-07-04T00:00';
         }
-        function NDOP() {
-            var ndopthisyear = new Date(formatDate(getDateString(thisyear, 5, 2, 4)));
-            if (ndopthisyear - now < 0) {
-                document.querySelector(".datepicker").value = formatDate(getDateString(nextyear, 5, 2, 4));
-            }
-            else {
-                document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 5, 2, 4));
-            }
-            SetCountDowngeneral();
+        SetCountDowngeneral();
 
+    }
+    function H() {
+        var halloweenthisyear = new Date(thisyear + "-10-31T00:00");
+        if (halloweenthisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-10-31T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-10-31T00:00';
         }
-        function ID() {
-            var independencethisyear = new Date(thisyear + "-07-04T00:00");
-            if (independencethisyear - now < 0) {
-                document.querySelector(".datepicker").value = nextyear + '-07-04T00:00';
-            } else {
-                document.querySelector(".datepicker").value = thisyear + '-07-04T00:00';
-            }
-            SetCountDowngeneral();
+        SetCountDowngeneral();
 
+    }
+    function T() {
+        var thanksgivingthisyear = new Date(formatDate(getDateString(thisyear, 10, 3, 4)));
+        if (thanksgivingthisyear - now < 0) {
+            document.querySelector(".datepicker").value = formatDate(getDateString(nextyear, 10, 3, 4));
         }
-        function H() {
-            var halloweenthisyear = new Date(thisyear + "-10-31T00:00");
-            if (halloweenthisyear - now < 0) {
-                document.querySelector(".datepicker").value = nextyear + '-10-31T00:00';
-            } else {
-                document.querySelector(".datepicker").value = thisyear + '-10-31T00:00';
-            }
-            SetCountDowngeneral();
-
+        else {
+            document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 10, 3, 4));
         }
-        function T() {
-            var thanksgivingthisyear = new Date(formatDate(getDateString(thisyear, 10, 3, 4)));
-            if (thanksgivingthisyear - now < 0) {
-                document.querySelector(".datepicker").value = formatDate(getDateString(nextyear, 10, 3, 4));
-            }
-            else {
-                document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 10, 3, 4));
-            }
-            SetCountDowngeneral();
+        SetCountDowngeneral();
 
+    }
+    function C() {
+        var christmasthisyear = new Date(thisyear + "-12-25T00:00");
+        if (christmasthisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-12-25T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-12-25T00:00';
         }
-        function C() {
-            var christmasthisyear = new Date(thisyear + "-12-25T00:00");
-            if (christmasthisyear - now < 0) {
-                document.querySelector(".datepicker").value = nextyear + '-12-25T00:00';
-            } else {
-                document.querySelector(".datepicker").value = thisyear + '-12-25T00:00';
-            }
-            SetCountDowngeneral();
+        SetCountDowngeneral();
 
-        }
+    }
 
-        document.getElementById("modal1");
-        document.getElementById("modal2");
-        document.getElementById("modal3");
-        document.getElementById("modalqr");
-
-        function colorstooltip() {
-            closemodals();
-            modal3.showModal();
-        }
-        function linktooltip() {
-            closemodals();
-            modal2.showModal();
-        }
-        function datetooltip() {
-            closemodals();
-            modal1.showModal();
-        }
-        function animationspeedtooltip() {
-            closemodals();
-            modal4.showModal();
-        }
-        function closemodals() {
-            modal1.close();
-            modal2.close();
-            modal3.close();
-            modal4.close();
-        }
+    
 
 
-        function copyinputtextlink() {
-            let linkinputfield = document.getElementById("linkinput");
-            navigator.clipboard.writeText(linkinputfield.value);
-        }
+    function copyinputtextlink() {
+        let linkinputfield = document.getElementById("linkinput");
+        navigator.clipboard.writeText(linkinputfield.value);
+    }
 
 
-        const contextMenu = document.querySelector(".wrapper2"),
-            shareMenu = contextMenu.querySelector(".share-menu");
+    const contextMenu = document.querySelector(".wrapper2"),
+        shareMenu = contextMenu.querySelector(".share-menu");
 
-        window.addEventListener("contextmenu", e => {
+    window.addEventListener("contextmenu", e => {
+        e.preventDefault();
+        let x = e.offsetX, y = e.offsetY,
+            winWidth = window.innerWidth,
+            winHeight = window.winHeight,
+            cmWidth = contextMenu.offsetWidth,
+            cmHeight = contextMenu.offsetHeight;
+
+        x = x > winWidth - cmWidth ? winWidth - cmWidth - 5 : x;
+        y = y > winHeight - cmHeight ? winHeight - cmHeight - 5 : y;
+
+        contextMenu.style.left = `${x}px`;
+        contextMenu.style.top = `${y}px`;
+        contextMenu.style.visibility = "visible";
+    });
+    document.addEventListener("click", () => contextMenu.style.visibility = "hidden");
+
+
+
+    const container = document.getElementById("tabs-box");
+    container.addEventListener("wheel", function (e) {
+
+        if (e.deltaY > 0) {
+            container.scrollLeft += 200;
             e.preventDefault();
-            let x = e.offsetX, y = e.offsetY,
-                winWidth = window.innerWidth,
-                winHeight = window.winHeight,
-                cmWidth = contextMenu.offsetWidth,
-                cmHeight = contextMenu.offsetHeight;
-
-            x = x > winWidth - cmWidth ? winWidth - cmWidth - 5 : x;
-            y = y > winHeight - cmHeight ? winHeight - cmHeight - 5 : y;
-
-            contextMenu.style.left = `${x}px`;
-            contextMenu.style.top = `${y}px`;
-            contextMenu.style.visibility = "visible";
-        });
-        document.addEventListener("click", () => contextMenu.style.visibility = "hidden");
-
-
-
-        const container = document.getElementById("tabs-box");
-        container.addEventListener("wheel", function (e) {
-            
-            if (e.deltaY > 0) {
-                container.scrollLeft += 200;
-                e.preventDefault();
-            }
-            else {
-                container.scrollLeft -= 200;
-                e.preventDefault();
-            }
-        });
-
-
-        function enablecolor(){
-            document.getElementById("color1").classList.add("colorpicker");
-          document.getElementById("color1").classList.remove("disabledcolorpicker");
-          document.getElementById("color2").classList.add("colorpicker");
-          document.getElementById("color2").classList.remove("disabledcolorpicker");
-          document.getElementById("color3").classList.add("colorpicker");
-          document.getElementById("color3").classList.remove("disabledcolorpicker");
-          document.getElementById("color4").classList.add("colorpicker");
-          document.getElementById("color4").classList.remove("disabledcolorpicker");
         }
-
-        function disablecolor(){
-            document.getElementById("color1").classList.remove("colorpicker");
-              document.getElementById("color1").classList.add("disabledcolorpicker");
-              document.getElementById("color2").classList.remove("colorpicker");
-              document.getElementById("color2").classList.add("disabledcolorpicker");
-              document.getElementById("color3").classList.remove("colorpicker");
-              document.getElementById("color3").classList.add("disabledcolorpicker");
-              document.getElementById("color4").classList.remove("colorpicker");
-              document.getElementById("color4").classList.add("disabledcolorpicker");
+        else {
+            container.scrollLeft -= 200;
+            e.preventDefault();
         }
+    });
 
 
-        function defaultbg(){
-            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground.png"){
-                eraseCookie('atc');
-                enablecolor();
-            }
-            else{
-                setCookie('atc', 'true', '70');
-                document.getElementById("bg1").src = "enhancedbackground.png";
-                document.getElementById("bg2").src = "enhancedbackground.png";
-                disablecolor()
-            }
-            updateoptions();
+    function enablecolor() {
+        document.getElementById("color1").classList.add("colorpicker");
+        document.getElementById("color1").classList.remove("disabledcolorpicker");
+        document.getElementById("color2").classList.add("colorpicker");
+        document.getElementById("color2").classList.remove("disabledcolorpicker");
+        document.getElementById("color3").classList.add("colorpicker");
+        document.getElementById("color3").classList.remove("disabledcolorpicker");
+        document.getElementById("color4").classList.add("colorpicker");
+        document.getElementById("color4").classList.remove("disabledcolorpicker");
+    }
+
+    function disablecolor() {
+        document.getElementById("color1").classList.remove("colorpicker");
+        document.getElementById("color1").classList.add("disabledcolorpicker");
+        document.getElementById("color2").classList.remove("colorpicker");
+        document.getElementById("color2").classList.add("disabledcolorpicker");
+        document.getElementById("color3").classList.remove("colorpicker");
+        document.getElementById("color3").classList.add("disabledcolorpicker");
+        document.getElementById("color4").classList.remove("colorpicker");
+        document.getElementById("color4").classList.add("disabledcolorpicker");
+    }
+
+
+    function defaultbg() {
+        if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground.png") {
+            eraseCookie('atc');
+            enablecolor();
         }
-        function xmasgb(){
-            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_christmas.png"){
-                eraseCookie('atc');
-                enablecolor();
-            }
-            else{
-                setCookie('atc', 'true', '70');
-                document.getElementById("bg1").src = "enhancedbackground_christmas.png";
-                document.getElementById("bg2").src = "enhancedbackground_christmas.png";
-                disablecolor();
-            }
-            updateoptions();
-        }
-        function fourthbg(){
-            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_fourth.png"){
-                eraseCookie('atc');
-                enablecolor();
-            }
-            else{
-                document.getElementById("bg1").src = "enhancedbackground_fourth.png";
-                document.getElementById("bg2").src = "enhancedbackground_fourth.png";
-                disablecolor();
-            }
-            updateoptions();
-        }
-        function fallbg(){
-            if(getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_thanksgiving.png"){
-                eraseCookie('atc');
-                enablecolor();
-            }
-            else{
-                document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
-                document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
-                disablecolor();
-            }
+        else {
+            setCookie('atc', 'true', '70');
+            document.getElementById("bg1").src = "enhancedbackground.png";
+            document.getElementById("bg2").src = "enhancedbackground.png";
+            disablecolor()
         }
         updateoptions();
-    </script>
+    }
+    function xmasgb() {
+        if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_christmas.png") {
+            eraseCookie('atc');
+            enablecolor();
+        }
+        else {
+            setCookie('atc', 'true', '70');
+            document.getElementById("bg1").src = "enhancedbackground_christmas.png";
+            document.getElementById("bg2").src = "enhancedbackground_christmas.png";
+            disablecolor();
+        }
+        updateoptions();
+    }
+    function fourthbg() {
+        if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_fourth.png") {
+            eraseCookie('atc');
+            enablecolor();
+        }
+        else {
+            setCookie('atc', 'true', '70');
+            document.getElementById("bg1").src = "enhancedbackground_fourth.png";
+            document.getElementById("bg2").src = "enhancedbackground_fourth.png";
+            disablecolor();
+        }
+        updateoptions();
+    }
+    function fallbg() {
+        if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_thanksgiving.png") {
+            eraseCookie('atc');
+            enablecolor();
+        }
+        else {
+            setCookie('atc', 'true', '70');
+            document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
+            document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
+            disablecolor()
+        }
+        updateoptions();
+    }
+</script>
 
