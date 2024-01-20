@@ -1755,7 +1755,7 @@
         }
 
         if (getCookie("week")) {
-            var weekcount = Math.floor(distance / 604800000);
+            var weekcount = Math.floor(days / 7);
             document.getElementById("clock").innerHTML = weekcount + " weeks";
         }
 
