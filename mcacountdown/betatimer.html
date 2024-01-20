@@ -131,10 +131,10 @@
         </h2>
 
 
-        <input class="colorpicker" id="color1" type="color" value="#8426ff" oninput="SetCountDowngeneral();" />
-        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" oninput="SetCountDowngeneral();" />
-        <input class="colorpicker" id="color3" type="color" value="#00ff5e" oninput="SetCountDowngeneral();" />
-        <input class="colorpicker" id="color4" type="color" value="#ff9900" oninput="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color1" type="color" value="#8426ff" onmouseup="enablecolor();" oninput="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" onmouseup="enablecolor();" oninput="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color3" type="color" value="#00ff5e" onmouseup="enablecolor();" oninput="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color4" type="color" value="#ff9900" onmouseup="enablecolor();" oninput="SetCountDowngeneral();" />
         <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">Keep contrast in mind when choosing colors.</p>
         <br />
         <br />
@@ -289,8 +289,6 @@
         background: #141414;
         border: none;
         opacity: 0.5;
-        cursor: not-allowed;
-        pointer-events: none;
     }
 
         .disabledcolorpicker::-webkit-color-swatch {
@@ -2263,6 +2261,7 @@
 
 
     function enablecolor() {
+        eraseCookie('atc');
         document.getElementById("color1").classList.add("colorpicker");
         document.getElementById("color1").classList.remove("disabledcolorpicker");
         document.getElementById("color2").classList.add("colorpicker");
@@ -2274,6 +2273,7 @@
     }
 
     function disablecolor() {
+        setCookie('atc', 'true', '70');
         document.getElementById("color1").classList.remove("colorpicker");
         document.getElementById("color1").classList.add("disabledcolorpicker");
         document.getElementById("color2").classList.remove("colorpicker");
@@ -2287,11 +2287,9 @@
 
     function defaultbg() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground.png") {
-            eraseCookie('atc');
             enablecolor();
         }
         else {
-            setCookie('atc', 'true', '70');
             document.getElementById("bg1").src = "enhancedbackground.png";
             document.getElementById("bg2").src = "enhancedbackground.png";
             disablecolor()
@@ -2300,11 +2298,9 @@
     }
     function xmasgb() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_christmas.png") {
-            eraseCookie('atc');
             enablecolor();
         }
         else {
-            setCookie('atc', 'true', '70');
             document.getElementById("bg1").src = "enhancedbackground_christmas.png";
             document.getElementById("bg2").src = "enhancedbackground_christmas.png";
             disablecolor();
@@ -2313,11 +2309,9 @@
     }
     function fourthbg() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_fourth.png") {
-            eraseCookie('atc');
             enablecolor();
         }
         else {
-            setCookie('atc', 'true', '70');
             document.getElementById("bg1").src = "enhancedbackground_fourth.png";
             document.getElementById("bg2").src = "enhancedbackground_fourth.png";
             disablecolor();
@@ -2326,11 +2320,9 @@
     }
     function fallbg() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_thanksgiving.png") {
-            eraseCookie('atc');
             enablecolor();
         }
         else {
-            setCookie('atc', 'true', '70');
             document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
             document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
             disablecolor()
