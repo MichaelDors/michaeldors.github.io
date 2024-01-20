@@ -9,7 +9,7 @@
     <title>Countdown</title>
 
     <script src="Dependencies/confetti.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
 </head>
 
 <body id="body" style="background-color:#141414;  overflow-x:hidden;">
@@ -119,7 +119,7 @@
                 <p style="font-family: 'Dosis', sans-serif; color:black; font-size:16px; line-height:0.9">
                     Scan on most camera apps<br /> to go to the countdown.
                 </p>
-                <a href="#qrcode" download><i class="fa-solid fa-download"></i> Download</a>
+                <a onmouseup="downloadQR()"><i class="fa-solid fa-download"></i> Download</a>
             </div>
 
         </div>
@@ -1065,7 +1065,6 @@
 
         #ad {
             width: 100vw;
-
             border: none;
             border-top: 4px solid white;
             object-fit: contain;
@@ -1149,6 +1148,7 @@
     #qrcode img {
         border-radius: 10px;
     }
+
 
 
     *::-webkit-scrollbar {
@@ -1329,26 +1329,7 @@
         document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
 
 
-        function imgQR(qrCanvas, centerImage, factor) {
-            var h = qrCanvas.height;
-            var cs = h * factor;
-            var co = (h - cs) / 2;
-            var ctx = qrCanvas.getContext("2d");
-            ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
-        }
-        const icon = new Image();
-        icon.onload = function generateQR() {
-            var qrcode = new QRCode(document.getElementById("qrcode"), {
-                text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
-                width: 150,
-                height: 150,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
-            imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
-        }
-        icon.src = 'icon.ico';
+        makeQR();
     }
     else {
         var now = new Date();
@@ -1416,74 +1397,55 @@
                 date: valentinessday
             },
             {
-                name:'independence',
+                name: 'independence',
                 date: independenceday
             },
             {
-                name:'halloween',
+                name: 'halloween',
                 date: halloweenday
             },
             {
-                name:'thanksgiving',
+                name: 'thanksgiving',
                 date: thanksgivingday
             },
             {
-                name:'christmas',
+                name: 'christmas',
                 date: christmasday
             }
         ];
 
         // Find the next holiday
         var nextHoliday = holidays.reduce(function (closest, holiday) {
-            var timeDiff = holiday - now;
-            return timeDiff > 0 && timeDiff < (closest - now) ? holiday : closest;
+            var timeDiff = holiday.date.getTime() - now.getTime();
+            return timeDiff > 0 && timeDiff < (closest.date.getTime() - now.getTime()) ? holiday : closest;
         }, holidays[0]);
 
-        alert(nextHoliday.name);
+        
+        switch (nextHoliday.name) {
+            case 'newyear':
+                NYD();
+                break;
+            case 'valentines':
+                VD();
+                break;
+            case 'independence':
+                ID();
+                break;
+            case 'halloween':
+                H();
+                break;
+            case 'thanksgiving':
+                T();
+                break;
+            case 'christmas':
+                C();
+                break;
+            default:
+                // Handle cases where nextHoliday.name doesn't match any of the above
+                console.error('Unexpected holiday name:', nextHoliday.name);
+        }
 
-        if (nextHoliday.name == 'newyear') {
-            NYD();
-        }
-        else if (nextHoliday.name == 'valentines') {
-            VD();
-        }
-        else if (nextHoliday.name == 'independence') {
-            ID();
-        }
-        else if (nextHoliday.name == 'halloween') {
-            H();
-        }
-        else if (nextHoliday.name == 'thanksgiving') {
-            T();
-        }
-        else if (nextHoliday.name == 'christmas') {
-            C();
-        }
 
-
-        var countDownDate = new Date(document.querySelector(".datepicker").value);
-
-
-        function imgQR(qrCanvas, centerImage, factor) {
-            var h = qrCanvas.height;
-            var cs = h * factor;
-            var co = (h - cs) / 2;
-            var ctx = qrCanvas.getContext("2d");
-            ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
-        }
-        const icon = new Image();
-        icon.onload = function generateQR() {
-            var qrcode = new QRCode(document.getElementById("qrcode"), {
-                text: "https://countdown.michaeldors.com",
-                width: 150,
-                height: 150,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
-            imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
-        }
-        icon.src = 'icon.ico';
     }
 
 
@@ -1609,7 +1571,7 @@
         window.history.pushState({ path: refresh }, '', refresh);
 
         document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
-        qrcode.makeCode("https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'));
+        makeQR();
     }
 
     function convert(str) {
@@ -1714,6 +1676,24 @@
         updateoptions();
 
         if (getCookie("atc")) {
+
+            if(getCookie('fallbg')){
+                document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
+                document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
+            }
+            else if(getCookie('christmasbg')){
+                document.getElementById("bg1").src = "enhancedbackground_christmas.png";
+                document.getElementById("bg2").src = "enhancedbackground_christmas.png";
+            }
+            else if(getCookie('fourthbg')){
+                document.getElementById("bg1").src = "enhancedbackground_fourth.png";
+                document.getElementById("bg2").src = "enhancedbackground_fourth.png";
+            }
+            else{
+                document.getElementById("bg1").src = "enhancedbackground.png";
+                document.getElementById("bg2").src = "enhancedbackground.png";
+            }
+
             document.getElementById("clock").classList.remove("clock");
             document.getElementById("clock").classList.remove("clockslow");
             document.getElementById("clock").classList.remove("clockfast");
@@ -2170,7 +2150,6 @@
             document.querySelector(".datepicker").value = thisyear + '-02-14T00:00';
         }
         SetCountDowngeneral();
-
     }
 
     function ID() {
@@ -2215,7 +2194,7 @@
 
     }
 
-    
+
 
 
     function copyinputtextlink() {
@@ -2294,6 +2273,16 @@
             document.getElementById("bg2").src = "enhancedbackground.png";
             disablecolor()
         }
+
+        if (getCookie('normalbg')) {
+            eraseCookie('normalbg');
+        }
+        else {
+            setCookie('normalbg', 'true', '70');
+            eraseCookie('christmasbg');
+            eraseCookie('fourthbg');
+            eraseCookie('fallbg');
+        }
         updateoptions();
     }
     function xmasgb() {
@@ -2304,6 +2293,16 @@
             document.getElementById("bg1").src = "enhancedbackground_christmas.png";
             document.getElementById("bg2").src = "enhancedbackground_christmas.png";
             disablecolor();
+        }
+
+        if (getCookie('christmasbg')) {
+            eraseCookie('christmasbg');
+        }
+        else {
+            setCookie('christmasbg', 'true', '70');
+            eraseCookie('normalbg');
+            eraseCookie('fourthbg');
+            eraseCookie('fallbg');
         }
         updateoptions();
     }
@@ -2316,6 +2315,16 @@
             document.getElementById("bg2").src = "enhancedbackground_fourth.png";
             disablecolor();
         }
+
+        if (getCookie('fourthbg')) {
+            eraseCookie('fourthbg');
+        }
+        else {
+            setCookie('fourthbg', 'true', '70');
+            eraseCookie('christmasbg');
+            eraseCookie('normalbg');
+            eraseCookie('fallbg');
+        }
         updateoptions();
     }
     function fallbg() {
@@ -2327,7 +2336,58 @@
             document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
             disablecolor()
         }
+
+        if (getCookie('fallbg')) {
+            eraseCookie('fallbg');
+        }
+        else {
+            setCookie('fallbg', 'true', '70');
+            eraseCookie('christmasbg');
+            eraseCookie('fourthbg');
+            eraseCookie('normal');
+        }
         updateoptions();
+    }
+
+    function makeQR() {
+        document.getElementById('qrcode').innerHTML = '';
+
+            function imgQR(qrCanvas, centerImage, factor) {
+                var h = qrCanvas.height;
+                var cs = h * factor;
+                var co = (h - cs) / 2;
+                var ctx = qrCanvas.getContext("2d");
+                ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
+            }
+            const icon = new Image();
+            icon.onload = function generateQR() {
+                var qrcode = new QRCode(document.getElementById("qrcode"), {
+                    text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
+                    width: 150,
+                    height: 150,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
+            }
+            icon.src = 'icon.ico';
+    }
+
+    function downloadQR() {
+
+        var imageContainer = document.getElementById('qrcode');
+        var imageElement = imageContainer.querySelector('img');
+
+        var imageData = imageElement.src;
+
+        var downloadLink = document.createElement('a');
+        downloadLink.href = imageData;
+        downloadLink.download = 'mdcountdownqrcode.png';
+   
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
     }
 </script>
 
