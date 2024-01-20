@@ -1676,6 +1676,24 @@
         updateoptions();
 
         if (getCookie("atc")) {
+
+            if(getCookie('fallbg')){
+                document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
+                document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
+            }
+            else if(getCookie('christmasbg')){
+                document.getElementById("bg1").src = "enhancedbackground_christmas.png";
+                document.getElementById("bg2").src = "enhancedbackground_christmas.png";
+            }
+            else if(getCookie('fourthbg')){
+                document.getElementById("bg1").src = "enhancedbackground_fourth.png";
+                document.getElementById("bg2").src = "enhancedbackground_fourth.png";
+            }
+            else{
+                document.getElementById("bg1").src = "enhancedbackground.png";
+                document.getElementById("bg2").src = "enhancedbackground.png";
+            }
+
             document.getElementById("clock").classList.remove("clock");
             document.getElementById("clock").classList.remove("clockslow");
             document.getElementById("clock").classList.remove("clockfast");
@@ -1736,10 +1754,6 @@
             document.title = "Countdown";
         }
 
-        if (getCookie("week")) {
-            var weekcount = Math.floor(distance / 604800000);
-            document.getElementById("clock").innerHTML = weekcount + " weeks";
-        }
 
         if (getCookie("day")) {
             document.getElementById("clock").innerHTML = days + " days";
@@ -1756,9 +1770,10 @@
             var secondcount = Math.floor(distance / 1000);
             document.getElementById("clock").innerHTML = secondcount + " seconds";
         }
-
-
-
+        else if (getCookie("week")) {
+            var weekcount = Math.floor(days / 7);
+            document.getElementById("clock").innerHTML = weekcount + " weeks";
+        }
         else if (getCookie("lcdu")) {
             if (days > 0) {
                 document.getElementById("clock").innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
@@ -2255,6 +2270,16 @@
             document.getElementById("bg2").src = "enhancedbackground.png";
             disablecolor()
         }
+
+        if (getCookie('normalbg')) {
+            eraseCookie('normalbg');
+        }
+        else {
+            setCookie('normalbg', 'true', '70');
+            eraseCookie('christmasbg');
+            eraseCookie('fourthbg');
+            eraseCookie('fallbg');
+        }
         updateoptions();
     }
     function xmasgb() {
@@ -2265,6 +2290,16 @@
             document.getElementById("bg1").src = "enhancedbackground_christmas.png";
             document.getElementById("bg2").src = "enhancedbackground_christmas.png";
             disablecolor();
+        }
+
+        if (getCookie('christmasbg')) {
+            eraseCookie('christmasbg');
+        }
+        else {
+            setCookie('christmasbg', 'true', '70');
+            eraseCookie('normalbg');
+            eraseCookie('fourthbg');
+            eraseCookie('fallbg');
         }
         updateoptions();
     }
@@ -2277,6 +2312,16 @@
             document.getElementById("bg2").src = "enhancedbackground_fourth.png";
             disablecolor();
         }
+
+        if (getCookie('fourthbg')) {
+            eraseCookie('fourthbg');
+        }
+        else {
+            setCookie('fourthbg', 'true', '70');
+            eraseCookie('christmasbg');
+            eraseCookie('normalbg');
+            eraseCookie('fallbg');
+        }
         updateoptions();
     }
     function fallbg() {
@@ -2287,6 +2332,16 @@
             document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
             document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
             disablecolor()
+        }
+
+        if (getCookie('fallbg')) {
+            eraseCookie('fallbg');
+        }
+        else {
+            setCookie('fallbg', 'true', '70');
+            eraseCookie('christmasbg');
+            eraseCookie('fourthbg');
+            eraseCookie('normal');
         }
         updateoptions();
     }
