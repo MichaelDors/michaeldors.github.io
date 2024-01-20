@@ -1272,16 +1272,6 @@
 <script>
     document.body.scrollTop = document.documentElement.scrollTop = 0;
 
-    if(getCookie("speed1")){
-        document.getElementById("speed1").click();
-    }
-    else if (getCookie("speed2")){
-        document.getElementById("speed2").click();
-    }
-    else if (getCookie("speed3")){
-        document.getElementById("speed3").click();
-    }
-
     if (parameter('colorone')) {
         if (parameter('colorone') == "null") {
             console.log("Colors(1) could not be imported properly.");
@@ -1702,6 +1692,16 @@
     var x = setInterval(function () {
 
         updateoptions();
+
+        if(getCookie("speed1")){
+            document.getElementById("speed1").click();
+        }
+        else if (getCookie("speed2")){
+            document.getElementById("speed2").click();
+        }
+        else if (getCookie("speed3")){
+            document.getElementById("speed3").click();
+        }
 
         if (getCookie("atc")) {
 
