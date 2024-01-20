@@ -1754,10 +1754,6 @@
             document.title = "Countdown";
         }
 
-        if (getCookie("week")) {
-            var weekcount = Math.floor(days / 7);
-            document.getElementById("clock").innerHTML = weekcount + " weeks";
-        }
 
         if (getCookie("day")) {
             document.getElementById("clock").innerHTML = days + " days";
@@ -1774,9 +1770,10 @@
             var secondcount = Math.floor(distance / 1000);
             document.getElementById("clock").innerHTML = secondcount + " seconds";
         }
-
-
-
+        else if (getCookie("week")) {
+            var weekcount = Math.floor(days / 7);
+            document.getElementById("clock").innerHTML = weekcount + " weeks";
+        }
         else if (getCookie("lcdu")) {
             if (days > 0) {
                 document.getElementById("clock").innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
