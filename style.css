@@ -412,7 +412,7 @@ nav img{
 }
 
 .considering {
-    height: 100vh;
+    height: 100%;
     background-color: #FF2121;
     scroll-snap-align: center;
     display:flex;
