@@ -8,6 +8,9 @@ if(window.location.href.indexOf("about") > -1){
 if(window.location.href.indexOf("projects") > -1){
     document.getElementById("mobileprojects").classList.add("navbuttonfilled");
 }
+else{
+    document.getElementById("mobilehome").classList.add("navbuttonfilled");
+}
 
 function openmenu() {
     if (document.getElementById("navigation").classList.contains("opennav")){
