@@ -5,7 +5,10 @@ body {
     box-sizing: border-box;
     background-color: #202020;
     overflow-x: hidden;
+    transition:opacity 0.3s;
+    opacity: 0;
 }
+
 
 * {
     padding: 0px;
@@ -126,6 +129,7 @@ nav .fa-solid:active{
 
 nav img {
     filter: invert(51%) sepia(69%) saturate(7379%) hue-rotate(345deg) brightness(102%) contrast(102%);
+    cursor: pointer;
 }
 
 .opennav {
@@ -145,10 +149,12 @@ nav img {
 
 #desktopnav {
     padding-top: 35px;
-    margin-left: calc(94vw - 420px);
+    margin-left: calc(94vw - 500px);
 }
     #desktopnav a {
         color: #ff2b2b;
+        margin-left:20px;
+        cursor: pointer;
     }
 
     .navdown #desktopnav a{
@@ -181,14 +187,24 @@ nav img {
     text-align: center;
     text-decoration: none;
     color: #fff;
-    background-color: #FF3131;
     border: none;
     border-radius: 10px;
     cursor: pointer;
     grid-column: span 1;
     height: 100px;
     line-height: 100px;
+    background-color: #272727dd !important;
+    border-top: 1px solid rgba(86, 86, 86, 0.805) !important;
+    border-bottom:1px solid rgba(16, 16, 16, 0.849) !important;
 }
+
+.navbuttonfilled{
+    background-color: #ff3131dd !important;
+    border-top: 1px solid rgba(255, 112, 112, 0.805) !important;
+    border-bottom:1px solid rgba(170, 0, 0, 0.849) !important;
+    outline: none !important;
+}
+
 
 .fadein{
     animation:fadein 1s linear;
@@ -257,6 +273,8 @@ nav img {
 }
 
 .glowbutton {
+    border-top: 1px solid rgba(255, 112, 112, 0.805);
+    border-bottom:1px solid rgba(170, 0, 0, 0.849);
     text-decoration: none;
     display: block;
     width: 25%;
@@ -273,6 +291,7 @@ nav img {
     transform: scale(1);
     transition: 0.5s all;
     margin-bottom: 100px;
+    cursor: pointer;
 }
 
     .glowbutton:hover {
@@ -543,6 +562,7 @@ nav img {
     height: 3in;
 }
 
+
 #playcontain {
     width: 100%;
     margin-left: calc(50% - 1.5in);
@@ -561,3 +581,88 @@ nav img {
     .considering h1 {
         padding-top: 45vh;
     }
+
+
+#filterbar{
+    padding-top:12px;
+    padding-left:12px;
+    padding-right:12px;
+    z-index: 100;
+    position: fixed;
+    top: 85vh;
+    margin: 0 auto;
+    height:75px;
+    background: rgba(255, 33, 33, 0.768);
+    border-radius: 60px;
+    box-shadow: 0 4px 30px rgba(55, 14, 14, 0.598);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border-top: 1px solid rgba(255, 112, 112, 0.805);
+    border-bottom:1px solid rgba(170, 0, 0, 0.849);
+    left: 50%;
+    transform: translate(-50%, 0);
+    transition:0.5s all;
+}
+
+.openfilterbar{
+    height:500px !important;
+    top:calc(85vh - 500px) !important;
+    padding-left:100px !important;
+    padding-right:100px !important;
+}
+
+.openfilterbar .sphericalbutton{
+    padding-left:90px !important;
+    padding-right:90px !important;
+    border-radius: 50px !important;
+}
+
+.sphericalbutton{
+    box-shadow: 0 4px 10px rgba(55, 14, 14, 0.48) inset;
+    cursor: pointer;
+    color:white;
+    line-height:65px;
+    font-size:20px;
+    padding:20px;
+    width:100px;
+    z-index: 1000;
+    border-radius: 50px;
+    background:#800000d8;
+    transition:0.5s all;
+}
+
+.sphericalbutton:first-of-type{
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 20px;
+}
+.sphericalbutton:last-of-type{
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+}
+
+#filteranim{
+    transition:1s opacity;
+}
+
+.filterbutton {
+    box-shadow: 0 4px 10px rgba(55, 14, 14, 0.48) inset;
+    cursor: pointer;
+    color: white;
+    line-height: 65px;
+    font-size: 20px;
+    padding: 20px;
+    width: 100px;
+    z-index: 1000;
+    border-radius: 20px;
+    background: #800000d8;
+    transition: 0.5s all;
+    width:90%;
+
+}
+
+#filtertags{
+    transition: 0.5s opacity;
+}
+#sorttags {
+    transition: 0.5s opacity;
+}
