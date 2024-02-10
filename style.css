@@ -266,7 +266,7 @@ nav img {
     }
 
 #filterbar{
-    top: 80dvh;
+    top: 80dvh !important;
 }
 
 .openfilterbar{
