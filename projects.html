@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Michael Dors</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Libre+Barcode+39&display=swap"
+          rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="Images/fav.ico">
+    <meta name="theme-color" content="#ff2d2d" />
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+</head>
+<body id="body">
+    <div id="filterbar">
+        <a class="sphericalbutton" onmouseup="filters()"><i class="fa-solid fa-filter"></i> Filter</a>
+        <a class="sphericalbutton" onmouseup="sorts()"><i class="fa-solid fa-sort"></i> Sort</a>
+        <div id="filtertags">
+            <br />
+            <br />
+            <a class="filterbutton" onclick="filter('All');"><i class="fa-regular fa-rectangle-list"></i> Show All</a>
+            <a class="filterbutton" onclick="filter('Website');"><i class="fa-solid fa-globe"></i> Websites</a>
+            <a class="filterbutton" onclick="filter('Shortcut');"><i class="fa-brands fa-apple"></i> Shortcuts</a>
+        </div>
+        <div id="sorttags">
+            
+        </div>
+    </div>
+    <nav id="navigation" class="navdown">
+        <div class="topofnav">
+            <i id="hideonpcicon" class="fa-solid fa-mobile"></i>
+            <a onclick="transitionToPage('index.html')"><img src="logo.svg" /></a>
+            <i id="toggler" class="fa-solid fa-bars" onmouseup="openmenu()"></i>
+            <div id="desktopnav">
+                <a onclick="transitionToPage('index.html')">Home</a>
+                <a onclick="transitionToPage('about.html')">About Me</a>
+                <a onclick="transitionToPage('projects.html')">Projects</a>
+                <a onclick="transitionToPage('mailto:contact@michaeldors.com')">Contact</a>
+            </div>
+        </div>
+        <div id="mobileopennav">
+            <a id="mobilehome" onclick="transitionToPage('index.html')" class="navbutton full-width">Home</a>
+            <a id="mobileabout" onclick="transitionToPage('about.html')" class="navbutton">About Me</a>
+            <a id="mobileprojects" onclick="transitionToPage('projects.html')" class="navbutton">Projects</a>
+            <a id="mobilecontact" onclick="transitionToPage('mailto:contact@michaeldors.com')" class="navbutton full-width">Contact Me</a>
+        </div>
+    </nav>
+
+    <section id="filteringcontainer" style="display:none; height:100vh; width:100vw; background-color:#202020">
+        <video id="filteranim" width="200" height="200" style="border-radius: 30px; margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); " autoplay muted loop playsinline>
+            <source src="filteringanim.mp4" type="video/mp4">
+        </video>
+    </section>
+
+
+    <div id="projectcontainer">
+    <section class="projectarea" data-projecttype="shortcut">
+        <h1 data-aos="fade-up">MessageKit</h1>
+        <h2 data-aos="fade-up">Siri Shortcut</h2>
+        <img data-aos="fade-up" class="headerimg" src="headers/messagekit.png" />
+        <p data-aos="fade-up">
+            Tons of tools for iMessage (or anywhere you share stuff) including tools for text, audio, images, and more stuff you wish was built into iMessage.
+        </p>
+        <a class="glowbutton" target="_blank" rel="noopener noreferrer" onclick="transitionToPage('http://mk.michaeldors.com')">Get It Free</a>
+    </section>
+    <section class="projectarea" data-projecttype="website">
+        <h1 data-aos="fade-up">Countdown</h1>
+        <h2 data-aos="fade-up">Website</h2>
+        <img data-aos="fade-up" class="headerimg" src="headers/countdown.png" />
+        <p data-aos="fade-up">
+            A beautiful website to count down to any event. You can change the colors, date, and customize a ton of other options.
+            <br />
+            <br />
+            <br />
+            This project was made in HTML, CSS, and JS.
+        </p>
+        <a class="glowbutton" target="_blank" rel="noopener noreferrer" onclick="transitionToPage('http://countdown.michaeldors.com')">Try It Out</a>
+    </section>
+    <section class="projectarea" data-projecttype="shortcut">
+        <h1 data-aos="fade-up">Pull Duolingo Streak</h1>
+        <h2 data-aos="fade-up">Siri Shortcut</h2>
+        <img data-aos="fade-up" class="headerimg" src="headers/duolingostreak.png" />
+        <p data-aos="fade-up">
+            Quickly figure out how long your Duolingo streak is, without opening the app. Combine with other logic for cool automations.
+        </p>
+        <a class="glowbutton" target="_blank" rel="noopener noreferrer" onclick="transitionToPage('https://www.icloud.com/shortcuts/3fcd582c50454be7a1eff98bf78c1a05')">Check It Out</a>
+    </section>
+    <section class="projectarea" data-projecttype="shortcut">
+        <h1 data-aos="fade-up">MessageKit</h1>
+        <h2 data-aos="fade-up">Siri Shortcut</h2>
+        <img data-aos="fade-up" class="headerimg" src="headers/messagekit.png" />
+        <p data-aos="fade-up">
+            Tons of tools for iMessage (or anywhere you share stuff) including tools for text, audio, images, and more stuff you wish was built into iMessage.
+        </p>
+        <a class="glowbutton" target="_blank" rel="noopener noreferrer" onclick="transitionToPage('http://mk.michaeldors.com')">Get It Free</a>
+    </section>
+    <section class="projectarea" data-projecttype="website">
+        <h1 data-aos="fade-up">Countdown</h1>
+        <h2 data-aos="fade-up">Website</h2>
+        <img data-aos="fade-up" class="headerimg" src="headers/countdown.png" />
+        <p data-aos="fade-up">
+            A beautiful website to count down to any event. You can change the colors, date, and customize a ton of other options.
+            <br />
+            <br />
+            <br />
+            This project was made in HTML, CSS, and JS.
+        </p>
+        <a class="glowbutton" target="_blank" rel="noopener noreferrer" onclick="transitionToPage('http://countdown.michaeldors.com')">Try It Out</a>
+    </section>
+    <section class="projectarea" data-projecttype="shortcut">
+        <h1 data-aos="fade-up">Pull Duolingo Streak</h1>
+        <h2 data-aos="fade-up">Siri Shortcut</h2>
+        <img data-aos="fade-up" class="headerimg" src="headers/duolingostreak.png" />
+        <p data-aos="fade-up">
+            Quickly figure out how long your Duolingo streak is, without opening the app. Combine with other logic for cool automations.
+        </p>
+        <a class="glowbutton" target="_blank" rel="noopener noreferrer" onclick="transitionToPage('https://www.icloud.com/shortcuts/3fcd582c50454be7a1eff98bf78c1a05')">Check It Out</a>
+    </section>
+    </div>
+
+    <section>
+        <div class="footer">
+            <p>created with <i class="fa-solid fa-heart"></i>, <i class="fa-solid fa-code"></i>, and <i class="fa-solid fa-photo-film"></i> by michaeldors</p>
+            <br />
+            <div id="playcontain">
+                <video id="player" autoplay muted loop playsinline>
+                    <source src="Images/glowing.mp4" type="video/mp4">
+                </video>
+            </div>
+            <i class="fa-solid fa-cross"></i>
+        </div>
+    </section>
+
+    <script src="script.js"></script>
+</body>
+</html>
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+<script>
+    document.getElementById("filteranim").opacity = "0";
+    document.getElementById("sorttags").style.display = "none";
+    document.getElementById("filtertags").style.display = "none";
+
+
+    AOS.init();
+</script>
