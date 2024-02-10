@@ -600,7 +600,7 @@ nav img {
     padding-right:12px;
     z-index: 100;
     position: fixed;
-    top: 90dvh;
+    top: 85dvh;
     margin: 0 auto;
     height:75px;
     background: rgba(255, 33, 33, 0.768);
@@ -617,7 +617,7 @@ nav img {
 
 .openfilterbar{
     height:500px !important;
-    top:calc(90dvh - 500px) !important;
+    top:calc(85dvh - 500px) !important;
     padding-left:100px !important;
     padding-right:100px !important;
 }
