@@ -323,7 +323,7 @@ nav img {
     }
 
     .sphericalbutton{
-        width:35vw;
+        max-width:35vw;
     }
 
 
