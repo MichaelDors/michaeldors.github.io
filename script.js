@@ -2,10 +2,10 @@
 if(window.location.href.indexOf("index") > -1){
     document.getElementById("mobilehome").classList.add("navbuttonfilled");
 }
-if(window.location.href.indexOf("about") > -1){
+else if(window.location.href.indexOf("about") > -1){
     document.getElementById("mobileabout").classList.add("navbuttonfilled");
 }
-if(window.location.href.indexOf("projects") > -1){
+else if(window.location.href.indexOf("projects") > -1){
     document.getElementById("mobileprojects").classList.add("navbuttonfilled");
 }
 else{
