@@ -625,26 +625,33 @@ nav img {
     }
 
 
-#filterbar{
-    padding-top:12px;
-    padding-left:12px;
-    padding-right:12px;
+#filterbar {
+    padding-top: 12px;
+    padding-left: 12px;
+    padding-right: 12px;
     z-index: 100;
     position: fixed;
     top: 85dvh;
     margin: 0 auto;
-    height:75px;
+    height: 75px;
     background: rgba(255, 33, 33, 0.768);
     border-radius: 60px;
     box-shadow: 0 4px 30px rgba(55, 14, 14, 0.598);
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
     border-top: 1px solid rgba(255, 112, 112, 0.805);
-    border-bottom:1px solid rgba(170, 0, 0, 0.849);
+    border-bottom: 1px solid rgba(170, 0, 0, 0.849);
     left: 50%;
     transform: translate(-50%, 0);
-    transition:0.5s all;
+    transition: 0.5s all;
 }
+
+    #filterbar:hover {
+        background: rgba(255, 49, 49,0.805);
+        box-shadow: 0 0 10px 5px rgba(197, 28, 28, 0.203);
+        padding-left: 17px;
+        padding-right: 17px;
+    }
 
 .openfilterbar{
     height:280px !important;
