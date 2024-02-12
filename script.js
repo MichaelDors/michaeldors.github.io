@@ -63,23 +63,30 @@ function filters() {
     var sortTags = document.getElementById("sorttags");
 
     if(filterbar.classList.contains("openfilterbar") && filterTags.style.display !== "none"){
-        filterBar.classList.remove("openfilterbar");
-        filterTags.style.opacity = "0";
-        sortTags.style.opacity = "0";
+
         setTimeout(function () {
-            document.getElementById("sorttags").style.display = "none";
-            document.getElementById("filtertags").style.display = "none";
-        }, 50);
+            sortTags.style.display = "none";
+            filterTags.style.display = "none";
+            filterBar.classList.remove("openfilterbar");
+        }, 200);
+
+        setTimeout(function () {
+            filterTags.style.opacity = "0";
+            sortTags.style.opacity = "0";
+        }, 100);
     }
     else{
-        document.getElementById("filterbar").classList.add("openfilterbar");
+        filterBar.classList.add("openfilterbar");
 
-        document.getElementById("sorttags").style.opacity = "0";
-        document.getElementById("filtertags").style.opacity = "1";
         setTimeout(function () {
-            document.getElementById("filtertags").style.display = "";
-            document.getElementById("sorttags").style.display = "none";
-        }, 500);
+            sortTags.style.display = "none";
+            filterTags.style.display = "";
+        }, 300);
+
+        setTimeout(function () {
+            sortTags.style.opacity = "0";
+            filterTags.style.opacity = "1";
+        }, 400);
     }
 }
 
@@ -89,25 +96,31 @@ function sorts(){
     var filterBar = document.getElementById("filterbar");
     var filterTags = document.getElementById("filtertags");
     var sortTags = document.getElementById("sorttags");
-    if(document.getElementById("filterbar").classList.contains("openfilterbar") && document.getElementById("sorttags").style.display !== "none"){
-        document.getElementById("filterbar").classList.remove("openfilterbar");
+    if(filterBar.classList.contains("openfilterbar") && sortTags.style.display !== "none"){
 
-        document.getElementById("sorttags").style.opacity = "0";
-        document.getElementById("filtertags").style.opacity = "0";
         setTimeout(function () {
-            document.getElementById("sorttags").style.display = "none";
-            document.getElementById("filtertags").style.display = "none";
-        }, 50);
+            sortTags.style.display = "none";
+            filterTags.style.display = "none";
+            filterBar.classList.remove("openfilterbar");
+        }, 200);
+
+        setTimeout(function () {
+            sortTags.style.opacity = "0";
+            filterTags.style.opacity = "0";
+        }, 100);
     }
     else{
-        document.getElementById("filterbar").classList.add("openfilterbar");
+        filterBar.classList.add("openfilterbar");
 
-        document.getElementById("sorttags").style.opacity = "1";
-        document.getElementById("filtertags").style.opacity = "0";
         setTimeout(function () {
-            document.getElementById("sorttags").style.display = "";
-            document.getElementById("filtertags").style.display = "none";
-        }, 500);
+            sortTags.style.display = "";
+            filterTags.style.display = "none";
+        }, 300);
+
+        setTimeout(function () {
+            sortTags.style.opacity = "1";
+            filterTags.style.opacity = "0";
+        }, 400);
     }
 }
 
