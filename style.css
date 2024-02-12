@@ -248,6 +248,7 @@ nav img {
         #desktopnav{
             display:none;
         }
+        
 }
 
 
@@ -265,14 +266,37 @@ nav img {
         display: none;
     }
 
-#filterbar{
-    top: 75dvh !important;
-}
+    /*#filterbar{
+        padding-top:12px;
+        padding-left:12px;
+        padding-right:12px;
+        z-index: 100;
+        position: fixed;
+        top: 75dvh !important;
+        margin: 0 auto;
+        height:75px;
+        background: rgba(255, 33, 33, 0.768);
+        border-radius: 60px;
+        box-shadow: 0 4px 30px rgba(55, 14, 14, 0.598);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        border-top: 1px solid rgba(255, 112, 112, 0.805);
+        border-bottom:1px solid rgba(170, 0, 0, 0.849);
+        left: 50%;
+        transform: translate(-50%, 0);
+        transition:0.5s all;
+    }
+    
+    .openfilterbar{
+        height:500px !important;
+        top:calc(75dvh + 500px) !important;
+        padding-left:100px !important;
+        padding-right:100px !important;
+    }*/
 
-.openfilterbar{
-    top:calc(75dvh - 500px) !important;
-}
-
+    .mobilebr{
+        display:none;
+    }
 }
 
 
@@ -623,10 +647,10 @@ nav img {
 }
 
 .openfilterbar{
-    height:500px !important;
-    top:calc(85dvh - 500px) !important;
-    padding-left:100px !important;
-    padding-right:100px !important;
+    height:280px !important;
+    top:calc(85dvh - 270px) !important;
+    padding-left:50px !important;
+    padding-right:50px !important;
 }
 
 .openfilterbar .sphericalbutton{
@@ -675,14 +699,46 @@ nav img {
     background: #800000d8;
     transition: 0.5s all;
     width:90%;
-
+    margin-bottom: 10px !important;
 }
 
 #filtertags{
     transition: 0.5s opacity;
     margin: auto;
     text-align: center;
+    word-wrap: normal;
+    overflow-wrap: normal;
+    text-wrap:wrap;
 }
 #sorttags {
     transition: 0.5s opacity;
+}
+
+
+
+@media (min-width:320px) and (max-width:1024px) { /* smartphones, iPhone, portrait 480x320 phones */
+
+
+        .openfilterbar .sphericalbutton{
+            padding:20px !important;
+            border-radius: 50px !important;
+        }
+        
+        
+        #filtertags > *{
+            margin-bottom: 20px;
+        }
+
+        .filterbutton{
+            padding-left:50px !important;
+            padding-right:50px !important;
+            margin-bottom: 20px !important;
+        }
+        
+        .openfilterbar{
+            height:620px !important;
+            top:calc(85dvh - 600px) !important;
+
+        }
+        
 }
