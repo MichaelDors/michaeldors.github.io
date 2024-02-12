@@ -690,7 +690,7 @@ nav img {
     box-shadow: 0 4px 10px rgba(55, 14, 14, 0.48) inset;
     cursor: pointer;
     color: white;
-    line-height: 65px;
+    line-height: 56px;
     font-size: 20px;
     padding: 20px;
     width: 100px;
@@ -699,7 +699,7 @@ nav img {
     background: #800000d8;
     transition: 0.5s all;
     width:90%;
-    margin-bottom: 10px !important;
+    margin-bottom: 5px !important;
 }
 
 #filtertags{
@@ -708,7 +708,6 @@ nav img {
     text-align: center;
     word-wrap: normal;
     overflow-wrap: normal;
-    text-wrap:wrap;
 }
 #sorttags {
     transition: 0.5s opacity;
@@ -732,7 +731,7 @@ nav img {
         .filterbutton{
             padding-left:50px !important;
             padding-right:50px !important;
-            margin-bottom: 20px !important;
+            margin-bottom: 5px !important;
         }
         
         .openfilterbar{
