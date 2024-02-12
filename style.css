@@ -726,7 +726,7 @@ nav img {
         
         
         #filtertags > *{
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         .filterbutton{
@@ -736,7 +736,7 @@ nav img {
         }
         
         .openfilterbar{
-            height:620px !important;
+            height:560px !important;
             top:calc(85dvh - 500px) !important;
 
         }
