@@ -39,7 +39,7 @@ window.transitionToPage = function(href) {
     document.querySelector('body').style.opacity = 0;
     setTimeout(function() { 
         window.location.href = href;
-    }, 500)
+    }, 600)
 }
 
 document.addEventListener('DOMContentLoaded', function(event) {
@@ -69,7 +69,7 @@ function filters() {
         setTimeout(function () {
             document.getElementById("sorttags").style.display = "none";
             document.getElementById("filtertags").style.display = "none";
-        }, 150);
+        }, 50);
     }
     else{
         document.getElementById("filterbar").classList.add("openfilterbar");
@@ -79,13 +79,16 @@ function filters() {
         setTimeout(function () {
             document.getElementById("filtertags").style.display = "";
             document.getElementById("sorttags").style.display = "none";
-        }, 200);
+        }, 500);
     }
 }
 
 
 
 function sorts(){
+    var filterBar = document.getElementById("filterbar");
+    var filterTags = document.getElementById("filtertags");
+    var sortTags = document.getElementById("sorttags");
     if(document.getElementById("filterbar").classList.contains("openfilterbar") && document.getElementById("sorttags").style.display !== "none"){
         document.getElementById("filterbar").classList.remove("openfilterbar");
 
@@ -94,7 +97,7 @@ function sorts(){
         setTimeout(function () {
             document.getElementById("sorttags").style.display = "none";
             document.getElementById("filtertags").style.display = "none";
-        }, 150);
+        }, 50);
     }
     else{
         document.getElementById("filterbar").classList.add("openfilterbar");
@@ -104,7 +107,7 @@ function sorts(){
         setTimeout(function () {
             document.getElementById("sorttags").style.display = "";
             document.getElementById("filtertags").style.display = "none";
-        }, 200);
+        }, 500);
     }
 }
 
