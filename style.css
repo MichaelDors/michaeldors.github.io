@@ -136,8 +136,8 @@ nav img {
 .opennav {
     height: 100%;
     background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(200px);
-    -webkit-backdrop-filter: blur(200px);
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
 }
 
 .navdown img {
