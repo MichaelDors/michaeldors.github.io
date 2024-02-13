@@ -42,9 +42,14 @@ window.transitionToPage = function(href) {
     }, 600)
 }
 
-document.addEventListener('DOMContentLoaded', function(event) {
+if (document.readyState !== 'loading') {
     document.querySelector('body').style.opacity = 1;
-})
+} else {
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelector('body').style.opacity = 1;
+    });
+}
+
 
 //window.addEventListener('scroll', e => {
 //    if (window.scrollY > 500) {
