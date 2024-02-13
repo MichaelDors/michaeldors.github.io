@@ -158,3 +158,5 @@ function filter(type) {
         }, 2000);
         window.scrollTo(0, 0);
 }
+
+document.querySelector('body').style.opacity = 1;
