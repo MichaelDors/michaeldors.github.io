@@ -159,4 +159,4 @@ function filter(type) {
         window.scrollTo(0, 0);
 }
 
-document.querySelector('body').style.opacity = 1;
+
