@@ -25,14 +25,14 @@
                 <a onclick="transitionToPage('index.html')">Home</a>
                 <a onclick="transitionToPage('about.html')">About Me</a>
                 <a onclick="transitionToPage('projects.html')">Projects</a>
-                <a onclick="transitionToPage('mailto:contact@michaeldors.com')">Contact</a>
+                <a href="mailto:contact@michaeldors.com">Contact</a>
             </div>
         </div>
         <div id="mobileopennav">
             <a id="mobilehome" onclick="transitionToPage('index.html')" class="navbutton full-width">Home</a>
             <a id="mobileabout" onclick="transitionToPage('about.html')" class="navbutton">About Me</a>
             <a id="mobileprojects" onclick="transitionToPage('projects.html')" class="navbutton">Projects</a>
-            <a id="mobilecontact" onclick="transitionToPage('mailto:contact@michaeldors.com')" class="navbutton full-width">Contact Me</a>
+            <a id="mobilecontact" href="mailto:contact@michaeldors.com" class="navbutton full-width">Contact Me</a>
         </div>
     </nav>
     <section>
@@ -92,8 +92,62 @@
             </p>
             <a class="glowbutton" target="_blank" rel="noopener noreferrer" onclick="transitionToPage('http://countdown.michaeldors.com')">Try It Out</a>
         </section>
-        <section class="considering">
-            <h1 style="margin:30px">Let's make something cool together. <a style="color: #240200; cursor:pointer;" target="_blank" rel="noopener noreferrer" onclick="transitionToPage('mailto:contact@michaeldors.com')">Get In Touch<i style="margin-left:10px;" class="fa-solid fa-chevron-right"></i></a></h1>
+        <section class="reviews" style="scroll-snap-align: start">
+            <div class="reviewsectioncontainterimg">
+                <img src="Images/commentbanner.png">
+            </div>
+        </section>
+        <section class="reviews" style="align-items: stretch; display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;">
+            <div class="review">
+                <h1>
+                    "10/10 couldn't have asked for anything better"
+                </h1>
+                <div class="reviewerimg" style="background-color: #bb00ff;"></div><p class="reviewer">Nate</p>
+                <br>
+                <br>
+                <p class="projecttype">YouTube Channel Banner (34.8K Subs)</p>
+            </div>
+            <div class="review">
+                <h1>
+                    "One of the most ambitious shortcuts I've ever seen... Really pushing the limits of Shortcuts in every way imaginable."
+                </h1>
+                <div class="reviewerimg" style="background-color: #ff0037;"></div><p class="reviewer">Twilsonco <a href="https://www.reddit.com/r/shortcuts/comments/18zi7t4/comment/kgiu19u/?utm_source=share&utm_medium=mweb3x&utm_name=mweb3xcss&utm_term=1&utm_content=share_button" style="color: #ff0037; font-size: 10px;">via reddit.com</a></p>
+                <br>
+                <br>
+                <p class="projecttype">User of MessageKit</p>
+            </div>
+            <div class="review">
+                <h1>
+                    "Just watched it. We are so pleased. You did an excellent job on the video."
+                </h1>
+                <div class="reviewerimg" style="background-color: #00FFB3;"></div><p class="reviewer">Kimberly</p>
+                <br>
+                <br>
+                <p class="projecttype">Presentation Video</p>
+            </div>
+            <div class="review">
+                <h1>
+                    "It's a very good website that makes finding my listing very easy for the viewer and the quality is very good."
+                </h1>
+                <div class="reviewerimg" style="background-color: #FFBF00;"></div><p class="reviewer">Sophie</p>
+                <br>
+                <br>
+                <p class="projecttype">Website</p>
+            </div>
+            <div class="review" style="margin-right:30px; background-color: #FF3232;">
+                <Br>
+                <h1 style="width:100%; text-align: center; color:#240200; position:absolute; bottom:27%; left:0%;">
+                    <br>
+                    <br>
+                    <i class="fa-solid fa-stamp"></i> Is your seal of approval next?
+                </h1>
+            </div>
+        </section>
+        <section class="reviews">
+            <p style="width:100vw; text-align: right; margin-left: -40px; font-size: 20px;"><i class="fa-solid fa-arrow-right"></i></p>
+        </section>
+        <section class="letstalksection">
+            <a class="glowbutton glowbuttondark" style="margin-top:100px;" target="_blank" rel="noopener noreferrer" href="mailto:contact@michaeldors.com">Let's Talk</a>
         </section>
         <section class="projectarea">
             <img data-aos="fade" style="overflow:hidden;" class="headerimgglow" src="headers/duolingostreak.png" />
@@ -106,6 +160,9 @@
             <a class="glowbutton" target="_blank" rel="noopener noreferrer" onclick="transitionToPage('https://www.icloud.com/shortcuts/3fcd582c50454be7a1eff98bf78c1a05')">Check It Out</a>
         </section>
     </div>
+    <section class="considering">
+        <h1 style="margin:30px">Let's make something cool together. <a style="color: #240200; cursor:pointer;" target="_blank" rel="noopener noreferrer" onclick="transitionToPage('mailto:contact@michaeldors.com')">Get In Touch<i style="margin-left:10px;" class="fa-solid fa-chevron-right"></i></a></h1>
+    </section>
     <section>
         <div class="footer">
             <p>created with <i class="fa-solid fa-heart"></i>, <i class="fa-solid fa-code"></i>, and <i class="fa-solid fa-photo-film"></i></p>
