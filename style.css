@@ -907,6 +907,6 @@ nav img {
             .reviews img{
         align-self: center;
         object-fit:contain;
-        height:200px;
+        height:300px;
     }
 }
