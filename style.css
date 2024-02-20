@@ -395,6 +395,7 @@ nav img {
 
     #filterbar{
         width:267px;
+        z-index: 200;
     }
 
     .sphericalbutton{
