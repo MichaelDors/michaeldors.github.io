@@ -681,7 +681,7 @@ nav img {
     .reviews img{
         align-self: center;
         object-fit:contain;
-        height:400px;
+        height:300px;
     }
 
     .review{
