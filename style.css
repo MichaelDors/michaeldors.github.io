@@ -332,6 +332,37 @@ nav img {
         transform: scale(1.1);
     }
 
+    .glowbuttondark {
+        text-align: center;
+        border-top: 1px solid rgba(98, 98, 98, 0.805);
+        border-bottom:1px solid rgba(0, 0, 0, 0.849);
+        text-decoration: none;
+        display: block;
+        width: 25%;
+        height: 25px;
+        background: #323232;
+        padding: 15px 30px 15px 30px;
+        text-align: center;
+        border-radius: 14px;
+        color: white;
+        line-height: 25px;
+        margin-left: 0px;
+        margin-right: 0px;
+        margin: 0 auto;
+        box-shadow: 0 0 10px 5px rgba(165, 9, 9, 0.703);
+        transform: scale(1);
+        transition: 0.5s all;
+        margin-bottom: 100px;
+        cursor: pointer;
+    }
+    
+        .glowbuttondark:hover {
+            background: #282828;
+            box-shadow: 0 0 10px 5px rgba(197, 28, 28, 0.203);
+            transform: scale(1.1);
+        }
+    
+
 @media (max-width:1000px) {
     .glowbutton {
         text-decoration: none;
@@ -348,6 +379,19 @@ nav img {
         margin-right: 10%;
         box-shadow: 0 0 10px 5px rgba(120, 15, 15, 0.703);
     }
+
+
+    .glowbuttondark {
+        border-top: 1px solid rgba(98, 98, 98, 0.805);
+        border-bottom:1px solid rgba(0, 0, 0, 0.849);
+        background: #323232;
+        box-shadow: 0 0 10px 5px rgba(165, 9, 9, 0.703);
+    }
+    
+        .glowbuttondark:hover {
+            background: #282828;
+            box-shadow: 0 0 10px 5px rgba(197, 28, 28, 0.203);
+        }
 
     #filterbar{
         width:267px;
@@ -620,10 +664,98 @@ nav img {
     justify-content: center;
 }
 
+.reviewsectioncontainterimg{
+    display: flex;
+    justify-content: center;
+}
+
     .considering h1 {
         padding-top: 45vh;
     }
 
+    .reviews {
+        background-color: #FF3232;
+        scroll-snap-align: center;
+    }
+
+    .reviews img{
+        align-self: center;
+        object-fit:contain;
+        height:500px;
+    }
+
+    .review{
+        color:black;
+        padding:30px;
+        border-radius: 30px;
+        margin-left:20px;
+        width:5in;
+        margin-bottom:40px;
+        background-color: white;
+        border:8px solid black;
+        -webkit-box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+        -moz-box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+        box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+        float:left;
+
+        max-width: 33.333%;
+        flex-basis: 33.333%;
+        flex-grow: 0;
+        flex-shrink: 0;
+
+        transition:0.5s all;
+
+        position:relative;
+
+    }
+
+
+    .review:hover{
+        background-color:#f3f3f3;
+        -webkit-box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+        -moz-box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+        box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
+    }
+
+    .review:last-of-type:hover{
+        background-color:#ed0000;
+        -webkit-box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
+        -moz-box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
+        box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
+    }
+
+    .reviews .review h1{
+        margin-bottom:50px;
+    }
+
+    .reviews .review .reviewer{
+        font-size: 22px;
+        font-weight: 100;
+        margin-bottom:10px;
+        position:absolute;
+        bottom:47px;
+        left:60px;
+    }
+
+
+    .reviews .review .projecttype{
+        text-transform: uppercase;
+        color:#ff0000;
+        font-weight: 700;
+        position:absolute;
+        bottom:30px;
+    }
+
+    .reviewerimg{
+        margin-top:3px;
+        margin-right:10px;
+        background-color: #ff2b2b;
+        height:20px;
+        width:20px;
+        border-radius: 100px;
+        position:absolute;
+        bottom:60px;
+    }
 
 #filterbar {
     padding-top: 12px;
@@ -723,6 +855,11 @@ nav img {
 @media (min-width:320px) and (max-width:1024px) { /* smartphones, iPhone, portrait 480x320 phones */
 
 
+    .reviews .review .reviewer{
+        left:80px;
+    }
+
+
         .openfilterbar .sphericalbutton{
             padding:20px !important;
             border-radius: 50px !important;
@@ -744,6 +881,19 @@ nav img {
             height:560px !important;
             top:calc(85dvh - 500px) !important;
 
+        }
+
+        .review{
+            max-width: 80%;
+        flex-basis: 80%;
+        }
+
+        .reviewerimg{
+            margin-left:20px;
+        }
+
+        .reviewer{
+            margin-left:-4px;
         }
         
 }
