@@ -904,4 +904,9 @@ nav img {
             margin-left:-4px;
         }
         
+            .reviews img{
+        align-self: center;
+        object-fit:contain;
+        height:200px;
+    }
 }
