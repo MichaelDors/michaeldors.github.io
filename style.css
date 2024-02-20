@@ -667,6 +667,8 @@ nav img {
 .reviewsectioncontainterimg{
     display: flex;
     justify-content: center;
+    padding-top:100px;
+    background-color: #FF3232;
 }
 
     .considering h1 {
@@ -912,11 +914,5 @@ nav img {
         align-self: center;
         object-fit:contain;
         height:400px;
-        }
-        
-        
-        .reviewsectioncontainterimg{
-            padding-top:100px;
-            background-color: #FF3232;
         }
 }
