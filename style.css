@@ -717,6 +717,10 @@ nav img {
         box-shadow: 2px 2px 0px 0px rgba(0,0,0,1);
     }
 
+    .review:last-of-type{
+        margin-right:50px;
+    }
+
     .review:last-of-type:hover{
         background-color:#ed0000;
         -webkit-box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
