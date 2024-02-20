@@ -908,5 +908,6 @@ nav img {
         align-self: center;
         object-fit:contain;
         height:400px;
+        padding-top:100px;
     }
 }
