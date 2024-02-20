@@ -757,6 +757,14 @@ nav img {
         bottom:60px;
     }
 
+    .letstalksection{
+        background-color: #ff2b2b;
+        background-image: url(Images/scribblebg.png);
+        background-position: center;
+        background-size: auto 100%;
+        scroll-snap-align: end;
+    }
+
 #filterbar {
     padding-top: 12px;
     padding-left: 12px;
