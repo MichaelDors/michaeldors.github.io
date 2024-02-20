@@ -908,6 +908,11 @@ nav img {
         align-self: center;
         object-fit:contain;
         height:400px;
-        padding-top:100px;
-    }
+        }
+        
+        
+        .reviewsectioncontainterimg{
+            padding-top:100px;
+            background-color: #ff2b2b;
+        }
 }
