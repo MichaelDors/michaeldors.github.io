@@ -9,6 +9,29 @@ body {
     opacity: 0;
 }
 
+    *::-webkit-scrollbar {
+        width: 16px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: #202020;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        box-shadow: #ff1717 1px 1px 25px;
+        background-color: #ff1717;
+        border-radius: 14px;
+    }
+
+ ::-moz-selection {
+        color: white;
+        background: #ff1717;
+    }
+
+    ::selection {
+        color: white;
+        background: #ff1717;
+    }
 
 * {
     padding: 0px;
