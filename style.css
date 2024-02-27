@@ -897,6 +897,13 @@ nav img {
 @media (min-width:320px) and (max-width:1024px) { /* smartphones, iPhone, portrait 480x320 phones */
 
 
+    .footer {
+        padding-left: 50px;
+        padding-right: 50px;
+    }
+    .footer .fa-cross{
+        margin-left:15px;
+    }
     .reviews .review .reviewer{
         left:80px;
     }
