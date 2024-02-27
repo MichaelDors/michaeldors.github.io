@@ -47,18 +47,28 @@
         <h1>this page is coming soon :)</h1>
     </section>
     
-    <section>
-        <div class="footer">
-            <p>created with <i class="fa-solid fa-heart"></i>, <i class="fa-solid fa-code"></i>, and <i class="fa-solid fa-photo-film"></i></p>
-            <br />
-            <div id="playcontain">
-                <video id="player" autoplay muted loop playsinline>
-                    <source src="Images/glowing.mp4" type="video/mp4">
-                </video>
+    <div style="background: #202020;">
+        <section style="border-top-right-radius:50px; border-top-left-radius:50px;">
+            <div style="border-top-right-radius:50px; border-top-left-radius:50px;">
+                <div class="footer">
+                    <div id="playcontain">
+                        <video id="player" autoplay muted loop playsinline>
+                            <source src="Images/glowing.mp4" type="video/mp4">
+                        </video>
+                    </div>
+                    <p>created with <i class="fa-solid fa-heart"></i>, <i class="fa-solid fa-code"></i>, and <i class="fa-solid fa-photo-film"></i></p>
+                    <br />
+                    <i class="fa-solid fa-cross"></i>
+                    <br />
+                    <br />
+                    <p id="birthdaycountdown"></p>
+                    <br />
+                    <br />
+                    <p data-aos="fade" class="barcode">MICHAELDORS</p>
+                </div>
             </div>
-            <i class="fa-solid fa-cross"></i>
-        </div>
-    </section>
+        </section>
+    </div>
 
     <script src="script.js"></script>
 </body>
@@ -67,4 +77,16 @@
 
 <script>
     AOS.init();
+
+    var element = document.getElementById('birthdaycountdown');
+    const currentYear = new Date().getFullYear();
+
+    const targetDate = new Date(currentYear, 2, 5);
+    const currentDate = new Date();
+
+    const difference = targetDate.getTime() - currentDate.getTime();
+
+    const daysUntilTargetDate = Math.ceil(difference / (1000 * 60 * 60 * 24));
+
+    element.innerHTML = daysUntilTargetDate + " days until my birthday";
 </script>
