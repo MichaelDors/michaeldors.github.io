@@ -670,6 +670,7 @@ nav img {
     padding-right: 100px;
     height: 80vh;
     background-color: #030303;
+    overflow-y:hidden;
 }
 
 #player {
