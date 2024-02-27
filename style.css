@@ -463,6 +463,13 @@ nav img {
     padding-bottom: 159px;
 }
 
+.barcode {
+    font-family: 'Libre Barcode 39', cursive;
+    color: #ff2b2b;
+    opacity:0.5;
+    font-size:50px;
+}
+
 .top h1 {
     margin-left: 50px;
     font-family: 'IBM Plex Mono', monospace;
@@ -659,25 +666,21 @@ nav img {
 }
 
 .footer {
-    height: 100vh;
+    padding-left: 100px;
+    padding-right: 100px;
+    height: 80vh;
     background-color: #030303;
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    flex-wrap: wrap;
 }
 
 #player {
     border-radius: 1000px;
-    height: 3in;
+    margin-top:2in;
+    height: 1in;
 }
 
 
 #playcontain {
-    width: 100%;
-    margin-left: calc(50% - 1.5in);
-    margin-top: 1in;
-    margin-bottom: 1in;
+    margin-bottom: 0.5in;
 }
 
 .considering {
