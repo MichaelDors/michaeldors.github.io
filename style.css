@@ -904,9 +904,13 @@ nav img {
     .footer .fa-cross{
         margin-left:15px;
     }
-    .reviews .review .reviewer{
-        left:80px;
-    }
+
+        .footer .playcontain{
+            margin-left:-5px;
+        }
+        .reviews .review .reviewer {
+            left: 80px;
+        }
 
 
         .openfilterbar .sphericalbutton{
