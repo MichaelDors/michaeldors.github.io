@@ -222,5 +222,9 @@
 
         const daysUntilTargetDate = Math.ceil(difference / (1000 * 60 * 60 * 24));
 
+        if(daysUntilTargetDate < 2){
+        element.innerHTML = daysUntilTargetDate + " day until my birthday";
+        }else{
         element.innerHTML = daysUntilTargetDate + " days until my birthday";
+        }
 </script>
