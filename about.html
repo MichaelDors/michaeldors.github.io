@@ -90,6 +90,8 @@
 
     if(daysUntilTargetDate == 1){
         element.innerHTML = daysUntilTargetDate + " day until my birthday";
+    }else if(daysUntilTargetDate == 0){
+        element.innerHTML = "Today is my birthday!";
     }else{
         element.innerHTML = daysUntilTargetDate + " days until my birthday";
     }
