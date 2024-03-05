@@ -98,7 +98,7 @@ function filters() {
 
 function nextproject(){
     window.scrollBy({
-        top: 600,
+        top: document.querySelector(".projectarea").offsetHeight,
         left: 0,
         behavior : "smooth"
     })
