@@ -217,6 +217,10 @@
 
         const targetDate = new Date(currentYear, 2, 5);
         const currentDate = new Date();
+        
+        if(currentDate > targetDate){
+            targetDate.setFullYear(currentYear + 1);
+        }
 
         const difference = targetDate.getTime() - currentDate.getTime();
 
