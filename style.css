@@ -828,6 +828,10 @@ nav img {
     top:150vh;
 }
 
+.superupfilterbar{
+    top:-50vh;
+}
+
     #filterbar:hover {
         background: rgba(255, 49, 49,0.805);
         box-shadow: 0 0 10px 5px rgba(197, 28, 28, 0.203);
