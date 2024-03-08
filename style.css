@@ -806,7 +806,6 @@ nav img {
     padding-right: 12px;
     z-index: 200;
     position: fixed;
-    top: 85dvh;
     margin: 0 auto;
     height: 75px;
     background: rgba(255, 33, 33, 0.768);
@@ -819,6 +818,14 @@ nav img {
     left: 50%;
     transform: translate(-50%, 0);
     transition: 0.5s all;
+}
+
+.upfilterbar{
+    top: 85dvh;
+}
+
+.downfilterbar{
+    top:150vh;
 }
 
     #filterbar:hover {
