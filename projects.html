@@ -22,7 +22,7 @@
     <link rel="apple-touch-icon" href="Images/homescreen.png">
 </head>
 <body id="body">
-    <div id="filterbar" class="downfilterbar">
+    <div id="filterbar" class="downfilterbar" onclick="alert(window.scrollY);">
         <a class="sphericalbutton" onmouseup="filters()"><i class="fa-solid fa-filter"></i> Refine</a>
         <a class="sphericalbutton" onmouseup="nextproject()"><i class="fa-solid fa-circle-arrow-down"></i> Next</a>
         <div id="filtertags">
@@ -209,15 +209,28 @@
         element.innerHTML = daysUntilTargetDate + " days until my birthday";
     }
 
+    var body = document.body;
+    var html = document.documentElement;
+
+
+    var untilfooter = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight) - (document.querySelector(".projectarea").offsetHeight + 30);
+
     var filters = document.getElementById("filterbar");
     window.addEventListener('scroll', e => {
-            if (window.scrollY > (document.querySelector(".projectarea").offsetHeight - 30)) {
+            if (window.scrollY > (document.querySelector(".projectarea").offsetHeight) && window.scrollY < untilfooter) {
                 filters.classList.add("upfilterbar");
                 filters.classList.remove("downfilterbar");
+                filters.classList.remove("superupfilterbar");
+            }
+            else if (window.scrollY > untilfooter){
+                filters.classList.remove("downfilterbar");
+                filters.classList.remove("upfilterbar");
+                filters.classList.add("superupfilterbar");
             }
             else {
                 filters.classList.add("downfilterbar");
                 filters.classList.remove("upfilterbar");
+                filters.classList.remove("superupfilterbar");
             }
         });
 </script>
