@@ -825,11 +825,12 @@ nav img {
 }
 
 .downfilterbar{
-    top:150vh;
+    top:150dvh;
 }
 
 .superupfilterbar{
-    top:-50vh;
+    top: 150dvh;
+    overflow-y:hidden;
 }
 
     #filterbar:hover {
