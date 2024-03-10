@@ -23,7 +23,7 @@
 </head>
 <body id="body">
     <div id="filterbar" class="downfilterbar">
-        <a class="sphericalbutton" onmouseup="filters()"><i class="fa-solid fa-filter"></i> Refine</a>
+        <a class="sphericalbutton" onmouseup="togglefilters()"><i class="fa-solid fa-filter"></i> Refine</a>
         <a class="sphericalbutton" onmouseup="nextproject()"><i class="fa-solid fa-circle-arrow-down"></i> Next</a>
         <div id="filtertags">
             <br/>
@@ -217,7 +217,7 @@
 
     var filters = document.getElementById("filterbar");
     window.addEventListener('scroll', e => {
-            if (window.scrollY > ((document.querySelector(".projectarea").offsetHeight) - 30) && window.scrollY < untilfooter) {
+            if (window.scrollY > (document.querySelector(".projectarea").offsetHeight) && window.scrollY < untilfooter) {
                 filters.classList.add("upfilterbar");
                 filters.classList.remove("downfilterbar");
                 filters.classList.remove("superupfilterbar");
