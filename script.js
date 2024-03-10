@@ -62,12 +62,12 @@ if (document.readyState !== 'loading') {
 
 
 
-function filters() {
+function togglefilters() {
     var filterBar = document.getElementById("filterbar");
     var filterTags = document.getElementById("filtertags");
     var sortTags = document.getElementById("sorttags");
 
-    if(filterbar.classList.contains("openfilterbar") && filterTags.style.display !== "none"){
+    if(filterBar.classList.contains("openfilterbar") && filterTags.style.display !== "none"){
 
         setTimeout(function () {
             sortTags.style.display = "none";
