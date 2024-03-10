@@ -907,7 +907,6 @@ nav img {
 
 .familiarcontainer {
     width: 100vw;
-    height: 112.5px;
     /* From https://css.glass */
     background: rgba(0, 0, 0, 0.54);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
@@ -923,9 +922,11 @@ nav img {
         margin-top: 18.75px;
         height: 75px;
         z-index: 1000;
+        margin-bottom:18.75px;
     }
 
 .aboutpartition {
+    padding-top:100px;
     overflow-x: hidden;
     height: 100vh;
     scroll-snap-align: center;
@@ -996,11 +997,9 @@ nav img {
             .reviews img{
         align-self: center;
         object-fit:contain;
-        height:400px;
         }
 
     .familiarcontainer {
-        height: 220px;
         padding-left: -0px;
         padding-right:100px;
         margin-top: 30px;
