@@ -217,7 +217,7 @@
 
     var filters = document.getElementById("filterbar");
     window.addEventListener('scroll', e => {
-            if (window.scrollY > (document.querySelector(".projectarea").offsetHeight) && window.scrollY < untilfooter) {
+            if (window.scrollY > ((document.querySelector(".projectarea").offsetHeight) - 60) && window.scrollY < untilfooter) {
                 filters.classList.add("upfilterbar");
                 filters.classList.remove("downfilterbar");
                 filters.classList.remove("superupfilterbar");
