@@ -1,0 +1,340 @@
+*{
+  overflow-x: hidden;
+}
+:root {
+  --altcolor: #3c4fe0;
+}
+
+.button-30 {
+    animation: jump 10s infinite;
+    align-items: center;
+    appearance: none;
+    background-color: #FCFCFD;
+    border-radius: 4px;
+    border-width: 0;
+    box-shadow: rgba(45, 35, 66, 0.4) 0 2px 4px,rgba(45, 35, 66, 0.3) 0 7px 13px -3px,#D6D6E7 0 -3px 0 inset;
+    box-sizing: border-box;
+    color: #36395A;
+    cursor: pointer;
+    display: inline-flex;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    height: 48px;
+    justify-content: center;
+    line-height: 1;
+    list-style: none;
+    overflow: hidden;
+    padding-left: 16px;
+    padding-right: 16px;
+    position: relative;
+    text-align: left;
+    text-decoration: none;
+    transition: box-shadow .15s,transform .15s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    white-space: nowrap;
+    will-change: box-shadow,transform;
+    font-size: 18px;
+  }
+
+  @keyframes jump {
+    0%  { transform:translate(0%,0%) scale(1.0,1.0);}
+    70%  { transform:translate(0%,0%) scale(1.0,1.0);}
+    75% { transform: translate(0%, 0%) scale(1.05, 0.9); }
+    80% { transform: translate(0%, -50%) scale(1, 1); }
+    87% { transform: translate(0%, 0%) scale(1, 1); }
+    100%  { transform:translate(0%,0%) scale(1.0,1.0);}
+}
+  
+  .button-30:focus {
+    box-shadow: #D6D6E7 0 0 0 1.5px inset, rgba(45, 35, 66, 0.4) 0 2px 4px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, #D6D6E7 0 -3px 0 inset;
+  }
+  
+  .button-30:hover {
+    box-shadow: rgba(45, 35, 66, 0.4) 0 4px 8px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, #D6D6E7 0 -3px 0 inset;
+    transform: translateY(-2px);
+  }
+  
+  .button-30:active {
+    box-shadow: #D6D6E7 0 3px 7px inset;
+    transform: translateY(2px);
+  }
+
+  .center {
+    margin: auto;
+    width: 50%;
+  }
+
+  p{
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 400;
+    color: #000000;
+  }
+
+  h1{
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    color: #000000;
+    transition:1s all;
+  }
+  h2{
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    color: #000000;
+  }
+ .greytext {
+    color:#36395A
+ }
+
+  .button-29 {
+    align-items: center;
+    appearance: none;
+    background-image: radial-gradient(100% 100% at 100% 0, #5adaff 0, #5468ff 100%);
+    border: 0;
+    border-radius: 6px;
+    box-shadow: rgba(45, 35, 66, .4) 0 2px 4px,rgba(45, 35, 66, .3) 0 7px 13px -3px,rgba(58, 65, 111, .5) 0 -3px 0 inset;
+    box-sizing: border-box;
+    color: #fff;
+    cursor: pointer;
+    display: inline-flex;
+    font-family: "JetBrains Mono",monospace;
+    height: 48px;
+    justify-content: center;
+    line-height: 1;
+    list-style: none;
+    overflow: hidden;
+    padding-left: 16px;
+    padding-right: 16px;
+    position: relative;
+    text-align: left;
+    text-decoration: none;
+    transition: box-shadow .15s,transform .15s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    white-space: nowrap;
+    will-change: box-shadow,transform;
+    font-size: 18px;
+  }
+  
+  .button-29:focus {
+    box-shadow: #3c4fe0 0 0 0 1.5px inset, rgba(45, 35, 66, .4) 0 2px 4px, rgba(45, 35, 66, .3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset;
+  }
+  
+  .button-29:hover {
+    box-shadow: rgba(45, 35, 66, .4) 0 4px 8px, rgba(45, 35, 66, .3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset;
+    transform: translateY(-2px);
+  }
+  
+  .button-29:active {
+    box-shadow: #3c4fe0 0 3px 7px inset;
+    transform: translateY(2px);
+  }
+
+  .wonky{
+    color:white;
+/* From https://css.glass */
+background: rgba(245, 226, 82, 0.7);
+border-radius: 16px;
+box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+backdrop-filter: blur(6.7px);
+-webkit-backdrop-filter: blur(6.7px);
+border: 1px solid rgba(54, 57, 90, 0.8);
+color:black;
+    padding-left:5px;
+    padding-right:5px;
+    border-radius: 10px;
+  }
+
+  .backgroundframe {
+    margin: 0px;
+    padding: 0px;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    z-index:-14;
+    position:inherit;
+    overflow-y:hidden;
+}
+
+.backgroundframe-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: 0;
+    z-index:-14;
+    overflow: hidden;
+}
+
+.bg-color {
+    right: 0;
+    top: 0;
+    filter: blur(100px);
+    z-index: -1;
+    mix-blend-mode: luminosity;
+    width: 200%;
+    position: absolute;
+    animation: rotate 35s linear infinite;
+}
+
+.bg-color-fast {
+    right: 0;
+    top: 0;
+    filter: blur(100px);
+    z-index: -1;
+    mix-blend-mode: luminosity;
+    width: 200%;
+    position: absolute;
+    animation: rotate 15s linear infinite;
+}
+
+.bg-color-slow {
+    right: 0;
+    top: 0;
+    filter: blur(100px);
+    z-index: -1;
+    mix-blend-mode: luminosity;
+    width: 200%;
+    position: absolute;
+    animation: rotate 70s linear infinite;
+}
+
+.bg-black {
+    left: 0;
+    bottom: 0;
+    filter: blur(100px);
+    z-index: -10;
+    animation-direction: reverse;
+    animation-delay: 10s;
+    width: 200%;
+    position: absolute;
+    animation: rotate 35s linear infinite;
+}
+
+.bg-black-fast {
+    left: 0;
+    bottom: 0;
+    filter: blur(100px);
+    z-index: -10;
+    animation-direction: reverse;
+    animation-delay: 10s;
+    width: 200%;
+    position: absolute;
+    animation: rotate 15s linear infinite;
+}
+
+.bg-black-slow {
+    left: 0;
+    bottom: 0;
+    filter: blur(100px);
+    z-index: -10;
+    animation-direction: reverse;
+    animation-delay: 10s;
+    width: 200%;
+    position: absolute;
+    animation: rotate 70s linear infinite;
+}
+
+@keyframes rotate {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.win-grid{
+  box-sizing: border-box;
+  display: flex;
+  flex-flow: column wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.grid {
+  margin-top:110px;
+  letter-spacing: 2px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: stretch;
+  text-align: center;
+  grid-gap: 1rem;
+  padding: 5rem;
+}
+
+.obj {
+  padding: 1rem 2rem;
+  text-align: center;
+  border: none;
+  border-radius: 0px;
+  border: 1px solid transparent;
+  /* From https://css.glass */
+background: rgba(255, 255, 255, 0.68);
+border-radius: 16px;
+box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+backdrop-filter: blur(5px);
+-webkit-backdrop-filter: blur(5px);
+border: 3px solid rgba(201, 201, 201, 0.3);
+height:220px;
+transition:box-shadow 0.5s;
+}
+
+.obj:hover{
+  box-shadow: 0px 0px 60px rgba(13, 0, 23, 0.5);
+}
+
+
+.obj:focus {
+  outline: none;
+}
+
+video{
+  margin-top:20px;
+  margin-bottom:20px;
+  border-radius: 20px;
+}
+
+#ontopof{
+  color: var(--altcolor);
+  mix-blend-mode: color;
+  background-image: linear-gradient(90deg, var(--altcolor), var(--altcolor));
+  background-position: bottom;
+  background-size: 100% 10%;
+  background-repeat: no-repeat;
+  opacity: 1;
+  transition: all 0.5s;
+}
+.hiding {
+  opacity: 0 !important;
+}
+.godown{
+  font-size:0px !important;
+}
+#minitext{
+  transition: all 0.5s;
+}
+
+.tracker{
+  position:fixed;
+  z-index:100000000;
+  transform:translate(-50%, -50%);
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background-color:rgb(157, 0, 255);
+  pointer-events:none;
+  mix-blend-mode:multiply;
+  opacity:0;
+  transition: top .075s, left .075s, opacity 1.5s;
+}
+
+  @media(max-width: 1000px){
+
+      .tracker{
+          display:none;
+      }
+  }
