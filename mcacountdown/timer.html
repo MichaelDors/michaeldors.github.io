@@ -334,6 +334,8 @@
         }
     }
 
+    
+
     .colorpicker::-webkit-color-swatch {
         border-radius: 15px;
         border: none;
@@ -900,6 +902,43 @@
         color: white;
         background: #141414;
         border-radius: 50%;
+    }
+
+    .fa-xmark{
+        animation:fadeinout 5s infinite;
+    }
+
+
+    @keyframes fadeinout {
+    0% {
+        opacity: 0;
+        filter:blur(10px);
+        transform: scale(1);
+    }
+
+    25% {
+        opacity:1;
+        filter:blur(0px);
+        transform: scale(1.5);
+    }
+
+    50% {
+        opacity:1;
+        filter:blur(0px);
+        transform: scale(2);
+    }
+
+    80% {
+        opacity:1;
+        filter:blur(0px);
+        transform: scale(1.5);
+    }
+
+    100% {
+        opacity: 0;
+        filter:blur(10px);
+        transform: scale(1);
+    }
     }
 
 
@@ -1843,7 +1882,11 @@
             clearInterval(x);
             document.getElementById("clock").remove();
             document.getElementById("settings").remove();
-            document.getElementById("gear").remove();
+            document.getElementById("innergear").classList.remove("fa-gears");
+            document.getElementById("innergear").classList.add("fa-xmark");
+            document.getElementById("gear").onclick = finishedcountdownend;
+
+
             if (!getCookie('coce')) {
                 document.getElementById("animatedbackground").classList.add("hidden");
                 startConfetti();
@@ -1853,6 +1896,10 @@
 
 
     }, 1000);
+
+    function finishedcountdownend(){
+        window.location.href = "http://countdown.michaeldors.com";
+    }
 
     function updateoptions() {
         if (getCookie("memsav")) {
