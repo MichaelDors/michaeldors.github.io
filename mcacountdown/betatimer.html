@@ -10,6 +10,14 @@
 
     <script src="Dependencies/confetti.js"></script>
     <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+
+    <meta property="og:image" content="https://michaeldors.com/Images/countdowncover.jpg"/>
+    <meta property="og:title" content="Countdown - Michael Dors"/>
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://michaeldors.com/mcacountdown/timer"/>
+    <meta property="og:description" content="A beautiful countdown timer website."/>
+    <meta property="og:site_name" content="Michael Dors" />
+    <link rel="apple-touch-icon" href="Images/countdownhomescreen.png">
 </head>
 
 <body id="body" style="background-color:#141414;  overflow-x:hidden;">
@@ -179,19 +187,11 @@
             Appearance
         </h2>
         <br>
-        <br>
         <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
-        <a class="disabled"><i class="fa-solid fa-palette"></i> Unanimated Text <p style="font-size: 15px; line-height: 15px;">coming soon</p></a>
-        <a class="disabled"><i class="fa-solid fa-sun"></i> Prefer Light Mode <p style="font-size: 15px; line-height: 15px;">coming soon</p></a>
-        <br>
-        <br>
-        <br>
-        <br>
 
         <h2 class="textelement">
             Ease of Use
         </h2>
-        <br>
         <Br>
         <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
 
@@ -201,12 +201,12 @@
             Only Include
         </h2>
         <br>
-        <br>
         <a id="week" class="disabled" onclick="week();"><i class="fa-solid fa-calendar-week"></i> Weeks</a>
         <a id="day" class="disabled" onclick="day();"><i class="fa-solid fa-calendar-days"></i> Days</a>
         <a id="hour" class="disabled" onclick="hour();"><i class="fa-solid fa-clock"></i> Hours</a>
         <a id="minute" class="disabled" onclick="minute();"><i class="fa-solid fa-hourglass-start"></i> Minutes</a>
         <a id="second" class="disabled" onclick="second();"><i class="fa-solid fa-stopwatch-20"></i> Seconds</a>
+        <a id="millisecond" class="disabled" onclick="millisecond();"><i class="fa-solid fa-meteor"></i> Milliseconds</a>
 
     </center>
 
@@ -334,6 +334,8 @@
             outline: 1px solid #8426ff;
         }
     }
+
+    
 
     .colorpicker::-webkit-color-swatch {
         border-radius: 15px;
@@ -901,6 +903,43 @@
         color: white;
         background: #141414;
         border-radius: 50%;
+    }
+
+    .fa-xmark{
+        animation:fadeinout 5s infinite;
+    }
+
+
+    @keyframes fadeinout {
+    0% {
+        opacity: 0;
+        filter:blur(10px);
+        transform: scale(1);
+    }
+
+    25% {
+        opacity:1;
+        filter:blur(0px);
+        transform: scale(1.5);
+    }
+
+    50% {
+        opacity:1;
+        filter:blur(0px);
+        transform: scale(2);
+    }
+
+    80% {
+        opacity:1;
+        filter:blur(0px);
+        transform: scale(1.5);
+    }
+
+    100% {
+        opacity: 0;
+        filter:blur(10px);
+        transform: scale(1);
+    }
     }
 
 
@@ -1798,6 +1837,9 @@
             var secondcount = Math.floor(distance / 1000);
             document.getElementById("clock").innerHTML = secondcount + " seconds";
         }
+        else if (getCookie("millisecond")) {
+            document.getElementById("clock").innerHTML = distance + " milliseconds";
+        }
         else if (getCookie("week")) {
             var weekcount = Math.floor(days / 7);
             document.getElementById("clock").innerHTML = weekcount + " weeks";
@@ -1844,7 +1886,11 @@
             clearInterval(x);
             document.getElementById("clock").remove();
             document.getElementById("settings").remove();
-            document.getElementById("gear").remove();
+            document.getElementById("innergear").classList.remove("fa-gears");
+            document.getElementById("innergear").classList.add("fa-xmark");
+            document.getElementById("gear").onclick = finishedcountdownend;
+
+
             if (!getCookie('coce')) {
                 document.getElementById("animatedbackground").classList.add("hidden");
                 startConfetti();
@@ -1853,7 +1899,11 @@
 
 
 
-    }, 1000);
+    }, 1);
+
+    function finishedcountdownend(){
+        window.location.href = "http://countdown.michaeldors.com";
+    }
 
     function updateoptions() {
         if (getCookie("memsav")) {
@@ -1893,6 +1943,15 @@
         else {
             document.getElementById("second").classList.remove("enabled");
             document.getElementById("second").classList.add("disabled");
+        }
+
+        if (getCookie("millisecond")) {
+            document.getElementById("millisecond").classList.add("enabled");
+            document.getElementById("millisecond").classList.remove("disabled");
+        }
+        else {
+            document.getElementById("millisecond").classList.remove("enabled");
+            document.getElementById("millisecond").classList.add("disabled");
         }
 
         if (getCookie("minute")) {
@@ -1979,6 +2038,7 @@
             eraseCookie('minute');
             eraseCookie('hour');
             eraseCookie('day');
+            eraseCookie('millisecond');
         }
         updateoptions();
     }
@@ -1992,6 +2052,7 @@
             eraseCookie('minute');
             eraseCookie('week');
             eraseCookie('hour');
+            eraseCookie('millisecond');
         }
         updateoptions();
     }
@@ -2005,6 +2066,7 @@
             eraseCookie('day');
             eraseCookie('week');
             eraseCookie('minute');
+            eraseCookie('millisecond');
         }
         updateoptions();
     }
@@ -2018,6 +2080,7 @@
             eraseCookie('week');
             eraseCookie('day');
             eraseCookie('hour');
+            eraseCookie('millisecond');
         }
         updateoptions();
     }
@@ -2031,6 +2094,21 @@
             eraseCookie('day');
             eraseCookie('hour');
             eraseCookie('week');
+            eraseCookie('millisecond');
+        }
+        updateoptions();
+    }
+    function millisecond() {
+        if (getCookie('millisecond')) {
+            eraseCookie('millisecond');
+        }
+        else {
+            setCookie('millisecond', 'true', '70');
+            eraseCookie('minute');
+            eraseCookie('day');
+            eraseCookie('second');
+            eraseCookie('hour');
+            eraseCookie('week');
         }
         updateoptions();
     }
@@ -2039,6 +2117,7 @@
         eraseCookie('coce');
         eraseCookie('atc');
         eraseCookie('minute');
+        eraseCookie('millisecond');
         eraseCookie('week');
         eraseCookie('second');
         eraseCookie('day');
