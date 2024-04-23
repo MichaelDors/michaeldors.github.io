@@ -1311,30 +1311,6 @@
 <script>
     document.body.scrollTop = document.documentElement.scrollTop = 0;
 
-    if (getCookie("day")) {
-            day();
-            day();
-        }
-        else if (getCookie("hour")) {
-            hour();
-            hour();
-        }
-        else if (getCookie("minute")) {
-            minute();
-            minute();
-        }
-        else if (getCookie("second")) {
-            second();
-            second();
-        }
-        else if (getCookie("millisecond")) {
-            millisecond();
-            millisecond();
-        }
-        else if (getCookie("week")) {
-            week();
-            week();
-        }
 
     if (parameter('colorone')) {
         if (parameter('colorone') == "null") {
@@ -1385,6 +1361,34 @@
             css.style.setProperty('--four', colorfourtouse);
         }
     }
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (getCookie("day")) {
+            day();
+            day();
+        }
+        else if (getCookie("hour")) {
+            hour();
+            hour();
+        }
+        else if (getCookie("minute")) {
+            minute();
+            minute();
+        }
+        else if (getCookie("second")) {
+            second();
+            second();
+        }
+        else if (getCookie("millisecond")) {
+            millisecond();
+            millisecond();
+        }
+        else if (getCookie("week")) {
+            week();
+            week();
+        }
+    }, false);
 
     if (parameter('date')) {
         document.querySelector(".datepicker").value = parameter('date') + 'T00:00';
@@ -1905,6 +1909,7 @@
                 document.getElementById("clock").style.fontSize = '175px';
             }
         }
+
 
 
         if (distance < 0) {
