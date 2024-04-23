@@ -1311,6 +1311,31 @@
 <script>
     document.body.scrollTop = document.documentElement.scrollTop = 0;
 
+    if (getCookie("day")) {
+            day();
+            day();
+        }
+        else if (getCookie("hour")) {
+            hour();
+            hour();
+        }
+        else if (getCookie("minute")) {
+            minute();
+            minute();
+        }
+        else if (getCookie("second")) {
+            second();
+            second();
+        }
+        else if (getCookie("millisecond")) {
+            millisecond();
+            millisecond();
+        }
+        else if (getCookie("week")) {
+            week();
+            week();
+        }
+
     if (parameter('colorone')) {
         if (parameter('colorone') == "null") {
             console.log("Colors(1) could not be imported properly.");
