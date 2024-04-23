@@ -594,7 +594,6 @@
     }
 
     .clock {
-        font-size: 90vw;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -606,7 +605,6 @@
     }
 
     .clockslow {
-        font-size: 90vw;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -618,7 +616,6 @@
     }
 
     .clockfast {
-        font-size: 90vw;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -1314,6 +1311,20 @@
 <script>
     document.body.scrollTop = document.documentElement.scrollTop = 0;
 
+    //honestly not sure why but the font size was weird before adding this when the page loaded it would be small if you have an only include mode turned on. do not remove until fixed. this is a bandaid fix (not final?)
+    day();
+    week();
+    hour();
+    minute();
+    second();
+    millisecond();
+    day();
+    week();
+    hour();
+    minute();
+    second();
+    millisecond();
+    //end weird stuff
 
     if (parameter('colorone')) {
         if (parameter('colorone') == "null") {
