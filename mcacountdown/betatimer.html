@@ -33,11 +33,15 @@
     <div class="wrapper2">
         <div class="content2">
 
-            <div class="setting" onclick="settings()">
+            <div class="setting">
                 <ul style="list-style-type:none" class="menu2">
-                    <li class="item">
+                    <li class="item" onclick="settings()">
                         <i style="font-size:15px; color:white" class="fa-solid fa-gears"></i>
                         <span>Settings</span>
+                    </li>
+                    <li class="item" onclick="copyinputtextlink()">
+                        <i style="font-size:15px; color:white" class="fa-solid fa-share"></i>
+                        <span>Copy Link</span>
                     </li>
                 </ul>
             </div>
@@ -1311,22 +1315,6 @@
 <script>
     document.body.scrollTop = document.documentElement.scrollTop = 0;
 
-    //honestly not sure why but the font size was weird before adding this when the page loaded it would be small if you have an only include mode turned on. do not remove until fixed. this is a bandaid fix (not final?)
-    day();
-    week();
-    hour();
-    minute();
-    second();
-    millisecond();
-    setTimeout(function (){
-        day();
-        week();
-        hour();
-        minute();
-        second();
-        millisecond();
-    }, 100);
-    //end weird stuff
 
     if (parameter('colorone')) {
         if (parameter('colorone') == "null") {
@@ -2326,9 +2314,7 @@
     }
 
 
-    const contextMenu = document.querySelector(".wrapper2"),
-        shareMenu = contextMenu.querySelector(".share-menu");
-
+    const contextMenu = document.querySelector(".wrapper2");
     window.addEventListener("contextmenu", e => {
         e.preventDefault();
         let x = e.offsetX, y = e.offsetY,
