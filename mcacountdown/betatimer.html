@@ -1318,12 +1318,14 @@
     minute();
     second();
     millisecond();
-    day();
-    week();
-    hour();
-    minute();
-    second();
-    millisecond();
+    setTimeout(function (){
+        day();
+        week();
+        hour();
+        minute();
+        second();
+        millisecond();
+    }, 100);
     //end weird stuff
 
     if (parameter('colorone')) {
