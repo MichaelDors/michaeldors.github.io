@@ -33,11 +33,15 @@
     <div class="wrapper2">
         <div class="content2">
 
-            <div class="setting" onclick="settings()">
+            <div class="setting">
                 <ul style="list-style-type:none" class="menu2">
-                    <li class="item">
+                    <li class="item" onclick="settings()">
                         <i style="font-size:15px; color:white" class="fa-solid fa-gears"></i>
                         <span>Settings</span>
+                    </li>
+                    <li class="item" onclick="copyinputtextlink()">
+                        <i style="font-size:15px; color:white" class="fa-solid fa-share"></i>
+                        <span>Copy Link</span>
                     </li>
                 </ul>
             </div>
@@ -206,6 +210,7 @@
         <a id="hour" class="disabled" onclick="hour();"><i class="fa-solid fa-clock"></i> Hours</a>
         <a id="minute" class="disabled" onclick="minute();"><i class="fa-solid fa-hourglass-start"></i> Minutes</a>
         <a id="second" class="disabled" onclick="second();"><i class="fa-solid fa-stopwatch-20"></i> Seconds</a>
+        <a id="millisecond" class="disabled" onclick="millisecond();"><i class="fa-solid fa-meteor"></i> Milliseconds</a>
 
     </center>
 
@@ -974,7 +979,7 @@
         cursor: pointer;
         font-size: 1.18rem;
         white-space: nowrap;
-        background: linear-gradient(to left, rgba(40,23,64,88), #141414);
+        background: linear-gradient(to left, rgba(94, 0, 225, 0.8), #141414);
         border: #8426FF 1px solid;
         padding: 13px 20px;
         border-radius: 30px;
@@ -1310,6 +1315,7 @@
 <script>
     document.body.scrollTop = document.documentElement.scrollTop = 0;
 
+
     if (parameter('colorone')) {
         if (parameter('colorone') == "null") {
             console.log("Colors(1) could not be imported properly.");
@@ -1359,6 +1365,7 @@
             css.style.setProperty('--four', colorfourtouse);
         }
     }
+
 
     if (parameter('date')) {
         document.querySelector(".datepicker").value = parameter('date') + 'T00:00';
@@ -1836,6 +1843,9 @@
             var secondcount = Math.floor(distance / 1000);
             document.getElementById("clock").innerHTML = secondcount + " seconds";
         }
+        else if (getCookie("millisecond")) {
+            document.getElementById("clock").innerHTML = distance + " milliseconds";
+        }
         else if (getCookie("week")) {
             var weekcount = Math.floor(days / 7);
             document.getElementById("clock").innerHTML = weekcount + " weeks";
@@ -1878,6 +1888,7 @@
         }
 
 
+
         if (distance < 0) {
             clearInterval(x);
             document.getElementById("clock").remove();
@@ -1895,7 +1906,7 @@
 
 
 
-    }, 1000);
+    }, 1);
 
     function finishedcountdownend(){
         window.location.href = "http://countdown.michaeldors.com";
@@ -1939,6 +1950,15 @@
         else {
             document.getElementById("second").classList.remove("enabled");
             document.getElementById("second").classList.add("disabled");
+        }
+
+        if (getCookie("millisecond")) {
+            document.getElementById("millisecond").classList.add("enabled");
+            document.getElementById("millisecond").classList.remove("disabled");
+        }
+        else {
+            document.getElementById("millisecond").classList.remove("enabled");
+            document.getElementById("millisecond").classList.add("disabled");
         }
 
         if (getCookie("minute")) {
@@ -2025,6 +2045,7 @@
             eraseCookie('minute');
             eraseCookie('hour');
             eraseCookie('day');
+            eraseCookie('millisecond');
         }
         updateoptions();
     }
@@ -2038,6 +2059,7 @@
             eraseCookie('minute');
             eraseCookie('week');
             eraseCookie('hour');
+            eraseCookie('millisecond');
         }
         updateoptions();
     }
@@ -2051,6 +2073,7 @@
             eraseCookie('day');
             eraseCookie('week');
             eraseCookie('minute');
+            eraseCookie('millisecond');
         }
         updateoptions();
     }
@@ -2064,6 +2087,7 @@
             eraseCookie('week');
             eraseCookie('day');
             eraseCookie('hour');
+            eraseCookie('millisecond');
         }
         updateoptions();
     }
@@ -2077,6 +2101,21 @@
             eraseCookie('day');
             eraseCookie('hour');
             eraseCookie('week');
+            eraseCookie('millisecond');
+        }
+        updateoptions();
+    }
+    function millisecond() {
+        if (getCookie('millisecond')) {
+            eraseCookie('millisecond');
+        }
+        else {
+            setCookie('millisecond', 'true', '70');
+            eraseCookie('minute');
+            eraseCookie('day');
+            eraseCookie('second');
+            eraseCookie('hour');
+            eraseCookie('week');
         }
         updateoptions();
     }
@@ -2085,6 +2124,7 @@
         eraseCookie('coce');
         eraseCookie('atc');
         eraseCookie('minute');
+        eraseCookie('millisecond');
         eraseCookie('week');
         eraseCookie('second');
         eraseCookie('day');
@@ -2200,7 +2240,7 @@
 
 
     function MES() {
-        document.querySelector(".datepicker").value = '2024-05-22T11:00';
+        document.querySelector(".datepicker").value = '2024-05-21T11:30';
         SetCountDowngeneral();
     }
     function NYD() {
@@ -2274,9 +2314,7 @@
     }
 
 
-    const contextMenu = document.querySelector(".wrapper2"),
-        shareMenu = contextMenu.querySelector(".share-menu");
-
+    const contextMenu = document.querySelector(".wrapper2");
     window.addEventListener("contextmenu", e => {
         e.preventDefault();
         let x = e.offsetX, y = e.offsetY,
