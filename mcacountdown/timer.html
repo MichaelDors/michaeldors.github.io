@@ -1403,9 +1403,9 @@
         
         var easterthisyear = new Date(getEaster(thisyear) + "T00:00");
         if(easterthisyear - now < 0){
-            easterday = (getEaster(nextyear) + "T00:00");
+            easterday = new Date(getEaster(nextyear) + "T00:00");
         } else {
-            easterday = (getEaster(thisyear) + "T00:00");
+            easterday = new Date(getEaster(thisyear) + "T00:00");
         }
 
         //independence
