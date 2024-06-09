@@ -2178,7 +2178,7 @@
     }
     arrowIcons.forEach(icon => {
         icon.addEventListener("click", () => {
-            // if clicked icon is left, reduce 350 from tabsBox scrollLeft else add
+            // if clicked icon is left, reduce 100 from tabsBox scrollLeft else add
             let scrollWidth = tabsBox.scrollLeft += icon.id === "left" ? -100 : 100;
             handleIcons(scrollWidth);
         });
