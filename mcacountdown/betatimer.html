@@ -213,7 +213,7 @@
 
 
     <div id="autopilotpopup" style="margin:0; padding:0; position:absolute; top:80%; left:0px; width:100%; height:20%; border-top:solid 3px white; opacity:1; transition:0.5s opacity;">
-        <h1 style="position: absolute; top: 15%; left: 48.5%; text-shadow: 6px 6px 0 #141414, -6px 6px 0 #141414, -6px -6px 0 #141414, 6px -6px 0 #141414; ">or</h1>
+        <h1 style="position: absolute; top: 15%; left: 48.5%; paint-order: stroke fill; -webkit-text-stroke-width: 10px; -webkit-text-stroke-color: #141414;">or</h1>
         <div id="manualpilot" style="background-image:url(calendarbg.png); background-size:cover; width: 50%; float: left; height: 100%; ">
             <h1 style="margin-left:30px;" id="gearpointer"><i style="margin-right:30px;" class="fa-solid fa-angle-down"></i><span style="padding-top:100px;">pick a date</span></h1>
         </div>
@@ -238,8 +238,8 @@
         </div>
     </div>
 
-    <div id="autopilotpopupmobile" style="margin:0; padding:0; position:absolute; top:60%; left:0px; width:100%; height:40%; border-top:solid 3px white; opacity:1; transition:0.5s opacity;">
-        <div id="autopilotmobile" style="width: 100%; background: linear-gradient(to right, #141414, #01FE5E); height: 50%; outline: 3px white solid; ">
+    <div id="autopilotpopupmobile" style="margin:0; padding:0; position:absolute; top:60%; left:0px; width:100%; height:40%; opacity:1; transition:0.5s opacity;">
+        <div id="autopilotmobile" style="width: 100%; background: linear-gradient(to bottom, #141414, #01FE5E); height: 45%;">
             <div id="autopilotinfomobile" style="margin-left: 60px;">
                 <h3 style="position: relative; display: inline-block; background-color: white; border-radius: 20px; padding: 5px 10px 5px 10px;">
                     <span style="color: #11371f;">
@@ -249,10 +249,14 @@
                 <h1 id="autopilotpredictionmobile" style="line-height:0.000001">Finding...</h1>
             </div>
         </div>
-        <h1 style="position: absolute; top: 15%; left: 48.5%; text-shadow: 6px 6px 0 #141414, -6px 6px 0 #141414, -6px -6px 0 #141414, 6px -6px 0 #141414; ">or</h1>
-        <div id="manualpilotmobile" style="background-image:url(calendarbg.png); background-size:cover; width: 100%; height: 50%;">
-            <h1 style="margin-left:30px;" id="gearpointer"><i style="margin-right:30px;" class="fa-solid fa-angle-down"></i><span style="padding-top:100px;">pick a date</span></h1>
+        <h1 style="position: absolute; top: 30%; text-align: center; width:100%; color: white; font-weight: 5000; paint-order: stroke fill; -webkit-text-stroke-width: 10px; -webkit-text-stroke-color: #141414;">or</h1>
+        <div id="manualpilotmobile" style="background-image:url(calendarbg.png); margin-top:0px; background-size:cover; width: 100%; height: 100%; border-top:3px solid white;">
+            <h2 id="gearpointer" style="text-align: center; width:100%; padding-top:20px;"><span style="padding-top:100px;">pick a date under</span></h1>
+            <div style="text-align: center;">
+                <a id="memsav" class="whitebutton" style="display: inline-block;" onclick="settings();"><i class="fa-solid fa-gear"></i> Options</a>
+            </div>
         </div>
+
     </div>
 </body>
 
@@ -844,6 +848,30 @@
                 box-shadow: none;
             }
 
+            .whitebutton {
+        font-family: 'Fredoka One';
+        background-color: white;
+        text-decoration: none;
+        color: black;
+        box-shadow: 0 7px 0 #9a9a9a;
+        border-radius: 20px;
+        padding: 20px;
+        padding-left:30%;
+        padding-right:30%;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+    }
+    .whitebutton:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #777777;
+        }
+
+            .whitebutton:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
 
     .warning {
         font-family: 'Fredoka One';
@@ -1582,30 +1610,44 @@
         switch (nextHoliday.name) {
             case 'newyear':
                 document.getElementById("autopilotprediction").innerHTML = "New Year's Day";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "New Year's Day";
+
                 NYD();
                 break;
             case 'valentines':
                 document.getElementById("autopilotprediction").innerHTML = "Valentine's Day";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Valentine's Day";
+
                 VD();
                 break;
             case 'easter':
                 document.getElementById("autopilotprediction").innerHTML = "Easter";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Easter";
+
                 EASTER();
                 break;
             case 'independence':
                 document.getElementById("autopilotprediction").innerHTML = "Independence Day";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Independence Day";
+
                 ID();
                 break;
             case 'halloween':
                 document.getElementById("autopilotprediction").innerHTML = "Halloween";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Halloween";
+
                 H();
                 break;
             case 'thanksgiving':
                 document.getElementById("autopilotprediction").innerHTML = "Thanksgiving";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Thanksgiving";
+
                 T();
                 break;
             case 'christmas':
                 document.getElementById("autopilotprediction").innerHTML = "Christmas";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Christmas";
+
                 C();
                 break;
             default:
@@ -1800,6 +1842,10 @@
     function settings() {
         if (document.getElementById("autopilotpopup")) {
             document.getElementById("autopilotpopup").remove();
+        }
+
+        if(document.getElementById("autopilotpopupmobile")){
+            document.getElementById("autopilotpopupmobile").remove();
         }
 
         if (document.getElementById("settings").classList.contains("hidden")) {
@@ -2685,11 +2731,14 @@
         autocircle.style.strokeDashoffset = offset;
         if (autocountdown === 0) {
             document.getElementById("autopilotpopup").style.opacity = "0";
+            document.getElementById("autopilotpopupmobile").style.opacity = "0";
+
             autocircle.remove();
         }
         if (autocountdown === "-0") {
             clearInterval(autocountdownInterval);
             document.getElementById("autopilotpopup").remove();
+            document.getElementById("autopilotpopupmobile").remove();
         }
         autocountdown-=10;
     }
@@ -2699,6 +2748,7 @@
 
     function closeautopanel(){
         document.getElementById("autopilotpopup").style.opacity = "0";
+        document.getElementById("autopilotpopupmobile").style.opacity = "0";
     }
 </script>
 
