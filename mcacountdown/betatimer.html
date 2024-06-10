@@ -226,8 +226,8 @@
                 </h3>
                 <h1 id="autopilotprediction" style="line-height:0.000001">Finding...</h1>
             </div>
-            <div class="autopilot-countdown-container">
-                <div class="autopilot-countdown-number">10</div>
+            <div onmouseup="closeautopanel();" class="autopilot-countdown-container">
+                <div class="autopilot-countdown-number">X</div>
                 <svg class="autopilot-countdown-circle" viewBox="0 0 64 64">
                     <circle class="outer-circle" cx="32" cy="32" r="29"></circle>
                     <circle class="progressbarr" r="27" cx="32" cy="32"></circle>
@@ -2650,20 +2650,17 @@
         document.body.removeChild(downloadLink);
     }
 
-    const autocountdownNumberEl = document.querySelector('.autopilot-countdown-number');
     const autocircle = document.querySelector('.autopilot-countdown-circle .progressbarr');
     let autocountdown = 10000;
     let autocountdownInterval;
 
     function updateCountdown() {
-        autocountdownNumberEl.textContent = (autocountdown / 1000).toFixed(0);
         const length = autocircle.getTotalLength();
         const offset = length - (length * (10000 + autocountdown) / 10000);
         autocircle.style.strokeDashoffset = offset;
         if (autocountdown === 0) {
             document.getElementById("autopilotpopup").style.opacity = "0";
             autocircle.remove();
-            autocountdownNumberEl.remove();
         }
         if (autocountdown === "-0") {
             clearInterval(autocountdownInterval);
@@ -2674,5 +2671,9 @@
 
     autocountdownInterval = setInterval(updateCountdown, 10);
 
+
+    function closeautopanel(){
+        document.getElementById("autopilotpopup").style.opacity = "0";
+    }
 </script>
 
