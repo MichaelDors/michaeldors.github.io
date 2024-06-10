@@ -237,6 +237,23 @@
 
         </div>
     </div>
+
+    <div id="autopilotpopupmobile" style="margin:0; padding:0; position:absolute; top:60%; left:0px; width:100%; height:40%; border-top:solid 3px white; opacity:1; transition:0.5s opacity;">
+        <div id="autopilotmobile" style="width: 100%; background: linear-gradient(to right, #141414, #01FE5E); height: 50%; outline: 3px white solid; ">
+            <div id="autopilotinfomobile" style="margin-left: 60px;">
+                <h3 style="position: relative; display: inline-block; background-color: white; border-radius: 20px; padding: 5px 10px 5px 10px;">
+                    <span style="color: #11371f;">
+                        AUTOPILOT
+                    </span>
+                </h3>
+                <h1 id="autopilotpredictionmobile" style="line-height:0.000001">Finding...</h1>
+            </div>
+        </div>
+        <h1 style="position: absolute; top: 15%; left: 48.5%; text-shadow: 6px 6px 0 #141414, -6px 6px 0 #141414, -6px -6px 0 #141414, 6px -6px 0 #141414; ">or</h1>
+        <div id="manualpilotmobile" style="background-image:url(calendarbg.png); background-size:cover; width: 100%; height: 50%;">
+            <h1 style="margin-left:30px;" id="gearpointer"><i style="margin-right:30px;" class="fa-solid fa-angle-down"></i><span style="padding-top:100px;">pick a date</span></h1>
+        </div>
+    </div>
 </body>
 
 <style>
@@ -1052,6 +1069,9 @@
         overflow-y: visible;
     }
 
+    #autopilotpopupmobile{
+        display:none;
+    }
 
     .tabs-box.dragging .mcatab {
         user-select: none;
@@ -1157,7 +1177,13 @@
             left: 7%;
         }
         
+        #autopilotpopup{
+            display:none;
+        }
 
+        #autopilotpopupmobile{
+            display:block;
+        }
 
 
         #innergear {
@@ -1186,7 +1212,6 @@
             object-fit: cover;
         }
     }
-
 
 
     .wrapper2 {
