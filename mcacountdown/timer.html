@@ -30,27 +30,9 @@
     </div>
 
 
-    <div class="wrapper2">
-        <div class="content2">
-
-            <div class="setting">
-                <ul style="list-style-type:none" class="menu2">
-                    <li class="item" onclick="settings()">
-                        <i style="font-size:15px; color:white" class="fa-solid fa-gears"></i>
-                        <span>Settings</span>
-                    </li>
-                    <li class="item" onclick="copyinputtextlink()">
-                        <i style="font-size:15px; color:white" class="fa-solid fa-share"></i>
-                        <span>Copy Link</span>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
 
 
-
-    <a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"><i id="innergear" class="fa-solid fa-gear"></i></a>
+    <a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index:1000000;"><i id="innergear" class="fa-solid fa-gear"></i></a>
 
 
     <center id="preloader" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
@@ -157,10 +139,10 @@
             Backgrounds
         </h2>
 
-        <a class="aintext" onmouseup="defaultbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground.png"></div></a>
-        <a class="aintext" onmouseup="xmasgb()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_christmas.png"></div></a>
-        <a class="aintext" onmouseup="fourthbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_fourth.png"></div></a>
-        <a class="aintext" onmouseup="fallbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_thanksgiving.png"></div></a>
+        <a class="aintext backgroundpicker" id="defaultbg" onmouseup="defaultbg()"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground.png"></div></a>
+        <a class="aintext backgroundpicker" id="xmasbg" onmouseup="xmasgb()"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_christmas.png"></div></a>
+        <a class="aintext backgroundpicker" id="fourthbg" onmouseup="fourthbg()"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_fourth.png"></div></a>
+        <a class="aintext backgroundpicker" id="fallbg" onmouseup="fallbg()"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_thanksgiving.png"></div></a>
         <br />
         <br />
         <br>
@@ -229,6 +211,53 @@
 
     <center class="hidden" id="ad_container" style="border-radius: 20px; margin: 0; position: absolute; top: 88%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"> <video id="ad" autoplay muted loop playsinline> <source src="ad.mp4" type="video/mp4"> </video> </center>
 
+
+    <div id="autopilotpopup" style="margin:0; padding:0; position:absolute; top:80%; left:0px; width:100%; height:20%; border-top:solid 3px white; opacity:1; transition:0.5s opacity;">
+        <h1 style="position: absolute; top: 15%; left: 48.5%; paint-order: stroke fill; -webkit-text-stroke-width: 10px; -webkit-text-stroke-color: #141414;">or</h1>
+        <div id="manualpilot" style="background-image:url(calendarbg.png); background-size:cover; width: 50%; float: left; height: 100%; ">
+            <h1 style="margin-left:30px;" id="gearpointer"><i style="margin-right:30px;" class="fa-solid fa-angle-down"></i><span style="padding-top:100px;">pick a date</span></h1>
+        </div>
+        <div id="autopilot" style="float: right; width: 50%; background: linear-gradient(to right, #141414, #01FE5E); height: 100%; outline: 3px white solid; ">
+            <div id="autopilotinfo" style="margin-left: 60px;">
+                <h3 style="position: relative; display: inline-block; background-color: white; border-radius: 20px; padding: 5px 10px 5px 10px;">
+                    <span style="color: #11371f;">
+                        AUTOPILOT
+                    </span>
+                </h3>
+                <h1 id="autopilotprediction" style="line-height:0.000001">Finding...</h1>
+            </div>
+            <div onmouseup="closeautopanel();" style="cursor:pointer;" class="autopilot-countdown-container">
+                <div class="autopilot-countdown-number">X</div>
+                <svg class="autopilot-countdown-circle" viewBox="0 0 64 64">
+                    <circle class="outer-circle" cx="32" cy="32" r="29"></circle>
+                    <circle class="progressbarr" r="27" cx="32" cy="32"></circle>
+                </svg>
+            </div>
+
+
+        </div>
+    </div>
+
+    <div id="autopilotpopupmobile" style="margin:0; padding:0; position:absolute; top:60%; left:0px; width:100%; height:40%; opacity:1; transition:0.5s opacity;">
+        <div id="autopilotmobile" style="width: 100%; background: linear-gradient(to bottom, rgba(255,0,0,0), #01FE5E); height: 45%;">
+            <div id="autopilotinfomobile" style="margin-left: 60px;">
+                <h3 style="position: relative; display: inline-block; background-color: white; border-radius: 20px; padding: 5px 10px 5px 10px;">
+                    <span style="color: #11371f;">
+                        AUTOPILOT
+                    </span>
+                </h3>
+                <h1 id="autopilotpredictionmobile" style="line-height:0.000001">Finding...</h1>
+            </div>
+        </div>
+        <h1 style="position: absolute; top: 33%; text-align: center; width:100%; color: white; font-weight: 5000; paint-order: stroke fill; -webkit-text-stroke-width: 10px; -webkit-text-stroke-color: #141414;">or</h1>
+        <div id="manualpilotmobile" style="background-image:url(calendarbg.png); margin-top:0px; background-size:cover; width: 100%; height: 100%; border-top:3px solid white;">
+            <h2 id="gearpointer" style="text-align: center; width:100%; padding-top:20px;"><span style="padding-top:100px;">pick a date under</span></h1>
+            <div style="text-align: center;">
+                <a id="memsav" class="whitebutton" style="display: inline-block;" onclick="settings();"><i class="fa-solid fa-gear"></i> Options</a>
+            </div>
+        </div>
+
+    </div>
 </body>
 
 <style>
@@ -272,7 +301,7 @@
     }
 
     .backgroundpicker {
-        margin: 10px;
+        margin: 10px !important;
         height: 0.5in;
         width: 1in;
         font-size: 20px;
@@ -281,6 +310,20 @@
         outline: 1px solid #8426ff;
         background: #141414;
         border: none;
+        transition:0.3s all;
+    }
+
+    .selectedbackgroundpicker {
+        margin: 10px !important;
+        height: 0.5in;
+        width: 1in;
+        font-size: 20px;
+        font-weight: 100;
+        border-radius: 20px;
+        outline: 1px solid #01FE5E;
+        background: #141414;
+        border: none;
+        transition: 0.3s all;
     }
 
     .disabledcolorpicker {
@@ -569,7 +612,6 @@
         left: 5%;
     }
 
-
     #ad {
         height: 10vh;
         width: 50vw;
@@ -639,6 +681,12 @@
 
     h1 {
         font-size: 42px;
+        font-family: 'Fredoka One';
+        color: #fff;
+        font-weight: 100;
+    }
+
+    h3 {
         font-family: 'Fredoka One';
         color: #fff;
         font-weight: 100;
@@ -800,6 +848,30 @@
                 box-shadow: none;
             }
 
+            .whitebutton {
+        font-family: 'Fredoka One';
+        background-color: white;
+        text-decoration: none;
+        color: black;
+        box-shadow: 0 7px 0 #9a9a9a;
+        border-radius: 20px;
+        padding: 20px;
+        padding-left:30%;
+        padding-right:30%;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+    }
+    .whitebutton:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #777777;
+        }
+
+            .whitebutton:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
 
     .warning {
         font-family: 'Fredoka One';
@@ -1025,6 +1097,9 @@
         overflow-y: visible;
     }
 
+    #autopilotpopupmobile{
+        display:none;
+    }
 
     .tabs-box.dragging .mcatab {
         user-select: none;
@@ -1129,7 +1204,14 @@
             top: 5%;
             left: 7%;
         }
+        
+        #autopilotpopup{
+            display:none;
+        }
 
+        #autopilotpopupmobile{
+            display:block;
+        }
 
 
         #innergear {
@@ -1158,7 +1240,6 @@
             object-fit: cover;
         }
     }
-
 
 
     .wrapper2 {
@@ -1190,7 +1271,7 @@
     }
 
     #qrcode img {
-        border-radius: 10px;
+        mix-blend-mode:screen;
     }
 
 
@@ -1309,6 +1390,50 @@
             transform: rotate(360deg);
         }
     }
+
+    .autopilot-countdown-container {
+        position: absolute;
+        top: 30%;
+        left: 94%;
+        display: inline-block;
+    }
+
+    .autopilot-countdown-number {
+        color: white;
+        font-family: 'Fredoka One';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 27px; /* Adjusted for the larger size */
+        z-index:10000;
+    }
+
+    .autopilot-countdown-circle {
+        transform: rotate(-90deg);
+        width: 64px; /* Adjusted for the larger size */
+        height: 64px; /* Adjusted for the larger size */
+    }
+
+        .autopilot-countdown-circle .outer-circle {
+            stroke-dasharray: 182; /* Circumference of the outer circle */
+            stroke-dashoffset: 0;
+            stroke-width: 6; /* Width of the gray border */
+            stroke: #141414; /* Gray border color */
+            fill: #141414;
+        }
+
+        .autopilot-countdown-circle .progressbarr {
+            stroke-dasharray: 170; /* Adjusted for the new circumference */
+            stroke-dashoffset: 170;
+            stroke-width: 4; /* Adjusted for the inset effect */
+            stroke: #01fb5d; /* Progress bar color */
+            fill: #141414;
+            stroke-linecap: round; /* Rounds out the start and end of the stroke */
+            stroke-linejoin: round;
+        }
+
+
 </style>
 
 
@@ -1376,6 +1501,8 @@
 
 
         makeQR();
+        document.getElementById("autopilotpopup").remove();
+        document.getElementById("autopilotpopupmobile").remove();
     }
     else {
         var now = new Date();
@@ -1483,24 +1610,45 @@
         
         switch (nextHoliday.name) {
             case 'newyear':
+                document.getElementById("autopilotprediction").innerHTML = "New Year's Day";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "New Year's Day";
+
                 NYD();
                 break;
             case 'valentines':
+                document.getElementById("autopilotprediction").innerHTML = "Valentine's Day";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Valentine's Day";
+
                 VD();
                 break;
             case 'easter':
+                document.getElementById("autopilotprediction").innerHTML = "Easter";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Easter";
+
                 EASTER();
                 break;
             case 'independence':
+                document.getElementById("autopilotprediction").innerHTML = "Independence Day";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Independence Day";
+
                 ID();
                 break;
             case 'halloween':
+                document.getElementById("autopilotprediction").innerHTML = "Halloween";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Halloween";
+
                 H();
                 break;
             case 'thanksgiving':
+                document.getElementById("autopilotprediction").innerHTML = "Thanksgiving";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Thanksgiving";
+
                 T();
                 break;
             case 'christmas':
+                document.getElementById("autopilotprediction").innerHTML = "Christmas";
+                document.getElementById("autopilotpredictionmobile").innerHTML = "Christmas";
+
                 C();
                 break;
             default:
@@ -1693,6 +1841,13 @@
 
 
     function settings() {
+        if (document.getElementById("autopilotpopup")) {
+            document.getElementById("autopilotpopup").remove();
+        }
+
+        if(document.getElementById("autopilotpopupmobile")){
+            document.getElementById("autopilotpopupmobile").remove();
+        }
 
         if (document.getElementById("settings").classList.contains("hidden")) {
             document.getElementById("settings").classList.remove("hidden");
@@ -1754,6 +1909,10 @@
 
     var x = setInterval(function () {
 
+        if (document.getElementById("settings").classList.contains("hidden")) {
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+        }
+
         updateoptions();
 
         if(getCookie("speed1")){
@@ -1771,18 +1930,26 @@
             if(getCookie('fallbg')){
                 document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
                 document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
+                document.getElementById("fallbg").classList.add("selectedbackgroundpicker");
+                document.getElementById("fallbg").classList.remove("backgroundpicker");
             }
             else if(getCookie('christmasbg')){
                 document.getElementById("bg1").src = "enhancedbackground_christmas.png";
                 document.getElementById("bg2").src = "enhancedbackground_christmas.png";
+                document.getElementById("xmasbg").classList.add("selectedbackgroundpicker");
+                document.getElementById("xmasbg").classList.remove("backgroundpicker");
             }
             else if(getCookie('fourthbg')){
                 document.getElementById("bg1").src = "enhancedbackground_fourth.png";
                 document.getElementById("bg2").src = "enhancedbackground_fourth.png";
+                document.getElementById("fourthbg").classList.add("selectedbackgroundpicker");
+                document.getElementById("fourthbg").classList.remove("backgroundpicker");
             }
             else{
                 document.getElementById("bg1").src = "enhancedbackground.png";
                 document.getElementById("bg2").src = "enhancedbackground.png";
+                document.getElementById("defaultbg").classList.add("selectedbackgroundpicker");
+                document.getElementById("defaultbg").classList.remove("backgroundpicker");
             }
 
             document.getElementById("clock").classList.remove("clock");
@@ -2343,24 +2510,7 @@
     }
 
 
-    const contextMenu = document.querySelector(".wrapper2");
-    window.addEventListener("contextmenu", e => {
-        e.preventDefault();
-        let x = e.offsetX, y = e.offsetY,
-            winWidth = window.innerWidth,
-            winHeight = window.winHeight,
-            cmWidth = contextMenu.offsetWidth,
-            cmHeight = contextMenu.offsetHeight;
-
-        x = x > winWidth - cmWidth ? winWidth - cmWidth - 5 : x;
-        y = y > winHeight - cmHeight ? winHeight - cmHeight - 5 : y;
-
-        contextMenu.style.left = `${x}px`;
-        contextMenu.style.top = `${y}px`;
-        contextMenu.style.visibility = "visible";
-    });
-    document.addEventListener("click", () => contextMenu.style.visibility = "hidden");
-
+   
 
 
     const container = document.getElementById("tabs-box");
@@ -2405,10 +2555,15 @@
     function defaultbg() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground.png") {
             enablecolor();
+            document.getElementById("defaultbg").classList.add("backgroundpicker");
+            document.getElementById("defaultbg").classList.remove("selectedbackgroundpicker");
         }
         else {
             document.getElementById("bg1").src = "enhancedbackground.png";
             document.getElementById("bg2").src = "enhancedbackground.png";
+            document.getElementById("defaultbg").classList.remove("backgroundpicker");
+            document.getElementById("defaultbg").classList.add("selectedbackgroundpicker");
+
             disablecolor()
         }
 
@@ -2418,18 +2573,28 @@
         else {
             setCookie('normalbg', 'true', '70');
             eraseCookie('christmasbg');
+            document.getElementById("xmasbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("xmasbg").classList.add("backgroundpicker");
             eraseCookie('fourthbg');
+            document.getElementById("fourthbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fourthbg").classList.add("backgroundpicker");
             eraseCookie('fallbg');
+            document.getElementById("fallbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fallbg").classList.add("backgroundpicker");
         }
         updateoptions();
     }
     function xmasgb() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_christmas.png") {
             enablecolor();
+            document.getElementById("xmasbg").classList.add("backgroundpicker");
+            document.getElementById("xmasbg").classList.remove("selectedbackgroundpicker");
         }
         else {
             document.getElementById("bg1").src = "enhancedbackground_christmas.png";
             document.getElementById("bg2").src = "enhancedbackground_christmas.png";
+            document.getElementById("xmasbg").classList.remove("backgroundpicker");
+            document.getElementById("xmasbg").classList.add("selectedbackgroundpicker");
             disablecolor();
         }
 
@@ -2439,18 +2604,28 @@
         else {
             setCookie('christmasbg', 'true', '70');
             eraseCookie('normalbg');
+            document.getElementById("defaultbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("defaultbg").classList.add("backgroundpicker");
             eraseCookie('fourthbg');
+            document.getElementById("fourthbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fourthbg").classList.add("backgroundpicker");
             eraseCookie('fallbg');
+            document.getElementById("fallbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fallbg").classList.add("backgroundpicker");
         }
         updateoptions();
     }
     function fourthbg() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_fourth.png") {
             enablecolor();
+            document.getElementById("fourthbg").classList.add("backgroundpicker");
+            document.getElementById("fourthbg").classList.remove("selectedbackgroundpicker");
         }
         else {
             document.getElementById("bg1").src = "enhancedbackground_fourth.png";
             document.getElementById("bg2").src = "enhancedbackground_fourth.png";
+            document.getElementById("fourthbg").classList.remove("backgroundpicker");
+            document.getElementById("fourthbg").classList.add("selectedbackgroundpicker");
             disablecolor();
         }
 
@@ -2460,32 +2635,51 @@
         else {
             setCookie('fourthbg', 'true', '70');
             eraseCookie('christmasbg');
+            document.getElementById("xmasbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("xmasbg").classList.add("backgroundpicker");
             eraseCookie('normalbg');
+            document.getElementById("defaultbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("defaultbg").classList.add("backgroundpicker");
             eraseCookie('fallbg');
+            document.getElementById("fallbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fallbg").classList.add("backgroundpicker");
         }
         updateoptions();
     }
     function fallbg() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_thanksgiving.png") {
             enablecolor();
+            document.getElementById("fallbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fallbg").classList.add("backgroundpicker");
         }
         else {
             document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
             document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
-            disablecolor()
+            document.getElementById("fallbg").classList.remove("backgroundpicker");
+            document.getElementById("fallbg").classList.add("selectedbackgroundpicker");
+            disablecolor();
         }
 
         if (getCookie('fallbg')) {
             eraseCookie('fallbg');
+            document.getElementById("fallbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fallbg").classList.add("backgroundpicker");
         }
         else {
             setCookie('fallbg', 'true', '70');
             eraseCookie('christmasbg');
+            document.getElementById("xmasbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("xmasbg").classList.add("backgroundpicker");
             eraseCookie('fourthbg');
-            eraseCookie('normal');
+            document.getElementById("fourthbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fourthbg").classList.add("backgroundpicker");
+            eraseCookie('normalbg');
+            document.getElementById("defaultbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("defaultbg").classList.add("backgroundpicker");
         }
         updateoptions();
     }
+
 
     function makeQR() {
         document.getElementById('qrcode').innerHTML = '';
@@ -2526,6 +2720,36 @@
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
+    }
+
+    const autocircle = document.querySelector('.autopilot-countdown-circle .progressbarr');
+    let autocountdown = 10000;
+    let autocountdownInterval;
+
+    function updateCountdown() {
+        const length = autocircle.getTotalLength();
+        const offset = length - (length * (10000 + autocountdown) / 10000);
+        autocircle.style.strokeDashoffset = offset;
+        if (autocountdown === 0) {
+            document.getElementById("autopilotpopup").style.opacity = "0";
+            document.getElementById("autopilotpopupmobile").style.opacity = "0";
+
+            autocircle.remove();
+        }
+        if (autocountdown === "-0") {
+            clearInterval(autocountdownInterval);
+            document.getElementById("autopilotpopup").remove();
+            document.getElementById("autopilotpopupmobile").remove();
+        }
+        autocountdown-=10;
+    }
+
+    autocountdownInterval = setInterval(updateCountdown, 10);
+
+
+    function closeautopanel(){
+        document.getElementById("autopilotpopup").style.opacity = "0";
+        document.getElementById("autopilotpopupmobile").style.opacity = "0";
     }
 </script>
 
