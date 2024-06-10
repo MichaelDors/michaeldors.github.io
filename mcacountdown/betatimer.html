@@ -15,7 +15,7 @@
     <meta property="og:title" content="Countdown - Michael Dors"/>
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://michaeldors.com/mcacountdown/timer"/>
-    <meta property="og:description" content="A beautiful countdown timer website."/>
+    <meta property="og:description" content="A beautiful and smart countdown timer website."/>
     <meta property="og:site_name" content="Michael Dors" />
     <link rel="apple-touch-icon" href="Images/countdownhomescreen.png">
 </head>
@@ -30,27 +30,9 @@
     </div>
 
 
-    <div class="wrapper2">
-        <div class="content2">
-
-            <div class="setting">
-                <ul style="list-style-type:none" class="menu2">
-                    <li class="item" onclick="settings()">
-                        <i style="font-size:15px; color:white" class="fa-solid fa-gears"></i>
-                        <span>Settings</span>
-                    </li>
-                    <li class="item" onclick="copyinputtextlink()">
-                        <i style="font-size:15px; color:white" class="fa-solid fa-share"></i>
-                        <span>Copy Link</span>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
 
 
-
-    <a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"><i id="innergear" class="fa-solid fa-gear"></i></a>
+    <a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index:1000000;"><i id="innergear" class="fa-solid fa-gear"></i></a>
 
 
     <center id="preloader" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
@@ -104,6 +86,7 @@
                 <li id="endtab" class="mcatab" onclick="MES()">MCA End of Year</li>
                 <li id="nydtab" class="tab" onclick="NYD()">New Year's Day</li>
                 <li id="vdtab" class="tab" onclick="VD()">Valentine's Day</li>
+                <li id="endtab" class="tab" onclick="EASTER()">Easter</li>
                 <li id="idtab" class="tab" onclick="ID()">Independence Day</li>
                 <li id="htab" class="tab" onclick="H()">Halloween</li>
                 <li id="ttab" class="tab" onclick="T()">Thanksgiving</li>
@@ -156,10 +139,10 @@
             Backgrounds
         </h2>
 
-        <a class="aintext" onmouseup="defaultbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground.png"></div></a>
-        <a class="aintext" onmouseup="xmasgb()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_christmas.png"></div></a>
-        <a class="aintext" onmouseup="fourthbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_fourth.png"></div></a>
-        <a class="aintext" onmouseup="fallbg()"><div class="backgroundpicker"><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_thanksgiving.png"></div></a>
+        <a class="aintext backgroundpicker" id="defaultbg" onmouseup="defaultbg()"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground.png"></div></a>
+        <a class="aintext backgroundpicker" id="xmasbg" onmouseup="xmasgb()"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_christmas.png"></div></a>
+        <a class="aintext backgroundpicker" id="fourthbg" onmouseup="fourthbg()"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_fourth.png"></div></a>
+        <a class="aintext backgroundpicker" id="fallbg" onmouseup="fallbg()"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="enhancedbackground_thanksgiving.png"></div></a>
         <br />
         <br />
         <br>
@@ -228,6 +211,32 @@
 
     <center class="hidden" id="ad_container" style="border-radius: 20px; margin: 0; position: absolute; top: 88%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"> <video id="ad" autoplay muted loop playsinline> <source src="ad.mp4" type="video/mp4"> </video> </center>
 
+
+    <div id="autopilotpopup" style="margin:0; padding:0; position:absolute; top:80%; left:0px; width:100%; height:20%; border-top:solid 3px white; opacity:1; transition:1s opacity;">
+        <h1 style="position: absolute; top: 15%; left: 48.5%; text-shadow: 6px 6px 0 #141414, -6px 6px 0 #141414, -6px -6px 0 #141414, 6px -6px 0 #141414; ">or</h1>
+        <div id="manualpilot" style="background-image:url(calendarbg.png); background-size:cover; width: 50%; float: left; height: 100%; ">
+            <h1 style="margin-left:30px;"><i style="margin-right:30px;" class="fa-solid fa-angle-down"></i><span style="padding-top:100px;">pick a date</span></h1>
+        </div>
+        <div id="autopilot" style="float: right; width: 50%; background: linear-gradient(to right, #141414, #01FE5E); height: 100%; outline: 3px white solid; ">
+            <div id="autopilotinfo" style="margin-left: 60px;">
+                <h3 style="position: relative; display: inline-block; background-color: white; border-radius: 20px; padding: 5px 10px 5px 10px;">
+                    <span style="color: #11371f;">
+                        AUTOPILOT
+                    </span>
+                </h3>
+                <h1 id="autopilotprediction" style="line-height:0.000001">Finding...</h1>
+            </div>
+            <div class="autopilot-countdown-container">
+                <div class="autopilot-countdown-number">10</div>
+                <svg class="autopilot-countdown-circle" viewBox="0 0 64 64">
+                    <circle class="outer-circle" cx="32" cy="32" r="29"></circle>
+                    <circle class="progressbarr" r="27" cx="32" cy="32"></circle>
+                </svg>
+            </div>
+
+
+        </div>
+    </div>
 </body>
 
 <style>
@@ -271,7 +280,7 @@
     }
 
     .backgroundpicker {
-        margin: 10px;
+        margin: 10px !important;
         height: 0.5in;
         width: 1in;
         font-size: 20px;
@@ -280,6 +289,20 @@
         outline: 1px solid #8426ff;
         background: #141414;
         border: none;
+        transition:0.3s all;
+    }
+
+    .selectedbackgroundpicker {
+        margin: 10px !important;
+        height: 0.5in;
+        width: 1in;
+        font-size: 20px;
+        font-weight: 100;
+        border-radius: 20px;
+        outline: 1px solid #01FE5E;
+        background: #141414;
+        border: none;
+        transition: 0.3s all;
     }
 
     .disabledcolorpicker {
@@ -638,6 +661,12 @@
 
     h1 {
         font-size: 42px;
+        font-family: 'Fredoka One';
+        color: #fff;
+        font-weight: 100;
+    }
+
+    h3 {
         font-family: 'Fredoka One';
         color: #fff;
         font-weight: 100;
@@ -1189,7 +1218,7 @@
     }
 
     #qrcode img {
-        border-radius: 10px;
+        mix-blend-mode:screen;
     }
 
 
@@ -1308,6 +1337,50 @@
             transform: rotate(360deg);
         }
     }
+
+    .autopilot-countdown-container {
+        position: absolute;
+        top: 30%;
+        left: 94%;
+        display: inline-block;
+    }
+
+    .autopilot-countdown-number {
+        color: white;
+        font-family: 'Fredoka One';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 27px; /* Adjusted for the larger size */
+        z-index:10000;
+    }
+
+    .autopilot-countdown-circle {
+        transform: rotate(-90deg);
+        width: 64px; /* Adjusted for the larger size */
+        height: 64px; /* Adjusted for the larger size */
+    }
+
+        .autopilot-countdown-circle .outer-circle {
+            stroke-dasharray: 182; /* Circumference of the outer circle */
+            stroke-dashoffset: 0;
+            stroke-width: 6; /* Width of the gray border */
+            stroke: #141414; /* Gray border color */
+            fill: #141414;
+        }
+
+        .autopilot-countdown-circle .progressbarr {
+            stroke-dasharray: 170; /* Adjusted for the new circumference */
+            stroke-dashoffset: 170;
+            stroke-width: 4; /* Adjusted for the inset effect */
+            stroke: #01fb5d; /* Progress bar color */
+            fill: #141414;
+            stroke-linecap: round; /* Rounds out the start and end of the stroke */
+            stroke-linejoin: round;
+        }
+
+
 </style>
 
 
@@ -1375,6 +1448,7 @@
 
 
         makeQR();
+        document.getElementById("autopilotpopup").remove();
     }
     else {
         var now = new Date();
@@ -1395,6 +1469,16 @@
             valentinessday = new Date(nextyear + '-02-14T00:00');
         } else {
             valentinessday = new Date(thisyear + '-02-14T00:00');
+        }
+        
+        //easter
+        var epoch=2444238.5,elonge=278.83354,elongp=282.596403,eccent=.016718,sunsmax=149598500,sunangsiz=.533128,mmlong=64.975464,mmlongp=349.383063,mlnode=151.950429,minc=5.145396,mecc=.0549,mangsiz=.5181,msmax=384401,mparallax=.9507,synmonth=29.53058868,lunatbase=2423436,earthrad=6378.16,PI=3.141592653589793,epsilon=1e-6;function sgn(x){return x<0?-1:x>0?1:0}function abs(x){return x<0?-x:x}function fixAngle(a){return a-360*Math.floor(a/360)}function toRad(d){return d*(PI/180)}function toDeg(d){return d*(180/PI)}function dsin(x){return Math.sin(toRad(x))}function dcos(x){return Math.cos(toRad(x))}function toJulianTime(date){var year,month,day;year=date.getFullYear();var m=(month=date.getMonth()+1)>2?month:month+12,y=month>2?year:year-1,d=(day=date.getDate())+date.getHours()/24+date.getMinutes()/1440+(date.getSeconds()+date.getMilliseconds()/1e3)/86400,b=isJulianDate(year,month,day)?0:2-y/100+y/100/4;return Math.floor(365.25*(y+4716)+Math.floor(30.6001*(m+1))+d+b-1524.5)}function isJulianDate(year,month,day){if(year<1582)return!0;if(year>1582)return!1;if(month<10)return!0;if(month>10)return!1;if(day<5)return!0;if(day>14)return!1;throw"Any date in the range 10/5/1582 to 10/14/1582 is invalid!"}function jyear(td,yy,mm,dd){var z,f,alpha,b,c,d,e;return f=(td+=.5)-(z=Math.floor(td)),b=(z<2299161?z:z+1+(alpha=Math.floor((z-1867216.25)/36524.25))-Math.floor(alpha/4))+1524,c=Math.floor((b-122.1)/365.25),d=Math.floor(365.25*c),e=Math.floor((b-d)/30.6001),{day:Math.floor(b-d-Math.floor(30.6001*e)+f),month:Math.floor(e<14?e-1:e-13),year:Math.floor(mm>2?c-4716:c-4715)}}function jhms(j){var ij;return j+=.5,ij=Math.floor(86400*(j-Math.floor(j))+.5),{hour:Math.floor(ij/3600),minute:Math.floor(ij/60%60),second:Math.floor(ij%60)}}function jwday(j){return Math.floor(j+1.5)%7}function meanphase(sdate,k){var t,t2;return 2415020.75933+synmonth*k+1178e-7*(t2=(t=(sdate-2415020)/36525)*t)-155e-9*(t2*t)+33e-5*dsin(166.56+132.87*t-.009173*t2)}function truephase(k,phase){var t,t2,t3,pt,m,mprime,f,apcor=!1;if(pt=2415020.75933+synmonth*(k+=phase)+1178e-7*(t2=(t=k/1236.85)*t)-155e-9*(t3=t2*t)+33e-5*dsin(166.56+132.87*t-.009173*t2),m=359.2242+29.10535608*k-333e-7*t2-347e-8*t3,mprime=306.0253+385.81691806*k+.0107306*t2+1236e-8*t3,f=21.2964+390.67050646*k-.0016528*t2-239e-8*t3,phase<.01||abs(phase-.5)<.01?(pt+=(.1734-393e-6*t)*dsin(m)+.0021*dsin(2*m)-.4068*dsin(mprime)+.0161*dsin(2*mprime)-4e-4*dsin(3*mprime)+.0104*dsin(2*f)-.0051*dsin(m+mprime)-.0074*dsin(m-mprime)+4e-4*dsin(2*f+m)-4e-4*dsin(2*f-m)-6e-4*dsin(2*f+mprime)+.001*dsin(2*f-mprime)+5e-4*dsin(m+2*mprime),apcor=!0):(abs(phase-.25)<.01||abs(phase-.75)<.01)&&(pt+=(.1721-4e-4*t)*dsin(m)+.0021*dsin(2*m)-.628*dsin(mprime)+.0089*dsin(2*mprime)-4e-4*dsin(3*mprime)+.0079*dsin(2*f)-.0119*dsin(m+mprime)-.0047*dsin(m-mprime)+3e-4*dsin(2*f+m)-4e-4*dsin(2*f-m)-6e-4*dsin(2*f+mprime)+.0021*dsin(2*f-mprime)+3e-4*dsin(m+2*mprime)+4e-4*dsin(m-2*mprime)-3e-4*dsin(2*m+mprime),pt+=phase<.5?.0028-4e-4*dcos(m)+3e-4*dcos(mprime):4e-4*dcos(m)-.0028-3e-4*dcos(mprime),apcor=!0),!apcor)throw"Error calculating moon phase!";return pt}function phasehunt(sdate,phases){var adate,k1,k2,nt1,nt2,yy,mm,dd,jyearResult=jyear(adate=sdate-45,yy,mm,dd);for(yy=jyearResult.year,mm=jyearResult.month,dd=jyearResult.day,adate=nt1=meanphase(adate,k1=Math.floor(12.3685*(yy+1/12*(mm-1)-1900)));nt2=meanphase(adate+=synmonth,k2=k1+1),!(nt1<=sdate&&nt2>sdate);)nt1=nt2,k1=k2;return phases[0]=truephase(k1,0),phases[1]=truephase(k1,.25),phases[2]=truephase(k1,.5),phases[3]=truephase(k1,.75),phases[4]=truephase(k2,0),phases}function kepler(m,ecc){var e,delta;e=m=toRad(m);do{e-=(delta=e-ecc*Math.sin(e)-m)/(1-ecc*Math.cos(e))}while(abs(delta)>epsilon);return e}function getMoonPhase(julianDate){var Day,N,M,Ec,Lambdasun,ml,MM,MN,Ev,Ae,MmP,mEc,lP,lPP,NP,y,x,MoonAge,MoonPhase,MoonDist,MoonDFrac,MoonAng,F,SunDist,SunAng;return N=fixAngle(360/365.2422*(Day=julianDate-epoch)),Ec=kepler(M=fixAngle(N+elonge-elongp),eccent),Ec=Math.sqrt((1+eccent)/(1-eccent))*Math.tan(Ec/2),Lambdasun=fixAngle((Ec=2*toDeg(Math.atan(Ec)))+elongp),F=(1+eccent*Math.cos(toRad(Ec)))/(1-eccent*eccent),SunDist=sunsmax/F,SunAng=F*sunangsiz,ml=fixAngle(13.1763966*Day+mmlong),MM=fixAngle(ml-.1114041*Day-mmlongp),MN=fixAngle(mlnode-.0529539*Day),MmP=MM+(Ev=1.2739*Math.sin(toRad(2*(ml-Lambdasun)-MM)))-(Ae=.1858*Math.sin(toRad(M)))-.37*Math.sin(toRad(M)),lPP=(lP=ml+Ev+(mEc=6.2886*Math.sin(toRad(MmP)))-Ae+.214*Math.sin(toRad(2*MmP)))+.6583*Math.sin(toRad(2*(lP-Lambdasun))),NP=MN-.16*Math.sin(toRad(M)),y=Math.sin(toRad(lPP-NP))*Math.cos(toRad(minc)),x=Math.cos(toRad(lPP-NP)),toDeg(Math.atan2(y,x)),NP,toDeg(Math.asin(Math.sin(toRad(lPP-NP))*Math.sin(toRad(minc)))),MoonAge=lPP-Lambdasun,MoonPhase=(1-Math.cos(toRad(MoonAge)))/2,MoonDist=msmax*(1-mecc*mecc)/(1+mecc*Math.cos(toRad(MmP+mEc))),MoonAng=mangsiz/(MoonDFrac=MoonDist/msmax),mparallax/MoonDFrac,{moonIllumination:MoonPhase,moonAgeInDays:synmonth*(fixAngle(MoonAge)/360),distanceInKm:MoonDist,angularDiameterInDeg:MoonAng,distanceToSun:SunDist,sunAngularDiameter:SunAng,moonPhase:fixAngle(MoonAge)/360}}function getMoonInfo(date){return null==date?{moonPhase:0,moonIllumination:0,moonAgeInDays:0,distanceInKm:0,angularDiameterInDeg:0,distanceToSun:0,sunAngularDiameter:0}:getMoonPhase(toJulianTime(date))}function getEaster(year){var previousMoonInfo,moonInfo,fullMoon=new Date(year,2,21),gettingDarker=void 0;do{previousMoonInfo=getMoonInfo(fullMoon),fullMoon.setDate(fullMoon.getDate()+1),moonInfo=getMoonInfo(fullMoon),void 0===gettingDarker?gettingDarker=moonInfo.moonIllumination<previousMoonInfo.moonIllumination:gettingDarker&&moonInfo.moonIllumination>previousMoonInfo.moonIllumination&&(gettingDarker=!1)}while(gettingDarker&&moonInfo.moonIllumination<previousMoonInfo.moonIllumination||!gettingDarker&&moonInfo.moonIllumination>previousMoonInfo.moonIllumination);for(fullMoon.setDate(fullMoon.getDate()-1);0!==fullMoon.getDay();)fullMoon.setDate(fullMoon.getDate()+1);return fullMoon.toISOString().split('T')[0]}
+        
+        var easterthisyear = new Date(getEaster(thisyear) + "T00:00");
+        if(easterthisyear - now < 0){
+            easterday = new Date(getEaster(nextyear) + "T00:00");
+        } else {
+            easterday = new Date(getEaster(thisyear) + "T00:00");
         }
 
         //independence
@@ -1442,6 +1526,10 @@
                 date: valentinessday
             },
             {
+                name: 'easter',
+                date: easterday
+            },
+            {
                 name: 'independence',
                 date: independenceday
             },
@@ -1468,21 +1556,31 @@
         
         switch (nextHoliday.name) {
             case 'newyear':
+                document.getElementById("autopilotprediction").innerHTML = "New Year's Day";
                 NYD();
                 break;
             case 'valentines':
+                document.getElementById("autopilotprediction").innerHTML = "Valentine's Day";
                 VD();
                 break;
+            case 'easter':
+                document.getElementById("autopilotprediction").innerHTML = "Easter";
+                EASTER();
+                break;
             case 'independence':
+                document.getElementById("autopilotprediction").innerHTML = "Independence Day";
                 ID();
                 break;
             case 'halloween':
+                document.getElementById("autopilotprediction").innerHTML = "Halloween";
                 H();
                 break;
             case 'thanksgiving':
+                document.getElementById("autopilotprediction").innerHTML = "Thanksgiving";
                 T();
                 break;
             case 'christmas':
+                document.getElementById("autopilotprediction").innerHTML = "Christmas";
                 C();
                 break;
             default:
@@ -1675,6 +1773,9 @@
 
 
     function settings() {
+        if (document.getElementById("autopilotpopup")) {
+            document.getElementById("autopilotpopup").remove();
+        }
 
         if (document.getElementById("settings").classList.contains("hidden")) {
             document.getElementById("settings").classList.remove("hidden");
@@ -1736,6 +1837,10 @@
 
     var x = setInterval(function () {
 
+        if (document.getElementById("settings").classList.contains("hidden")) {
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+        }
+
         updateoptions();
 
         if(getCookie("speed1")){
@@ -1753,18 +1858,26 @@
             if(getCookie('fallbg')){
                 document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
                 document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
+                document.getElementById("fallbg").classList.add("selectedbackgroundpicker");
+                document.getElementById("fallbg").classList.remove("backgroundpicker");
             }
             else if(getCookie('christmasbg')){
                 document.getElementById("bg1").src = "enhancedbackground_christmas.png";
                 document.getElementById("bg2").src = "enhancedbackground_christmas.png";
+                document.getElementById("xmasbg").classList.add("selectedbackgroundpicker");
+                document.getElementById("xmasbg").classList.remove("backgroundpicker");
             }
             else if(getCookie('fourthbg')){
                 document.getElementById("bg1").src = "enhancedbackground_fourth.png";
                 document.getElementById("bg2").src = "enhancedbackground_fourth.png";
+                document.getElementById("fourthbg").classList.add("selectedbackgroundpicker");
+                document.getElementById("fourthbg").classList.remove("backgroundpicker");
             }
             else{
                 document.getElementById("bg1").src = "enhancedbackground.png";
                 document.getElementById("bg2").src = "enhancedbackground.png";
+                document.getElementById("defaultbg").classList.add("selectedbackgroundpicker");
+                document.getElementById("defaultbg").classList.remove("backgroundpicker");
             }
 
             document.getElementById("clock").classList.remove("clock");
@@ -2160,8 +2273,8 @@
     }
     arrowIcons.forEach(icon => {
         icon.addEventListener("click", () => {
-            // if clicked icon is left, reduce 350 from tabsBox scrollLeft else add
-            let scrollWidth = tabsBox.scrollLeft += icon.id === "left" ? -340 : 340;
+            // if clicked icon is left, reduce 100 from tabsBox scrollLeft else add
+            let scrollWidth = tabsBox.scrollLeft += icon.id === "left" ? -100 : 100;
             handleIcons(scrollWidth);
         });
     });
@@ -2240,7 +2353,18 @@
 
 
     function MES() {
-        document.querySelector(".datepicker").value = '2024-05-22T11:00';
+        document.querySelector(".datepicker").value = '2025-05-23T11:30';
+        SetCountDowngeneral();
+    }
+    function EASTER(){
+        var epoch=2444238.5,elonge=278.83354,elongp=282.596403,eccent=.016718,sunsmax=149598500,sunangsiz=.533128,mmlong=64.975464,mmlongp=349.383063,mlnode=151.950429,minc=5.145396,mecc=.0549,mangsiz=.5181,msmax=384401,mparallax=.9507,synmonth=29.53058868,lunatbase=2423436,earthrad=6378.16,PI=3.141592653589793,epsilon=1e-6;function sgn(x){return x<0?-1:x>0?1:0}function abs(x){return x<0?-x:x}function fixAngle(a){return a-360*Math.floor(a/360)}function toRad(d){return d*(PI/180)}function toDeg(d){return d*(180/PI)}function dsin(x){return Math.sin(toRad(x))}function dcos(x){return Math.cos(toRad(x))}function toJulianTime(date){var year,month,day;year=date.getFullYear();var m=(month=date.getMonth()+1)>2?month:month+12,y=month>2?year:year-1,d=(day=date.getDate())+date.getHours()/24+date.getMinutes()/1440+(date.getSeconds()+date.getMilliseconds()/1e3)/86400,b=isJulianDate(year,month,day)?0:2-y/100+y/100/4;return Math.floor(365.25*(y+4716)+Math.floor(30.6001*(m+1))+d+b-1524.5)}function isJulianDate(year,month,day){if(year<1582)return!0;if(year>1582)return!1;if(month<10)return!0;if(month>10)return!1;if(day<5)return!0;if(day>14)return!1;throw"Any date in the range 10/5/1582 to 10/14/1582 is invalid!"}function jyear(td,yy,mm,dd){var z,f,alpha,b,c,d,e;return f=(td+=.5)-(z=Math.floor(td)),b=(z<2299161?z:z+1+(alpha=Math.floor((z-1867216.25)/36524.25))-Math.floor(alpha/4))+1524,c=Math.floor((b-122.1)/365.25),d=Math.floor(365.25*c),e=Math.floor((b-d)/30.6001),{day:Math.floor(b-d-Math.floor(30.6001*e)+f),month:Math.floor(e<14?e-1:e-13),year:Math.floor(mm>2?c-4716:c-4715)}}function jhms(j){var ij;return j+=.5,ij=Math.floor(86400*(j-Math.floor(j))+.5),{hour:Math.floor(ij/3600),minute:Math.floor(ij/60%60),second:Math.floor(ij%60)}}function jwday(j){return Math.floor(j+1.5)%7}function meanphase(sdate,k){var t,t2;return 2415020.75933+synmonth*k+1178e-7*(t2=(t=(sdate-2415020)/36525)*t)-155e-9*(t2*t)+33e-5*dsin(166.56+132.87*t-.009173*t2)}function truephase(k,phase){var t,t2,t3,pt,m,mprime,f,apcor=!1;if(pt=2415020.75933+synmonth*(k+=phase)+1178e-7*(t2=(t=k/1236.85)*t)-155e-9*(t3=t2*t)+33e-5*dsin(166.56+132.87*t-.009173*t2),m=359.2242+29.10535608*k-333e-7*t2-347e-8*t3,mprime=306.0253+385.81691806*k+.0107306*t2+1236e-8*t3,f=21.2964+390.67050646*k-.0016528*t2-239e-8*t3,phase<.01||abs(phase-.5)<.01?(pt+=(.1734-393e-6*t)*dsin(m)+.0021*dsin(2*m)-.4068*dsin(mprime)+.0161*dsin(2*mprime)-4e-4*dsin(3*mprime)+.0104*dsin(2*f)-.0051*dsin(m+mprime)-.0074*dsin(m-mprime)+4e-4*dsin(2*f+m)-4e-4*dsin(2*f-m)-6e-4*dsin(2*f+mprime)+.001*dsin(2*f-mprime)+5e-4*dsin(m+2*mprime),apcor=!0):(abs(phase-.25)<.01||abs(phase-.75)<.01)&&(pt+=(.1721-4e-4*t)*dsin(m)+.0021*dsin(2*m)-.628*dsin(mprime)+.0089*dsin(2*mprime)-4e-4*dsin(3*mprime)+.0079*dsin(2*f)-.0119*dsin(m+mprime)-.0047*dsin(m-mprime)+3e-4*dsin(2*f+m)-4e-4*dsin(2*f-m)-6e-4*dsin(2*f+mprime)+.0021*dsin(2*f-mprime)+3e-4*dsin(m+2*mprime)+4e-4*dsin(m-2*mprime)-3e-4*dsin(2*m+mprime),pt+=phase<.5?.0028-4e-4*dcos(m)+3e-4*dcos(mprime):4e-4*dcos(m)-.0028-3e-4*dcos(mprime),apcor=!0),!apcor)throw"Error calculating moon phase!";return pt}function phasehunt(sdate,phases){var adate,k1,k2,nt1,nt2,yy,mm,dd,jyearResult=jyear(adate=sdate-45,yy,mm,dd);for(yy=jyearResult.year,mm=jyearResult.month,dd=jyearResult.day,adate=nt1=meanphase(adate,k1=Math.floor(12.3685*(yy+1/12*(mm-1)-1900)));nt2=meanphase(adate+=synmonth,k2=k1+1),!(nt1<=sdate&&nt2>sdate);)nt1=nt2,k1=k2;return phases[0]=truephase(k1,0),phases[1]=truephase(k1,.25),phases[2]=truephase(k1,.5),phases[3]=truephase(k1,.75),phases[4]=truephase(k2,0),phases}function kepler(m,ecc){var e,delta;e=m=toRad(m);do{e-=(delta=e-ecc*Math.sin(e)-m)/(1-ecc*Math.cos(e))}while(abs(delta)>epsilon);return e}function getMoonPhase(julianDate){var Day,N,M,Ec,Lambdasun,ml,MM,MN,Ev,Ae,MmP,mEc,lP,lPP,NP,y,x,MoonAge,MoonPhase,MoonDist,MoonDFrac,MoonAng,F,SunDist,SunAng;return N=fixAngle(360/365.2422*(Day=julianDate-epoch)),Ec=kepler(M=fixAngle(N+elonge-elongp),eccent),Ec=Math.sqrt((1+eccent)/(1-eccent))*Math.tan(Ec/2),Lambdasun=fixAngle((Ec=2*toDeg(Math.atan(Ec)))+elongp),F=(1+eccent*Math.cos(toRad(Ec)))/(1-eccent*eccent),SunDist=sunsmax/F,SunAng=F*sunangsiz,ml=fixAngle(13.1763966*Day+mmlong),MM=fixAngle(ml-.1114041*Day-mmlongp),MN=fixAngle(mlnode-.0529539*Day),MmP=MM+(Ev=1.2739*Math.sin(toRad(2*(ml-Lambdasun)-MM)))-(Ae=.1858*Math.sin(toRad(M)))-.37*Math.sin(toRad(M)),lPP=(lP=ml+Ev+(mEc=6.2886*Math.sin(toRad(MmP)))-Ae+.214*Math.sin(toRad(2*MmP)))+.6583*Math.sin(toRad(2*(lP-Lambdasun))),NP=MN-.16*Math.sin(toRad(M)),y=Math.sin(toRad(lPP-NP))*Math.cos(toRad(minc)),x=Math.cos(toRad(lPP-NP)),toDeg(Math.atan2(y,x)),NP,toDeg(Math.asin(Math.sin(toRad(lPP-NP))*Math.sin(toRad(minc)))),MoonAge=lPP-Lambdasun,MoonPhase=(1-Math.cos(toRad(MoonAge)))/2,MoonDist=msmax*(1-mecc*mecc)/(1+mecc*Math.cos(toRad(MmP+mEc))),MoonAng=mangsiz/(MoonDFrac=MoonDist/msmax),mparallax/MoonDFrac,{moonIllumination:MoonPhase,moonAgeInDays:synmonth*(fixAngle(MoonAge)/360),distanceInKm:MoonDist,angularDiameterInDeg:MoonAng,distanceToSun:SunDist,sunAngularDiameter:SunAng,moonPhase:fixAngle(MoonAge)/360}}function getMoonInfo(date){return null==date?{moonPhase:0,moonIllumination:0,moonAgeInDays:0,distanceInKm:0,angularDiameterInDeg:0,distanceToSun:0,sunAngularDiameter:0}:getMoonPhase(toJulianTime(date))}function getEaster(year){var previousMoonInfo,moonInfo,fullMoon=new Date(year,2,21),gettingDarker=void 0;do{previousMoonInfo=getMoonInfo(fullMoon),fullMoon.setDate(fullMoon.getDate()+1),moonInfo=getMoonInfo(fullMoon),void 0===gettingDarker?gettingDarker=moonInfo.moonIllumination<previousMoonInfo.moonIllumination:gettingDarker&&moonInfo.moonIllumination>previousMoonInfo.moonIllumination&&(gettingDarker=!1)}while(gettingDarker&&moonInfo.moonIllumination<previousMoonInfo.moonIllumination||!gettingDarker&&moonInfo.moonIllumination>previousMoonInfo.moonIllumination);for(fullMoon.setDate(fullMoon.getDate()-1);0!==fullMoon.getDay();)fullMoon.setDate(fullMoon.getDate()+1);return fullMoon.toISOString().split('T')[0]}
+        
+        var easterthisyear = new Date(getEaster(thisyear) + "T00:00");
+        if(easterthisyear - now < 0){
+            document.querySelector(".datepicker").value = (getEaster(nextyear) + "T00:00");
+        } else {
+            document.querySelector(".datepicker").value = (getEaster(thisyear) + "T00:00");
+        }
         SetCountDowngeneral();
     }
     function NYD() {
@@ -2314,24 +2438,7 @@
     }
 
 
-    const contextMenu = document.querySelector(".wrapper2");
-    window.addEventListener("contextmenu", e => {
-        e.preventDefault();
-        let x = e.offsetX, y = e.offsetY,
-            winWidth = window.innerWidth,
-            winHeight = window.winHeight,
-            cmWidth = contextMenu.offsetWidth,
-            cmHeight = contextMenu.offsetHeight;
-
-        x = x > winWidth - cmWidth ? winWidth - cmWidth - 5 : x;
-        y = y > winHeight - cmHeight ? winHeight - cmHeight - 5 : y;
-
-        contextMenu.style.left = `${x}px`;
-        contextMenu.style.top = `${y}px`;
-        contextMenu.style.visibility = "visible";
-    });
-    document.addEventListener("click", () => contextMenu.style.visibility = "hidden");
-
+   
 
 
     const container = document.getElementById("tabs-box");
@@ -2376,10 +2483,15 @@
     function defaultbg() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground.png") {
             enablecolor();
+            document.getElementById("defaultbg").classList.add("backgroundpicker");
+            document.getElementById("defaultbg").classList.remove("selectedbackgroundpicker");
         }
         else {
             document.getElementById("bg1").src = "enhancedbackground.png";
             document.getElementById("bg2").src = "enhancedbackground.png";
+            document.getElementById("defaultbg").classList.remove("backgroundpicker");
+            document.getElementById("defaultbg").classList.add("selectedbackgroundpicker");
+
             disablecolor()
         }
 
@@ -2389,18 +2501,28 @@
         else {
             setCookie('normalbg', 'true', '70');
             eraseCookie('christmasbg');
+            document.getElementById("xmasbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("xmasbg").classList.add("backgroundpicker");
             eraseCookie('fourthbg');
+            document.getElementById("fourthbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fourthbg").classList.add("backgroundpicker");
             eraseCookie('fallbg');
+            document.getElementById("fallbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fallbg").classList.add("backgroundpicker");
         }
         updateoptions();
     }
     function xmasgb() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_christmas.png") {
             enablecolor();
+            document.getElementById("xmasbg").classList.add("backgroundpicker");
+            document.getElementById("xmasbg").classList.remove("selectedbackgroundpicker");
         }
         else {
             document.getElementById("bg1").src = "enhancedbackground_christmas.png";
             document.getElementById("bg2").src = "enhancedbackground_christmas.png";
+            document.getElementById("xmasbg").classList.remove("backgroundpicker");
+            document.getElementById("xmasbg").classList.add("selectedbackgroundpicker");
             disablecolor();
         }
 
@@ -2410,18 +2532,28 @@
         else {
             setCookie('christmasbg', 'true', '70');
             eraseCookie('normalbg');
+            document.getElementById("defaultbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("defaultbg").classList.add("backgroundpicker");
             eraseCookie('fourthbg');
+            document.getElementById("fourthbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fourthbg").classList.add("backgroundpicker");
             eraseCookie('fallbg');
+            document.getElementById("fallbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fallbg").classList.add("backgroundpicker");
         }
         updateoptions();
     }
     function fourthbg() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_fourth.png") {
             enablecolor();
+            document.getElementById("fourthbg").classList.add("backgroundpicker");
+            document.getElementById("fourthbg").classList.remove("selectedbackgroundpicker");
         }
         else {
             document.getElementById("bg1").src = "enhancedbackground_fourth.png";
             document.getElementById("bg2").src = "enhancedbackground_fourth.png";
+            document.getElementById("fourthbg").classList.remove("backgroundpicker");
+            document.getElementById("fourthbg").classList.add("selectedbackgroundpicker");
             disablecolor();
         }
 
@@ -2431,32 +2563,51 @@
         else {
             setCookie('fourthbg', 'true', '70');
             eraseCookie('christmasbg');
+            document.getElementById("xmasbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("xmasbg").classList.add("backgroundpicker");
             eraseCookie('normalbg');
+            document.getElementById("defaultbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("defaultbg").classList.add("backgroundpicker");
             eraseCookie('fallbg');
+            document.getElementById("fallbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fallbg").classList.add("backgroundpicker");
         }
         updateoptions();
     }
     function fallbg() {
         if (getCookie('atc') && document.getElementById("bg1").getAttribute("src") == "enhancedbackground_thanksgiving.png") {
             enablecolor();
+            document.getElementById("fallbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fallbg").classList.add("backgroundpicker");
         }
         else {
             document.getElementById("bg1").src = "enhancedbackground_thanksgiving.png";
             document.getElementById("bg2").src = "enhancedbackground_thanksgiving.png";
-            disablecolor()
+            document.getElementById("fallbg").classList.remove("backgroundpicker");
+            document.getElementById("fallbg").classList.add("selectedbackgroundpicker");
+            disablecolor();
         }
 
         if (getCookie('fallbg')) {
             eraseCookie('fallbg');
+            document.getElementById("fallbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fallbg").classList.add("backgroundpicker");
         }
         else {
             setCookie('fallbg', 'true', '70');
             eraseCookie('christmasbg');
+            document.getElementById("xmasbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("xmasbg").classList.add("backgroundpicker");
             eraseCookie('fourthbg');
-            eraseCookie('normal');
+            document.getElementById("fourthbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("fourthbg").classList.add("backgroundpicker");
+            eraseCookie('normalbg');
+            document.getElementById("defaultbg").classList.remove("selectedbackgroundpicker");
+            document.getElementById("defaultbg").classList.add("backgroundpicker");
         }
         updateoptions();
     }
+
 
     function makeQR() {
         document.getElementById('qrcode').innerHTML = '';
@@ -2498,5 +2649,30 @@
         downloadLink.click();
         document.body.removeChild(downloadLink);
     }
+
+    const autocountdownNumberEl = document.querySelector('.autopilot-countdown-number');
+    const autocircle = document.querySelector('.autopilot-countdown-circle .progressbarr');
+    let autocountdown = 10000;
+    let autocountdownInterval;
+
+    function updateCountdown() {
+        autocountdownNumberEl.textContent = (autocountdown / 1000).toFixed(0);
+        const length = autocircle.getTotalLength();
+        const offset = length - (length * (10000 + autocountdown) / 10000);
+        autocircle.style.strokeDashoffset = offset;
+        if (autocountdown === 0) {
+            document.getElementById("autopilotpopup").style.opacity = "0";
+            autocircle.remove();
+            autocountdownNumberEl.remove();
+        }
+        if (autocountdown === "-0") {
+            clearInterval(autocountdownInterval);
+            document.getElementById("autopilotpopup").remove();
+        }
+        autocountdown-=10;
+    }
+
+    autocountdownInterval = setInterval(updateCountdown, 10);
+
 </script>
 
