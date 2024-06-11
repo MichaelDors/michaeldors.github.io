@@ -862,16 +862,36 @@
         cursor: pointer;
         font-size: 20px;
         font-weight: 100;
+        height:25px;
+               position: relative;
+
+   overflow:hidden;
     }
-    .whitebutton:hover {
-            position: relative;
+.whitebutton:hover {
             box-shadow: 0 5px 0 #777777;
         }
 
             .whitebutton:hover:active {
-                position: relative;
                 box-shadow: none;
             }
+
+            .whitebutton::before {
+                content: "";
+              mix-blend-mode:multiply;
+                position: absolute;
+                top: 0;
+                left: 0;
+                height: 100%;  /* Match button height */
+                width: 0;       /* Start at 0 width */
+                background-color: #cccccc; /* Grey color for progress bar */
+                animation: progress-fill 10s ease-in forwards;
+                z-index: 1;      /* Place behind text but above button background */
+            }
+
+            @keyframes progress-fill {
+  from { width: 0; }
+  to { width: 100%; }
+}
 
     .warning {
         font-family: 'Fredoka One';
