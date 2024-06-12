@@ -133,10 +133,10 @@
         </h2>
 
 
-        <input class="colorpicker" id="color1" type="color" value="#8426ff" onmouseup="enablecolor();" onblur="SetCountDowngeneral();" />
-        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" onmouseup="enablecolor();" onblur="SetCountDowngeneral();" />
-        <input class="colorpicker" id="color3" type="color" value="#00ff5e" onmouseup="enablecolor();" onblur="SetCountDowngeneral();" />
-        <input class="colorpicker" id="color4" type="color" value="#ff9900" onmouseup="enablecolor();" onblur="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color1" type="color" value="#8426ff" onmouseup="enablecolor(); disableallbg();" onblur="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" onmouseup="enablecolor(); disableallbg();" onblur="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color3" type="color" value="#00ff5e" onmouseup="enablecolor(); disableallbg();" onblur="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color4" type="color" value="#ff9900" onmouseup="enablecolor(); disableallbg();" onblur="SetCountDowngeneral();" />
         <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">Keep contrast in mind when choosing colors.</p>
         <br />
         <br />
@@ -2639,6 +2639,11 @@
         document.getElementById("color4").classList.add("disabledcolorpicker");
     }
 
+    function disableallbg(){
+        document.getElementById("animatedbackground").style.display = "none";
+        bgstring = "none";
+        SetCountDowngeneral();
+    }
 
     function setbg(bgint, method) {
         if ((method != "auto") && (parameter("atc") == bgint)) {
@@ -2647,6 +2652,8 @@
             enablecolor();
             document.getElementById("animatedbackground").style.display = "none";
             bgstring = "none";
+            
+            bggotdisabled = "true";
         }
         else if ((parameter("atc") == "none") && bgint != "none") {
             //param is none, but the selected background is not - turn on and set background
@@ -2656,6 +2663,8 @@
             document.getElementById("bg2").src = "enhancedbackground_" + bgint + ".png";
             bgstring = bgint;
             document.getElementById("animatedbackground").style.display = "";
+
+            bggotdisabled = "false";
         }
         else if ((parameter("atc") != "none") && (document.getElementById("bg1").src != "enhancedbackground_" + bgint + ".png")) {
             //parameter is not none, but the selected and set backgrounds are different - change the bg w/o turning on or off
@@ -2663,6 +2672,8 @@
             document.getElementById("bg1").src = "enhancedbackground_" + bgint + ".png";
             document.getElementById("bg2").src = "enhancedbackground_" + bgint + ".png";
             bgstring = bgint;
+
+            bggotdisabled = "false";
         }
         else {
             //catchall for errors too but primarily for and should only be pinged when not using atc
@@ -2670,6 +2681,8 @@
             enablecolor();
             document.getElementById("animatedbackground").style.display = "none";
             bgstring = "none";
+
+            bggotdisabled = "true";
         }
 
         //for loop that adds selected and normal bgbutton classes
@@ -2679,19 +2692,23 @@
         for (const button of buttons) {
             const buttonId = button.id.slice(5); // remove bgbtn get number
 
-            if (bgint == buttonId) {
-                button.classList.add('selectedbackgroundpicker');
-                button.classList.remove('backgroundpicker');
-            }
-            else {
+            if(bggotdisabled == "true" && button.classList.contains("selectedbackgroundpicker")){
                 button.classList.remove('selectedbackgroundpicker');
                 button.classList.add('backgroundpicker');
+            }
+            else{
+                if (bgint == buttonId) {
+                    button.classList.add('selectedbackgroundpicker');
+                    button.classList.remove('backgroundpicker');
+                }
+                else {
+                    button.classList.remove('selectedbackgroundpicker');
+                    button.classList.add('backgroundpicker');
+                }
             }
         }
 
         SetCountDowngeneral();
-
-        //TODO: also add the selection outline to the selected one (use a for loop and if its not the right one remove if it is add)
 
     }
 
