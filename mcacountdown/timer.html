@@ -85,7 +85,7 @@
             Date
         </h2>
 
-        <input class="datepicker" type="datetime-local" />
+        <input class="datepicker" type="datetime-local" onblur="SetCountDowngeneral();"/>
         <div class="wrapper">
             <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
             <ul class="tabs-box" id="tabs-box">
@@ -1773,6 +1773,7 @@
         SetCountDowngeneral();
     }
 
+SetCountDowngeneral();
 
     document.querySelector('#searchTypeToggle').addEventListener('click', function (event) {
 
