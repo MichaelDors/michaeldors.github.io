@@ -133,10 +133,10 @@
         </h2>
 
 
-        <input class="colorpicker" id="color1" type="color" value="#8426ff" onmouseup="enablecolor(); disableallbg();" onblur="SetCountDowngeneral();" />
-        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" onmouseup="enablecolor(); disableallbg();" onblur="SetCountDowngeneral();" />
-        <input class="colorpicker" id="color3" type="color" value="#00ff5e" onmouseup="enablecolor(); disableallbg();" onblur="SetCountDowngeneral();" />
-        <input class="colorpicker" id="color4" type="color" value="#ff9900" onmouseup="enablecolor(); disableallbg();" onblur="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color1" type="color" value="#8426ff" onblur="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" onblur="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color3" type="color" value="#00ff5e" onblur="SetCountDowngeneral();" />
+        <input class="colorpicker" id="color4" type="color" value="#ff9900" onblur="SetCountDowngeneral();" />
         <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">Keep contrast in mind when choosing colors.</p>
         <br />
         <br />
@@ -2624,12 +2624,6 @@
         document.getElementById("color3").classList.add("disabledcolorpicker");
         document.getElementById("color4").classList.remove("colorpicker");
         document.getElementById("color4").classList.add("disabledcolorpicker");
-    }
-
-    function disableallbg(){
-        document.getElementById("animatedbackground").style.display = "none";
-        bgstring = "none";
-        SetCountDowngeneral();
     }
 
     function setbg(bgint, method) {
