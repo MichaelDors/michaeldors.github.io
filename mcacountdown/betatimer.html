@@ -2,10 +2,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@600&display=swap" rel="stylesheet">
+
     <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Yeseva+One&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Castoro:ital@0;1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="icon" type="image/x-icon" href="icon.ico">
     <meta name="theme-color" content="#8426ff" />
@@ -309,6 +313,7 @@
         --three: #00ff5e;
         --four: #ff9900;
         --typeface: 'Fredoka One';
+        --comptypeface: 'Dosis';
     }
 
     * {
@@ -711,7 +716,7 @@
     }
 
     #countdowntitle {
-        font-family: 'Dosis', sans-serif;
+        font-family: var(--comptypeface);
         text-align: center;
         display: flex;
         width: 20%; /* or any other width */
@@ -2889,6 +2894,7 @@
 
     function FontFredoka(method) {
         document.querySelector(':root').style.setProperty('--typeface', 'Fredoka One');
+        document.querySelector(':root').style.setProperty('--comptypeface', 'Dosis');
 
         document.getElementById("fredoka").classList.add("selectedfontpicker");
         document.getElementById("poppins").classList.remove("selectedfontpicker");
@@ -2905,6 +2911,7 @@
 
     function FontPoppins(method) {
         document.querySelector(':root').style.setProperty('--typeface', 'Poppins');
+        document.querySelector(':root').style.setProperty('--comptypeface', 'Poppins');
 
         document.getElementById("fredoka").classList.remove("selectedfontpicker");
         document.getElementById("fredoka").classList.add("fontpicker");
@@ -2921,6 +2928,7 @@
 
     function FontYeseva(method) {
         document.querySelector(':root').style.setProperty('--typeface', 'Yeseva One');
+        document.querySelector(':root').style.setProperty('--comptypeface', 'Castoro');
 
         document.getElementById("fredoka").classList.remove("selectedfontpicker");
         document.getElementById("fredoka").classList.add("fontpicker");
@@ -2937,6 +2945,7 @@
 
     function FontOrbitron(method) {
         document.querySelector(':root').style.setProperty('--typeface', 'Orbitron');
+        document.querySelector(':root').style.setProperty('--comptypeface', 'Ubuntu');
 
         document.getElementById("fredoka").classList.remove("selectedfontpicker");
         document.getElementById("fredoka").classList.add("fontpicker");
