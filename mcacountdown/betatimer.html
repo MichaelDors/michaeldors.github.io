@@ -24,7 +24,7 @@
 </head>
 
 <body id="body" style="background-color:#141414;  overflow-x:hidden;">
-    <input onblur="setcountdowntitle('front');" id="countdowntitle" type="text"/>
+    <input onblur="setcountdowntitle('front');" id="countdowntitle" type="text" />
     <p id="clock" class="clock"></p>
     <div class="backgroundframe" id="animatedbackground">
         <div class="backgroundframe-bg">
@@ -85,7 +85,7 @@
         <h2 class="textelement">
             Title
         </h2>
-        <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;"/>
+        <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;" />
 
         <h2 class="textelement">
             Date
@@ -702,7 +702,7 @@
     }
 
     #countdowntitle:hover {
-        opacity:1;
+        opacity: 1;
     }
 
     #countdowntitle:focus {
@@ -1364,7 +1364,7 @@
             left: 50%;
             transform: translateX(-50%);
             top: 42%;
-            font-size:20px;
+            font-size: 20px;
         }
     }
 
@@ -2605,6 +2605,11 @@
         } else {
             document.querySelector(".datepicker").value = (getEaster(thisyear) + "T00:00");
         }
+
+        if (document.getElementById("countdowntitle").value == "") {
+            document.getElementById("countdowntitle").value = "Easter"
+            setcountdowntitle('front');
+        }
     }
     function NYD() {
         var newyearsthisyear = new Date(thisyear + "-01-01T00:00");
@@ -2613,6 +2618,11 @@
         } else {
             document.querySelector(".datepicker").value = thisyear + '-01-01T00:00';
         }
+
+        if (document.getElementById("countdowntitle").value == "") {
+            document.getElementById("countdowntitle").value = "New Year's Day"
+            setcountdowntitle('front');
+        }
     }
     function VD() {
         var valentinesthisyear = new Date(thisyear + "-02-14T00:00");
@@ -2620,6 +2630,11 @@
             document.querySelector(".datepicker").value = nextyear + '-02-14T00:00';
         } else {
             document.querySelector(".datepicker").value = thisyear + '-02-14T00:00';
+        }
+
+        if (document.getElementById("countdowntitle").value == "") {
+            document.getElementById("countdowntitle").value = "Valentine's Day"
+            setcountdowntitle('front');
         }
     }
 
@@ -2630,6 +2645,11 @@
         } else {
             document.querySelector(".datepicker").value = thisyear + '-07-04T00:00';
         }
+
+        if (document.getElementById("countdowntitle").value == "") {
+            document.getElementById("countdowntitle").value = "Independence Day"
+            setcountdowntitle('front');
+        }
     }
     function H() {
         var halloweenthisyear = new Date(thisyear + "-10-31T00:00");
@@ -2637,6 +2657,11 @@
             document.querySelector(".datepicker").value = nextyear + '-10-31T00:00';
         } else {
             document.querySelector(".datepicker").value = thisyear + '-10-31T00:00';
+        }
+
+        if (document.getElementById("countdowntitle").value == "") {
+            document.getElementById("countdowntitle").value = "Halloween"
+            setcountdowntitle('front');
         }
     }
     function T() {
@@ -2647,6 +2672,11 @@
         else {
             document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 10, 3, 4));
         }
+
+        if (document.getElementById("countdowntitle").value == "") {
+            document.getElementById("countdowntitle").value = "Thanksgiving"
+            setcountdowntitle('front');
+        }
     }
     function C() {
         var christmasthisyear = new Date(thisyear + "-12-25T00:00");
@@ -2654,6 +2684,11 @@
             document.querySelector(".datepicker").value = nextyear + '-12-25T00:00';
         } else {
             document.querySelector(".datepicker").value = thisyear + '-12-25T00:00';
+        }
+
+        if (document.getElementById("countdowntitle").value == "") {
+            document.getElementById("countdowntitle").value = "Christmas"
+            setcountdowntitle('front');
         }
     }
 
@@ -2775,6 +2810,13 @@
 
 
     function makeQR() {
+        const qrcode = document.getElementById("qrcode");
+        const qrCanvas = qrcode.getElementsByTagName('canvas')[0];  // Get the canvas element
+
+        if (qrCanvas) {
+            qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height); // Clear only if canvas exists
+        }
+
         document.getElementById('qrcode').innerHTML = '';
 
         function imgQR(qrCanvas, centerImage, factor) {
@@ -2911,21 +2953,21 @@
 
 
     document.getElementById("body").addEventListener("mousemove", function (event) {
-            // Get element dimensions
-            const rect = document.getElementById("countdowntitle").getBoundingClientRect();
+        // Get element dimensions
+        const rect = document.getElementById("countdowntitle").getBoundingClientRect();
 
-            // Calculate distance from mouse to center of element
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            const distanceX = Math.abs(event.clientX - centerX);
-            const distanceY = Math.abs(event.clientY - centerY);
-            const distance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
+        // Calculate distance from mouse to center of element
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const distanceX = Math.abs(event.clientX - centerX);
+        const distanceY = Math.abs(event.clientY - centerY);
+        const distance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
 
-            // Normalize distance to 0-1 based on threshold (300px)
-            const opacity = Math.max(0, 1 - distance / 300);
+        // Normalize distance to 0-1 based on threshold (300px)
+        const opacity = Math.max(0, 1 - distance / 300);
 
-            // Set element opacity
-            document.getElementById("countdowntitle").style.border = `1px solid rgba(50, 50, 50, ${opacity})`;
+        // Set element opacity
+        document.getElementById("countdowntitle").style.border = `1px solid rgba(50, 50, 50, ${opacity})`;
     });
 
     function setcountdowntitle(from) {
