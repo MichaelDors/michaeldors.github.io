@@ -2,10 +2,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@600&display=swap" rel="stylesheet">
+
     <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Yeseva+One&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Castoro:ital@0;1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="icon" type="image/x-icon" href="icon.ico">
     <meta name="theme-color" content="#8426ff" />
@@ -24,6 +28,7 @@
 </head>
 
 <body id="body" style="background-color:#141414;  overflow-x:hidden;">
+    <input onblur="setcountdowntitle('front');" id="countdowntitle" type="text" />
     <p id="clock" class="clock"></p>
     <div class="backgroundframe" id="animatedbackground">
         <div class="backgroundframe-bg">
@@ -82,10 +87,15 @@
         <br />
         <br />
         <h2 class="textelement">
+            Title
+        </h2>
+        <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;" />
+
+        <h2 class="textelement">
             Date
         </h2>
 
-        <input class="datepicker" type="datetime-local" onblur="SetCountDowngeneral();"/>
+        <input class="datepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
         <div class="wrapper">
             <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
             <ul class="tabs-box" id="tabs-box">
@@ -114,7 +124,7 @@
         </button>
         <br />
         <br />
-        <div style="border-radius: 20px; background: linear-gradient(to bottom right, #FFFFFF, #FFFFFF, #BD8BFF); padding: 20px; color: black; height: 180px; width: 380px;">
+        <div style="border-radius: 20px; background: linear-gradient(to bottom right, #FFFFFF, #FFFFFF, #BD8BFF);margin-bottom:125px; padding: 20px; color: black; height: 180px; width: 380px;">
             <div id="qrcode" style="float: left; box-shadow: #ffffff 1px 1px 25px; padding-top: 15px; padding-left:20px; transform:scale(1.1)"></div>
             <div style="float:left; padding-left:30px; text-align:left;">
                 <p style="color:black; font-size:27px; line-height:0.1;">QR Code</p>
@@ -126,8 +136,6 @@
 
         </div>
 
-        <br />
-        <br />
         <h2 class="textelement">
             Text Colors
         </h2>
@@ -164,6 +172,8 @@
         <br />
         <br>
         <br>
+        <br />
+        <br />
         <h2 class="textelement">
             Typeface
         </h2>
@@ -303,6 +313,7 @@
         --three: #00ff5e;
         --four: #ff9900;
         --typeface: 'Fredoka One';
+        --comptypeface: 'Dosis';
     }
 
     * {
@@ -694,6 +705,41 @@
         background: linear-gradient(to left, rgba(40,23,64,88), #141414);
         border: #8426FF 1px solid;
     }
+
+    #countdowntitle:hover {
+        opacity: 1;
+    }
+
+    #countdowntitle:focus {
+        border: 1px solid rgba(132,38,255,1) !important;
+        outline: none;
+    }
+
+    #countdowntitle {
+        font-family: var(--comptypeface);
+        text-align: center;
+        display: flex;
+        width: 20%; /* or any other width */
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        top: 35%;
+        background: none !important;
+        border: 1px solid rgba(35,35,35,0);
+        padding: 13px 20px;
+        border-radius: 30px;
+        color: white;
+        font-size: 20px;
+    }
+
+        #countdowntitle:-webkit-autofill,
+        #countdowntitle:-webkit-autofill:hover,
+        #countdowntitle:-webkit-autofill:focus,
+        #countdowntitle:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #141414 inset !important;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: #ffffff;
+        }
 
     .staticclock {
         display: flex;
@@ -1316,6 +1362,15 @@
         #submitdate {
             width: 1in;
         }
+
+        #countdowntitle {
+            width: 50%; /* or any other width */
+            position: absolute; /* or absolute */
+            left: 50%;
+            transform: translateX(-50%);
+            top: 42%;
+            font-size: 20px;
+        }
     }
 
     @media only screen and (min-width: 1300px) {
@@ -1761,6 +1816,10 @@
 
 
     }
+    if (parameter('title')) {
+        document.getElementById("countdowntitle").value = decodeURIComponent(parameter('title'));
+        setcountdowntitle("front");
+    }
     if (parameter('atc')) {
         setbg(parameter('atc'), 'auto');
     }
@@ -1772,6 +1831,7 @@
         document.getElementById("clock").classList.remove("staticclock");
         SetCountDowngeneral();
     }
+
 
     document.querySelector('#searchTypeToggle').addEventListener('click', function (event) {
 
@@ -1830,7 +1890,7 @@
         }
     }
     function speed2() {
-        if (!isNaN(parameter("atc"))){
+        if (!isNaN(parameter("atc"))) {
             document.getElementById("clock").classList.add("staticclock");
             document.getElementById("bg1").classList.remove("bg-color");
             document.getElementById("bg1").classList.add("bg-color-slow");
@@ -1908,7 +1968,9 @@
         var color3normalized = color3.replace("#", "");
         var color4normalized = color4.replace("#", "");
 
-        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate) + '?colorone=' + color1normalized + '?colortwo=' + color2normalized + '?colorthree=' + color3normalized + '?colorfour=' + color4normalized + '?typeface=' + css.style.getPropertyValue('--typeface') + '?atc=' + bgstring;
+        var cdtitle = document.getElementById("countdowntitle").value;
+
+        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate) + '?colorone=' + color1normalized + '?colortwo=' + color2normalized + '?colorthree=' + color3normalized + '?colorfour=' + color4normalized + '?typeface=' + css.style.getPropertyValue('--typeface') + '?atc=' + bgstring + '?title=' + cdtitle;
         window.history.pushState({ path: refresh }, '', refresh);
 
         document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
@@ -1963,6 +2025,7 @@
         if (document.getElementById("settings").classList.contains("hidden")) {
             document.getElementById("settings").classList.remove("hidden");
             document.getElementById("clock").style.display = "none";
+            document.getElementById("countdowntitle").style.display = "none";
             document.getElementById("gear").classList.add("hidden");
             document.getElementById("innergear").classList.add("hidden");
             document.getElementById("preloader").classList.add("hidden");
@@ -1972,6 +2035,7 @@
         }
         else {
             document.getElementById("clock").style.display = "";
+            document.getElementById("countdowntitle").style.display = "";
             document.getElementById("settings").classList.add("hidden");
             document.getElementById("gear").classList.remove("hidden");
             document.getElementById("innergear").classList.remove("hidden");
@@ -2083,20 +2147,40 @@
         var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         var seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        if (days > 0) {
-            document.title = "Countdown for " + days + " days";
-        }
-        else if (hours > 0) {
-            document.title = "Countdown for " + hours + " hours";
-        }
-        else if (minutes > 0) {
-            document.title = "Countdown for " + minutes + " minutes";
-        }
-        else if (seconds > 0) {
-            document.title = "Countdown for " + seconds + " seconds";
+
+        if (document.getElementById("countdowntitle").value != "") {
+            if (days > 0) {
+                document.title = document.getElementById("countdowntitle").value + " in " + days + " days | Countdown";
+            }
+            else if (hours > 0) {
+                document.title = document.getElementById("countdowntitle").value + " in " + hours + " hours | Countdown";
+            }
+            else if (minutes > 0) {
+                document.title = document.getElementById("countdowntitle").value + " in " + minutes + " minutes | Countdown";
+            }
+            else if (seconds > 0) {
+                document.title = document.getElementById("countdowntitle").value + " in " + seconds + " seconds | Countdown";
+            }
+            else {
+                document.title = "Countdown";
+            }
         }
         else {
-            document.title = "Countdown";
+            if (days > 0) {
+                document.title = "Countdown for " + days + " days";
+            }
+            else if (hours > 0) {
+                document.title = "Countdown for " + hours + " hours";
+            }
+            else if (minutes > 0) {
+                document.title = "Countdown for " + minutes + " minutes";
+            }
+            else if (seconds > 0) {
+                document.title = "Countdown for " + seconds + " seconds";
+            }
+            else {
+                document.title = "Countdown";
+            }
         }
 
 
@@ -2526,6 +2610,11 @@
         } else {
             document.querySelector(".datepicker").value = (getEaster(thisyear) + "T00:00");
         }
+
+        if (CheckTitleValue() == "changeable") {
+            document.getElementById("countdowntitle").value = "Easter"
+            setcountdowntitle('front');
+        }
     }
     function NYD() {
         var newyearsthisyear = new Date(thisyear + "-01-01T00:00");
@@ -2534,6 +2623,11 @@
         } else {
             document.querySelector(".datepicker").value = thisyear + '-01-01T00:00';
         }
+
+        if (CheckTitleValue() == "changeable") {
+            document.getElementById("countdowntitle").value = "New Year's Day"
+            setcountdowntitle('front');
+        }
     }
     function VD() {
         var valentinesthisyear = new Date(thisyear + "-02-14T00:00");
@@ -2541,6 +2635,11 @@
             document.querySelector(".datepicker").value = nextyear + '-02-14T00:00';
         } else {
             document.querySelector(".datepicker").value = thisyear + '-02-14T00:00';
+        }
+
+        if (CheckTitleValue() == "changeable") {
+            document.getElementById("countdowntitle").value = "Valentine's Day"
+            setcountdowntitle('front');
         }
     }
 
@@ -2551,6 +2650,11 @@
         } else {
             document.querySelector(".datepicker").value = thisyear + '-07-04T00:00';
         }
+
+        if (CheckTitleValue() == "changeable") {
+            document.getElementById("countdowntitle").value = "Independence Day"
+            setcountdowntitle('front');
+        }
     }
     function H() {
         var halloweenthisyear = new Date(thisyear + "-10-31T00:00");
@@ -2558,6 +2662,11 @@
             document.querySelector(".datepicker").value = nextyear + '-10-31T00:00';
         } else {
             document.querySelector(".datepicker").value = thisyear + '-10-31T00:00';
+        }
+
+        if (CheckTitleValue() == "changeable") {
+            document.getElementById("countdowntitle").value = "Halloween"
+            setcountdowntitle('front');
         }
     }
     function T() {
@@ -2568,6 +2677,11 @@
         else {
             document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 10, 3, 4));
         }
+
+        if (CheckTitleValue() == "changeable") {
+            document.getElementById("countdowntitle").value = "Thanksgiving"
+            setcountdowntitle('front');
+        }
     }
     function C() {
         var christmasthisyear = new Date(thisyear + "-12-25T00:00");
@@ -2575,6 +2689,11 @@
             document.querySelector(".datepicker").value = nextyear + '-12-25T00:00';
         } else {
             document.querySelector(".datepicker").value = thisyear + '-12-25T00:00';
+        }
+
+        if (CheckTitleValue() == "changeable") {
+            document.getElementById("countdowntitle").value = "Christmas"
+            setcountdowntitle('front');
         }
     }
 
@@ -2603,6 +2722,15 @@
         }
     });
 
+    function CheckTitleValue(){
+        if(document.getElementById("countdowntitle").value === "" || document.getElementById("countdowntitle").value === "Easter" || document.getElementById("countdowntitle").value === "New Year's Day" || document.getElementById("countdowntitle").value === "Valentine's Day" || document.getElementById("countdowntitle").value === "Independence Day" || document.getElementById("countdowntitle").value === "Halloween" || document.getElementById("countdowntitle").value === "Thanksgiving" || document.getElementById("countdowntitle").value === "Christmas"){
+            return "changeable";
+        }
+        else{
+            return "not";
+
+        }
+    }
 
     function enablecolor() {
         document.getElementById("color1").classList.add("colorpicker");
@@ -2633,7 +2761,7 @@
             enablecolor();
             document.getElementById("animatedbackground").style.display = "none";
             bgstring = "none";
-            
+
             bggotdisabled = "true";
         }
         else if ((parameter("atc") == "none") && bgint != "none") {
@@ -2668,16 +2796,16 @@
 
         //for loop that adds selected and normal bgbutton classes
 
-        const buttons = document.querySelectorAll('.bgbtnn'); 
+        const buttons = document.querySelectorAll('.bgbtnn');
 
         for (const button of buttons) {
             const buttonId = button.id.slice(5); // remove bgbtn get number
 
-            if(bggotdisabled == "true" && button.classList.contains("selectedbackgroundpicker")){
+            if (bggotdisabled == "true" && button.classList.contains("selectedbackgroundpicker")) {
                 button.classList.remove('selectedbackgroundpicker');
                 button.classList.add('backgroundpicker');
             }
-            else{
+            else {
                 if (bgint == buttonId) {
                     button.classList.add('selectedbackgroundpicker');
                     button.classList.remove('backgroundpicker');
@@ -2693,9 +2821,16 @@
 
     }
 
-   
+
 
     function makeQR() {
+        const qrcode = document.getElementById("qrcode");
+        const qrCanvas = qrcode.getElementsByTagName('canvas')[0];  // Get the canvas element
+
+        if (qrCanvas) {
+            qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height); // Clear only if canvas exists
+        }
+
         document.getElementById('qrcode').innerHTML = '';
 
         function imgQR(qrCanvas, centerImage, factor) {
@@ -2768,6 +2903,7 @@
 
     function FontFredoka(method) {
         document.querySelector(':root').style.setProperty('--typeface', 'Fredoka One');
+        document.querySelector(':root').style.setProperty('--comptypeface', 'Dosis');
 
         document.getElementById("fredoka").classList.add("selectedfontpicker");
         document.getElementById("poppins").classList.remove("selectedfontpicker");
@@ -2784,6 +2920,7 @@
 
     function FontPoppins(method) {
         document.querySelector(':root').style.setProperty('--typeface', 'Poppins');
+        document.querySelector(':root').style.setProperty('--comptypeface', 'Poppins');
 
         document.getElementById("fredoka").classList.remove("selectedfontpicker");
         document.getElementById("fredoka").classList.add("fontpicker");
@@ -2800,6 +2937,7 @@
 
     function FontYeseva(method) {
         document.querySelector(':root').style.setProperty('--typeface', 'Yeseva One');
+        document.querySelector(':root').style.setProperty('--comptypeface', 'Castoro');
 
         document.getElementById("fredoka").classList.remove("selectedfontpicker");
         document.getElementById("fredoka").classList.add("fontpicker");
@@ -2816,6 +2954,7 @@
 
     function FontOrbitron(method) {
         document.querySelector(':root').style.setProperty('--typeface', 'Orbitron');
+        document.querySelector(':root').style.setProperty('--comptypeface', 'Ubuntu');
 
         document.getElementById("fredoka").classList.remove("selectedfontpicker");
         document.getElementById("fredoka").classList.add("fontpicker");
@@ -2828,6 +2967,39 @@
         if (method == "Manual") {
             SetCountDowngeneral();
         }
+    }
+
+
+    document.getElementById("body").addEventListener("mousemove", function (event) {
+        // Get element dimensions
+        const rect = document.getElementById("countdowntitle").getBoundingClientRect();
+
+        // Calculate distance from mouse to center of element
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const distanceX = Math.abs(event.clientX - centerX);
+        const distanceY = Math.abs(event.clientY - centerY);
+        const distance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
+
+        // Normalize distance to 0-1 based on threshold (300px)
+        const opacity = Math.max(0, 1 - distance / 300);
+
+        // Set element opacity
+        document.getElementById("countdowntitle").style.border = `1px solid rgba(50, 50, 50, ${opacity})`;
+    });
+
+    function setcountdowntitle(from) {
+        var fronttitlepicker = document.getElementById("countdowntitle");
+        var settingstitlepicker = document.getElementById("cdtitlesettings");
+        if (from == 'settings') {
+            fronttitlepicker.value = settingstitlepicker.value;
+        }
+
+        if (from == 'front') {
+            settingstitlepicker.value = fronttitlepicker.value;
+        }
+
+        SetCountDowngeneral();
     }
 </script>
 
