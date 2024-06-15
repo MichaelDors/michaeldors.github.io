@@ -2611,7 +2611,7 @@
             document.querySelector(".datepicker").value = (getEaster(thisyear) + "T00:00");
         }
 
-        if (document.getElementById("countdowntitle").value == "") {
+        if (CheckTitleValue() = "changeable") {
             document.getElementById("countdowntitle").value = "Easter"
             setcountdowntitle('front');
         }
@@ -2624,7 +2624,7 @@
             document.querySelector(".datepicker").value = thisyear + '-01-01T00:00';
         }
 
-        if (document.getElementById("countdowntitle").value == "") {
+        if (CheckTitleValue() = "changeable") {
             document.getElementById("countdowntitle").value = "New Year's Day"
             setcountdowntitle('front');
         }
@@ -2637,7 +2637,7 @@
             document.querySelector(".datepicker").value = thisyear + '-02-14T00:00';
         }
 
-        if (document.getElementById("countdowntitle").value == "") {
+        if (CheckTitleValue() = "changeable") {
             document.getElementById("countdowntitle").value = "Valentine's Day"
             setcountdowntitle('front');
         }
@@ -2651,7 +2651,7 @@
             document.querySelector(".datepicker").value = thisyear + '-07-04T00:00';
         }
 
-        if (document.getElementById("countdowntitle").value == "") {
+        if (CheckTitleValue() = "changeable") {
             document.getElementById("countdowntitle").value = "Independence Day"
             setcountdowntitle('front');
         }
@@ -2664,7 +2664,7 @@
             document.querySelector(".datepicker").value = thisyear + '-10-31T00:00';
         }
 
-        if (document.getElementById("countdowntitle").value == "") {
+        if (CheckTitleValue() = "changeable") {
             document.getElementById("countdowntitle").value = "Halloween"
             setcountdowntitle('front');
         }
@@ -2678,7 +2678,7 @@
             document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 10, 3, 4));
         }
 
-        if (document.getElementById("countdowntitle").value == "") {
+        if (CheckTitleValue() = "changeable") {
             document.getElementById("countdowntitle").value = "Thanksgiving"
             setcountdowntitle('front');
         }
@@ -2691,7 +2691,7 @@
             document.querySelector(".datepicker").value = thisyear + '-12-25T00:00';
         }
 
-        if (document.getElementById("countdowntitle").value == "") {
+        if (CheckTitleValue() = "changeable") {
             document.getElementById("countdowntitle").value = "Christmas"
             setcountdowntitle('front');
         }
@@ -2722,6 +2722,15 @@
         }
     });
 
+    function CheckTitleValue(){
+        if(document.getElementById("countdowntitle").value === "" || document.getElementById("countdowntitle").value === "Easter" || document.getElementById("countdowntitle").value === "New Year's Day" || document.getElementById("countdowntitle").value === "Valentine's Day" || document.getElementById("countdowntitle").value === "Independence Day" || document.getElementById("countdowntitle").value === "Halloween" || document.getElementById("countdowntitle").value === "Thanksgiving" || document.getElementById("countdowntitle").value === "Christmas"){
+            return "changeable";
+        }
+        else{
+            return "not";
+
+        }
+    }
 
     function enablecolor() {
         document.getElementById("color1").classList.add("colorpicker");
