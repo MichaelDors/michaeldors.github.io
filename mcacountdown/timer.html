@@ -100,14 +100,14 @@
             <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
             <ul class="tabs-box" id="tabs-box">
                 <!--<li id="customtab" class="tab active">Custom</li>-->
-                <li id="endtab" class="mcatab" onclick="MES(); SetCountDowngeneral();">MCA End of Year</li>
-                <li id="nydtab" class="tab" onclick="NYD(); SetCountDowngeneral();">New Year's Day</li>
-                <li id="vdtab" class="tab" onclick="VD(); SetCountDowngeneral();">Valentine's Day</li>
-                <li id="endtab" class="tab" onclick="EASTER(); SetCountDowngeneral();">Easter</li>
-                <li id="idtab" class="tab" onclick="ID(); SetCountDowngeneral();">Independence Day</li>
-                <li id="htab" class="tab" onclick="H(); SetCountDowngeneral();">Halloween</li>
-                <li id="ttab" class="tab" onclick="T(); SetCountDowngeneral();">Thanksgiving</li>
-                <li id="ctab" class="tab" onclick="C(); SetCountDowngeneral();">Christmas</li>
+                <li id="endtab" class="mcatab" onclick="MES();">MCA End of Year</li>
+                <li id="nydtab" class="tab" onclick="NYD();">New Year's Day</li>
+                <li id="vdtab" class="tab" onclick="VD();">Valentine's Day</li>
+                <li id="endtab" class="tab" onclick="EASTER();">Easter</li>
+                <li id="idtab" class="tab" onclick="ID();">Independence Day</li>
+                <li id="htab" class="tab" onclick="H();">Halloween</li>
+                <li id="ttab" class="tab" onclick="T();">Thanksgiving</li>
+                <li id="ctab" class="tab" onclick="C();">Christmas</li>
             </ul>
             <div class="icon"><i id="right" class="fa-solid fa-angle-right"></i></div>
         </div>
@@ -2051,6 +2051,7 @@
         else if (!isNaN(parameter("atc"))) {
             document.getElementById("animatedbackground").style.display = "none";
         }
+        SetCountDowngeneral();
     }
 
     if (!isNaN(parameter("atc"))) {
@@ -2851,6 +2852,7 @@
             imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
         }
         icon.src = 'icon.ico';
+        
     }
 
     function downloadQR() {
