@@ -1657,8 +1657,6 @@
         document.querySelector(".datepicker").value = parameter('date') + 'T00:00';
         var countDownDate = new Date(document.querySelector(".datepicker").value);
 
-        document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
-
         document.getElementById("autopilotpopup").remove();
         document.getElementById("autopilotpopupmobile").remove();
     }
@@ -1973,7 +1971,7 @@
         var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate) + '?colorone=' + color1normalized + '?colortwo=' + color2normalized + '?colorthree=' + color3normalized + '?colorfour=' + color4normalized + '?typeface=' + css.style.getPropertyValue('--typeface') + '?atc=' + bgstring + '?title=' + cdtitle;
         window.history.pushState({ path: refresh }, '', refresh);
 
-        document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
+        document.getElementById("linkinput").value = refresh;
         makeQR();
     }
 
