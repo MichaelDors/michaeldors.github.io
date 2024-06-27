@@ -2885,7 +2885,7 @@
 
             autocircle.remove();
         }
-        if (autocountdown === "-0") {
+        if (autocountdown < 0) {
             clearInterval(autocountdownInterval);
             document.getElementById("autopilotpopup").remove();
             document.getElementById("autopilotpopupmobile").remove();
