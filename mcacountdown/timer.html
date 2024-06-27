@@ -2879,13 +2879,13 @@
         const length = autocircle.getTotalLength();
         const offset = length - (length * (10000 + autocountdown) / 10000);
         autocircle.style.strokeDashoffset = offset;
-        if (autocountdown === 0) {
+        if (autocountdown < 1) {
             document.getElementById("autopilotpopup").style.opacity = "0";
             document.getElementById("autopilotpopupmobile").style.opacity = "0";
 
             autocircle.remove();
         }
-        if (autocountdown < 0) {
+        if (autocountdown === "-0") {
             clearInterval(autocountdownInterval);
             document.getElementById("autopilotpopup").remove();
             document.getElementById("autopilotpopupmobile").remove();
