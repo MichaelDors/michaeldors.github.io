@@ -348,6 +348,11 @@
         cursor: pointer;
     }
 
+    #animatedbackground{
+        opacity:1;
+        transition: 1s opacity ease-in-out; 
+    }
+
     .backgroundpicker {
         margin: 10px !important;
         height: 0.5in;
@@ -2256,14 +2261,19 @@
         if (distance < 0) {
             clearInterval(x);
             document.getElementById("clock").remove();
+            document.getElementById("countdowntitle").remove();
             document.getElementById("settings").remove();
             document.getElementById("innergear").classList.remove("fa-gears");
             document.getElementById("innergear").classList.add("fa-xmark");
             document.getElementById("gear").onclick = finishedcountdownend;
 
+            document.getElementById("animatedbackground").style.opacity = "0";
+            setTimeout(() => {
+                document.getElementById("animatedbackground").remove();
+            }, 1000);
+
 
             if (!getCookie('coce')) {
-                document.getElementById("animatedbackground").classList.add("hidden");
                 startConfetti();
             }
         }
