@@ -1583,6 +1583,13 @@
 
 
 <script>
+    var bgstring = "none";
+    if (parameter('atc')) {
+        bgstring = parameter('atc');
+    }
+    else {
+        bgstring = "none";
+    }
     document.body.scrollTop = document.documentElement.scrollTop = 0;
     if (parameter('colorone')) {
         if (parameter('colorone') == "null") {
@@ -1818,11 +1825,13 @@
         document.getElementById("countdowntitle").value = decodeURIComponent(parameter('title'));
         setcountdowntitle("front");
     }
-    if (parameter('atc')) {
+    var bgstring = "none";
+    if (parameter('atc') && parameter('atc') != "none" && parameter('atc') != "undefined") {
         setbg(parameter('atc'), 'auto');
+        bgstring = parameter('atc');
     }
     else {
-        var bgstring = 'none';
+        bgstring = 'none';
         enablecolor();
         document.getElementById("animatedbackground").style.display = "none";
         document.getElementById("clock").classList.add("clock");
@@ -2721,11 +2730,11 @@
         }
     });
 
-    function CheckTitleValue(){
-        if(document.getElementById("countdowntitle").value === "" || document.getElementById("countdowntitle").value === "Easter" || document.getElementById("countdowntitle").value === "New Year's Day" || document.getElementById("countdowntitle").value === "Valentine's Day" || document.getElementById("countdowntitle").value === "Independence Day" || document.getElementById("countdowntitle").value === "Halloween" || document.getElementById("countdowntitle").value === "Thanksgiving" || document.getElementById("countdowntitle").value === "Christmas"){
+    function CheckTitleValue() {
+        if (document.getElementById("countdowntitle").value === "" || document.getElementById("countdowntitle").value === "Easter" || document.getElementById("countdowntitle").value === "New Year's Day" || document.getElementById("countdowntitle").value === "Valentine's Day" || document.getElementById("countdowntitle").value === "Independence Day" || document.getElementById("countdowntitle").value === "Halloween" || document.getElementById("countdowntitle").value === "Thanksgiving" || document.getElementById("countdowntitle").value === "Christmas") {
             return "changeable";
         }
-        else{
+        else {
             return "not";
 
         }
@@ -2852,7 +2861,7 @@
             imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
         }
         icon.src = 'icon.ico';
-        
+
     }
 
     function downloadQR() {
@@ -3002,4 +3011,3 @@
         SetCountDowngeneral();
     }
 </script>
-
