@@ -348,9 +348,9 @@
         cursor: pointer;
     }
 
-    #animatedbackground{
-        opacity:1;
-        transition: 1s opacity ease-in-out; 
+    #animatedbackground {
+        opacity: 1;
+        transition: 1s opacity ease-in-out;
     }
 
     .backgroundpicker {
@@ -730,7 +730,7 @@
         transform: translateX(-50%);
         top: 35%;
         background: none !important;
-        border: 1px solid rgba(35,35,35,0);
+        border: 1px solid rgba(255,255,255,0);
         padding: 13px 20px;
         border-radius: 30px;
         color: white;
@@ -3001,10 +3001,10 @@
         const distance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
 
         // Normalize distance to 0-1 based on threshold (300px)
-        const opacity = Math.max(0, 1 - distance / 300);
+        const opacity = Math.max(0, 1 - distance / 300) / 3;
 
         // Set element opacity
-        document.getElementById("countdowntitle").style.border = `1px solid rgba(50, 50, 50, ${opacity})`;
+        document.getElementById("countdowntitle").style.border = `1px solid rgba(255, 255, 255, ${opacity})`;
     });
 
     function setcountdowntitle(from) {
