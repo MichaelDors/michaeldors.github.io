@@ -100,14 +100,14 @@
             <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
             <ul class="tabs-box" id="tabs-box">
                 <!--<li id="customtab" class="tab active">Custom</li>-->
-                <li id="endtab" class="mcatab" onclick="MES(); SetCountDowngeneral();">MCA End of Year</li>
-                <li id="nydtab" class="tab" onclick="NYD(); SetCountDowngeneral();">New Year's Day</li>
-                <li id="vdtab" class="tab" onclick="VD(); SetCountDowngeneral();">Valentine's Day</li>
-                <li id="endtab" class="tab" onclick="EASTER(); SetCountDowngeneral();">Easter</li>
-                <li id="idtab" class="tab" onclick="ID(); SetCountDowngeneral();">Independence Day</li>
-                <li id="htab" class="tab" onclick="H(); SetCountDowngeneral();">Halloween</li>
-                <li id="ttab" class="tab" onclick="T(); SetCountDowngeneral();">Thanksgiving</li>
-                <li id="ctab" class="tab" onclick="C(); SetCountDowngeneral();">Christmas</li>
+                <li id="endtab" class="mcatab" onclick="MES();">MCA End of Year</li>
+                <li id="nydtab" class="tab" onclick="NYD();">New Year's Day</li>
+                <li id="vdtab" class="tab" onclick="VD();">Valentine's Day</li>
+                <li id="endtab" class="tab" onclick="EASTER();">Easter</li>
+                <li id="idtab" class="tab" onclick="ID();">Independence Day</li>
+                <li id="htab" class="tab" onclick="H();">Halloween</li>
+                <li id="ttab" class="tab" onclick="T();">Thanksgiving</li>
+                <li id="ctab" class="tab" onclick="C();">Christmas</li>
             </ul>
             <div class="icon"><i id="right" class="fa-solid fa-angle-right"></i></div>
         </div>
@@ -346,6 +346,11 @@
         background: #141414;
         border: none;
         cursor: pointer;
+    }
+
+    #animatedbackground {
+        opacity: 1;
+        transition: 1s opacity ease-in-out;
     }
 
     .backgroundpicker {
@@ -711,7 +716,7 @@
     }
 
     #countdowntitle:focus {
-        border: 1px solid rgba(132,38,255,1) !important;
+        border: 1px solid rgba(255,255,255,1) !important;
         outline: none;
     }
 
@@ -725,7 +730,7 @@
         transform: translateX(-50%);
         top: 35%;
         background: none !important;
-        border: 1px solid rgba(35,35,35,0);
+        border: 1px solid rgba(255,255,255,0);
         padding: 13px 20px;
         border-radius: 30px;
         color: white;
@@ -1583,6 +1588,13 @@
 
 
 <script>
+    var bgstring = "none";
+    if (parameter('atc')) {
+        bgstring = parameter('atc');
+    }
+    else {
+        bgstring = "none";
+    }
     document.body.scrollTop = document.documentElement.scrollTop = 0;
     if (parameter('colorone')) {
         if (parameter('colorone') == "null") {
@@ -1654,10 +1666,13 @@
     }
 
     if (parameter('date')) {
-        document.querySelector(".datepicker").value = parameter('date') + 'T00:00';
+        if(parameter('date').includes('T') && parameter('date').includes(':') ){
+           document.querySelector(".datepicker").value = parameter('date'); 
+        }
+        else{
+            document.querySelector(".datepicker").value = parameter('date') + 'T00:00';
+        }
         var countDownDate = new Date(document.querySelector(".datepicker").value);
-
-        document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
 
         document.getElementById("autopilotpopup").remove();
         document.getElementById("autopilotpopupmobile").remove();
@@ -1820,11 +1835,13 @@
         document.getElementById("countdowntitle").value = decodeURIComponent(parameter('title'));
         setcountdowntitle("front");
     }
-    if (parameter('atc')) {
+    var bgstring = "none";
+    if (parameter('atc') && parameter('atc') != "none" && parameter('atc') != "undefined") {
         setbg(parameter('atc'), 'auto');
+        bgstring = parameter('atc');
     }
     else {
-        var bgstring = 'none';
+        bgstring = 'none';
         enablecolor();
         document.getElementById("animatedbackground").style.display = "none";
         document.getElementById("clock").classList.add("clock");
@@ -1970,10 +1987,10 @@
 
         var cdtitle = document.getElementById("countdowntitle").value;
 
-        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + convert(countDownDate) + '?colorone=' + color1normalized + '?colortwo=' + color2normalized + '?colorthree=' + color3normalized + '?colorfour=' + color4normalized + '?typeface=' + css.style.getPropertyValue('--typeface') + '?atc=' + bgstring + '?title=' + cdtitle;
+        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + document.querySelector(".datepicker").value + '?colorone=' + color1normalized + '?colortwo=' + color2normalized + '?colorthree=' + color3normalized + '?colorfour=' + color4normalized + '?typeface=' + css.style.getPropertyValue('--typeface') + '?atc=' + bgstring + '?title=' + cdtitle;
         window.history.pushState({ path: refresh }, '', refresh);
 
-        document.getElementById("linkinput").value = "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour');
+        document.getElementById("linkinput").value = refresh;
         makeQR();
     }
 
@@ -2053,6 +2070,7 @@
         else if (!isNaN(parameter("atc"))) {
             document.getElementById("animatedbackground").style.display = "none";
         }
+        SetCountDowngeneral();
     }
 
     if (!isNaN(parameter("atc"))) {
@@ -2248,14 +2266,19 @@
         if (distance < 0) {
             clearInterval(x);
             document.getElementById("clock").remove();
+            document.getElementById("countdowntitle").remove();
             document.getElementById("settings").remove();
             document.getElementById("innergear").classList.remove("fa-gears");
             document.getElementById("innergear").classList.add("fa-xmark");
             document.getElementById("gear").onclick = finishedcountdownend;
 
+            document.getElementById("animatedbackground").style.opacity = "0";
+            setTimeout(() => {
+                document.getElementById("animatedbackground").remove();
+            }, 1000);
+
 
             if (!getCookie('coce')) {
-                document.getElementById("animatedbackground").classList.add("hidden");
                 startConfetti();
             }
         }
@@ -2611,7 +2634,7 @@
             document.querySelector(".datepicker").value = (getEaster(thisyear) + "T00:00");
         }
 
-        if (CheckTitleValue() = "changeable") {
+        if (CheckTitleValue() == "changeable") {
             document.getElementById("countdowntitle").value = "Easter"
             setcountdowntitle('front');
         }
@@ -2624,7 +2647,7 @@
             document.querySelector(".datepicker").value = thisyear + '-01-01T00:00';
         }
 
-        if (CheckTitleValue() = "changeable") {
+        if (CheckTitleValue() == "changeable") {
             document.getElementById("countdowntitle").value = "New Year's Day"
             setcountdowntitle('front');
         }
@@ -2637,7 +2660,7 @@
             document.querySelector(".datepicker").value = thisyear + '-02-14T00:00';
         }
 
-        if (CheckTitleValue() = "changeable") {
+        if (CheckTitleValue() == "changeable") {
             document.getElementById("countdowntitle").value = "Valentine's Day"
             setcountdowntitle('front');
         }
@@ -2651,7 +2674,7 @@
             document.querySelector(".datepicker").value = thisyear + '-07-04T00:00';
         }
 
-        if (CheckTitleValue() = "changeable") {
+        if (CheckTitleValue() == "changeable") {
             document.getElementById("countdowntitle").value = "Independence Day"
             setcountdowntitle('front');
         }
@@ -2664,7 +2687,7 @@
             document.querySelector(".datepicker").value = thisyear + '-10-31T00:00';
         }
 
-        if (CheckTitleValue() = "changeable") {
+        if (CheckTitleValue() == "changeable") {
             document.getElementById("countdowntitle").value = "Halloween"
             setcountdowntitle('front');
         }
@@ -2678,7 +2701,7 @@
             document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 10, 3, 4));
         }
 
-        if (CheckTitleValue() = "changeable") {
+        if (CheckTitleValue() == "changeable") {
             document.getElementById("countdowntitle").value = "Thanksgiving"
             setcountdowntitle('front');
         }
@@ -2691,7 +2714,7 @@
             document.querySelector(".datepicker").value = thisyear + '-12-25T00:00';
         }
 
-        if (CheckTitleValue() = "changeable") {
+        if (CheckTitleValue() == "changeable") {
             document.getElementById("countdowntitle").value = "Christmas"
             setcountdowntitle('front');
         }
@@ -2722,11 +2745,11 @@
         }
     });
 
-    function CheckTitleValue(){
-        if(document.getElementById("countdowntitle").value === "" || document.getElementById("countdowntitle").value === "Easter" || document.getElementById("countdowntitle").value === "New Year's Day" || document.getElementById("countdowntitle").value === "Valentine's Day" || document.getElementById("countdowntitle").value === "Independence Day" || document.getElementById("countdowntitle").value === "Halloween" || document.getElementById("countdowntitle").value === "Thanksgiving" || document.getElementById("countdowntitle").value === "Christmas"){
+    function CheckTitleValue() {
+        if (document.getElementById("countdowntitle").value === "" || document.getElementById("countdowntitle").value === "Easter" || document.getElementById("countdowntitle").value === "New Year's Day" || document.getElementById("countdowntitle").value === "Valentine's Day" || document.getElementById("countdowntitle").value === "Independence Day" || document.getElementById("countdowntitle").value === "Halloween" || document.getElementById("countdowntitle").value === "Thanksgiving" || document.getElementById("countdowntitle").value === "Christmas") {
             return "changeable";
         }
-        else{
+        else {
             return "not";
 
         }
@@ -2853,6 +2876,7 @@
             imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
         }
         icon.src = 'icon.ico';
+
     }
 
     function downloadQR() {
@@ -2879,7 +2903,7 @@
         const length = autocircle.getTotalLength();
         const offset = length - (length * (10000 + autocountdown) / 10000);
         autocircle.style.strokeDashoffset = offset;
-        if (autocountdown === 0) {
+        if (autocountdown < 1) {
             document.getElementById("autopilotpopup").style.opacity = "0";
             document.getElementById("autopilotpopupmobile").style.opacity = "0";
 
@@ -2982,10 +3006,10 @@
         const distance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
 
         // Normalize distance to 0-1 based on threshold (300px)
-        const opacity = Math.max(0, 1 - distance / 300);
+        const opacity = Math.max(0, 1 - distance / 300) / 3;
 
         // Set element opacity
-        document.getElementById("countdowntitle").style.border = `1px solid rgba(50, 50, 50, ${opacity})`;
+        document.getElementById("countdowntitle").style.border = `1px solid rgba(255, 255, 255, ${opacity})`;
     });
 
     function setcountdowntitle(from) {
@@ -3002,4 +3026,3 @@
         SetCountDowngeneral();
     }
 </script>
-
