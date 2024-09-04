@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Countdown Schedule</title>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <meta name="theme-color" content="#ff0000" />
+
+    <style>
+        body, html {
+            font-family: Dosis, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            color: white;
+        }
+        .schedule-viewer {
+            height: 100vh;
+            overflow-y: auto;
+            /*background: #141414;*/
+            /* background: linear-gradient(to right, #B500FF, #8F00FF, #00A0FF); */
+            display: flex;
+            overflow:hidden;
+            flex-direction: column;
+        }
+        
+        .schedule-current-class {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            /*background: #c82333;*/
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            transition:1s all;
+        }
+        .schedule-class-title {
+            margin-top:3%;
+            margin-bottom:3%;
+            margin-left:20px;
+            font-size: 5em;
+            font-family: Fredoka One;
+        }
+        .schedule-time-remaining {
+            text-align: right;
+            margin-right:20px;
+        }
+        .schedule-time {
+            font-size: 4em;
+        }
+        .schedule-remaining-text {
+            font-size: 1.5em;
+        }
+        .schedule-progress-bar {
+            height: 7px;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        .schedule-progress {
+            height: 100%;
+            background: #141414e5;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(75px);
+            -webkit-backdrop-filter: blur(75px);
+            width: 0;
+            transition: width 1s linear;
+            border-top-right-radius: 20px;
+        }
+        .schedule-upcoming-class {
+            background: rgba(20, 20, 20, 0.83);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(75px);
+            -webkit-backdrop-filter: blur(75px);
+            border-bottom:3px solid #14141491;
+            padding:15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .schedule-upcoming-class-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-left:20px;
+        }
+        .schedule-upcoming-class-time {
+            text-align: right;
+            margin:20px 20px 20px 0px;
+        }
+        .schedule-upcoming-class-time .fa-regular{
+            margin-right:5px;
+        }
+        .schedule-editor {
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .schedule-container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            text-align: center;
+            color: #333;
+        }
+        .schedule-form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"], input[type="time"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #schedule-eventList, #schedule-exceptionList {
+            list-style-type: none;
+            padding: 0;
+        }
+        .schedule-event-item, .schedule-exception-item {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .schedule-event-item button, .schedule-exception-item button {
+            background-color: #dc3545;
+            padding: 5px 10px;
+            margin-top: 10px;
+            width: auto;
+        }
+        .schedule-event-item button:hover, .schedule-exception-item button:hover {
+            background-color: #c82333;
+        }
+        .schedule-exception-day {
+            margin-bottom: 20px;
+        }
+        .schedule-editor-section {
+            margin-bottom: 20px;
+        }
+        .schedule-collapsible {
+            background-color: #eee;
+            color: #444;
+            cursor: pointer;
+            padding: 18px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 15px;
+        }
+        .active, .schedule-collapsible:hover {
+            background-color: #ccc;
+        }
+        .schedule-content {
+            padding: 0 18px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            background-color: #f1f1f1;
+        }
+
+    .bg-color {
+        right: 0;
+        top: 0;
+        filter: blur(100px);
+        z-index: -1;
+        mix-blend-mode: luminosity;
+        width: 200%;
+        position: absolute;
+        animation: rotate 35s linear infinite;
+    }
+
+    .bg-black {
+        left: 0;
+        bottom: 0;
+        filter: blur(100px);
+        z-index: -10;
+        animation-direction: reverse;
+        animation-delay: 10s;
+        width: 200%;
+        position: absolute;
+        animation: rotate 35s linear infinite;
+    }
+
+    .backgroundframe {
+        margin: 0px;
+        padding: 0px;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        z-index: -14;
+        position: inherit;
+    }
+
+    .backgroundframe-bg {
+       position: absolute;
+       top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: -14;
+        overflow: hidden;
+    }
+
+@keyframes rotate {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+    </style>
+</head>
+<body>
+    <div class="schedule-viewer" id="schedule-viewer">
+        <div class="schedule-current-class" id="schedule-currentClass">
+            <div class="schedule-class-title" id="schedule-classTitle"></div>
+            <div class="schedule-time-remaining">
+                <div class="schedule-time" id="schedule-timeRemaining"></div>
+                <div class="schedule-remaining-text" id="schedule-remainingText">remaining</div>
+            </div>
+            <div class="schedule-progress-bar">
+                <div class="schedule-progress" id="schedule-progress"></div>
+            </div>
+        </div>
+        <div class="schedule-upcoming-classes" id="schedule-upcomingClasses"></div>
+    </div>
+
+    <div class="schedule-editor">
+        <div class="schedule-container">
+            <h1>Daily Schedule Editor</h1>
+            
+            <div class="schedule-form-group">
+                <label for="schedule-eventTitle">Event Title:</label>
+                <input type="text" id="schedule-eventTitle" required>
+            </div>
+            <div class="schedule-form-group">
+                <label for="schedule-startTime">Start Time:</label>
+                <input type="time" id="schedule-startTime" required>
+            </div>
+            <div class="schedule-form-group">
+                <label for="schedule-endTime">End Time:</label>
+                <input type="time" id="schedule-endTime" required>
+            </div>
+            <button id="schedule-addOrUpdateEventBtn">Add Event</button>
+
+            <div class="schedule-editor-section">
+                <h3>Regular Schedule</h3>
+                <button class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">Show/Hide Regular Schedule</button>
+                <div class="schedule-content">
+                    <ul id="schedule-eventList"></ul>
+                </div>
+            </div>
+
+            <div class="schedule-editor-section">
+                <h3>Exception Days</h3>
+                <div class="schedule-form-group">
+                    <label for="schedule-exceptionDay">Add Exception Day:</label>
+                    <select id="schedule-exceptionDay">
+                        <option value="0">Sunday</option>
+                        <option value="1">Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                        <option value="6">Saturday</option>
+                    </select>
+                    <button id="schedule-addExceptionBtn">Add Exception Day</button>
+                </div>
+                <div id="schedule-exceptionList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="backgroundframe" id="animatedbackground">
+        <div class="backgroundframe-bg">
+            <img class="bg-color album-artwork" id="bg1" src="Backgrounds/enhancedbackground_12.png" />
+            <img class="bg-black album-artwork" id="bg2" src="Backgrounds/enhancedbackground_12.png" />
+        </div>
+    </div>
+
+    <script>
+        let schedule_events = [];
+        let schedule_exceptions = {};
+        let schedule_editingEvent = null;
+        let schedule_editingExceptionDay = null;
+
+        function schedule_encodeSchedule() {
+            return btoa(JSON.stringify({ schedule_events, schedule_exceptions }));
+        }
+
+        function schedule_decodeSchedule(encoded) {
+            try {
+                const decoded = JSON.parse(atob(encoded));
+                return {
+                    schedule_events: decoded.schedule_events || [],
+                    schedule_exceptions: decoded.schedule_exceptions || {}
+                };
+            } catch (e) {
+                console.error('Failed to decode schedule:', e);
+                return { schedule_events: [], schedule_exceptions: {} };
+            }
+        }
+
+        function schedule_updateURL() {
+            const encoded = schedule_encodeSchedule();
+            history.replaceState(null, '', `?schedule=${encoded}`);
+        }
+
+        function schedule_loadScheduleFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const encodedSchedule = urlParams.get('schedule');
+            if (encodedSchedule) {
+                const decoded = schedule_decodeSchedule(encodedSchedule);
+                schedule_events = decoded.schedule_events;
+                schedule_exceptions = decoded.schedule_exceptions;
+                schedule_updateEventList();
+                schedule_updateExceptionList();
+            }
+        }
+
+        function schedule_addOrUpdateEvent() {
+            const title = document.getElementById('schedule-eventTitle').value;
+            const startTime = document.getElementById('schedule-startTime').value;
+            const endTime = document.getElementById('schedule-endTime').value;
+
+            if (title && startTime && endTime) {
+                const newEvent = { title, startTime, endTime };
+                if (schedule_editingEvent) {
+                    // Update existing event
+                    if (schedule_editingExceptionDay !== null) {
+                        const index = schedule_exceptions[schedule_editingExceptionDay].findIndex(e => e === schedule_editingEvent);
+                        if (index !== -1) {
+                            schedule_exceptions[schedule_editingExceptionDay][index] = newEvent;
+                        }
+                    } else {
+                        const index = schedule_events.indexOf(schedule_editingEvent);
+                        if (index !== -1) {
+                            schedule_events[index] = newEvent;
+                        }
+                    }
+                } else {
+                    // Add new event
+                    if (schedule_editingExceptionDay !== null) {
+                        if (!schedule_exceptions[schedule_editingExceptionDay]) {
+                            schedule_exceptions[schedule_editingExceptionDay] = [];
+                        }
+                        schedule_exceptions[schedule_editingExceptionDay].push(newEvent);
+                    } else {
+                        schedule_events.push(newEvent);
+                    }
+                }
+
+                if (schedule_editingExceptionDay !== null) {
+                    schedule_exceptions[schedule_editingExceptionDay].sort((a, b) => a.startTime.localeCompare(b.startTime));
+                } else {
+                    schedule_events.sort((a, b) => a.startTime.localeCompare(b.startTime));
+                }
+
+                schedule_updateEventList();
+                schedule_updateExceptionList();
+                schedule_resetForm();
+                schedule_updateURL();
+                schedule_updateScheduleViewer();
+            }
+        }
+
+        function schedule_editEvent(event, isException = false, day = null) {
+            schedule_editingEvent = event;
+            schedule_editingExceptionDay = isException ? day : null;
+            document.getElementById('schedule-eventTitle').value = event.title;
+            document.getElementById('schedule-startTime').value = event.startTime;
+            document.getElementById('schedule-endTime').value = event.endTime;
+            document.getElementById('schedule-addOrUpdateEventBtn').textContent = 'Update Event';
+        }
+
+        function schedule_removeEvent(index, isException = false, day = null) {
+            if (isException) {
+                schedule_exceptions[day].splice(index, 1);
+                if (schedule_exceptions[day].length === 0) {
+                    delete schedule_exceptions[day];
+                }
+            } else {
+                schedule_events.splice(index, 1);
+            }
+            schedule_updateEventList();
+            schedule_updateExceptionList();
+            schedule_updateURL();
+            schedule_updateScheduleViewer();
+        }
+
+        function schedule_addExceptionDay() {
+            const day = document.getElementById('schedule-exceptionDay').value;
+            if (!schedule_exceptions[day]) {
+                schedule_exceptions[day] = [];
+            }
+            schedule_updateExceptionList();
+            schedule_updateURL();
+            schedule_updateScheduleViewer();
+        }
+
+        function schedule_removeExceptionDay(day) {
+            delete schedule_exceptions[day];
+            schedule_updateExceptionList();
+            schedule_updateURL();
+            schedule_updateScheduleViewer();
+        }
+
+        function schedule_updateEventList() {
+            const eventList = document.getElementById('schedule-eventList');
+            eventList.innerHTML = '';
+            schedule_events.forEach((event, index) => {
+                const li = document.createElement('li');
+                li.className = 'schedule-event-item';
+                li.innerHTML = `
+                    <strong>${event.title}</strong><br>
+                    Start: ${schedule_formatTime(event.startTime)}<br>
+                    End: ${schedule_formatTime(event.endTime)}<br>
+                    <button onclick="schedule_editEvent(schedule_events[${index}])">Edit</button>
+                    <button onclick="schedule_removeEvent(${index})">Remove</button>
+                `;
+                eventList.appendChild(li);
+            });
+        }
+
+        function schedule_updateExceptionList() {
+            const exceptionList = document.getElementById('schedule-exceptionList');
+            exceptionList.innerHTML = '';
+            for (const [day, dayEvents] of Object.entries(schedule_exceptions)) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'schedule-exception-day';
+                const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day];
+                dayDiv.innerHTML = `
+                    <button class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">${dayName}</button>
+                    <div class="schedule-content">
+                        <button onclick="schedule_editEvent(null, true, '${day}')">Add Event to ${dayName}</button>
+                        <button onclick="schedule_removeExceptionDay('${day}')">Remove ${dayName} Exception</button>
+                        <ul>
+                            ${dayEvents.map((event, index) => `
+                                <li class="schedule-exception-item">
+                                    <strong>${event.title}</strong><br>
+                                    Start: ${schedule_formatTime(event.startTime)}<br>
+                                    End: ${schedule_formatTime(event.endTime)}<br>
+                                    <button onclick="schedule_editEvent(schedule_exceptions['${day}'][${index}], true, '${day}')">Edit</button>
+                                    <button onclick="schedule_removeEvent(${index}, true, '${day}')">Remove</button>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+                exceptionList.appendChild(dayDiv);
+            }
+        }
+
+        function schedule_resetForm() {
+            document.getElementById('schedule-eventTitle').value = '';
+            document.getElementById('schedule-startTime').value = '';
+            document.getElementById('schedule-endTime').value = '';
+            document.getElementById('schedule-addOrUpdateEventBtn').textContent = 'Add Event';
+            schedule_editingEvent = null;
+            schedule_editingExceptionDay = null;
+        }
+
+        function schedule_getScheduleForDay(date) {
+            const dayOfWeek = date.getDay().toString();
+            return schedule_exceptions[dayOfWeek] || schedule_events;
+        }
+
+        function schedule_formatTime(time) {
+            const [hours, minutes] = time.split(':');
+            const hour = parseInt(hours, 10);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const formattedHour = hour % 12 || 12;
+            return `${formattedHour}:${minutes} ${ampm}`;
+        }
+
+        function schedule_updateScheduleViewer() {
+            const now = new Date();
+            const currentSchedule = schedule_getScheduleForDay(now);
+            
+            if (currentSchedule.length === 0) {
+                schedule_showTomorrowSchedule();
+                return;
+            }
+
+            let currentEvent = null;
+            let upcomingEvents = [];
+
+            for (let i = 0; i < currentSchedule.length; i++) {
+                const event = currentSchedule[i];
+                const [startHours, startMinutes] = event.startTime.split(':');
+                const [endHours, endMinutes] = event.endTime.split(':');
+                const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHours, startMinutes);
+                const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHours, endMinutes);
+
+                if (now >= startTime && now < endTime) {
+                    currentEvent = { ...event, startTime, endTime };
+                    upcomingEvents = currentSchedule.slice(i + 1);
+                    break;
+                } else if (now < startTime) {
+                    currentEvent = { ...event, startTime, endTime, isUpcoming: true };
+                    upcomingEvents = currentSchedule.slice(i + 1);
+                    break;
+                }
+            }
+
+            if (currentEvent) {
+                document.getElementById('schedule-classTitle').textContent = currentEvent.title;
+                if (currentEvent.isUpcoming) {
+                    const timeUntilStart = currentEvent.startTime - now;
+                    const minutesUntilStart = Math.floor(timeUntilStart / 60000);
+                    const secondsUntilStart = Math.floor((timeUntilStart % 60000) / 1000);
+                    document.getElementById('schedule-timeRemaining').textContent = `${minutesUntilStart}:${secondsUntilStart.toString().padStart(2, '0')}`;
+                    document.getElementById('schedule-remainingText').textContent = 'starting';
+                    document.getElementById('schedule-progress').style.width = '0%';
+                } else {
+                    const remainingTime = currentEvent.endTime - now;
+                    const totalDuration = currentEvent.endTime - currentEvent.startTime;
+                    const progress = 100 - (remainingTime / totalDuration * 100);
+                    document.getElementById('schedule-progress').style.width = `${progress}%`;
+
+                    const minutes = Math.floor(remainingTime / 60000);
+                    const seconds = Math.floor((remainingTime % 60000) / 1000);
+                    document.getElementById('schedule-timeRemaining').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    document.getElementById('schedule-remainingText').textContent = 'remaining';
+                }
+            } else {
+                schedule_showTomorrowSchedule();
+                return;
+            }
+
+            const upcomingClassesEl = document.getElementById('schedule-upcomingClasses');
+            upcomingClassesEl.innerHTML = '';
+            upcomingEvents.forEach(event => {
+                const [startHours, startMinutes] = event.startTime.split(':');
+                const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHours, startMinutes);
+                const timeUntilStart = startTime - now;
+                const minutesUntilStart = Math.floor(timeUntilStart / 60000);
+                const upcomingEl = document.createElement('div');
+                upcomingEl.className = 'schedule-upcoming-class';
+                upcomingEl.innerHTML = `
+                    <div class="schedule-upcoming-class-title">${event.title}</div>
+                    <div class="schedule-upcoming-class-time">
+                        <div><i class="fa-regular fa-clock"></i> In ${minutesUntilStart} min</div>
+                        <div><i class="fa-regular fa-calendar"></i> ${schedule_formatTime(event.startTime)} - ${schedule_formatTime(event.endTime)}</div>
+                    </div>
+                `;
+                upcomingClassesEl.appendChild(upcomingEl);
+            });
+        }
+
+        function schedule_showTomorrowSchedule() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+            const tomorrowSchedule = schedule_getScheduleForDay(tomorrow);
+
+            if (tomorrowSchedule.length === 0) {
+                document.getElementById('schedule-classTitle').textContent = "Today's all clear!";
+                document.getElementById('schedule-timeRemaining').textContent = '';
+                document.getElementById('schedule-remainingText').textContent = '';
+                document.getElementById('schedule-progress').style.width = '0%';
+                document.getElementById('schedule-upcomingClasses').innerHTML = '';
+                return;
+            }
+
+            const firstEvent = tomorrowSchedule[0];
+            const [startHours, startMinutes] = firstEvent.startTime.split(':');
+            const startTime = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), startHours, startMinutes);
+            const timeUntilStart = startTime - new Date();
+            const hoursUntilStart = Math.floor(timeUntilStart / 3600000);
+            const minutesUntilStart = Math.floor((timeUntilStart % 3600000) / 60000);
+
+            document.getElementById('schedule-classTitle').textContent = `${firstEvent.title}`;
+            document.getElementById('schedule-timeRemaining').textContent = `${hoursUntilStart}:${minutesUntilStart.toString().padStart(2, '0')}`;
+            document.getElementById('schedule-remainingText').textContent = 'starting';
+            document.getElementById('schedule-progress').style.width = '0%';
+
+            const upcomingClassesEl = document.getElementById('schedule-upcomingClasses');
+            tomorrowSchedule.forEach(event => {
+                const upcomingEl = document.createElement('div');
+                upcomingEl.className = 'schedule-upcoming-class';
+                upcomingEl.innerHTML = `
+                    <div class="schedule-upcoming-class-title">${event.title}</div>
+                    <div class="schedule-upcoming-class-time">
+                        <div>${schedule_formatTime(event.startTime)} - ${schedule_formatTime(event.endTime)}</div>
+                    </div>
+                `;
+                upcomingClassesEl.appendChild(upcomingEl);
+            });
+        }
+
+        function schedule_toggleCollapsible(button) {
+            button.classList.toggle("active");
+            var content = button.nextElementSibling;
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+            }
+        }
+
+        document.getElementById('schedule-addOrUpdateEventBtn').addEventListener('click', schedule_addOrUpdateEvent);
+        document.getElementById('schedule-addExceptionBtn').addEventListener('click', schedule_addExceptionDay);
+
+        // Load schedule from URL when the page loads
+        window.addEventListener('load', () => {
+            schedule_loadScheduleFromURL();
+            schedule_updateScheduleViewer();
+            setInterval(schedule_updateScheduleViewer, 1000);
+        });
+    </script>
+</body>
+</html>
