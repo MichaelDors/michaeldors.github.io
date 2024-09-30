@@ -88,7 +88,7 @@
     <div class="hidden" id="settings">
         <div id="settingssidebar">
             <div style="position: relative;">
-                <input type="input" list="settingsheaders" placeholder="Search for an option or section">
+                <input type="input" list="settingsheaders" placeholder="Search for an option">
                 <button type="button">Go</button>
             </div>
             <datalist id="settingsheaders">
@@ -124,20 +124,27 @@
             <br>
             <div id="settingssidebarpaneshareable">
                 <h3>Shareable</h3>
-                <p><i class="fa-regular fa-clock"></i> General</p>
-                <p><i class="fa-solid fa-paintbrush"></i> Customization</p>
-                <p><i class="fa-regular fa-calendar"></i> Schedule</p>
-                <p><i class="fa-solid fa-percent"></i> Progress</p>
+                <a id="sidebaranchor" href="#generaloptions"><i style="background-color:#8426FF" class="fa-regular fa-clock"></i> General</a>
+                <Br>
+                <a id="sidebaranchor" href="#customizationoptions"><i style="background-color:#00b2ff" class="fa-solid fa-paintbrush"></i> Customization</a>
+                <br>
+                <a id="sidebaranchor" href="#scheduleoptions"><i style="background-color:#00FF5E" class="fa-regular fa-calendar"></i> Schedule</a>
+                <br>
+                <a id="sidebaranchor" href="#progressoptions"><i style="background-color:#FF9900" class="fa-solid fa-percent"></i> Progress</a>
+                <br>
+                <a id="sidebaranchor" href="#queueoptions"><i style="background-color:#8426FF" class="fa-solid fa-list-ul"></i> Queue</a>
             </div>
             <br>
             <div id="settingssidebarpanepersonal">
                 <h3>Personal</h3>
-                <p><i class="fa-solid fa-circle-half-stroke"></i> Appearance</p>
-                <p><i class="fa-solid fa-child-reaching"></i> Ease of Use</p>
-                <p><i class="fa-solid fa-puzzle-piece"></i> Only Include</p>
+                <a id="sidebaranchor" href="#appearanceoptions"><i style="background-color:#00b2ff" class="fa-solid fa-circle-half-stroke"></i> Appearance</a>
+                <br>
+                <a id="sidebaranchor" href="#eouoptions"><i style="background-color:#00FF5E" class="fa-solid fa-child-reaching"></i> Ease of Use</a>
+                <br>
+                <a id="sidebaranchor" href="#inclusionoptions"><i style="background-color:#FF9900" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
             </div>
 
-            <p class="textelement" style="font-size: 15px; color:#989898 !important">
+            <p class="textelement" style="font-size: 15px; color:#989898 !important; max-width:85%;">
                 <a style="font-family: 'Dosis' , sans-serif; color:#363636 !important; margin-left:30px; margin-bottom:10px;" class="aintext dependencieslink" href="Information/cookiepolicy.html"><i style="margin-right:10px;" class="fa-solid fa-cookie-bite"></i>Cookie Policy</a>
                 <a style="font-family: 'Dosis', sans-serif; color:#363636 !important; margin-left:30px;" class="aintext dependencieslink" href="Information/dependencies.html"><i style="margin-right:10px;" class="fa-solid fa-file-code"></i>Open Source Dependencies</a>
             </p>
@@ -151,6 +158,7 @@
         <Br>
         <a onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
         <a id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
+        <a id="beta" class="betabutton" href="https://countdown.michaeldors.com/" target="_blank"><i class="fa-solid fa-clock-rotate-left"></i> Current Version</a>
 
         <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
             <h1><i style="color: #39B8FB" class="fa-solid fa-paper-plane"></i> Shareable Options</h1>
@@ -159,7 +167,11 @@
         <br />
         <br />
         <br />
-        <h2 class="textelement">
+        <h1 id="generaloptions">General Options</h1>
+        <br>
+        <br>
+        <br>
+        <h2 class="textelement" style="font-family: 'Dosis';">
             Presets
         </h2>
         <div class="presetswrapper">
@@ -180,7 +192,7 @@
         <br/>
         <br/>
 
-        <h2 class="textelement">
+        <h2 class="textelement" style="font-family: 'Dosis';">
             Date
         </h2>
 
@@ -202,16 +214,16 @@
         </div>
         <br />
         <br />
-        <h2 class="textelement">
+        <h2 class="textelement" style="font-family: 'Dosis';">
             Title
         </h2>
         <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;" />
-        <h2 class="textelement">
+        <h2 class="textelement" style="font-family: 'Dosis';">
             Link
         </h2>
 
 
-        <input id="linkinput" class="input" />
+        <input id="linkinput" class="input"/>
         <button style="background:#141414; color:white; border:none; outline:none; cursor:pointer">
             <i class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlink()"></i>
         </button>
@@ -228,8 +240,12 @@
             </div>
 
         </div>
+        <h1 id="customizationoptions">Customization Options</h1>
+        <br>
+        <br>
+        <br>
 
-        <h2 class="textelement">
+        <h2 class="textelement" style="font-family: 'Dosis';">
             Foreground Colors
         </h2>
 
@@ -258,7 +274,7 @@
         <br />
         <br>
         <br>
-        <h2 class="textelement">
+        <h2 class="textelement" style="font-family: 'Dosis';">
             Background
         </h2>
 
@@ -282,14 +298,25 @@
         <br>
         <br />
         <br />
-        <h2 class="textelement">
+        <h2 class="textelement" style="font-family: 'Dosis';">
             Typeface
         </h2>
         <a class="aintext selectedfontpicker" id="fredoka" style="font-family:'Fredoka One'" onmouseup="FontFredoka('Manual');">12:34</a>
         <a class="aintext fontpicker" id="poppins" style="font-family:'Poppins'" onmouseup="FontPoppins('Manual');">12:34</a>
         <a class="aintext fontpicker" id="yeseva" style="font-family:'Yeseva One'" onmouseup="FontYeseva('Manual');">12:34</a>
         <a class="aintext fontpicker" id="orbitron" style="font-family:'Orbitron'" onmouseup="FontOrbitron('Manual');">12:34</a>
-
+        <br>
+        <br>
+        <br>
+        <h1 id="progressoptions">Progress</h1>
+        <br>
+        <br>
+        <br>
+        <h1 id="scheduleoptions">Countdown Schedule</h1>
+        <br>
+        <br>
+        <br>
+        <h1 id="queueoptions">Countdown Queue</h1>
         <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
             <h1><i style="color: #FE9A00" class="fa-solid fa-user-lock"></i> Personal Options</h1>
             <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; margin-bottom:30px;">Options that are for you alone and won't be shared in the link.</p>
@@ -321,13 +348,13 @@
         <Br>
         <Br>
         <Br>
-        <h2 class="textelement">
+        <h2 class="textelement" id="appearanceoptions">
             Appearance
         </h2>
         <br>
         <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
 
-        <h2 class="textelement">
+        <h2 class="textelement" id="eouoptions">
             Ease of Use
         </h2>
         <Br>
@@ -335,7 +362,7 @@
 
         <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Countdown Units</a>
 
-        <h2 class="textelement">
+        <h2 id="inclusionoptions" class="textelement">
             Only Include
         </h2>
         <br>
@@ -399,7 +426,7 @@
 
     <div id="autopilotpopup" style="margin:0; padding:0; position:absolute; top:80%; left:0px; width:100%; height:20%; border-top:solid 3px white; opacity:1; transition:0.5s opacity;">
         <h1 style="position: absolute; top: 15%; left: calc(50vw - 21px); paint-order: stroke fill; -webkit-text-stroke-width: 10px; -webkit-text-stroke-color: #141414;">or</h1>
-        <div id="manualpilot" style="background-image:url(calendarbg.png); background-size:cover; width: 50%; float: left; height: 100%; ">
+        <div onclick="settings()" id="manualpilot" style="background-image:url(calendarbg.png); background-size:cover; width: 50%; float: left; height: 100%; cursor:pointer;">
             <h1 style="margin-left:3.75%" id="gearpointer"><i style="margin-right:30px;" class="fa-solid fa-angle-down"></i><span style="padding-top:100px;">pick a date</span></h1>
         </div>
         <div id="autopilot" style="float: right; width: 50%; background: linear-gradient(to right, #141414, #01FE5E); height: 100%; outline: 3px white solid; ">
@@ -975,6 +1002,12 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         margin: 0px 5px 25px 5px;
         display: inline-block;
     }
+    a:hover {
+        position: relative;
+        top: 4px;
+        box-shadow: 0 5px 0 #4d00b2;
+        display: inline-block;
+    }
 
     .aintext {
         font-family: 'Fredoka One';
@@ -1028,13 +1061,6 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         cursor: pointer;
         font-size: 20px;
         font-weight: 100;
-    }
-
-    a:hover {
-        position: relative;
-        top: 4px;
-        box-shadow: 0 5px 0 #4d00b2;
-        display: inline-block;
     }
 
     .a2:hover {
@@ -1181,6 +1207,31 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 box-shadow: none;
             }
 
+
+            .betabutton {
+        font-family: 'Fredoka One';
+        background:linear-gradient(to bottom, #ac6cff, #6cd0fb, #79ffaa, #ffbe5d);
+        text-decoration: none;
+        color: black;
+        box-shadow: 0 7px 0 #FF9900;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+    }
+
+        .betabutton:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #FF9900;
+        }
+
+            .betabutton:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
+
     .settings {
         font-family: 'Fredoka One';
         background-color: transparent;
@@ -1211,24 +1262,56 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
             #settingsmainpane{
                 float:right;
-                width:80.5%;
-                margin-left:0.5%;
+                width:80vw;
                 background: rgba(20, 20, 20, 0.83);
                 box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
                 backdrop-filter: blur(75px);
                 -webkit-backdrop-filter: blur(75px);
-                
+                position:absolute;
+                top:0px;
+                right:0px;
             }
             #settingssidebar{
                 height:100vh;
                 padding:none;
                 position:fixed;
+                top: 0;
+                bottom: 0;
+                overflow-y: scroll;
+                scrollbar-width: none;  /* Firefox */
+                -ms-overflow-style: none;  /* Internet Explorer 10+ */
                 float:left;
-                width:20%;
+                width:20vw;
                 left:-5px;
                 top:-5px;
                 padding-top:25px;
                 background-color:black;
+                z-index:10000;
+            }
+            #settingssidebar::-webkit-scrollbar {
+                width:0;
+                background:transparent;
+            }
+            #sidebaranchor{
+                font-family:'Dosis';
+                background:none;
+                text-decoration:none;
+                color:white;
+                box-shadow:none;
+                border-radius: none;
+                user-select: none;
+                cursor:pointer;
+                font-size:20px;
+                font-weight:100;
+                margin:0px;
+                display:initial;
+                padding:0px;
+            }
+            #sidebaranchor:hover{
+                position:initial;
+                top:initial;
+                box-shadow: none;
+                display:initial
             }
             #settingssidebarpaneshareable{
                 width:90%;
@@ -1258,7 +1341,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 padding-top:5px;
                 margin-left:5%;
                 border-radius: 20px;
-                margin-bottom:50px;
+                margin-bottom:30px;
             }
             #settingssidebarpanepersonal h3{
                 margin-left:25px;
