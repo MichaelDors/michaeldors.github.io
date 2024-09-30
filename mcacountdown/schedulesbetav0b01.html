@@ -247,9 +247,6 @@
         </div>
     
         <script>
-
-            alert("As of September 3rd, 2024 this beta is deprecated. It has been replaced by beta v0b02. To ensure usage of the latest Countdown Schedule or equivalent beta you will be redirected to v0b02.");
-            window.location.replace("https://michaeldors.com/mcacountdown/schedulesbetav0b02?schedule=" + btoa(JSON.stringify({ events, exceptions })));
             let events = [];
             let exceptions = {};
             let editingEvent = null;
@@ -288,6 +285,9 @@
                     updateExceptionList();
                 }
             }
+
+            alert("As of September 3rd, 2024 this beta is deprecated. It has been replaced by beta v0b02. To ensure usage of the latest Countdown Schedule or equivalent beta you will be given a link to v0b02.");
+            alert('https://michaeldors.com/mcacountdown/schedulesbetav0b02?schedule=' + encoded);
     
             function addOrUpdateEvent() {
                 const title = document.getElementById('eventTitle').value;
