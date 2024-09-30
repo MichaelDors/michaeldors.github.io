@@ -286,10 +286,22 @@
                 }
             }
 
+                function parameter(name) { //returns the value of the parameter it's sent
+        var query = window.location.search.substring(1);
+        var parameters = query.split('&');
+        for (var i = 0; i < parameters.length; i++) {
+            var pair = parameters[i].split('=');
+            if (pair[0] == name) {
+                return pair[1];
+            }
+        }
+        return null;
+    }
+
             alert("As of September 3rd, 2024 this beta is deprecated. It has been replaced by beta v0b02. To ensure usage of the latest Countdown Schedule or equivalent beta you will be redirected to v0b02.");
             const encoded = encodeSchedule();
-            window.location.replace('https://michaeldors.com/mcacountdown/schedulesbetav0b02?schedule=' + encoded);
-            window.location.href = 'https://michaeldors.com/mcacountdown/schedulesbetav0b02?schedule=' + encoded;
+            window.location.replace('https://michaeldors.com/mcacountdown/schedulesbetav0b02?schedule=' + parameter("schedule");
+            window.location.href = 'https://michaeldors.com/mcacountdown/schedulesbetav0b02?schedule=' + parameter("schedule");
     
             function addOrUpdateEvent() {
                 const title = document.getElementById('eventTitle').value;
