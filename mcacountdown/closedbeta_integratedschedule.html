@@ -2285,6 +2285,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         document.getElementById("clock").style.display = "none"; //hide clock
         document.getElementById("countdowntitle").style.display = "none"; //hide title
         document.getElementById("schedule").style.display = ""; //show schedule
+        
+        document.getElementById("autopilotpopup").remove(); //removes the Autopilot popup if a schedule exists
+        document.getElementById("autopilotpopupmobile").remove(); //same with mobile Autopilot popup
     }
     else{
         document.getElementById("schedule").style.display = "none"; //hide schedule
