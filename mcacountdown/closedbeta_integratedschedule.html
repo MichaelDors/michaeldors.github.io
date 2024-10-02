@@ -157,6 +157,7 @@
         <br>
         <Br>
         <a onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
+        <a id="sharebuttonoptions" href="#linkoptions"><<i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
         <a id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save Countdown</a>
         <a id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Discard Countdown</a>
 
@@ -218,7 +219,7 @@
             Title
         </h2>
         <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;" />
-        <h2 class="textelement" style="font-family: 'Dosis';">
+        <h2 class="textelement" style="font-family: 'Dosis';" id="linkoptions">
             Link
         </h2>
 
@@ -1228,6 +1229,30 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         }
 
             #savedash:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
+
+        #sharebuttonoptions {
+        font-family: 'Fredoka One';
+        background-color: #3AB6FF;
+        text-decoration: none;
+        color: #ffffff;
+        box-shadow: 0 7px 0 #1374ad;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+    }
+
+        #sharebuttonoptions:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #1374ad;
+        }
+
+            #sharebuttonoptions:hover:active {
                 position: relative;
                 box-shadow: none;
             }
