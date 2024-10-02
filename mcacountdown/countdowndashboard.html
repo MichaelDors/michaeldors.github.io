@@ -132,12 +132,12 @@ function renderLinks() {
             </div>
         `;
 
-        card.addEventListener('mousedown', dragStart);
         card.addEventListener('click', (e) => {
             if (!e.target.classList.contains('remove-button') && !isDragging) {
                 window.open(link.url, '_blank', 'noopener,noreferrer');
             }
         });
+        card.addEventListener('mousedown', dragStart);
 
         linksContainer.appendChild(card);
     });
