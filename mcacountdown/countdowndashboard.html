@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Countdown Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 </head>
 <body>
     <div class="container">
@@ -18,6 +19,7 @@
     </div>
     <script>
         let links = [];
+        let placeholder = null;
 
         function setCookie(name, value, days) {
         var expires = "";
@@ -121,18 +123,149 @@ function renderLinks() {
     links.forEach((link, index) => {
         const card = document.createElement('div');
         card.className = 'card';
-        card.onclick = () => window.open(link.url, '_blank', 'noopener,noreferrer');
-
+        card.setAttribute('data-index', index);
         card.innerHTML = `
             <iframe src="${link.url}" title="${link.title}" sandbox="allow-scripts allow-same-origin"></iframe>
             <div class="card-content">
                 <h3>${link.title}</h3>
-                <button class="remove-button" onclick="removeLink(${index}, event)">Remove</button>
+                <i class="remove-button fa-solid fa-trash" onclick="removeLink(${index}, event)" style="cursor:pointer;"></i>
             </div>
         `;
 
+        card.addEventListener('mousedown', dragStart);
+        card.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('remove-button') && !isDragging) {
+                window.open(link.url, '_blank', 'noopener,noreferrer');
+            }
+        });
+
         linksContainer.appendChild(card);
     });
+
+    // Remove the placeholder if it exists
+    if (placeholder) {
+        placeholder.remove();
+        placeholder = null;
+    }
+}
+
+let draggedElement = null;
+let isDragging = false;
+let startX, startY, startIndex;
+placeholder = null;
+
+function dragStart(e) {
+    if (e.button !== 0) return; // Only respond to left mouse button
+    draggedElement = e.target.closest('.card');
+    startIndex = parseInt(draggedElement.getAttribute('data-index'));
+    
+    // Get the initial mouse position relative to the card
+    const rect = draggedElement.getBoundingClientRect();
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', dragEnd);
+
+    // Create and insert the placeholder
+    placeholder = document.createElement('div');
+    placeholder.className = 'card placeholder';
+    placeholder.style.height = `${draggedElement.offsetHeight}px`;
+    placeholder.style.width = `${draggedElement.offsetWidth}px`;
+    draggedElement.parentNode.insertBefore(placeholder, draggedElement);
+
+    draggedElement.style.position = 'fixed';
+    draggedElement.style.zIndex = 1000;
+    draggedElement.style.width = `${draggedElement.offsetWidth}px`;
+    draggedElement.style.height = `${draggedElement.offsetHeight}px`;
+
+    // Set initial position
+    draggedElement.style.left = `${rect.left}px`;
+    draggedElement.style.top = `${rect.top}px`;
+
+    // Delay setting isDragging to true to allow for clicks
+    setTimeout(() => {
+        if (draggedElement) isDragging = true;
+    }, 200);
+}
+
+function drag(e) {
+    if (!draggedElement) return;
+
+    // Calculate new position
+    const newX = e.clientX - startX;
+    const newY = e.clientY - startY;
+    
+    draggedElement.style.left = `${newX}px`;
+    draggedElement.style.top = `${newY}px`;
+
+    const cards = document.querySelectorAll('.card:not(.placeholder)');
+    let closestCard = null;
+    let closestDistance = Infinity;
+    let newIndex = startIndex;
+
+    cards.forEach((card, index) => {
+        if (card !== draggedElement) {
+            const rect = card.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const distance = Math.hypot(e.clientX - centerX, e.clientY - centerY);
+
+            if (Math.abs(e.clientX - centerX) < rect.width * 0.6 &&
+                Math.abs(e.clientY - centerY) < rect.height * 0.6 &&
+                distance < closestDistance) {
+                closestDistance = distance;
+                closestCard = card;
+                newIndex = index;
+            }
+        }
+    });
+
+    if (closestCard) {
+        const currentIndex = Array.from(cards).indexOf(placeholder);
+        if (newIndex !== currentIndex) {
+            // Move the placeholder to the new position
+            closestCard.parentNode.insertBefore(placeholder, 
+                newIndex > currentIndex ? closestCard.nextSibling : closestCard);
+        }
+    }
+}
+
+function dragEnd() {
+    if (!draggedElement) return;
+
+    draggedElement.style.position = '';
+    draggedElement.style.zIndex = '';
+    draggedElement.style.width = '';
+    draggedElement.style.height = '';
+    draggedElement.style.left = '';
+    draggedElement.style.top = '';
+
+    // Remove the placeholder and insert the dragged element
+    if (placeholder) {
+        placeholder.parentNode.insertBefore(draggedElement, placeholder);
+        placeholder.remove();
+        placeholder = null;
+    }
+
+    draggedElement = null;
+    
+    document.removeEventListener('mousemove', drag);
+    document.removeEventListener('mouseup', dragEnd);
+
+    // Update the links array based on the new order
+    const newOrder = Array.from(document.querySelectorAll('.card')).map(card => 
+        links[parseInt(card.getAttribute('data-index'))]
+    );
+    links = newOrder;
+
+    saveLinks();
+    renderLinks();
+
+    // Reset isDragging after a short delay
+    setTimeout(() => {
+        isDragging = false;
+    }, 100);
 }
 
 document.getElementById('addButton').addEventListener('click', addLink);
@@ -189,6 +322,7 @@ button:hover {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 20px;
+    position: relative; /* Add this */
 }
 
 .card {
@@ -201,6 +335,8 @@ button:hover {
     position: relative;
     display: flex;
     flex-direction: column;
+    user-select: none; /* Prevent text selection during drag */
+    transition: transform 0.3s ease; /* Add this */
 }
 
 .card-content {
@@ -236,6 +372,18 @@ iframe {
     height: 150px;
     border: none;
     pointer-events: none;
+}
+
+/* Add a visual cue for dragging */
+.card:active {
+    cursor: grabbing;
+}
+
+.placeholder {
+    border: 2px dashed #666;
+    background-color: rgba(102, 102, 102, 0.1);
+    box-shadow: none;
+    transition: all 0.2s ease; /* Faster transition for more responsive feel */
 }
 </style>
 </html>
