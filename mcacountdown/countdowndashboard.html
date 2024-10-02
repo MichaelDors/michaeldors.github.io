@@ -139,11 +139,6 @@ function renderLinks() {
                 </div>
             `;
 
-            card.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('remove-button') && !isDragging) {
-                    window.open(link.url, '_blank', 'noopener,noreferrer');
-                }
-            });
             card.addEventListener('mousedown', dragStart);
         } else {
             // Update the remove button's onclick attribute
@@ -173,20 +168,45 @@ function renderLinks() {
 let draggedElement = null;
 let isDragging = false;
 let startX, startY, startIndex;
-placeholder = null;
+let mouseDownTime;
+let mouseMoveHandler;
 
 function dragStart(e) {
     if (e.button !== 0) return; // Only respond to left mouse button
-    draggedElement = e.target.closest('.card');
-    startIndex = parseInt(draggedElement.getAttribute('data-index'));
     
-    // Get the initial mouse position relative to the card
-    const rect = draggedElement.getBoundingClientRect();
-    startX = e.clientX - rect.left;
-    startY = e.clientY - rect.top;
+    const card = e.target.closest('.card');
+    if (!card) return;
 
-    document.addEventListener('mousemove', drag);
+    mouseDownTime = new Date().getTime();
+    
+    // Setup the potential drag
+    startX = e.clientX;
+    startY = e.clientY;
+    startIndex = parseInt(card.getAttribute('data-index'));
+
+    // Add mousemove and mouseup listeners to the document
+    mouseMoveHandler = (moveEvent) => checkDragThreshold(moveEvent, card);
+    document.addEventListener('mousemove', mouseMoveHandler);
     document.addEventListener('mouseup', dragEnd);
+}
+
+function checkDragThreshold(moveEvent, card) {
+    const moveX = moveEvent.clientX - startX;
+    const moveY = moveEvent.clientY - startY;
+    const distance = Math.sqrt(moveX * moveX + moveY * moveY);
+
+    // If the mouse has moved more than 5 pixels, start dragging
+    if (distance > 5) {
+        startDragging(moveEvent, card);
+    }
+}
+
+function startDragging(e, card) {
+    isDragging = true;
+    draggedElement = card;
+
+    // Remove the mousemove handler that checks for drag threshold
+    document.removeEventListener('mousemove', mouseMoveHandler);
 
     // Create and insert the placeholder
     placeholder = document.createElement('div');
@@ -195,19 +215,17 @@ function dragStart(e) {
     placeholder.style.width = `${draggedElement.offsetWidth}px`;
     draggedElement.parentNode.insertBefore(placeholder, draggedElement);
 
+    // Set up the dragged element
+    const rect = draggedElement.getBoundingClientRect();
     draggedElement.style.position = 'fixed';
     draggedElement.style.zIndex = 1000;
-    draggedElement.style.width = `${draggedElement.offsetWidth}px`;
-    draggedElement.style.height = `${draggedElement.offsetHeight}px`;
-
-    // Set initial position
+    draggedElement.style.width = `${rect.width}px`;
+    draggedElement.style.height = `${rect.height}px`;
     draggedElement.style.left = `${rect.left}px`;
     draggedElement.style.top = `${rect.top}px`;
 
-    // Delay setting isDragging to true to allow for clicks
-    setTimeout(() => {
-        if (draggedElement) isDragging = true;
-    }, 200);
+    // Add the drag handler
+    document.addEventListener('mousemove', drag);
 }
 
 function drag(e) {
@@ -252,41 +270,53 @@ function drag(e) {
     }
 }
 
-function dragEnd() {
-    if (!draggedElement) return;
+function dragEnd(e) {
+    const currentTime = new Date().getTime();
+    const timeDiff = currentTime - mouseDownTime;
 
-    draggedElement.style.position = '';
-    draggedElement.style.zIndex = '';
-    draggedElement.style.width = '';
-    draggedElement.style.height = '';
-    draggedElement.style.left = '';
-    draggedElement.style.top = '';
-
-    // Remove the placeholder and insert the dragged element
-    if (placeholder) {
-        placeholder.parentNode.insertBefore(draggedElement, placeholder);
-        placeholder.remove();
-        placeholder = null;
+    // If it's a quick click (less than 200ms) and we haven't started dragging, treat it as a click
+    if (timeDiff < 200 && !isDragging) {
+        const card = e.target.closest('.card');
+        if (card && !e.target.classList.contains('remove-button')) {
+            const url = decodeURIComponent(card.getAttribute('data-url'));
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
     }
 
+    // Clean up drag-related states and elements
+    if (draggedElement) {
+        draggedElement.style.position = '';
+        draggedElement.style.zIndex = '';
+        draggedElement.style.width = '';
+        draggedElement.style.height = '';
+        draggedElement.style.left = '';
+        draggedElement.style.top = '';
+
+        if (placeholder) {
+            placeholder.parentNode.insertBefore(draggedElement, placeholder);
+            placeholder.remove();
+            placeholder = null;
+        }
+
+        // Update the links array based on the new order
+        links = Array.from(document.querySelectorAll('.card')).map(card => {
+            const url = decodeURIComponent(card.getAttribute('data-url'));
+            return links.find(link => link.url === url);
+        });
+
+        saveLinks();
+        updateCardIndices();
+    }
+
+    // Reset all drag-related variables
     draggedElement = null;
-    
+    isDragging = false;
+    mouseDownTime = null;
+
+    // Remove all event listeners
+    document.removeEventListener('mousemove', mouseMoveHandler);
     document.removeEventListener('mousemove', drag);
     document.removeEventListener('mouseup', dragEnd);
-
-    // Update the links array based on the new order
-    links = Array.from(document.querySelectorAll('.card')).map(card => {
-        const url = decodeURIComponent(card.getAttribute('data-url'));
-        return links.find(link => link.url === url);
-    });
-
-    saveLinks();
-    updateCardIndices();
-
-    // Reset isDragging after a short delay
-    setTimeout(() => {
-        isDragging = false;
-    }, 100);
 }
 
 function updateCardIndices() {
