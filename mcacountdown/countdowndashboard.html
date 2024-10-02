@@ -118,28 +118,49 @@ function importLinks() {
 
 function renderLinks() {
     const linksContainer = document.getElementById('linksContainer');
-    linksContainer.innerHTML = '';
+    
+    // Clear the container without removing its contents
+    while (linksContainer.firstChild) {
+        linksContainer.removeChild(linksContainer.firstChild);
+    }
 
     links.forEach((link, index) => {
-        const card = document.createElement('div');
-        card.className = 'card';
+        let card = document.querySelector(`.card[data-url="${encodeURIComponent(link.url)}"]`);
+        
+        if (!card) {
+            card = document.createElement('div');
+            card.className = 'card';
+            card.setAttribute('data-url', encodeURIComponent(link.url));
+            card.innerHTML = `
+                <iframe src="${link.url}" title="${link.title}" sandbox="allow-scripts allow-same-origin"></iframe>
+                <div class="card-content">
+                    <h3>${link.title}</h3>
+                    <i class="remove-button fa-solid fa-trash" onclick="removeLink(${index}, event)" style="cursor:pointer;"></i>
+                </div>
+            `;
+
+            card.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('remove-button') && !isDragging) {
+                    window.open(link.url, '_blank', 'noopener,noreferrer');
+                }
+            });
+            card.addEventListener('mousedown', dragStart);
+        } else {
+            // Update the remove button's onclick attribute
+            const removeButton = card.querySelector('.remove-button');
+            removeButton.setAttribute('onclick', `removeLink(${index}, event)`);
+        }
+
         card.setAttribute('data-index', index);
-        card.innerHTML = `
-            <iframe src="${link.url}" title="${link.title}" sandbox="allow-scripts allow-same-origin"></iframe>
-            <div class="card-content">
-                <h3>${link.title}</h3>
-                <i class="remove-button fa-solid fa-trash" onclick="removeLink(${index}, event)" style="cursor:pointer;"></i>
-            </div>
-        `;
-
-        card.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('remove-button') && !isDragging) {
-                window.open(link.url, '_blank', 'noopener,noreferrer');
-            }
-        });
-        card.addEventListener('mousedown', dragStart);
-
         linksContainer.appendChild(card);
+    });
+
+    // Remove any cards that are no longer in the links array
+    document.querySelectorAll('.card').forEach(card => {
+        const url = decodeURIComponent(card.getAttribute('data-url'));
+        if (!links.some(link => link.url === url)) {
+            card.remove();
+        }
     });
 
     // Remove the placeholder if it exists
@@ -254,18 +275,26 @@ function dragEnd() {
     document.removeEventListener('mouseup', dragEnd);
 
     // Update the links array based on the new order
-    const newOrder = Array.from(document.querySelectorAll('.card')).map(card => 
-        links[parseInt(card.getAttribute('data-index'))]
-    );
-    links = newOrder;
+    links = Array.from(document.querySelectorAll('.card')).map(card => {
+        const url = decodeURIComponent(card.getAttribute('data-url'));
+        return links.find(link => link.url === url);
+    });
 
     saveLinks();
-    renderLinks();
+    updateCardIndices();
 
     // Reset isDragging after a short delay
     setTimeout(() => {
         isDragging = false;
     }, 100);
+}
+
+function updateCardIndices() {
+    document.querySelectorAll('.card').forEach((card, index) => {
+        card.setAttribute('data-index', index);
+        const removeButton = card.querySelector('.remove-button');
+        removeButton.setAttribute('onclick', `removeLink(${index}, event)`);
+    });
 }
 
 document.getElementById('addButton').addEventListener('click', addLink);
