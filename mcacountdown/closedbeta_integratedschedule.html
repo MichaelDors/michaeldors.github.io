@@ -157,7 +157,8 @@
         <br>
         <Br>
         <a onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
-        <a id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
+        <a id="savedash" onclick="savetodash();"><i class=fa-solid fa-star"></i> Save</a>
+        <a id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Discard</a>
         <a id="beta" class="betabutton" href="https://countdown.michaeldors.com/" target="_blank"><i class="fa-solid fa-clock-rotate-left"></i> Current Version</a>
 
         <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
@@ -1204,6 +1205,30 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         }
 
             .warning:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
+            
+    #savedash {
+        font-family: 'Fredoka One';
+        background-color: #ffbe5d;
+        text-decoration: none;
+        color: #ffffff;
+        box-shadow: 0 7px 0 #FF9900;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+    }
+
+        #savedash:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #FF9900;
+        }
+
+            #savedash:hover:active {
                 position: relative;
                 box-shadow: none;
             }
