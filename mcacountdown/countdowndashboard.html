@@ -222,9 +222,17 @@ function startDragging(e, card) {
     draggedElement.style.width = `${rect.width}px`;
     draggedElement.style.height = `${rect.height}px`;
 
-    // Adjust the initial position to match the mouse position
-    draggedElement.style.left = `${e.clientX - (startX - rect.left)}px`;
-    draggedElement.style.top = `${e.clientY - (startY - rect.top)}px`;
+    // Calculate the offset of the mouse position relative to the card's top-left corner
+    const offsetX = startX - rect.left;
+    const offsetY = startY - rect.top;
+
+    // Set the initial position of the dragged element
+    draggedElement.style.left = `${e.clientX - offsetX}px`;
+    draggedElement.style.top = `${e.clientY - offsetY}px`;
+
+    // Store the offset for use in the drag function
+    draggedElement.dataset.offsetX = offsetX;
+    draggedElement.dataset.offsetY = offsetY;
 
     // Add the drag handler
     document.addEventListener('mousemove', drag);
@@ -233,12 +241,12 @@ function startDragging(e, card) {
 function drag(e) {
     if (!draggedElement) return;
 
-    // Calculate new position
-    const newX = e.clientX - startX;
-    const newY = e.clientY - startY;
+    // Use the stored offset to position the card
+    const offsetX = parseFloat(draggedElement.dataset.offsetX);
+    const offsetY = parseFloat(draggedElement.dataset.offsetY);
     
-    draggedElement.style.left = `${newX}px`;
-    draggedElement.style.top = `${newY}px`;
+    draggedElement.style.left = `${e.clientX - offsetX}px`;
+    draggedElement.style.top = `${e.clientY - offsetY}px`;
 
     const cards = document.querySelectorAll('.card:not(.placeholder)');
     let closestCard = null;
