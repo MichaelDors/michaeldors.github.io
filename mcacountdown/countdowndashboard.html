@@ -222,13 +222,12 @@ function startDragging(e, card) {
     draggedElement.style.width = `${rect.width}px`;
     draggedElement.style.height = `${rect.height}px`;
 
-    // Calculate the offset of the mouse position relative to the card's top-left corner
-    const offsetX = startX - rect.left;
-    const offsetY = startY - rect.top;
+    // Calculate the offset of the mouse position relative to the card's center
+    const offsetX = e.clientX - (rect.left + rect.width / 2);
+    const offsetY = e.clientY - (rect.top + rect.height / 2);
 
     // Set the initial position of the dragged element
-    draggedElement.style.left = `${e.clientX - offsetX}px`;
-    draggedElement.style.top = `${e.clientY - offsetY}px`;
+    updateElementPosition(e.clientX, e.clientY);
 
     // Store the offset for use in the drag function
     draggedElement.dataset.offsetX = offsetX;
@@ -240,13 +239,8 @@ function startDragging(e, card) {
 
 function drag(e) {
     if (!draggedElement) return;
-
-    // Use the stored offset to position the card
-    const offsetX = parseFloat(draggedElement.dataset.offsetX);
-    const offsetY = parseFloat(draggedElement.dataset.offsetY);
     
-    draggedElement.style.left = `${e.clientX - offsetX}px`;
-    draggedElement.style.top = `${e.clientY - offsetY}px`;
+    updateElementPosition(e.clientX, e.clientY);
 
     const cards = document.querySelectorAll('.card:not(.placeholder)');
     let closestCard = null;
@@ -335,6 +329,16 @@ function updateCardIndices() {
         const removeButton = card.querySelector('.remove-button');
         removeButton.setAttribute('onclick', `removeLink(${index}, event)`);
     });
+}
+
+function updateElementPosition(mouseX, mouseY) {
+    const offsetX = parseFloat(draggedElement.dataset.offsetX);
+    const offsetY = parseFloat(draggedElement.dataset.offsetY);
+    const width = parseFloat(draggedElement.style.width);
+    const height = parseFloat(draggedElement.style.height);
+    
+    draggedElement.style.left = `${mouseX - width / 2 - offsetX}px`;
+    draggedElement.style.top = `${mouseY - height / 2 - offsetY}px`;
 }
 
 document.getElementById('addButton').addEventListener('click', addLink);
