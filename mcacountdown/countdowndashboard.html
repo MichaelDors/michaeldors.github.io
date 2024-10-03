@@ -221,8 +221,10 @@ function startDragging(e, card) {
     draggedElement.style.zIndex = 1000;
     draggedElement.style.width = `${rect.width}px`;
     draggedElement.style.height = `${rect.height}px`;
-    draggedElement.style.left = `${rect.left}px`;
-    draggedElement.style.top = `${rect.top}px`;
+
+    // Adjust the initial position to match the mouse position
+    draggedElement.style.left = `${e.clientX - (startX - rect.left)}px`;
+    draggedElement.style.top = `${e.clientY - (startY - rect.top)}px`;
 
     // Add the drag handler
     document.addEventListener('mousemove', drag);
