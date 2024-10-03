@@ -11,8 +11,6 @@
         <div class="input-container">
             <input type="text" id="urlInput" placeholder="Enter URL">
             <button id="addButton">Add Link</button>
-            <button id="exportButton">Export Links</button>
-            <button id="importButton">Import Links</button>
         </div>
         <div id="linksContainer" class="links-container">
         </div>
@@ -354,8 +352,6 @@ function updateElementPosition(mouseX, mouseY) {
 }
 
 document.getElementById('addButton').addEventListener('click', addLink);
-document.getElementById('exportButton').addEventListener('click', exportLinks);
-document.getElementById('importButton').addEventListener('click', importLinks);
 
 loadLinks();
     </script>
