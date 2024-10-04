@@ -3726,6 +3726,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         document.getElementById("autopilotpopupmobile").style.opacity = "0";
     }
 
+
     //set Fredoka font
     function FontFredoka(method) {
         document.querySelector(':root').style.setProperty('--typeface', 'Fredoka One');
@@ -3738,6 +3739,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         document.getElementById("yeseva").classList.add("fontpicker");
         document.getElementById("orbitron").classList.remove("selectedfontpicker");
         document.getElementById("orbitron").classList.add("fontpicker");
+
+        document.getElementById("schedule-classTitle").style.textTransform = "initial";
 
         if (method == "Manual") {
             SetCountDowngeneral();
@@ -3757,6 +3760,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         document.getElementById("orbitron").classList.remove("selectedfontpicker");
         document.getElementById("orbitron").classList.add("fontpicker");
 
+        document.getElementById("schedule-classTitle").style.textTransform = "initial";
+
         if (method == "Manual") {
             SetCountDowngeneral();
         }
@@ -3775,6 +3780,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         document.getElementById("orbitron").classList.remove("selectedfontpicker");
         document.getElementById("orbitron").classList.add("fontpicker");
 
+        document.getElementById("schedule-classTitle").style.textTransform = "initial";
+
         if (method == "Manual") {
             SetCountDowngeneral();
         }
@@ -3792,6 +3799,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         document.getElementById("yeseva").classList.remove("selectedfontpicker");
         document.getElementById("yeseva").classList.add("fontpicker");
         document.getElementById("orbitron").classList.add("selectedfontpicker");
+
+        document.getElementById("schedule-classTitle").style.textTransform = "uppercase";
 
         if (method == "Manual") {
             SetCountDowngeneral();
