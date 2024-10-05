@@ -1007,3 +1007,25 @@ nav img {
     }
 }
 
+.cookiebanner{
+    position:fixed;
+    bottom:0.5in;
+    left:0.5in;
+    color:white;
+    border-radius: 20px;
+    padding:30px;
+    z-index:1000000;
+    background: rgba(0, 0, 0, 0.768);
+    box-shadow: 0 4px 30px rgba(55, 14, 14, 0.598);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border-top: 1px solid rgba(215, 215, 215, 0.805);
+    border-bottom: 1px solid rgba(0, 0, 0, 1);
+    margin-right:0.5in;
+}
+
+.cookiebanner .glowbutton{
+    margin-left:0in;
+    margin-top:20px;
+    margin-bottom:10px;
+}
