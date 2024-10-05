@@ -211,6 +211,12 @@ new            </p>
         </section>
     </div>
 
+    <div class="cookiebanner" id="cookie-banner">
+        <h1>We use cookies</h1>
+        <p>To enhance the user experience and better michaeldors.com</p>
+        <p><a id="accept-cookies" class="glowbutton">Sounds Good</a> <a style="cursor:pointer; color:white; text-decoration: none;" href="privacy.html">Learn More</a></p>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
@@ -251,4 +257,17 @@ new            </p>
     }else{
         element.innerHTML = daysUntilTargetDate + " days until my birthday";
     }
+    document.addEventListener("DOMContentLoaded", function () {
+        var banner = document.getElementById("cookie-banner");
+        var acceptButton = document.getElementById("accept-cookies");
+
+        if (!localStorage.getItem("cookiesAccepted")) {
+            banner.style.display = "block";
+        }
+
+        acceptButton.addEventListener("click", function () {
+            localStorage.setItem("cookiesAccepted", "true");
+            banner.style.display = "none";
+        });
+    });
 </script>
