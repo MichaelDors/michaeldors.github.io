@@ -289,6 +289,9 @@ new            </p>
         if (!getCookie("cookiesAccepted")) {
             banner.style.display = "";
         }
+        else{
+            banner.style.display = "none";
+        }
 
         acceptButton.addEventListener("click", function () {
             setCookie("cookiesAccepted", "True", "70")
