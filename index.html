@@ -24,11 +24,24 @@
     <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-1DKXNCSFTP"></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
+function getCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+if(getCookie("cookiesAccepted")){
+    window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
 
   gtag('config', 'G-1DKXNCSFTP');
+    }
 </script>
 <body id="body">
 
@@ -294,6 +307,7 @@ new            </p>
         acceptButton.addEventListener("click", function () {
             setCookie("cookiesAccepted", "True", "70")
             banner.style.display = "none";
+            location.reload();
         });
     });
 </script>
