@@ -1008,7 +1008,7 @@ nav img {
 }
 
 .cookiebanner{
-    position:fixed;
+    position:fixed !important;
     bottom:0.5in;
     left:0.5in;
     color:white;
