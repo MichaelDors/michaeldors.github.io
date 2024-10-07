@@ -43,7 +43,7 @@
 <body id="body" style="background-color:#141414;  overflow-x:hidden;">
     <input onblur="setcountdowntitle('front');" id="countdowntitle" type="text" />
     <p id="clock" class="clock"></p>
-    
+
 
     <div class="backgroundframe" id="animatedbackground">
         <div class="backgroundframe-bg">
@@ -53,19 +53,19 @@
     </div>
 
     <div id="schedule">
-    <div class="schedule-viewer" id="schedule-viewer">
-    <div class="schedule-current-class" id="schedule-currentClass">
-        <div class="schedule-class-title" id="schedule-classTitle"></div>
-        <div class="schedule-time-remaining">
-            <div class="schedule-time" id="schedule-timeRemaining"></div>
-            <div class="schedule-remaining-text" id="schedule-remainingText">remaining</div>
+        <div class="schedule-viewer" id="schedule-viewer">
+            <div class="schedule-current-class" id="schedule-currentClass">
+                <div class="schedule-class-title" id="schedule-classTitle"></div>
+                <div class="schedule-time-remaining">
+                    <div class="schedule-time" id="schedule-timeRemaining"></div>
+                    <div class="schedule-remaining-text" id="schedule-remainingText">remaining</div>
+                </div>
+                <div class="schedule-progress-bar">
+                    <div class="schedule-progress" id="schedule-progress"></div>
+                </div>
+            </div>
+            <div class="schedule-upcoming-classes" id="schedule-upcomingClasses"></div>
         </div>
-        <div class="schedule-progress-bar">
-            <div class="schedule-progress" id="schedule-progress"></div>
-        </div>
-    </div>
-    <div class="schedule-upcoming-classes" id="schedule-upcomingClasses"></div>
-    </div>
     </div>
     </div>
 
@@ -109,7 +109,7 @@
 
                 <option value="Ease of Use"></option>
                 <option value="Only Include"></option>
-                
+
                 <option value="Presets/Themes"></option>
                 <option value="Date + Time"></option>
                 <option value="Title"></option>
@@ -159,282 +159,279 @@
             </p>
         </div>
         <div id="settingsmainpane">
-        <center>
-        <br>
-        <Br>
-        <h1 class="textelement">Options</h1>
-        <br>
-        <Br>
-        <a onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
-        <a id="sharebuttonoptions" href="#linkoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
-        <a id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
-        <a id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
+            <center>
+                <br>
+                <Br>
+                <h1 class="textelement">Options</h1>
+                <br>
+                <Br>
+                <a onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
+                <a id="sharebuttonoptions" href="#linkoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
+                <a id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
+                <a id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
 
-        <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
-            <h1><i style="color: #39B8FB" class="fa-solid fa-paper-plane"></i> Shareable Options</h1>
-            <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; margin-bottom:30px;">Options that are saved in the link for this countdown, not with your preferences.</p>
-        </div>
-        <br />
-        <br />
-        <br />
-        <h1 id="generaloptions">General Options</h1>
-        <br>
-        <br>
-        <br>
-        <h2 class="textelement" style="font-family: 'Dosis';">
-            Presets
-        </h2>
-        <div class="presetswrapper">
-            <div class="presetsicon"><i id="presetsleft" class="fa-solid fa-angle-left"></i></div>
-            <ul class="presetstabs-box" id="presetstabs-box">
-                <!--<li id="customtab" class="tab active">Custom</li>-->
-                <li id="endtab" class="imgtab" onclick="MESPreset();"><img src="Backgrounds/Presets/Covers/1.png"></li>
-                <li id="nydtab" class="imgtab" onclick="NYDPreset();"><img src="Backgrounds/Presets/Covers/2.png"</li>
-                <li id="vdtab" class="imgtab" onclick="VDPreset();"><img src="Backgrounds/Presets/Covers/3.png"y</li>
-                <li id="eastab" class="imgtab" onclick="EASTERPreset();"><img src="Backgrounds/Presets/Covers/4.png"</li>
-                <li id="idtab" class="imgtab" onclick="IDPreset();"><img src="Backgrounds/Presets/Covers/5.png"</li>
-                <li id="htab" class="imgtab" onclick="HPreset();"><img src="Backgrounds/Presets/Covers/6.png"</li>
-                <li id="ttab" class="imgtab" onclick="TPreset();"><img src="Backgrounds/Presets/Covers/7.png"</li>
-                <li id="ctab" class="imgtab" onclick="CPreset();"><img src="Backgrounds/Presets/Covers/8.png"</li>
-            </ul>
-            <div class="presetsicon"><i id="presetsright" class="fa-solid fa-angle-right"></i></div>
-        </div>
-        <br/>
-        <br/>
+                <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
+                    <h1><i style="color: #39B8FB" class="fa-solid fa-paper-plane"></i> Shareable Options</h1>
+                    <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; margin-bottom:30px;">Options that are saved in the link for this countdown, not with your preferences.</p>
+                </div>
+                <br />
+                <br />
+                <br />
+                <h1 id="generaloptions">General Options</h1>
+                <br>
+                <br>
+                <br>
+                <h2 class="textelement" style="font-family: 'Dosis';">
+                    Presets <span class="betatag">BETA</span>
+                </h2>
+                <div class="presetswrapper">
+                    <div class="presetsicon"><i id="presetsleft" class="fa-solid fa-angle-left"></i></div>
+                    <ul class="presetstabs-box" id="presetstabs-box">
+                        <!--<li id="customtab" class="tab active">Custom</li>-->
+                        <li id="endtab" class="imgtab" onclick="MESPreset();"><img src="Backgrounds/Presets/Covers/1.png"></li>
+                        <li id="nydtab" class="imgtab" onclick="NYDPreset();"><img src="Backgrounds/Presets/Covers/2.png"</li>
+                        <li id="vdtab" class="imgtab" onclick="VDPreset();"><img src="Backgrounds/Presets/Covers/3.png" y</li>
+                        <li id="eastab" class="imgtab" onclick="EASTERPreset();"><img src="Backgrounds/Presets/Covers/4.png"</li>
+                        <li id="idtab" class="imgtab" onclick="IDPreset();"><img src="Backgrounds/Presets/Covers/5.png"</li>
+                        <li id="htab" class="imgtab" onclick="HPreset();"><img src="Backgrounds/Presets/Covers/6.png"</li>
+                        <li id="ttab" class="imgtab" onclick="TPreset();"><img src="Backgrounds/Presets/Covers/7.png"</li>
+                        <li id="ctab" class="imgtab" onclick="CPreset();"><img src="Backgrounds/Presets/Covers/8.png"</li>
+                    </ul>
+                    <div class="presetsicon"><i id="presetsright" class="fa-solid fa-angle-right"></i></div>
+                </div>
+                <br />
+                <br />
 
-        <h2 class="textelement" style="font-family: 'Dosis';">
-            Date
-        </h2>
+                <h2 class="textelement" style="font-family: 'Dosis';">
+                    Date
+                </h2>
 
-        <input class="datepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
-        <div class="wrapper">
-            <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
-            <ul class="tabs-box" id="tabs-box">
-                <!--<li id="customtab" class="tab active">Custom</li>-->
-                <li id="endtab" class="mcatab" onclick="MES();">MCA End of Year</li>
-                <li id="nydtab" class="tab" onclick="NYD();">New Year's Day</li>
-                <li id="vdtab" class="tab" onclick="VD();">Valentine's Day</li>
-                <li id="endtab" class="tab" onclick="EASTER();">Easter</li>
-                <li id="idtab" class="tab" onclick="ID();">Independence Day</li>
-                <li id="htab" class="tab" onclick="H();">Halloween</li>
-                <li id="ttab" class="tab" onclick="T();">Thanksgiving</li>
-                <li id="ctab" class="tab" onclick="C();">Christmas</li>
-            </ul>
-            <div class="icon"><i id="right" class="fa-solid fa-angle-right"></i></div>
-        </div>
-        <br />
-        <br />
-        <h2 class="textelement" style="font-family: 'Dosis';">
-            Title
-        </h2>
-        <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;" />
-        <h2 class="textelement" style="font-family: 'Dosis';" id="linkoptions">
-            Link
-        </h2>
+                <input class="datepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
+                <div class="wrapper">
+                    <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
+                    <ul class="tabs-box" id="tabs-box">
+                        <!--<li id="customtab" class="tab active">Custom</li>-->
+                        <li id="endtab" class="mcatab" onclick="MES();">MCA End of Year</li>
+                        <li id="nydtab" class="tab" onclick="NYD();">New Year's Day</li>
+                        <li id="vdtab" class="tab" onclick="VD();">Valentine's Day</li>
+                        <li id="endtab" class="tab" onclick="EASTER();">Easter</li>
+                        <li id="idtab" class="tab" onclick="ID();">Independence Day</li>
+                        <li id="htab" class="tab" onclick="H();">Halloween</li>
+                        <li id="ttab" class="tab" onclick="T();">Thanksgiving</li>
+                        <li id="ctab" class="tab" onclick="C();">Christmas</li>
+                    </ul>
+                    <div class="icon"><i id="right" class="fa-solid fa-angle-right"></i></div>
+                </div>
+                <br />
+                <br />
+                <h2 class="textelement" style="font-family: 'Dosis';">
+                    Title
+                </h2>
+                <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;" />
+                <h2 class="textelement" style="font-family: 'Dosis';" id="linkoptions">
+                    Link
+                </h2>
 
 
-        <input id="linkinput" class="input"/>
-        <button style="background:#141414; color:white; border:none; outline:none; cursor:pointer">
-            <i class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlink()"></i>
-        </button>
-        <br />
-        <br />
-        <div style="border-radius: 20px; background: linear-gradient(to bottom right, #FFFFFF, #FFFFFF, #BD8BFF);margin-bottom:125px; padding: 20px; color: black; height: 180px; width: 380px;">
-            <div id="qrcode" style="float: left; box-shadow: #ffffff 1px 1px 25px; padding-top: 15px; padding-left:20px; transform:scale(1.1)"></div>
-            <div style="float:left; padding-left:30px; text-align:left;">
-                <p style="color:black; font-size:27px; line-height:0.1;">QR Code</p>
-                <p style="font-family: 'Dosis', sans-serif; color:black; font-size:16px; line-height:0.9">
-                    Scan on most camera apps<br /> to go to the countdown.
+                <input id="linkinput" class="input" />
+                <button style="background:#141414; color:white; border:none; outline:none; cursor:pointer">
+                    <i class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlink()"></i>
+                </button>
+                <br />
+                <br />
+                <div style="border-radius: 20px; background: linear-gradient(to bottom right, #FFFFFF, #FFFFFF, #BD8BFF);margin-bottom:125px; padding: 20px; color: black; height: 180px; width: 380px;">
+                    <div id="qrcode" style="float: left; box-shadow: #ffffff 1px 1px 25px; padding-top: 15px; padding-left:20px; transform:scale(1.1)"></div>
+                    <div style="float:left; padding-left:30px; text-align:left;">
+                        <p style="color:black; font-size:27px; line-height:0.1;">QR Code</p>
+                        <p style="font-family: 'Dosis', sans-serif; color:black; font-size:16px; line-height:0.9">
+                            Scan on most camera apps<br /> to go to the countdown.
+                        </p>
+                        <a onmouseup="downloadQR()"><i class="fa-solid fa-download"></i> Download</a>
+                    </div>
+
+                </div>
+                <h1 id="customizationoptions">Customization Options</h1>
+                <br>
+                <br>
+                <br>
+
+                <h2 class="textelement" style="font-family: 'Dosis';">
+                    Foreground Colors <span class="betatag">BEING UPDATED</span>
+                </h2>
+
+
+                <div id="colorPickersContainer">
+                    <div class="colorpicker-container">
+                        <input class="colorpicker" id="color1" type="color" value="#8426ff" onblur="SetCountDowngeneral();" />
+                    </div>
+                    <div class="colorpicker-container">
+                        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" onblur="SetCountDowngeneral();" />
+                        <div class="remove-button" onclick="removeColorPicker(this)">-</div>
+                    </div>
+                    <div class="colorpicker-container">
+                        <input class="colorpicker" id="color3" type="color" value="#00ff5e" onblur="SetCountDowngeneral();" />
+                        <div class="remove-button" onclick="removeColorPicker(this)">-</div>
+                    </div>
+                    <div class="colorpicker-container">
+                        <input class="colorpicker" id="color4" type="color" value="#ff9900" onblur="SetCountDowngeneral();" />
+                        <div class="remove-button" onclick="removeColorPicker(this)">-</div>
+                    </div>
+                </div>
+                <div class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus"></i></div>
+
+                <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
+                    The foreground elements will cycle through the chosen colors.
+                    <br />
+                    Keep contrast in mind when choosing colors.
                 </p>
-                <a onmouseup="downloadQR()"><i class="fa-solid fa-download"></i> Download</a>
-            </div>
+                <br />
+                <br />
+                <br>
+                <br>
+                <h2 class="textelement" style="font-family: 'Dosis';">
+                    Background
+                </h2>
 
-        </div>
-        <h1 id="customizationoptions">Customization Options</h1>
-        <br>
-        <br>
-        <br>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn1" onmouseup="setbg('1', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_1.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn2" onmouseup="setbg('2', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_2.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn3" onmouseup="setbg('3', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_3.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn4" onmouseup="setbg('4', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_4.png"></div></a>
+                <br />
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn5" onmouseup="setbg('5', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_5.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn6" onmouseup="setbg('6', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_6.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn7" onmouseup="setbg('7', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_7.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn8" onmouseup="setbg('8', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_8.png"></div></a>
+                <br />
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn9" onmouseup="setbg('9', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_9.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn10" onmouseup="setbg('10', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_10.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn11" onmouseup="setbg('11', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_11.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn12" onmouseup="setbg('12', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_12.png"></div></a>
+                <br />
+                <br />
+                <br>
+                <br>
+                <br />
+                <br />
+                <h2 class="textelement" style="font-family: 'Dosis';">
+                    Typeface
+                </h2>
+                <a class="aintext selectedfontpicker" id="fredoka" style="font-family:'Fredoka One'" onmouseup="FontFredoka('Manual');">12:34</a>
+                <a class="aintext fontpicker" id="poppins" style="font-family:'Poppins'" onmouseup="FontPoppins('Manual');">12:34</a>
+                <a class="aintext fontpicker" id="yeseva" style="font-family:'Yeseva One'" onmouseup="FontYeseva('Manual');">12:34</a>
+                <a class="aintext fontpicker" id="orbitron" style="font-family:'Orbitron'" onmouseup="FontOrbitron('Manual');">12:34</a>
+                <br>
+                <br>
+                <br>
+                <h1 id="progressoptions">Progress <span class="betatag">BETA</span></h1>
+                <br>
+                <br>
+                <br>
+                <h1 id="scheduleoptions">Countdown Schedule <span class="betatag">BETA</span></h1>
+                <div class="schedule-editor" style="color: white !important;">
+                    <div class="schedule-container">
+                        <div class="schedule-form-group">
+                            <label for="schedule-eventTitle">Event Title:</label>
+                            <input type="text" id="schedule-eventTitle" required>
+                        </div>
+                        <div class="schedule-form-group">
+                            <label for="schedule-startTime">Start Time:</label>
+                            <input type="time" id="schedule-startTime" required>
+                        </div>
+                        <div class="schedule-form-group">
+                            <label for="schedule-endTime">End Time:</label>
+                            <input type="time" id="schedule-endTime" required>
+                        </div>
+                        <button id="schedule-addOrUpdateEventBtn">Add Event</button>
 
-        <h2 class="textelement" style="font-family: 'Dosis';">
-            Foreground Colors
-        </h2>
+                        <div class="schedule-editor-section">
+                            <h3>Regular Schedule</h3>
+                            <button class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">Show/Hide Regular Schedule</button>
+                            <div class="schedule-content">
+                                <ul id="schedule-eventList"></ul>
+                            </div>
+                        </div>
 
+                        <div class="schedule-editor-section">
+                            <h3>Exception Days</h3>
+                            <div class="schedule-form-group">
+                                <label for="schedule-exceptionDay">Add Exception Day:</label>
+                                <select id="schedule-exceptionDay">
+                                    <option value="0">Sunday</option>
+                                    <option value="1">Monday</option>
+                                    <option value="2">Tuesday</option>
+                                    <option value="3">Wednesday</option>
+                                    <option value="4">Thursday</option>
+                                    <option value="5">Friday</option>
+                                    <option value="6">Saturday</option>
+                                </select>
+                                <button id="schedule-addExceptionBtn">Add Exception Day</button>
+                            </div>
+                            <div id="schedule-exceptionList"></div>
+                        </div>
+                    </div>
+                </div>
+    <br>
+    <br>
+    <br>
+    <h1 id="queueoptions">Countdown Queue <span class="betatag">BETA</span></h1>
+    <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
+        <h1><i style="color: #FE9A00" class="fa-solid fa-user-lock"></i> Personal Options</h1>
+        <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; margin-bottom:30px;">Options that are for you alone and won't be shared in the link.</p>
+    </div>
+    <br />
+    <br />
+    <br />
+    <br />
+    <h2 class="textelement">
+        Animation Speed <span class="betatag">BEING UPDATED</span>
+    </h2>
 
-        <div id="colorPickersContainer">
-            <div class="colorpicker-container">
-                <input class="colorpicker" id="color1" type="color" value="#8426ff" onblur="SetCountDowngeneral();" />
-            </div>
-            <div class="colorpicker-container">
-                <input class="colorpicker" id="color2" type="color" value="#3ab6ff" onblur="SetCountDowngeneral();" />
-                <div class="remove-button" onclick="removeColorPicker(this)">-</div>
-            </div>
-            <div class="colorpicker-container">
-                <input class="colorpicker" id="color3" type="color" value="#00ff5e" onblur="SetCountDowngeneral();" />
-                <div class="remove-button" onclick="removeColorPicker(this)">-</div>
-            </div>
-            <div class="colorpicker-container">
-                <input class="colorpicker" id="color4" type="color" value="#ff9900" onblur="SetCountDowngeneral();" />
-                <div class="remove-button" onclick="removeColorPicker(this)">-</div>
-            </div>
-        </div>
-        <div class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus"></i></div>
+    <form action="" id="searchTypeToggle">
+        <div></div>
+        <label class="selected">
+            <input type="radio" name="searchtype" data-location="0" value="one" id="speed1">
+            <div><i class="fa-solid fa-gauge"></i></div>
+        </label>
+        <label>
+            <input type="radio" name="searchtype" data-location="calc(100% - 8px)" value="two" id="speed2">
+            <div><i class="fa-solid fa-seedling"></i></div>
+        </label>
+        <label>
+            <input type="radio" name="searchtype" data-location="calc(200% - 12px)" value="three" id="speed3">
+            <div><i class="fa-solid fa-bolt"></i></div>
+        </label>
+    </form>
+    <br>
+    <Br>
+    <Br>
+    <Br>
+    <h2 class="textelement" id="appearanceoptions">
+        Appearance
+    </h2>
+    <br>
+    <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
 
-        <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">The foreground elements will cycle through the chosen colors.
-            <br/>
-Keep contrast in mind when choosing colors.
-        </p>
-        <br />
-        <br />
-        <br>
-        <br>
-        <h2 class="textelement" style="font-family: 'Dosis';">
-            Background
-        </h2>
+    <h2 class="textelement" id="eouoptions">
+        Ease of Use
+    </h2>
+    <Br>
+    <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
 
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn1" onmouseup="setbg('1', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_1.png"></div></a>
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn2" onmouseup="setbg('2', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_2.png"></div></a>
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn3" onmouseup="setbg('3', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_3.png"></div></a>
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn4" onmouseup="setbg('4', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_4.png"></div></a>
-        <br />
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn5" onmouseup="setbg('5', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_5.png"></div></a>
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn6" onmouseup="setbg('6', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_6.png"></div></a>
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn7" onmouseup="setbg('7', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_7.png"></div></a>
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn8" onmouseup="setbg('8', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_8.png"></div></a>
-        <br />
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn9" onmouseup="setbg('9', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_9.png"></div></a>
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn10" onmouseup="setbg('10', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_10.png"></div></a>
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn11" onmouseup="setbg('11', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_11.png"></div></a>
-        <a class="aintext backgroundpicker bgbtnn" id="bgbtn12" onmouseup="setbg('12', 'manual')"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_12.png"></div></a>
-        <br />
-        <br />
-        <br>
-        <br>
-        <br />
-        <br />
-        <h2 class="textelement" style="font-family: 'Dosis';">
-            Typeface
-        </h2>
-        <a class="aintext selectedfontpicker" id="fredoka" style="font-family:'Fredoka One'" onmouseup="FontFredoka('Manual');">12:34</a>
-        <a class="aintext fontpicker" id="poppins" style="font-family:'Poppins'" onmouseup="FontPoppins('Manual');">12:34</a>
-        <a class="aintext fontpicker" id="yeseva" style="font-family:'Yeseva One'" onmouseup="FontYeseva('Manual');">12:34</a>
-        <a class="aintext fontpicker" id="orbitron" style="font-family:'Orbitron'" onmouseup="FontOrbitron('Manual');">12:34</a>
-        <br>
-        <br>
-        <br>
-        <h1 id="progressoptions">Progress</h1>
-        <br>
-        <br>
-        <br>
-        <h1 id="scheduleoptions">Countdown Schedule</h1>
-        <br>
-        <br>
-        <br>
-        <h1 id="queueoptions">Countdown Queue</h1>
-        <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
-            <h1><i style="color: #FE9A00" class="fa-solid fa-user-lock"></i> Personal Options</h1>
-            <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; margin-bottom:30px;">Options that are for you alone and won't be shared in the link.</p>
-        </div>
-        <br />
-        <br />
-        <br />
-        <br />
-        <h2 class="textelement">
-            Animation Speed
-        </h2>
+    <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Countdown Units <span class="betatag">BEING UPDATED</span></a>
 
-        <form action="" id="searchTypeToggle">
-            <div></div>
-            <label class="selected">
-                <input type="radio" name="searchtype" data-location="0" value="one" id="speed1">
-                <div><i class="fa-solid fa-gauge"></i></div>
-            </label>
-            <label>
-                <input type="radio" name="searchtype" data-location="calc(100% - 8px)" value="two" id="speed2">
-                <div><i class="fa-solid fa-seedling"></i></div>
-            </label>
-            <label>
-                <input type="radio" name="searchtype" data-location="calc(200% - 12px)" value="three" id="speed3">
-                <div><i class="fa-solid fa-bolt"></i></div>
-            </label>
-        </form>
-        <br>
-        <Br>
-        <Br>
-        <Br>
-        <h2 class="textelement" id="appearanceoptions">
-            Appearance
-        </h2>
-        <br>
-        <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
+    <h2 id="inclusionoptions" class="textelement">
+        Only Include <span class="betatag">BEING UPDATED</span>
+    </h2>
+    <br>
+    <a id="week" class="disabled" onclick="week();"><i class="fa-solid fa-calendar-week"></i> Weeks</a>
+    <a id="day" class="disabled" onclick="day();"><i class="fa-solid fa-calendar-days"></i> Days</a>
+    <a id="hour" class="disabled" onclick="hour();"><i class="fa-solid fa-clock"></i> Hours</a>
+    <a id="minute" class="disabled" onclick="minute();"><i class="fa-solid fa-hourglass-start"></i> Minutes</a>
+    <a id="second" class="disabled" onclick="second();"><i class="fa-solid fa-stopwatch-20"></i> Seconds</a>
+    <a id="millisecond" class="disabled" onclick="millisecond();"><i class="fa-solid fa-meteor"></i> Milliseconds</a>
 
-        <h2 class="textelement" id="eouoptions">
-            Ease of Use
-        </h2>
-        <Br>
-        <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
-
-        <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Countdown Units</a>
-
-        <h2 id="inclusionoptions" class="textelement">
-            Only Include
-        </h2>
-        <br>
-        <a id="week" class="disabled" onclick="week();"><i class="fa-solid fa-calendar-week"></i> Weeks</a>
-        <a id="day" class="disabled" onclick="day();"><i class="fa-solid fa-calendar-days"></i> Days</a>
-        <a id="hour" class="disabled" onclick="hour();"><i class="fa-solid fa-clock"></i> Hours</a>
-        <a id="minute" class="disabled" onclick="minute();"><i class="fa-solid fa-hourglass-start"></i> Minutes</a>
-        <a id="second" class="disabled" onclick="second();"><i class="fa-solid fa-stopwatch-20"></i> Seconds</a>
-        <a id="millisecond" class="disabled" onclick="millisecond();"><i class="fa-solid fa-meteor"></i> Milliseconds</a>
     </center>
-    <div class="schedule-editor" style="color: white !important;">
-        <div class="schedule-container">
-            <h1>Daily Schedule Editor</h1>
-            
-            <div class="schedule-form-group">
-                <label for="schedule-eventTitle">Event Title:</label>
-                <input type="text" id="schedule-eventTitle" required>
-            </div>
-            <div class="schedule-form-group">
-                <label for="schedule-startTime">Start Time:</label>
-                <input type="time" id="schedule-startTime" required>
-            </div>
-            <div class="schedule-form-group">
-                <label for="schedule-endTime">End Time:</label>
-                <input type="time" id="schedule-endTime" required>
-            </div>
-            <button id="schedule-addOrUpdateEventBtn">Add Event</button>
-
-            <div class="schedule-editor-section">
-                <h3>Regular Schedule</h3>
-                <button class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">Show/Hide Regular Schedule</button>
-                <div class="schedule-content">
-                    <ul id="schedule-eventList"></ul>
-                </div>
-            </div>
-
-            <div class="schedule-editor-section">
-                <h3>Exception Days</h3>
-                <div class="schedule-form-group">
-                    <label for="schedule-exceptionDay">Add Exception Day:</label>
-                    <select id="schedule-exceptionDay">
-                        <option value="0">Sunday</option>
-                        <option value="1">Monday</option>
-                        <option value="2">Tuesday</option>
-                        <option value="3">Wednesday</option>
-                        <option value="4">Thursday</option>
-                        <option value="5">Friday</option>
-                        <option value="6">Saturday</option>
-                    </select>
-                    <button id="schedule-addExceptionBtn">Add Exception Day</button>
-                </div>
-                <div id="schedule-exceptionList"></div>
-            </div>
-        </div>
     </div>
-    </div>
-</div>
-
-</div>
 
 
 
@@ -2283,7 +2280,16 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         .schedule-upcoming-class-time .fa-regular{
             margin-right:5px;
         }
-       
+
+
+    .betatag {
+        background: linear-gradient(#8c52ff, #ff914d);
+        border-radius:20px;
+        padding:5px 10px 5px;
+        color:white;
+        font-size:20px;
+        margin-left:10px;
+    }
 </style>
 
 
