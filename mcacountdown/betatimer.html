@@ -2990,6 +2990,13 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             }
         }
 
+        if(distance == 1000){
+            //check if ending sound url input has value
+            if(document.getElementById("audioLink").value !== ""){
+                playAudio();
+            }
+        }
+
         if (distance < 0) { //if the timer is over
             clearInterval(x);
             document.getElementById("clock").remove();
@@ -2998,11 +3005,6 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             document.getElementById("innergear").classList.remove("fa-gears"); //remove clock, title, settings icon
             document.getElementById("innergear").classList.add("fa-xmark"); //add a button to close the countdown
             document.getElementById("gear").onclick = finishedcountdownend; //when said button is clicked go to the homepage
-
-            //check if ending sound url input has value
-            if(document.getElementById("audioLink").value !== ""){
-                playAudio();
-            }
 
             document.getElementById("animatedbackground").style.opacity = "0"; //fade out the animated background (as it has a transition property for opacity)
             setTimeout(() => {
