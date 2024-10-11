@@ -446,10 +446,12 @@
     <br>
 
 
-        <input type="text" id="audioLink" placeholder="Enter YouTube, SoundCloud, Google Drive, or audio file URL">
-        <a class="betabutton" onclick="startAudio();"><i class="fa-solid fa-volume"></i> Test Audio</a>
-        <div id="player"></div>
-        <audio id="audioPlayer" style="display: none;"></audio>
+    <div class="container">
+        <input type="text" id="audioLink" placeholder="Enter YouTube, SoundCloud, or audio file link">
+        <a class="betabutton" onclick="playAudio()">Test Audio</a>
+    </div>
+    <div id="playerContainer" style="display: none;"></div>
+    <script src="audio-player.js"></script>
       </div>
     </center>
     </div>
@@ -2964,12 +2966,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 document.getElementById("clock").innerHTML = minutes + "m " + seconds + "s "; //only for minutes no more hours
                 document.getElementById("clock").style.fontSize = '150px';
             }
-            else if (seconds > 0) {
+            else {
                 document.getElementById("clock").innerHTML = seconds + "s"; //just seconds
                 document.getElementById("clock").style.fontSize = '175px';
-            }
-            else{
-                document.getElementById("clock").innerHTML = distance + "ms"; //ooh less than 1s goes to ms
             }
         }
         else { //not labeling or only including
@@ -2985,28 +2984,25 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 document.getElementById("clock").innerHTML = minutes + ":" + seconds; //only for minutes no more hours
                 document.getElementById("clock").style.fontSize = '150px';
             }
-            else if (seconds > 0) {
+            else {
                 document.getElementById("clock").innerHTML = seconds;
                 document.getElementById("clock").style.fontSize = '175px'; //just seconds
             }
-            else{
-                document.getElementById("clock").innerHTML = distance + "ms"; //ooh less than 1s goes to ms
-            }
         }
-
-
 
         if (distance < 0) { //if the timer is over
             clearInterval(x);
             document.getElementById("clock").remove();
             document.getElementById("countdowntitle").remove();
-            document.getElementById("settings").remove();
+            document.getElementById("settings").display = "none";
             document.getElementById("innergear").classList.remove("fa-gears"); //remove clock, title, settings icon
             document.getElementById("innergear").classList.add("fa-xmark"); //add a button to close the countdown
             document.getElementById("gear").onclick = finishedcountdownend; //when said button is clicked go to the homepage
 
-            //add check to see if audio url input has value
-            startAudio();
+            //check if ending sound url input has value
+            if(document.getElementById("audioLink").value !== ""){
+                playAudio();
+            }
 
             document.getElementById("animatedbackground").style.opacity = "0"; //fade out the animated background (as it has a transition property for opacity)
             setTimeout(() => {
@@ -4333,132 +4329,56 @@ let schedule_events = [];
 
         //ending sound
 
-let player;
-let audioPlayer;
-let soundCloudWidget;
+        let player;
 
-function onYouTubeIframeAPIReady() {
-  player = new YT.Player('player', {
-    height: '1',
-    width: '1',
-    videoId: '',
-    playerVars: {
-      'controls': 0,
-    },
-    events: {
-      'onReady': onPlayerReady
+function playAudio() {
+    const link = document.getElementById('audioLink').value;
+    const playerContainer = document.getElementById('playerContainer');
+    playerContainer.innerHTML = '';
+
+    if (link.includes('youtube.com') || link.includes('youtu.be')) {
+        playYouTube(link);
+    } else if (link.includes('soundcloud.com')) {
+        playSoundCloud(link);
+    } else {
+        playDirectAudio(link);
     }
-  });
 }
 
-function onPlayerReady(event) {
-  // Player is ready
-}
+function playYouTube(link) {
+    const videoId = extractYouTubeId(link);
+    if (!videoId) {
+        alert('Invalid YouTube URL');
+        return;
+    }
 
-function startAudio() {
-    alert("Ending Sound");
-  const audioLink = document.getElementById('audioLink').value;
-  const audioType = getAudioType(audioLink);
-  if (!audioLink) {
-    alert('Please enter a valid audio URL');
-    return;
-  }
-
-  setupAudioSource(audioLink, audioType);
-  playAudio(audioType);
-}
-
-function getAudioType(url) {
-  if (url.includes('youtube.com') || url.includes('youtu.be')) {
-    return 'youtube';
-  } else if (url.includes('soundcloud.com')) {
-    return 'soundcloud';
-  } else if (url.includes('drive.google.com')) {
-    return 'googledrive';
-  } else {
-    return 'audio';
-  }
-}
-
-function setupAudioSource(url, type) {
-  switch (type) {
-    case 'youtube':
-      const videoId = extractYouTubeId(url);
-      player.cueVideoById(videoId);
-      break;
-    case 'soundcloud':
-      setupSoundCloudWidget(url);
-      break;
-    case 'googledrive':
-      setupGoogleDriveAudio(url);
-      break;
-    case 'audio':
-      setupAudioPlayer(url);
-      break;
-  }
-}
-
-function playAudio(type) {
-  switch (type) {
-    case 'youtube':
-      player.playVideo();
-      break;
-    case 'soundcloud':
-      soundCloudWidget.play();
-      break;
-    case 'googledrive':
-    case 'audio':
-      audioPlayer.play();
-      break;
-  }
+    const iframe = document.createElement('iframe');
+    iframe.width = "0";
+    iframe.height = "0";
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    iframe.allow = "autoplay";
+    document.getElementById('playerContainer').appendChild(iframe);
 }
 
 function extractYouTubeId(url) {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
 }
 
-function setupSoundCloudWidget(url) {
-  const iframeElement = document.createElement('iframe');
-  iframeElement.id = 'soundcloud-widget';
-  iframeElement.width = '1';
-  iframeElement.height = '1';
-  iframeElement.allow = 'autoplay';
-  iframeElement.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false`;
-  
-  document.getElementById('player').appendChild(iframeElement);
-  
-  soundCloudWidget = SC.Widget(iframeElement);
+function playSoundCloud(link) {
+    const iframe = document.createElement('iframe');
+    iframe.width = "0";
+    iframe.height = "0";
+    iframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}&auto_play=true`;
+    document.getElementById('playerContainer').appendChild(iframe);
 }
 
-function setupAudioPlayer(url) {
-  audioPlayer = document.getElementById('audioPlayer');
-  audioPlayer.src = url;
+function playDirectAudio(link) {
+    const audio = document.createElement('audio');
+    audio.src = link;
+    audio.style.display = 'none';
+    audio.autoplay = true;
+    document.getElementById('playerContainer').appendChild(audio);
 }
-
-function setupGoogleDriveAudio(url) {
-  const fileId = extractGoogleDriveFileId(url);
-  if (fileId) {
-    const directLink = `https://drive.google.com/uc?export=download&id=${fileId}`;
-    setupAudioPlayer(directLink);
-  } else {
-    alert('Invalid Google Drive URL');
-  }
-}
-
-function extractGoogleDriveFileId(url) {
-  const regExp = /\/file\/d\/([^\/]+)/;
-  const match = url.match(regExp);
-  return match ? match[1] : null;
-}
-
-
-// Load YouTube IFrame API
-const tag = document.createElement('script');
-tag.src = "https://www.youtube.com/iframe_api";
-const firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
 </script>
-<script src="https://w.soundcloud.com/player/api.js"></script>
