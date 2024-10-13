@@ -167,7 +167,7 @@
                 <Br>
                 <a onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
                 <a id="sharebuttonoptions" href="#linkoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
-                <a id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save <span class="betatag">BETA</span></a>
+                <a id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
                 <a id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
 
                 <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
@@ -4475,5 +4475,22 @@ function playDirectAudio(link) {
     audio.style.display = 'none';
     audio.autoplay = true;
     document.getElementById('playerContainer').appendChild(audio);
+}
+
+function savetodash() {
+    const url = window.location.href; // Get the current page URL
+    const title = document.title; // Get the current page title
+
+    // Get the existing links from the cookie
+    const savedLinks = getCookie("dashboardsaved");
+    let links = savedLinks ? JSON.parse(savedLinks) : [];
+
+    // Add the new link
+    links.push({ url, title: title || '' });
+
+    // Save the updated links back to the cookie
+    setCookie('dashboardsaved', JSON.stringify(links), 70);
+
+    window.open(url, 'https://michaeldors.com/mcacountdown/countdowndashboard.html').focus();
 }
 </script>
