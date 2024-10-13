@@ -331,7 +331,7 @@
                     <div class="schedule-container">
                         <div class="schedule-form-group">
                             <label for="schedule-eventTitle">Event Title:</label>
-                            <input type="text" id="schedule-eventTitle" required>
+                            <input type="text" placeholder="Pick a title" id="schedule-eventTitle" required>
                         </div>
                         <div class="schedule-form-group">
                             <label for="schedule-startTime">Start Time:</label>
@@ -341,7 +341,7 @@
                             <label for="schedule-endTime">End Time:</label>
                             <input type="time" id="schedule-endTime" required>
                         </div>
-                        <button id="schedule-addOrUpdateEventBtn">Add Event</button>
+                        <a id="schedule-addOrUpdateEventBtn">Add Event</a>
 
                         <div class="schedule-editor-section">
                             <h3>Regular Schedule</h3>
@@ -364,7 +364,7 @@
                                     <option value="5">Friday</option>
                                     <option value="6">Saturday</option>
                                 </select>
-                                <button id="schedule-addExceptionBtn">Add Exception Day</button>
+                                <a id="schedule-addExceptionBtn">Add Exception Day</a>
                             </div>
                             <div id="schedule-exceptionList"></div>
                         </div>
@@ -445,6 +445,13 @@
     <br>
     <br>
 
+
+    <div class="container">
+        <input type="text" id="audioLink" placeholder="Enter YouTube, SoundCloud, or audio file link">
+        <a class="betabutton" onclick="playAudio()">Test Audio</a>
+    </div>
+    <div id="playerContainer" style="display: none;"></div>
+      </div>
     </center>
     </div>
 
@@ -1288,10 +1295,10 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
             .betabutton {
         font-family: 'Fredoka One';
-        background:linear-gradient(to bottom, #ac6cff, #6cd0fb, #79ffaa, #ffbe5d);
+        background: linear-gradient(#8c52ff, #ff914d);
         text-decoration: none;
-        color: black;
-        box-shadow: 0 7px 0 #FF9900;
+        color: white;
+        box-shadow: 0 7px 0 #c67700;
         border-radius: 20px;
         padding: 20px;
         user-select: none;
@@ -1302,7 +1309,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
         .betabutton:hover {
             position: relative;
-            box-shadow: 0 5px 0 #FF9900;
+            box-shadow: 0 5px 0 #c67700;
         }
 
             .betabutton:hover:active {
@@ -1919,6 +1926,13 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             zoom: 150%;
         }*/
 
+        #settingsmainpane{
+                width:100vw;
+            }
+            #settingssidebar{
+                display:none;
+            }
+
 
         #clock {
             font-size: 90vw;
@@ -2294,6 +2308,91 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         }
         .schedule-upcoming-class-time .fa-regular{
             margin-right:5px;
+        }
+
+
+        .schedule-editor {
+            font-family: "Dosis";
+        }
+        .schedule-container {
+            max-width: 80%;
+            margin: auto;
+            background: transparent;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .schedule-container input{
+            margin-left:20px;
+            color: white;
+        border-radius: 20px;
+        padding: 20px;
+        font-size: 20px;
+        font-weight: 100;
+        outline: 1px solid #8426ff;
+        background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+        font-family: 'Fredoka One';
+        border: 0px transparent;
+        transition: 0.5s all;
+        }
+        .schedule-form-group {
+            margin-bottom: 15px;
+        }
+        #schedule-eventList, #schedule-exceptionList {
+            list-style-type: none;
+            padding: 0;
+        }
+        .schedule-event-item, .schedule-exception-item {
+            border-bottom: 1px solid #8426ff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .schedule-event-item button, .schedule-exception-item button {
+            background-color: #dc3545;
+            padding: 5px 10px;
+            margin-top: 10px;
+            width: auto;
+        }
+        .schedule-event-item button:hover, .schedule-exception-item button:hover {
+            background-color: #c82333;
+        }
+        .schedule-exception-day {
+            margin-bottom: 20px;
+        }
+        .schedule-editor-section {
+            margin-bottom: 20px;
+        }
+        .schedule-collapsible {
+            outline: 1px solid #8426ff;
+        background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+        color:white;
+        border-radius:20px;
+            cursor: pointer;
+            padding: 18px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            font-size: 15px;
+            transition:0.2s radius;
+        }
+        .active, .schedule-collapsible:hover {
+            background: linear-gradient(to left, rgba(40,23,64,100), #14141400);
+        }
+        .active{
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            border-bottom-right-radius: 0px;
+            border-bottom-left-radius: 0px;
+        }
+        .schedule-content {
+            padding: 0 18px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            background-color: #14141400;
+            outline: 1px solid #8426ff;
         }
 
 
@@ -2958,12 +3057,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 document.getElementById("clock").innerHTML = minutes + "m " + seconds + "s "; //only for minutes no more hours
                 document.getElementById("clock").style.fontSize = '150px';
             }
-            else if (seconds > 0) {
+            else {
                 document.getElementById("clock").innerHTML = seconds + "s"; //just seconds
                 document.getElementById("clock").style.fontSize = '175px';
-            }
-            else{
-                document.getElementById("clock").innerHTML = distance + "ms"; //ooh less than 1s goes to ms
             }
         }
         else { //not labeling or only including
@@ -2979,22 +3075,24 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 document.getElementById("clock").innerHTML = minutes + ":" + seconds; //only for minutes no more hours
                 document.getElementById("clock").style.fontSize = '150px';
             }
-            else if (seconds > 0) {
+            else {
                 document.getElementById("clock").innerHTML = seconds;
                 document.getElementById("clock").style.fontSize = '175px'; //just seconds
             }
-            else{
-                document.getElementById("clock").innerHTML = distance + "ms"; //ooh less than 1s goes to ms
-            }
         }
 
-
+        if(distance == 1000){
+            //check if ending sound url input has value
+            if(document.getElementById("audioLink").value !== ""){
+                playAudio();
+            }
+        }
 
         if (distance < 0) { //if the timer is over
             clearInterval(x);
             document.getElementById("clock").remove();
             document.getElementById("countdowntitle").remove();
-            document.getElementById("settings").remove();
+            document.getElementById("settings").display = "none";
             document.getElementById("innergear").classList.remove("fa-gears"); //remove clock, title, settings icon
             document.getElementById("innergear").classList.add("fa-xmark"); //add a button to close the countdown
             document.getElementById("gear").onclick = finishedcountdownend; //when said button is clicked go to the homepage
@@ -3269,7 +3367,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     });
     allTabs.forEach(tab => {
         tab.addEventListener("click", () => {
+            if(tabsBox.querySelector(".active")){
             tabsBox.querySelector(".active").classList.remove("active");
+            }
             tab.classList.add("active");
         });
     });
@@ -3306,7 +3406,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     });
     PresetsallTabs.forEach(tab => {
         tab.addEventListener("click", () => {
+            if(PresetstabsBox.querySelector(".active")){
             PresetstabsBox.querySelector(".active").classList.remove("active");
+            }
             tab.classList.add("active");
         });
     });
@@ -3369,7 +3471,6 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             dateArr[1] = '0' + dateArr[1];
         }
         userDate = dateArr[2] + "-" + dateArr[0] + "-" + dateArr[1];
-        console.log(userDate);
         return userDate + 'T00:00';
     }
 
@@ -4017,9 +4118,8 @@ let schedule_events = [];
         }
 
         function schedule_loadScheduleFromURL() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const encodedSchedule = urlParams.get('schedule');
-            if (encodedSchedule) {
+            const encodedSchedule = parameter('schedule');
+            if (encodedSchedule && encodedSchedule !== "null") {
                 const decoded = schedule_decodeSchedule(encodedSchedule);
                 schedule_events = decoded.schedule_events;
                 schedule_exceptions = decoded.schedule_exceptions;
@@ -4125,8 +4225,8 @@ let schedule_events = [];
                     <strong>${event.title}</strong><br>
                     Start: ${schedule_formatTime(event.startTime)}<br>
                     End: ${schedule_formatTime(event.endTime)}<br>
-                    <button onclick="schedule_editEvent(schedule_events[${index}])">Edit</button>
-                    <button onclick="schedule_removeEvent(${index})">Remove</button>
+                    <a onclick="schedule_editEvent(schedule_events[${index}])">Edit</a>
+                    <a class="warning" onclick="schedule_removeEvent(${index})">Remove</a>
                 `;
                 eventList.appendChild(li);
             });
@@ -4142,8 +4242,8 @@ let schedule_events = [];
                 dayDiv.innerHTML = `
                     <button class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">${dayName}</button>
                     <div class="schedule-content">
-                        <button onclick="schedule_editEvent(null, true, '${day}')">Add Event to ${dayName}</button>
-                        <button onclick="schedule_removeExceptionDay('${day}')">Remove ${dayName} Exception</button>
+                        <a onclick="schedule_editEvent(null, true, '${day}')">Add Event to ${dayName}</a>
+                        <a class="warning" onclick="schedule_removeExceptionDay('${day}')">Remove ${dayName} Exception</a>
                         <ul>
                             ${dayEvents.map((event, index) => `
                                 <li class="schedule-exception-item">
@@ -4322,4 +4422,58 @@ let schedule_events = [];
         });
 
 
+        //ending sound
+
+        let player;
+
+function playAudio() {
+    const link = document.getElementById('audioLink').value;
+    const playerContainer = document.getElementById('playerContainer');
+    playerContainer.innerHTML = '';
+
+    if (link.includes('youtube.com') || link.includes('youtu.be')) {
+        playYouTube(link);
+    } else if (link.includes('soundcloud.com')) {
+        playSoundCloud(link);
+    } else {
+        playDirectAudio(link);
+    }
+}
+
+function playYouTube(link) {
+    const videoId = extractYouTubeId(link);
+    if (!videoId) {
+        alert('Invalid YouTube URL');
+        return;
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.width = "0";
+    iframe.height = "0";
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    iframe.allow = "autoplay";
+    document.getElementById('playerContainer').appendChild(iframe);
+}
+
+function extractYouTubeId(url) {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+}
+
+function playSoundCloud(link) {
+    const iframe = document.createElement('iframe');
+    iframe.width = "0";
+    iframe.height = "0";
+    iframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}&auto_play=true`;
+    document.getElementById('playerContainer').appendChild(iframe);
+}
+
+function playDirectAudio(link) {
+    const audio = document.createElement('audio');
+    audio.src = link;
+    audio.style.display = 'none';
+    audio.autoplay = true;
+    document.getElementById('playerContainer').appendChild(audio);
+}
 </script>
