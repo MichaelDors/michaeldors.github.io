@@ -4479,7 +4479,7 @@ function playDirectAudio(link) {
 
 function savetodash() {
     const url = window.location.href; // Get the current page URL
-    const title = document.title; // Get the current page title
+    const title = parameter("title"); // Get the current page title
 
     // Get the existing links from the cookie
     const savedLinks = getCookie("dashboardsaved");
@@ -4491,6 +4491,6 @@ function savetodash() {
     // Save the updated links back to the cookie
     setCookie('dashboardsaved', JSON.stringify(links), 70);
 
-    window.open(url, 'https://michaeldors.com/mcacountdown/countdowndashboard.html').focus();
+    window.open('https://michaeldors.com/mcacountdown/countdowndashboard.html', '_blank').focus();
 }
 </script>
