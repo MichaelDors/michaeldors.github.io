@@ -4245,7 +4245,7 @@ let schedule_events = [];
                         <br>
                         <a onclick="schedule_editEvent(null, true, '${day}')">Add Event to ${dayName}</a>
                         <a class="warning" onclick="schedule_removeExceptionDay('${day}')">Remove ${dayName} Exception</a>
-                        <ul style="list-style-type:none;">
+                        <ul style="list-style-type:none; margin:0; padding:0;">
                             ${dayEvents.map((event, index) => `
                                 <li class="schedule-exception-item">
                                     <h1>${event.title}</h1><br>
