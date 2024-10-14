@@ -24,8 +24,6 @@
     <div class="container">
         <div class="input-container">
             <p style="font-family:'Dosis'; color:white;"><span class="betatag">Countdown Dashboard is in beta.</span></p>
-            <input type="text" id="urlInput" placeholder="Enter URL">
-            <button id="addButton">Add Link</button>
         </div>
         <div id="linksContainer" class="links-container">
         </div>
@@ -69,39 +67,6 @@ function saveLinks() {
     setCookie('dashboardsaved', JSON.stringify(links), 70);
 }
 
-function addLink() {
-    const urlInput = document.getElementById('urlInput');
-    const url = urlInput.value.trim();
-    let title = '';
-
-    try {
-        const urlObj = new URL(url);
-        title = urlObj.searchParams.get('title') || '';
-        // If no title found in URL, use the hostname as a fallback
-        if (!title) {
-            const dateStr = urlObj.searchParams.get('date') || '';
-            if (dateStr) {
-                const date = new Date(dateStr);
-                const options = { year: '2-digit', month: '2-digit', day: '2-digit' };
-                title = date.toLocaleDateString('en-US', options);
-            }
-        }
-
-        if (url) {
-            links.push({ url, title });
-            saveLinks();
-            renderLinks();
-            urlInput.value = '';
-        } else {
-            alert('Please enter a valid URL');
-        }
-    } catch (error) {
-        console.error('Invalid URL:', error);
-        alert('Please enter a valid URL');
-    }
-
-    saveLinks();
-}
 
 function removeLink(index, event) {
     event.stopPropagation();
@@ -365,8 +330,6 @@ function updateElementPosition(mouseX, mouseY) {
     draggedElement.style.left = `${mouseX - offsetX}px`;
     draggedElement.style.top = `${mouseY - offsetY}px`;
 }
-
-document.getElementById('addButton').addEventListener('click', addLink);
 
 loadLinks();
     </script>
