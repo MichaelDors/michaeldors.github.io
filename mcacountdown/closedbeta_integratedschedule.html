@@ -4495,14 +4495,14 @@ function savetodash() {
         }
 
     // Get the existing links from the cookie
-    const savedLinks = getCookie("dashboardsaved");
+    const savedLinks = localStorage.getItem("dashboardsaved");
     let links = savedLinks ? JSON.parse(savedLinks) : [];
 
     // Add the new link
     links.push({ url, title: title || '' });
 
     // Save the updated links back to the cookie
-    setCookie('dashboardsaved', JSON.stringify(links), 70);
+    localStorage.setItem('dashboardsaved', JSON.stringify(links), 70);
 
     window.open('https://michaeldors.com/mcacountdown/countdowndashboard.html', '_blank');
 }
