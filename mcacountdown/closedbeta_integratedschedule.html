@@ -3698,7 +3698,6 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     function setbg(bgint, method) {
         if ((method != "auto") && (parameter("atc") == bgint)) {
             //the selected background is already the set background - turn off background
-            //alert("1");
             enablecolor();
             document.getElementById("animatedbackground").style.opacity = "0"; //fade out the animated background (as it has a transition property for opacity)
             setTimeout(() => {
@@ -3710,7 +3709,6 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         }
         else if ((parameter("atc") == "none") && bgint != "none") {
             //param is none, but the selected background is not - turn on and set background
-            //alert("2");
             disablecolor();
             //grey out color pickers and theme color for background
             document.getElementById("animatedbackground").classList.remove("hidden"); //unhide background
@@ -3722,21 +3720,22 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             document.getElementById("animatedbackground").style.display = "";
             document.getElementById("animatedbackground").style.opacity = "1"; //fade out the animated background (as it has a transition property for opacity)
 
-
             bggotdisabled = "false";
+
+            SetCountDowngeneral();
         }
         else if ((parameter("atc") != "none") && (document.getElementById("bg1").src != "Backgrounds/enhancedbackground_" + bgint + ".png")) {
             //parameter is not none, but the selected and set backgrounds are different - change the bg w/o turning on or off
-            //alert("3");
             document.getElementById("bg1").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
             document.getElementById("bg2").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
             bgstring = bgint;
 
             bggotdisabled = "false";
+
+            SetCountDowngeneral();
         }
         else {
             //catchall for errors too but primarily for and should only be pinged when not using atc
-            //alert("4");
             enablecolor();
             document.getElementById("animatedbackground").style.opacity = "0"; //fade out the animated background (as it has a transition property for opacity)
             setTimeout(() => {
@@ -3745,6 +3744,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             
             bgstring = "none";
             bggotdisabled = "true";
+
+            SetCountDowngeneral();
         }
 
         //for loop that adds selected and normal bgbutton classes
