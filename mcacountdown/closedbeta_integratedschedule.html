@@ -3702,7 +3702,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             enablecolor();
             document.getElementById("animatedbackground").style.opacity = "0"; //fade out the animated background (as it has a transition property for opacity)
             setTimeout(() => {
-                document.getElementById("animatedbackground").style.display = "none"; //in one second when the fade is done, hide delete the background
+                document.getElementById("animatedbackground").style.display = "none"; //in one second when the fade is done, hide the background
             }, 1000);
             bgstring = "none";
 
@@ -3712,8 +3712,10 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             //param is none, but the selected background is not - turn on and set background
             //alert("2");
             disablecolor();
-            document.getElementById("animatedbackground").style.zIndex = "-3";
-            document.getElementById("animatedbackground").style.position = "fixed";
+            //grey out color pickers and theme color for background
+            document.getElementById("animatedbackground").classList.remove("hidden"); //unhide background
+            document.getElementById("animatedbackground").style.zIndex = "-3"; //set the bg to be behind all other elements
+            document.getElementById("animatedbackground").style.position = "fixed"; //fixed position so it stays even when scrolled
             document.getElementById("bg1").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
             document.getElementById("bg2").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
             bgstring = bgint;
