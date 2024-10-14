@@ -4219,9 +4219,9 @@ let schedule_events = [];
                 const li = document.createElement('li');
                 li.className = 'schedule-event-item';
                 li.innerHTML = `
-                    <strong>${event.title}</strong><br>
-                    Start: ${schedule_formatTime(event.startTime)}<br>
-                    End: ${schedule_formatTime(event.endTime)}<br>
+                    <h1>${event.title}</h1><br>
+                    <p>Start: ${schedule_formatTime(event.startTime)}<br>
+                    End: ${schedule_formatTime(event.endTime)}<br></p>
                     <a onclick="schedule_editEvent(schedule_events[${index}])">Edit</a>
                     <a class="warning" onclick="schedule_removeEvent(${index})">Remove</a>
                 `;
@@ -4244,11 +4244,11 @@ let schedule_events = [];
                         <ul>
                             ${dayEvents.map((event, index) => `
                                 <li class="schedule-exception-item">
-                                    <strong>${event.title}</strong><br>
-                                    Start: ${schedule_formatTime(event.startTime)}<br>
-                                    End: ${schedule_formatTime(event.endTime)}<br>
-                                    <button onclick="schedule_editEvent(schedule_exceptions['${day}'][${index}], true, '${day}')">Edit</button>
-                                    <button onclick="schedule_removeEvent(${index}, true, '${day}')">Remove</button>
+                                    <h1>${event.title}</h1><br>
+                                    <p>Start: ${schedule_formatTime(event.startTime)}<br>
+                                    End: ${schedule_formatTime(event.endTime)}<br></p>
+                                    <a onclick="schedule_editEvent(schedule_exceptions['${day}'][${index}], true, '${day}')">Edit</a>
+                                    <a class="warning" onclick="schedule_removeEvent(${index}, true, '${day}')">Remove</a>
                                 </li>
                             `).join('')}
                         </ul>
