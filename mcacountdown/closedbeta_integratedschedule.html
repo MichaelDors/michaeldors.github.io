@@ -3721,8 +3721,6 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             document.getElementById("animatedbackground").style.opacity = "1"; //fade out the animated background (as it has a transition property for opacity)
 
             bggotdisabled = "false";
-
-            SetCountDowngeneral();
         }
         else if ((parameter("atc") != "none") && (document.getElementById("bg1").src != "Backgrounds/enhancedbackground_" + bgint + ".png")) {
             //parameter is not none, but the selected and set backgrounds are different - change the bg w/o turning on or off
@@ -3731,8 +3729,6 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             bgstring = bgint;
 
             bggotdisabled = "false";
-
-            SetCountDowngeneral();
         }
         else {
             //catchall for errors too but primarily for and should only be pinged when not using atc
@@ -3744,8 +3740,6 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             
             bgstring = "none";
             bggotdisabled = "true";
-
-            SetCountDowngeneral();
         }
 
         //for loop that adds selected and normal bgbutton classes
