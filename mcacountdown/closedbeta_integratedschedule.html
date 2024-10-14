@@ -4476,7 +4476,17 @@ function playDirectAudio(link) {
 
 function savetodash() {
     const url = window.location.href; // Get the current page URL
-    const title = parameter("title"); // Get the current page title
+    const urlObj = new URL(url);
+    title = urlObj.searchParams.get('title') || '';
+    // If no title found in URL, use the date as a fallback
+    if (!title) {
+        const dateStr = urlObj.searchParams.get('date') || '';
+        if (dateStr) {
+            const date = new Date(dateStr);
+            const options = { year: '2-digit', month: '2-digit', day: '2-digit' };
+            title = date.toLocaleDateString('en-US', options);
+            }
+        }
 
     // Get the existing links from the cookie
     const savedLinks = getCookie("dashboardsaved");
