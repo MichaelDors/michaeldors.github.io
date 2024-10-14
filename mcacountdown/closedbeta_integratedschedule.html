@@ -4224,6 +4224,8 @@ let schedule_events = [];
                     End: ${schedule_formatTime(event.endTime)}<br></p>
                     <a onclick="schedule_editEvent(schedule_events[${index}])">Edit</a>
                     <a class="warning" onclick="schedule_removeEvent(${index})">Remove</a>
+                    <br>
+                    <br>
                 `;
                 eventList.appendChild(li);
             });
@@ -4239,9 +4241,11 @@ let schedule_events = [];
                 dayDiv.innerHTML = `
                     <button class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">${dayName}</button>
                     <div class="schedule-content">
+                        <br>
+                        <br>
                         <a onclick="schedule_editEvent(null, true, '${day}')">Add Event to ${dayName}</a>
                         <a class="warning" onclick="schedule_removeExceptionDay('${day}')">Remove ${dayName} Exception</a>
-                        <ul>
+                        <ul style="list-style-type:none;">
                             ${dayEvents.map((event, index) => `
                                 <li class="schedule-exception-item">
                                     <h1>${event.title}</h1><br>
@@ -4249,6 +4253,8 @@ let schedule_events = [];
                                     End: ${schedule_formatTime(event.endTime)}<br></p>
                                     <a onclick="schedule_editEvent(schedule_exceptions['${day}'][${index}], true, '${day}')">Edit</a>
                                     <a class="warning" onclick="schedule_removeEvent(${index}, true, '${day}')">Remove</a>
+                                    <br>
+                                    <br>
                                 </li>
                             `).join('')}
                         </ul>
