@@ -2386,7 +2386,15 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             border-bottom-right-radius: 0px;
             border-bottom-left-radius: 0px;
         }
-        .schedule-content {
+        .schedule-content{
+            padding: 0 18px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            background-color: transparent;
+            outline: 0px solid #8426ff;
+        }
+        .active + .schedule-content {
             padding: 0 18px;
             max-height: 0;
             overflow: hidden;
