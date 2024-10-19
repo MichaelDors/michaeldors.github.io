@@ -2516,9 +2516,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
     else { //if there is no date parameter
         const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
-        if (savedLinks) { //check if the dashboard save data exists
-            dashlinks = JSON.parse(savedLinks); //parse the JSON for dashboard save to get the links
-        }
+        alert(savedLinks);
         if(savedLinks !== '[]' && savedLinks !== ''){ //if countdowns have been saved
             window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html"; //take the user to their dashboard
         }
