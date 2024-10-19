@@ -2519,7 +2519,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         if (savedLinks) { //check if the dashboard save data exists
             dashlinks = JSON.parse(savedLinks); //parse the JSON for dashboard save to get the links
         }
-        if(dashlinks !== ""){ //if countdowns have been saved
+        if(savedLinks !== '[]' && savedLinks !== ''){ //if countdowns have been saved
             window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html"; //take the user to their dashboard
         }
         else{ //no countdowns have been saved; new user experience with Autopilot
