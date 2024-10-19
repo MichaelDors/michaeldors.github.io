@@ -2368,23 +2368,20 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             outline: 1px solid #8426ff;
         background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
         color:white;
-        border-radius:20px;
+        border-radius: 20px 20px 20px 20px;
             cursor: pointer;
             padding: 18px;
             width: 100%;
             border: none;
             text-align: left;
             font-size: 15px;
-            transition:0.2s radius;
+            transition:0.2s border-radius;
         }
         .active, .schedule-collapsible:hover {
             background: linear-gradient(to left, rgba(40,23,64,100), #14141400);
         }
         .active{
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            border-bottom-right-radius: 0px;
-            border-bottom-left-radius: 0px;
+            border-radius: 20px 20px 0 0;
         }
         .schedule-content{
             padding: 0 18px;
