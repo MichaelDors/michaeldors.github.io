@@ -490,6 +490,7 @@ nav img {
     z-index: 10;
     animation: blurinout 10s infinite;
     overflow-x: hidden;
+    display:none;
 }
 
 @media screen and (orientation:portrait) {
