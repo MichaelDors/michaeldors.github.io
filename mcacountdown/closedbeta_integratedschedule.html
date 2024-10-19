@@ -2515,7 +2515,11 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         document.getElementById("autopilotpopupmobile").remove(); //same with mobile Autopilot popup
     }
     else { //if there is no date parameter
-        if(localStorage.getItem("dashboardsaved")){ //if countdowns have been saved
+        const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
+        if (savedLinks) { //check if the dashboard save data exists
+            dashlinks = JSON.parse(savedLinks); //parse the JSON for dashboard save to get the links
+        }
+        if(savedLinks && dashlinks){ //if countdowns have been saved
             window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html"; //take the user to their dashboard
         }
         else{ //no countdowns have been saved; new user experience with Autopilot
