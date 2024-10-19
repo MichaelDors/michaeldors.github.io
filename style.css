@@ -484,7 +484,7 @@ nav img {
 .talents {
     position: absolute;
     top: 150px;
-    margin-left: 300px;
+    margin-left: 400px;
     width: 100%-150px;
     filter: blur(10px);
     z-index: 10;
