@@ -2521,7 +2521,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
     else { //if there is no date parameter
         const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
-        if(savedLinks !== '[]' && savedLinks !== ''){ //if countdowns have been saved
+
+        if((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null')){ //if countdowns have been saved
             window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html"; //take the user to their dashboard
         }
         else{ //no countdowns have been saved; new user experience with Autopilot
@@ -2927,12 +2928,12 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
     else { //if animated background is disabled
         document.getElementById("animatedbackground").classList.add("hidden"); //hide background
-        if (document.querySelector("clock") && document.querySelector("clock").style.color) { //if the clock exists and has a color
-            document.querySelector("meta[name=theme-color]").setAttribute("content", document.querySelector("clock").style.color); //sets the theme color to the current foreground color
-        }
-        else{ //should never be triggered(?) mostly a fallback
-            document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff'); //sets the theme color to Countdown Purple
-        }
+        if (document.getElementById("clock")) { //if the clock exists
+                document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
+            }
+            else{ //should never be triggered(?) mostly a fallback
+                document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff'); //sets the theme color to Countdown Purple
+            }
         enablecolor(); //un-greys color picker
     }
 
@@ -2971,9 +2972,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             document.getElementById("clock").classList.add("clock"); //add back colored clock
             document.getElementById("clock").classList.remove("staticclock"); //remove white only clock
             document.getElementById("animatedbackground").classList.add("hidden"); //remove background
-            
-            if (document.querySelector("clock") && document.querySelector("clock").style.color) { //if the clock exists and has a color
-                document.querySelector("meta[name=theme-color]").setAttribute("content", document.querySelector("clock").style.color); //sets the theme color to the current foreground color
+            if (document.getElementById("clock")) { //if the clock exists
+                document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
             }
             else{ //should never be triggered(?) mostly a fallback
                 document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff'); //sets the theme color to Countdown Purple
