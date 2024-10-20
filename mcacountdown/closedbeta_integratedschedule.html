@@ -2928,12 +2928,12 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
     else { //if animated background is disabled
         document.getElementById("animatedbackground").classList.add("hidden"); //hide background
-        if (document.getElementById("clock")) { //if the clock exists
-                document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
-            }
-            else{ //should never be triggered(?) mostly a fallback
-                document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff'); //sets the theme color to Countdown Purple
-            }
+        if (document.getElementById("clock") && document.getElementById("clock").style.display !== "none") { //if the clock exists and settings is not open
+            document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
+        }
+        else{ //should never be triggered(?) mostly a fallback
+            document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff'); //sets the theme color to Countdown Purple
+        }
         enablecolor(); //un-greys color picker
     }
 
@@ -2972,7 +2972,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             document.getElementById("clock").classList.add("clock"); //add back colored clock
             document.getElementById("clock").classList.remove("staticclock"); //remove white only clock
             document.getElementById("animatedbackground").classList.add("hidden"); //remove background
-            if (document.getElementById("clock")) { //if the clock exists
+            if (document.getElementById("clock") && document.getElementById("clock").style.display !== "none") { //if the clock exists and settings is not opened
                 document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
             }
             else{ //should never be triggered(?) mostly a fallback
