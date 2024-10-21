@@ -321,6 +321,27 @@
                 <a class="aintext fontpicker" id="orbitron" style="font-family:'Orbitron'" onmouseup="FontOrbitron('Manual');">12:34</a>
                 <br>
                 <br>
+                <Br>
+                <Br>
+                <br>
+                <br>
+                <h1 id="progressoptions">Ending Options <span class="betatag">BETA</span></h1>
+                <h2 id="inclusionoptions" class="textelement" style="font-family: 'Dosis';">Confetti Options</h2>
+                <br>
+                <br>
+                <br>
+                <h2 id="inclusionoptions" class="textelement" style="font-family: 'Dosis';">Ending Sound</h2>
+                <div class="container">
+                    <input class="input" type="text" id="audioLink" placeholder="Audio link">
+                </div>
+                <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
+                    Enter a YouTube, SoundCloud, or audio file link to play when the Countdown ends.
+                    <br />
+                    Any ADs that may be placed by the service will remain.
+                </p>
+                <div id="playerContainer" style="display: none;"></div>
+                <br>
+                <br>
                 <br>
                 <h1 id="progressoptions">Progress <span class="betatag">BETA</span></h1>
                 <br>
@@ -344,7 +365,7 @@
                         <a id="schedule-addOrUpdateEventBtn">Add Event</a>
 
                         <div class="schedule-editor-section">
-                            <h3>Regular Schedule</h3>
+                            <h2 style="font-family: 'Dosis';">Regular Schedule</h2>
                             <button class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">Show/Hide Regular Schedule</button>
                             <div class="schedule-content">
                                 <ul id="schedule-eventList"></ul>
@@ -352,7 +373,7 @@
                         </div>
 
                         <div class="schedule-editor-section">
-                            <h3>Exception Days</h3>
+                            <h2 style="font-family: 'Dosis';">Exception Days</h2>
                             <div class="schedule-form-group">
                                 <label for="schedule-exceptionDay">Add Exception Day:</label>
                                 <select id="schedule-exceptionDay">
@@ -381,7 +402,11 @@
     <br />
     <br />
     <br />
-    <h2 class="textelement">
+    <h1 class="textelement" id="appearanceoptions">
+        Appearance
+    </h1>
+    <br>
+    <h2 class="textelement" style="font-family: 'Dosis';">
         Animation Speed <span class="betatag">BEING UPDATED</span>
     </h2>
 
@@ -404,23 +429,20 @@
     <Br>
     <Br>
     <Br>
-    <h2 class="textelement" id="appearanceoptions">
-        Appearance
-    </h2>
-    <br>
+    <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Time Units <span class="betatag">BEING UPDATED</span></a>
+    <a id="coce" class="disabled"><i class="fa-solid fa-hand"></i> Disable Animations <span class="betatag">BETA</span></a>
     <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
 
-    <h2 class="textelement" id="eouoptions">
+    <h1 class="textelement" id="eouoptions">
         Ease of Use
-    </h2>
+    </h1>
     <Br>
+    <a id="coce" class="disabled"><i class="fa-solid fa-volume-mute"></i> Disable End Sounds <span class="betatag">BETA</span></a>
     <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
 
-    <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Countdown Units <span class="betatag">BEING UPDATED</span></a>
-
-    <h2 id="inclusionoptions" class="textelement">
+    <h1 id="inclusionoptions" class="textelement">
         Only Include <span class="betatag">BEING UPDATED</span>
-    </h2>
+    </h1>
     <br>
     <a id="week" class="disabled" onclick="week();"><i class="fa-solid fa-calendar-week"></i> Weeks</a>
     <a id="day" class="disabled" onclick="day();"><i class="fa-solid fa-calendar-days"></i> Days</a>
@@ -435,22 +457,6 @@
     <br>
     <br>
     <br>
-    <h1 id="progressoptions">Ending Options <span class="betatag">BETA</span></h1>
-    <h2 id="inclusionoptions" class="textelement">Confetti Options</h2>
-    <br>
-    <br>
-    <br>
-    <h2 id="inclusionoptions" class="textelement">Ending Sound</h2>
-    <br>
-    <br>
-    <br>
-
-
-    <div class="container">
-        <input type="text" id="audioLink" placeholder="Enter YouTube, SoundCloud, or audio file link">
-        <a class="betabutton" onclick="playAudio()">Test Audio</a>
-    </div>
-    <div id="playerContainer" style="display: none;"></div>
       </div>
     </center>
     </div>
