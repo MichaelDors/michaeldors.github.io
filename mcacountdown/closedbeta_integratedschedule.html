@@ -130,32 +130,30 @@
                 <option value="Only Include Seconds"></option>
                 <option value="Only Include Milliseconds"></option>
             </datalist>
-            <br>
             <div id="settingssidebarpaneshareable">
                 <h3>Shareable</h3>
                 <a id="sidebaranchor" href="#generaloptions"><i style="background-color:#8426FF" class="fa-regular fa-clock"></i> General</a>
                 <Br>
-                <a id="sidebaranchor" href="#customizationoptions"><i style="background-color:#00b2ff" class="fa-solid fa-paintbrush"></i> Customization</a>
+                <a id="sidebaranchor" href="#customizationoptions"><i style="background-color:#00b2ff" class="fa-solid fa-palette"></i> Customization</a>
                 <br>
-                <a id="sidebaranchor" href="#scheduleoptions"><i style="background-color:#00FF5E" class="fa-regular fa-calendar"></i> Schedule</a>
+                <a id="sidebaranchor" href="#endingoptions"><i style="background-color:#00FF5E;" class="fa-regular fa-flag-checkered"></i> Ending</a>
                 <br>
-                <a id="sidebaranchor" href="#progressoptions"><i style="background-color:#FF9900" class="fa-solid fa-percent"></i> Progress</a>
+                <a id="sidebaranchor" href="#scheduleoptions"><i style="background-color:#FF9900" class="fa-solid fa-calendar"></i> Schedule</a>
                 <br>
-                <a id="sidebaranchor" href="#queueoptions"><i style="background-color:#8426FF" class="fa-solid fa-list-ul"></i> Queue</a>
+                <a id="sidebaranchor" href="#progressoptions"><i style="background-color:#8426FF" class="fa-solid fa-spinner"></i> Progress</a>
             </div>
-            <br>
             <div id="settingssidebarpanepersonal">
                 <h3>Personal</h3>
                 <a id="sidebaranchor" href="#appearanceoptions"><i style="background-color:#00b2ff" class="fa-solid fa-circle-half-stroke"></i> Appearance</a>
                 <br>
                 <a id="sidebaranchor" href="#eouoptions"><i style="background-color:#00FF5E" class="fa-solid fa-child-reaching"></i> Ease of Use</a>
                 <br>
-                <a id="sidebaranchor" href="#inclusionoptions"><i style="background-color:#FF9900" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
+                <a id="sidebaranchor" href="#inclusionoptions"><i style="background-color:#FF9900; font-size:15px !important" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
             </div>
 
-            <p class="textelement" style="font-size: 15px; color:#989898 !important; max-width:85%;">
-                <a style="font-family: 'Dosis' , sans-serif; color:#363636 !important; margin-left:30px; margin-bottom:10px;" class="aintext dependencieslink" href="Information/cookiepolicy.html"><i style="margin-right:10px;" class="fa-solid fa-cookie-bite"></i>Cookie Policy</a>
-                <a style="font-family: 'Dosis', sans-serif; color:#363636 !important; margin-left:30px;" class="aintext dependencieslink" href="Information/dependencies.html"><i style="margin-right:10px;" class="fa-solid fa-file-code"></i>Open Source Dependencies</a>
+            <p class="textelement" style="font-size: 15px; color:#989898 !important; max-width:85%; position:absolute; bottom:25px;">
+                <a style="font-family: 'Dosis' , sans-serif; color:#363636 !important; margin-left:30px; margin-bottom:10px;" class="aintext dependencieslink" href="Information/cookiepolicy.html"><i style="margin-right:10px;" class="fa-solid fa-cookie-bite"></i> Cookie Policy</a>
+                <a style="font-family: 'Dosis', sans-serif; color:#363636 !important; margin-left:30px;" class="aintext dependencieslink" href="Information/dependencies.html"><i style="margin-right:10px;" class="fa-solid fa-file-code"></i> Dependencies</a>
             </p>
         </div>
         <div id="settingsmainpane">
@@ -325,12 +323,13 @@
                 <Br>
                 <br>
                 <br>
-                <h1 id="progressoptions">Ending Options <span class="betatag">BETA</span></h1>
-                <h2 id="inclusionoptions" class="textelement" style="font-family: 'Dosis';">Confetti Options</h2>
+                <h1 id="endingoptions">Ending Options</h1>
+                <h2 class="textelement" style="font-family: 'Dosis';">Confetti Options <span class="betatag">BETA</span></h2>
+                <a class="aintext" href="#appearanceoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; color:white; text-decoration: underline;">You can disable confetti for all countdowns in your Personal Options.</a>
                 <br>
                 <br>
                 <br>
-                <h2 id="inclusionoptions" class="textelement" style="font-family: 'Dosis';">Ending Sound</h2>
+                <h2 class="textelement" style="font-family: 'Dosis';">Ending Sound</h2>
                 <div class="container">
                     <input class="input" type="text" id="audioLink" placeholder="Audio link">
                 </div>
@@ -339,30 +338,28 @@
                     <br />
                     Any ADs that may be placed by the service will remain.
                 </p>
+                <a class="aintext" href="#eouoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; color:white; text-decoration: underline;">You can disable ending sounds for all countdowns in your Personal Options.</a>
                 <div id="playerContainer" style="display: none;"></div>
-                <br>
-                <br>
-                <br>
-                <h1 id="progressoptions">Progress <span class="betatag">BETA</span></h1>
                 <br>
                 <br>
                 <br>
                 <h1 id="scheduleoptions">Countdown Schedule <span class="betatag">BETA</span></h1>
                 <div class="schedule-editor" style="color: white !important;">
                     <div class="schedule-container">
+                        <h2 style="font-family: 'Dosis';">Edit Schedule</h2>
+                        <a id="reset" class="warning" onclick="schedule_resetAll();"><i class="fa-solid fa-trash"></i> Reset Schedule</a>
                         <div class="schedule-form-group">
-                            <label for="schedule-eventTitle">Event Title:</label>
                             <input type="text" placeholder="Pick a title" id="schedule-eventTitle" required>
                         </div>
                         <div class="schedule-form-group">
-                            <label for="schedule-startTime">Start Time:</label>
-                            <input type="time" id="schedule-startTime" required>
+                            <input type="time" id="schedule-startTime" style="margin-right:10px" required>
+                            <label for="schedule-endTime">to</label>
+                            <input type="time" id="schedule-endTime" style="margin-left:10px;" required>
                         </div>
-                        <div class="schedule-form-group">
-                            <label for="schedule-endTime">End Time:</label>
-                            <input type="time" id="schedule-endTime" required>
-                        </div>
-                        <a id="schedule-addOrUpdateEventBtn">Add Event</a>
+                        <a id="schedule-addOrUpdateEventBtn"><i class="fa-solid fa-plus-circle"></i> Add Event</a>
+                        <br>
+                        <br>
+                        <br>
 
                         <div class="schedule-editor-section">
                             <h2 style="font-family: 'Dosis';">Regular Schedule</h2>
@@ -385,14 +382,18 @@
                                     <option value="5">Friday</option>
                                     <option value="6">Saturday</option>
                                 </select>
-                                <a id="schedule-addExceptionBtn">Add Exception Day</a>
+                                <a id="schedule-addExceptionBtn"><i class="fa-solid fa-plus-circle"></i> Add Exception Day</a>
                             </div>
                             <div id="schedule-exceptionList"></div>
                         </div>
                     </div>
                 </div>
-    <br>
-    <br>
+                <br>
+                <br>
+                <h1 id="progressoptions">Progress <span class="betatag">BETA</span></h1>
+                <br>
+                <br>
+                <br>
     <br>
     <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
         <h1><i style="color: #FE9A00" class="fa-solid fa-user-lock"></i> Personal Options</h1>
@@ -407,22 +408,22 @@
     </h1>
     <br>
     <h2 class="textelement" style="font-family: 'Dosis';">
-        Animation Speed <span class="betatag">BEING UPDATED</span>
+        Animation Speed
     </h2>
 
     <form action="" id="searchTypeToggle">
         <div></div>
+        <label>
+            <input type="radio" name="searchtype" data-location="0" value="one" id="speed2">
+            <div style="font-family: 'Dosis';"><i class="fa-solid fa-seedling"></i>  Slow</div>
+        </label>
         <label class="selected">
-            <input type="radio" name="searchtype" data-location="0" value="one" id="speed1">
-            <div><i class="fa-solid fa-gauge"></i></div>
+            <input type="radio" name="searchtype" data-location="calc(100% - 11px)" value="two" id="speed1">
+            <div style="font-family: 'Dosis';"><i class="fa-solid fa-gauge"></i>  Default</div>
         </label>
         <label>
-            <input type="radio" name="searchtype" data-location="calc(100% - 8px)" value="two" id="speed2">
-            <div><i class="fa-solid fa-seedling"></i></div>
-        </label>
-        <label>
-            <input type="radio" name="searchtype" data-location="calc(200% - 12px)" value="three" id="speed3">
-            <div><i class="fa-solid fa-bolt"></i></div>
+            <input type="radio" name="searchtype" data-location="calc(200% - 22px)" value="three" id="speed3">
+            <div style="font-family: 'Dosis';"><i class="fa-solid fa-bolt"></i>  Fast</div>
         </label>
     </form>
     <br>
@@ -453,7 +454,6 @@
     <br>
     <br>
     <br>
-    <h1 id="queueoptions">Countdown Queue <span class="betatag">BETA</span></h1>
     <br>
     <br>
     <br>
@@ -979,7 +979,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
 
     .schedulebgcoloredslow{
-        animation:schedulebackgroundgradient 100s infinite;
+        animation:schedulebackgroundgradient 200s infinite;
     }
 
     .clockfast {
@@ -994,7 +994,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
 
     .schedulebgcoloredfast{
-        animation:schedulebackgroundgradient 100s infinite;
+        animation:schedulebackgroundgradient 5s infinite;
     }
 
     .center {
@@ -1406,48 +1406,52 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             }
             #settingssidebarpaneshareable{
                 width:90%;
-                background:linear-gradient(to bottom right, #004C72, #00131E, #141414, #141414, #141414);
                 margin-left:5%;
-                padding-top:5px;
                 border-radius: 20px;
             }
             #settingssidebarpaneshareable h3{
-                margin-left:25px;
+                margin-left:5px;
+                line-height:0px;
             }
-            #settingssidebarpaneshareable p{
+            #settingssidebarpaneshareable a{
                 font-family:Dosis, sans-serif;
-                margin-left:30px;
+                margin-left:20px;
                 padding-bottom:5px;
             }
-            #settingssidebarpaneshareable p i{
+            #settingssidebarpaneshareable a i{
+                text-align: center;
+                line-height:30px;
                 background-color:#8426FF;
-                width:20px;
-                height:20px;
-                font-size:15px;
+                font-size:20px;
+                width:30px !important;
+                height:30px !important;
                 border-radius: 100px;
+                margin-bottom:10px;
             }
             #settingssidebarpanepersonal{
                 width:90%;
-                background:linear-gradient(to bottom right, #724800, #1E1600, #141414, #141414, #141414);
-                padding-top:5px;
                 margin-left:5%;
                 border-radius: 20px;
                 margin-bottom:30px;
             }
             #settingssidebarpanepersonal h3{
-                margin-left:25px;
+                margin-left:5px;
+                line-height:0px;
             }
-            #settingssidebarpanepersonal p{
+            #settingssidebarpanepersonal a{
                 font-family:Dosis, sans-serif;
-                margin-left:30px;
+                margin-left:20px;
                 padding-bottom:5px;
             }
-            #settingssidebarpanepersonal p i{
+            #settingssidebarpanepersonal a i{
+                text-align: center;
+                line-height:30px;
                 background-color:#8426FF;
-                width:20px;
-                height:20px;
-                font-size:15px;
+                font-size:20px;
+                width:30px !important;
+                height:30px !important;
                 border-radius: 100px;
+                margin-bottom:10px;
             }
 
 
@@ -1561,6 +1565,12 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     .fa-xmark {
         animation: fadeinout 5s infinite;
     }
+
+    #innergear {
+        text-shadow: #000 0px 0px 5px;
+        -webkit-font-smoothing: antialiased;
+        }
+
 
 
     @keyframes fadeinout {
@@ -2330,7 +2340,19 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         }
 
         .schedule-container input{
-            margin-left:20px;
+            color: white;
+        border-radius: 20px;
+        padding: 20px;
+        font-size: 20px;
+        font-weight: 100;
+        outline: 1px solid #8426ff;
+        background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+        font-family: 'Fredoka One';
+        border: 0px transparent;
+        transition: 0.5s all;
+        }
+
+        .schedule-container select{
             color: white;
         border-radius: 20px;
         padding: 20px;
@@ -2350,7 +2372,6 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             padding: 0;
         }
         .schedule-event-item, .schedule-exception-item {
-            border-bottom: 1px solid #8426ff;
             padding: 10px;
             margin-bottom: 10px;
             border-radius: 4px;
@@ -2404,6 +2425,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             transition: max-height 0.2s ease-out;
             background-color: #14141400;
             outline: 1px solid #8426ff;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
         }
 
 
@@ -2477,7 +2500,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
 
     //set up countdown schedules
-    if(parameter("schedule") != "null" && parameter("schedule")){  
+    if(parameter("schedule") !== "null" && parameter("schedule")){  
         document.getElementById("clock").style.display = "none"; //hide clock
         document.getElementById("countdowntitle").style.display = "none"; //hide title
         document.getElementById("schedule").style.display = ""; //show schedule
@@ -2707,6 +2730,14 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         SetCountDowngeneral(); //set the changes
     }
 
+        //countdown schedule styling
+        if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+            document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
+        }
+        else{
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+        }
+
     //animation speed toggle
     document.querySelector('#searchTypeToggle').addEventListener('click', function (event) {
 
@@ -2763,6 +2794,17 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             document.getElementById("clock").classList.remove("clockfast");
             document.getElementById("clock").classList.add("clock");
         }
+
+        if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+            document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredfast");
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredslow");
+        }
+        else{
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredfast");
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredslow");
+        }
     }
     function speed2() {
         if (!isNaN(parameter("atc"))) {
@@ -2779,6 +2821,17 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             document.getElementById("clock").classList.remove("clockfast");
             document.getElementById("clock").classList.remove("clock");
         }
+
+        if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredfast");
+            document.getElementById("schedule-currentClass").classList.add("schedulebgcoloredslow");
+        }
+        else{
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredfast");
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredslow");
+        }
     }
     function speed3() {
         if (!isNaN(parameter("atc"))) {
@@ -2794,6 +2847,17 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             document.getElementById("clock").classList.remove("clockslow");
             document.getElementById("clock").classList.add("clockfast");
             document.getElementById("clock").classList.remove("clock");
+        }
+
+        if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+            document.getElementById("schedule-currentClass").classList.add("schedulebgcoloredfast");
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredslow");
+        }
+        else{
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredfast");
+            document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredslow");
         }
     }
 
@@ -2937,6 +3001,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         if (document.getElementById("clock") && document.getElementById("clock").style.display !== "none") { //if the clock exists and settings is not open
             document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
         }
+        else if(parameter("schedule") !== "null" && parameter("schedule")){ //if using schedule instead of clock
+            document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("schedule-currentClass")).getPropertyValue("background-color")); //sets the theme color to the current foreground color
+        }
         else{ //should never be triggered(?) mostly a fallback
             document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff'); //sets the theme color to Countdown Purple
         }
@@ -2980,6 +3047,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             document.getElementById("animatedbackground").classList.add("hidden"); //remove background
             if (document.getElementById("clock") && document.getElementById("clock").style.display !== "none") { //if the clock exists and settings is not opened
                 document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
+            }
+            else if(parameter("schedule") !== "null" && parameter("schedule")){ //if using schedule instead of clock
+                document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("schedule-currentClass")). getPropertyValue("background-color")); //sets the theme color to the current foreground color
             }
             else{ //should never be triggered(?) mostly a fallback
                 document.querySelector("meta[name=theme-color]").setAttribute("content", '#8426ff'); //sets the theme color to Countdown Purple
@@ -3036,16 +3106,6 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                     document.title = "Countdown";
                 }
             }
-        }
-
-        //countdown schedule styling
-        if(parameter("schedule") !== "null" && parameter("atc") == "none"){
-            document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
-
-            //add fast and slow animation checks
-        }
-        else{
-            document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
         }
 
         //only include
@@ -4141,6 +4201,11 @@ let schedule_events = [];
             history.replaceState(null, '', `?schedule=${encoded}`);
         }
 
+        function schedule_resetAll(){
+            history.replaceState(null, '', `?schedule=null`);
+            schedule_loadScheduleFromURL();
+        }
+
         function schedule_loadScheduleFromURL() {
             const encodedSchedule = parameter('schedule');
             if (encodedSchedule && encodedSchedule !== "null") {
@@ -4204,7 +4269,7 @@ let schedule_events = [];
             document.getElementById('schedule-eventTitle').value = event.title;
             document.getElementById('schedule-startTime').value = event.startTime;
             document.getElementById('schedule-endTime').value = event.endTime;
-            document.getElementById('schedule-addOrUpdateEventBtn').textContent = 'Update Event';
+            document.getElementById('schedule-addOrUpdateEventBtn').innerHTML = '<i class="fa-solid fa-check-circle"></i> Update Event';
         }
 
         function schedule_removeEvent(index, isException = false, day = null) {
@@ -4249,8 +4314,8 @@ let schedule_events = [];
                     <h1>${event.title}</h1><br>
                     <p>Start: ${schedule_formatTime(event.startTime)}<br>
                     End: ${schedule_formatTime(event.endTime)}<br></p>
-                    <a onclick="schedule_editEvent(schedule_events[${index}])">Edit</a>
-                    <a class="warning" onclick="schedule_removeEvent(${index})">Remove</a>
+                    <a onclick="schedule_editEvent(schedule_events[${index}])"><i class="fa-solid fa-pencil"></i> Edit</a>
+                    <a class="warning" onclick="schedule_removeEvent(${index})"><i class="fa-solid fa-trash"></i> Remove</a>
                     <br>
                     <br>
                 `;
@@ -4278,8 +4343,8 @@ let schedule_events = [];
                                     <h1>${event.title}</h1><br>
                                     <p>Start: ${schedule_formatTime(event.startTime)}<br>
                                     End: ${schedule_formatTime(event.endTime)}<br></p>
-                                    <a onclick="schedule_editEvent(schedule_exceptions['${day}'][${index}], true, '${day}')">Edit</a>
-                                    <a class="warning" onclick="schedule_removeEvent(${index}, true, '${day}')">Remove</a>
+                                    <a onclick="schedule_editEvent(schedule_exceptions['${day}'][${index}], true, '${day}')"><i class="fa-solid fa-pencil"></i> Edit</a>
+                                    <a class="warning" onclick="schedule_removeEvent(${index}, true, '${day}')"> <i class="fa-solid fa-trash"></i> Remove</a>
                                     <br>
                                     <br>
                                 </li>
@@ -4295,7 +4360,7 @@ let schedule_events = [];
             document.getElementById('schedule-eventTitle').value = '';
             document.getElementById('schedule-startTime').value = '';
             document.getElementById('schedule-endTime').value = '';
-            document.getElementById('schedule-addOrUpdateEventBtn').textContent = 'Add Event';
+            document.getElementById('schedule-addOrUpdateEventBtn').innerHTML = '<i class="fa-solid fa-plus-circle"></i> Add Event';
             schedule_editingEvent = null;
             schedule_editingExceptionDay = null;
         }
