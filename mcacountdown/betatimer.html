@@ -4811,7 +4811,15 @@ function savetodash() {
 }
 
 function magictitle(){
-    var now = new Date(); //getting the current date
+    if(parameter("schedule") !== "null" && parameter("schedule")){
+        document.getElementById("countdowntitle").value = "Schedule";
+        document.getElementById("magictitle").classList.add("magictitle-success");
+        setTimeout(function() {
+            document.getElementById("magictitle").classList.remove("magictitle-success");
+        }, 500);
+    }
+    else{
+            var now = new Date(); //getting the current date
             var nextyear = new Date().getFullYear() + 1; //setting up a next year variable
             var thisyear = new Date().getFullYear(); //setting up a this year variable
 
@@ -4980,7 +4988,8 @@ function magictitle(){
                         document.getElementById("magictitle").classList.remove("magictitle-failed");
                     }, 500);
             }
+        }
     
-}
+    }
 
 </script>
