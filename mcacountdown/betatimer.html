@@ -3197,16 +3197,36 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             }
             else {
                 if (days > 0) { //over 0 days no title
-                    document.title = "Countdown for " + days + " days";
+                    if(days == 1){
+                        document.title = "Countdown for " + days + " day";
+                    }
+                    else{
+                        document.title = "Countdown for " + days + " days";
+                    }
                 }
                 else if (hours > 0) { //over 0 hours no title
-                    document.title = "Countdown for " + hours + " hours";
+                    if(hours == 1){
+                        document.title = "Countdown for " + hours + " hour";
+                    }
+                    else{
+                        document.title = "Countdown for " + hours + " hours";
+                    }
                 }
                 else if (minutes > 0) { //over 0 minutes no title
-                    document.title = "Countdown for " + minutes + " minutes";
+                    if(minutes == 1){
+                        document.title = "Countdown for " + minutes + " minute";
+                    }
+                    else{
+                        document.title = "Countdown for " + minutes + " minutes";
+                    }
                 }
                 else if (seconds > 0) { //over 0 seconds no title
-                    document.title = "Countdown for " + seconds + " seconds";
+                    if(seconds == 1){
+                        document.title = "Countdown for " + seconds + " second";
+                    }
+                    else{
+                        document.title = "Countdown for " + seconds + " seconds";
+                    }
                 } //since there are "else if" and not their own else, we dont have to worry about "seconds" triggering when it should be on "hours"- while the seconds is technically over 0, it will stop if it reaches hours and that's true
                 else { //just countdown
                     document.title = "Countdown";
