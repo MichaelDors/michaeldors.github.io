@@ -2795,6 +2795,10 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         }
     }
 
+    if(parameter("schedule") !== "null" && parameter("schedule")){
+        document.querySelector(".datepicker").value = '9999-12-30T00:00';
+    }
+
     //countdown title
     if (parameter('title')) { 
         document.getElementById("countdowntitle").value = decodeURIComponent(parameter('title')); //set the front-facing countdown title input to the parameter value, decoding all %20s and such
