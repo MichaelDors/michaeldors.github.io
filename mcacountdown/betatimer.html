@@ -3160,16 +3160,36 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         if(parameter("schedule") == "null"){ //will only trigger when there is no schedule active. schedule titles are handled with the cdschedule code.
             if (document.getElementById("countdowntitle").value != "") { //if the countdown has a title
                 if (days > 0) { //if it's over 0 days, we use the days text with the title since there is a title
-                    document.title = document.getElementById("countdowntitle").value + " in " + days + " days | Countdown";
+                    if(days == 1){
+                        document.title = document.getElementById("countdowntitle").value + " in " + days + " day | Countdown";
+                    }
+                    else{
+                        document.title = document.getElementById("countdowntitle").value + " in " + days + " days | Countdown";
+                    }
                 }
                 else if (hours > 0) { //over 0 hours use hours with title
-                    document.title = document.getElementById("countdowntitle").value + " in " + hours + " hours | Countdown";
+                    if(hours == 1){
+                        document.title = document.getElementById("countdowntitle").value + " in " + hours + " hour | Countdown";
+                    }
+                    else{
+                        document.title = document.getElementById("countdowntitle").value + " in " + hours + " hours | Countdown";
+                    }
                 }
                 else if (minutes > 0) { //over 0 minutes use minutes with title
-                    document.title = document.getElementById("countdowntitle").value + " in " + minutes + " minutes | Countdown";
+                    if(minutes == 1){
+                        document.title = document.getElementById("countdowntitle").value + " in " + minutes + " minute | Countdown";
+                    }
+                    else{
+                        document.title = document.getElementById("countdowntitle").value + " in " + minutes + " minutes | Countdown";
+                    }
                 }
                 else if (seconds > 0) { //over 0 seconds use seconds with title
-                    document.title = document.getElementById("countdowntitle").value + " in " + seconds + " seconds | Countdown";
+                    if(seconds == 1){
+                        document.title = document.getElementById("countdowntitle").value + " in " + seconds + " second | Countdown";
+                    }
+                    else{
+                        document.title = document.getElementById("countdowntitle").value + " in " + seconds + " seconds | Countdown";
+                    }
                 }
                 else { //otherwise just use Countdown
                     document.title = "Countdown";
