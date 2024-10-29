@@ -96,6 +96,13 @@
         </video>
     </center>
 
+    <div class="cookiebanner" id="cookie-banner">
+        <img id="cookiebannerimg" src="Backgrounds/cookie_bite.png">
+        <div>
+            <p style="font-family:Dosis; font-size:25px;"> We use cookies and similar technologies to save your preferences and obtain anonymous analytics.  Some features are unavailable without consent regarding these technologies. <a class="aintext" style="font-family:Dosis; font-size:25; color:white; text-decoration:underline" href="Information/cookiepolicy.html">Learn more</a> or <a id="accept-cookies" class="aintext" style="font-family:Dosis; font-size:25; color:#aa68ff; text-decoration:underline">accept them now</a>.</p>
+        </div>
+    </div>
+
     <center class="hidden" id="unfocused" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
         <div class="box">
             <i style="font-size:50px; color:white" class="fa-solid fa-gauge"></i>
@@ -923,6 +930,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             transition: 0.5s;
             animation: magictitlefailedshake 0.4s linear;
         }
+
+        
 
 		@keyframes magictitlefailedshake {
 			0% { transform: translate(22.5px) scale(1.75); }
@@ -2042,7 +2051,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
         #gear {
             z-index: 100000;
-            top: 5%;
+            top: 95%;
             left: 7%;
         }
 
@@ -2524,11 +2533,111 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         font-size:20px;
         margin-left:10px;
     }
+
+    .cookiebanner{
+    position:fixed !important;
+    top:50px;
+    left:12.5vw;
+    color:white;
+    border-radius: 20px;
+    z-index:1000000;
+    background: rgb(0, 0, 0);
+    height: 80px auto;
+    width:75vw;
+
+}
+
+
+.cookiebanner p{
+    margin:none;
+    line-height:1;
+    margin-right:20px;
+}
+
+.cookiebanner a{
+    margin:0px;
+}
+
+.cookiebanner img {
+    float: left;
+    border-radius: 20px 0 0 20px;
+    height: 100%; /* Child image will stretch to fill the parent's height */
+    width: auto;  /* Maintain aspect ratio */
+    margin-right:20px;
+    display:none;
+}
+
+.failedcookiebanner{
+    animation: settingslocked 0.4s linear;
+}
+
+@keyframes settingslocked {
+    0% { transform: translate(22.5px); }
+    20% { transform: translate(-22.5px); }
+    40% { transform: translate(16.25px); }
+    60% { transform: translate(-16.25px); }
+    80% { transform: translate(14px); }
+    100% { transform: translate(0px); }
+}
 </style>
 
 
 
 <script>
+window.onload = function() {
+    const cookiebanner = document.getElementById('cookie-banner');
+    const cookiebannerimage = document.getElementById('cookiebannerimg');
+    // Use setTimeout to ensure the banner is fully rendered
+    setTimeout(() => {
+        const cookiebannerHeight = cookiebanner.offsetHeight;
+        cookiebannerimage.style.height = `${cookiebannerHeight}px`;
+        cookiebannerimage.style.display = 'block'; // Show the image after setting the height
+    }, 1); // Adjust the timeout duration if necessary
+    setTimeout(() => {
+        const cookiebannerHeight = cookiebanner.offsetHeight;
+        cookiebannerimage.style.height = `${cookiebannerHeight}px`;
+    }, 2); // Adjust the timeout duration if necessary
+    setTimeout(() => {
+        const cookiebannerHeight = cookiebanner.offsetHeight;
+        cookiebannerimage.style.height = `${cookiebannerHeight}px`;
+    }, 3); // Adjust the timeout duration if necessary
+    setTimeout(() => {
+        const cookiebannerHeight = cookiebanner.offsetHeight;
+        cookiebannerimage.style.height = `${cookiebannerHeight}px`;
+    }, 4); // Adjust the timeout duration if necessary
+    setTimeout(() => {
+        const cookiebannerHeight = cookiebanner.offsetHeight;
+        cookiebannerimage.style.height = `${cookiebannerHeight}px`;
+    }, 5); // Adjust the timeout duration if necessary
+
+    /*
+    basically, after 1 ms we adjust the height of the image to match the height of the banner
+    then we show the image and repeat at 2ms to account for if the banner changed size (due to the image)
+    and so on until 5ms. This is to ensure the image is the same size as the banner even if the first
+    couple iterations mess with the text wrapping and cange the size of the banner
+    */
+    
+};
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+        var cookieBanner = document.getElementById("cookie-banner");
+        var acceptButton = document.getElementById("accept-cookies");
+
+        if (!getCookie("cookiesAccepted")) {
+            cookieBanner.style.display = "";
+        }
+        else{
+            cookieBanner.style.display = "none";
+        }
+
+        acceptButton.addEventListener("click", function () {
+            setCookie("cookiesAccepted", "True", "70")
+            cookieBanner.style.display = "none";
+            location.reload();
+        });
+    });
+
     //onload url parameter translation into the correlating customization settings
 
     //backgrounds
@@ -3036,6 +3145,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
     //settings
     function settings() {
+        if(getCookie("cookiesAccepted")){
+
         if (document.getElementById("autopilotpopup")) {
             document.getElementById("autopilotpopup").remove();
         } //if settings is opened while the autpilot popup is still up, get rid of it
@@ -3078,6 +3189,13 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         }
 
         SetCountDowngeneral();
+        }
+        else{
+            document.getElementById("cookie-banner").classList.add("failedcookiebanner");
+            setTimeout(function() {
+                document.getElementById("cookie-banner").classList.remove("failedcookiebanner");
+            }, 500);
+        }
     }
 
     //grey out color pickers and theme color for background
@@ -3544,6 +3662,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         eraseCookie('second');
         eraseCookie('day');
         eraseCookie('hour');
+        eraseCookie('cookiesAccepted');
         eraseCookie('lcdu');
         updateoptions(); //update classes of settings buttons
 
