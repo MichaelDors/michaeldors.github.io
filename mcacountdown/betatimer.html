@@ -193,6 +193,17 @@
                 <a title="Save to Countdown Dashboard" id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
                 <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
 
+		    
+		<h1>Debug Options</h1>
+		<p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
+                    <strong>Why am I seeing this?</strong> These options are displayed on some Beta builds to help test these versions.
+                </p>
+		
+		<a id="reset" class="warning" onclick="schedule_resetAll();"><i class="fa-solid fa-trash"></i> Reset Schedule</a>
+		<a id="reset" class="warning" onclick="eraseCookie('cookiesAccepted');"><i class="fa-solid fa-trash"></i> Revoke Cookie Consent</a>
+
+
+
                 <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
                     <h1><i style="color: #39B8FB" class="fa-solid fa-paper-plane"></i> Shareable Options</h1>
                     <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; margin-bottom:30px;">Options that are saved in the link for this Countdown, not with your preferences.</p>
@@ -375,7 +386,6 @@
                 <div class="schedule-editor" style="color: white !important;">
                     <div class="schedule-container">
                         <h2 style="font-family: 'Dosis';">Edit Schedule</h2>
-                        <a id="reset" class="warning" onclick="schedule_resetAll();"><i class="fa-solid fa-trash"></i> Reset Schedule</a>
                         <div class="schedule-form-group">
                             <input type="text" placeholder="Pick a title" id="schedule-eventTitle" required>
                         </div>
