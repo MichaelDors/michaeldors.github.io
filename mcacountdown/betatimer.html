@@ -2607,15 +2607,7 @@ window.onload = function() {
     setTimeout(() => {
         const cookiebannerHeight = cookiebanner.offsetHeight;
         cookiebannerimage.style.height = `${cookiebannerHeight}px`;
-    }, 2); // Adjust the timeout duration if necessary
-    setTimeout(() => {
-        const cookiebannerHeight = cookiebanner.offsetHeight;
-        cookiebannerimage.style.height = `${cookiebannerHeight}px`;
     }, 3); // Adjust the timeout duration if necessary
-    setTimeout(() => {
-        const cookiebannerHeight = cookiebanner.offsetHeight;
-        cookiebannerimage.style.height = `${cookiebannerHeight}px`;
-    }, 4); // Adjust the timeout duration if necessary
     setTimeout(() => {
         const cookiebannerHeight = cookiebanner.offsetHeight;
         cookiebannerimage.style.height = `${cookiebannerHeight}px`;
@@ -2628,11 +2620,19 @@ window.onload = function() {
         const cookiebannerHeight = cookiebanner.offsetHeight;
         cookiebannerimage.style.height = `${cookiebannerHeight}px`;
     }, 20); // Adjust the timeout duration if necessary
+    setTimeout(() => {
+        const cookiebannerHeight = cookiebanner.offsetHeight;
+        cookiebannerimage.style.height = `${cookiebannerHeight}px`;
+    }, 50); // Adjust the timeout duration if necessary
+    setTimeout(() => {
+        const cookiebannerHeight = cookiebanner.offsetHeight;
+        cookiebannerimage.style.height = `${cookiebannerHeight}px`;
+    }, 100); // Adjust the timeout duration if necessary
 
     /*
     basically, after 1 ms we adjust the height of the image to match the height of the banner
-    then we show the image and repeat at 2ms to account for if the banner changed size (due to the image)
-    and so on until 5ms. This is to ensure the image is the same size as the banner even if the first
+    then we show the image and repeat at 3ms to account for if the banner changed size (due to the image)
+    and so on until 1s. This is to ensure the image is the same size as the banner even if the first
     couple iterations mess with the text wrapping and cange the size of the banner
     */
     
