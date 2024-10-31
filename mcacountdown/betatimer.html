@@ -4821,7 +4821,11 @@ let schedule_events = [];
                     const seconds = Math.floor((remainingTime % 60000) / 1000);
                     document.getElementById('schedule-timeRemaining').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
                     document.getElementById('schedule-remainingText').textContent = 'remaining';
-                    document.title = currentEvent.title + " | " + Math.round(remainingTime/60000) + " mins remaining";
+		    if(Math.round(remainingTime/60000) !== "1"{
+			document.title = currentEvent.title + " | " + Math.round(remainingTime/60000) + " mins remaining";
+		    }else{
+			document.title = currentEvent.title + " | " + Math.round(remainingTime/60000) + " min remaining";
+		    }
                 }
             } else {
                 schedule_showTomorrowSchedule();
