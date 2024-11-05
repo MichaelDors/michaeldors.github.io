@@ -429,6 +429,12 @@
                 <br>
                 <br>
                 <h1 id="progressoptions">Progress <span class="betatag">BETA</span></h1>
+		<h2 style="font-family: 'Dosis';">Starting Date</h2>
+		<input class="progressdatepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
+		<br>
+		<br>
+		<br>
+		<h2 style="font-family: 'Dosis';">Progress Bar Style</h2>
                 <br>
                 <br>
                 <br>
@@ -821,6 +827,18 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
 
     .datepicker {
+        color: white;
+        border-radius: 20px;
+        padding: 20px;
+        font-size: 20px;
+        font-weight: 100;
+        outline: 1px solid #8426ff;
+        background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+        font-family: 'Fredoka One';
+        border: 0px transparent;
+    }
+
+    .progressdatepicker {
         color: white;
         border-radius: 20px;
         padding: 20px;
