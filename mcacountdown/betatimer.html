@@ -160,12 +160,16 @@
                 <a id="sidebaranchor" href="#generaloptions"><i style="background-color:#8426FF" class="fa-regular fa-clock"></i> General</a>
                 <Br>
                 <a id="sidebaranchor" href="#customizationoptions"><i style="background-color:#00b2ff" class="fa-solid fa-palette"></i> Customization</a>
+		<div id="optionsendinganchor">
                 <br>
                 <a id="sidebaranchor" href="#endingoptions"><i style="background-color:#00FF5E;" class="fa-solid fa-flag-checkered"></i> Ending</a>
+		</div>
                 <br>
                 <a id="sidebaranchor" href="#scheduleoptions"><i style="background-color:#FF9900" class="fa-solid fa-calendar"></i> Schedule</a>
+		<div id="optionsprogressanchor">
                 <br>
                 <a id="sidebaranchor" href="#progressoptions"><i style="background-color:#8426FF" class="fa-solid fa-spinner"></i> Progress</a>
+		</div>
             </div>
             <div id="settingssidebarpanepersonal">
                 <h3>Personal</h3>
@@ -2749,7 +2753,9 @@ window.onload = function() {
         document.getElementById("countdowntitle").style.display = "none"; //hide title
 	document.getElementById("optionsdatecontainer").style.display = "none"; //hide end date area of options
 	document.getElementById("optionsendingcontainer").style.display = "none"; //hide ending options area of options	
-	document.getElementById("optionsprogresscontainer").style.display = "none"; //hide ending options area of options	
+	document.getElementById("optionsendinganchor").style.opacity = "0.5"; //grayscaling ending options anchor 	
+	document.getElementById("optionsprogresscontainer").style.display = "none"; //hide ending options area of options
+	document.getElementById("optionsprogressanchor").style.opacity = "0.5"; //greyscape progress options anchor	
         document.getElementById("schedule").style.display = ""; //show schedule
 
         if(!parameter("date")){
