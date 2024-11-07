@@ -157,27 +157,23 @@
             </datalist>
             <div id="settingssidebarpaneshareable">
                 <h3>Shareable</h3>
-                <a id="sidebaranchor" href="#generaloptions"><i style="background-color:#8426FF" class="fa-regular fa-clock"></i> General</a>
+                <a class="sidebaranchor" href="#generaloptions"><i style="background-color:#8426FF" class="fa-regular fa-clock"></i> General</a>
                 <Br>
-                <a id="sidebaranchor" href="#customizationoptions"><i style="background-color:#00b2ff" class="fa-solid fa-palette"></i> Customization</a>
-		<div id="optionsendinganchor">
+                <a class="sidebaranchor" href="#customizationoptions"><i style="background-color:#00b2ff" class="fa-solid fa-palette"></i> Customization</a>
                 <br>
-                <a id="sidebaranchor" href="#endingoptions"><i style="background-color:#00FF5E;" class="fa-solid fa-flag-checkered"></i> Ending</a>
-		</div>
+                <a id="optionsendinganchor" class="sidebaranchor" href="#endingoptions"><i style="background-color:#00FF5E;" class="fa-solid fa-flag-checkered"></i> Ending</a>
                 <br>
                 <a id="sidebaranchor" href="#scheduleoptions"><i style="background-color:#FF9900" class="fa-solid fa-calendar"></i> Schedule</a>
-		<div id="optionsprogressanchor">
                 <br>
-                <a id="sidebaranchor" href="#progressoptions"><i style="background-color:#8426FF" class="fa-solid fa-spinner"></i> Progress</a>
-		</div>
+                <a id="optionsprogressanchor" class="sidebaranchor" href="#progressoptions"><i style="background-color:#8426FF" class="fa-solid fa-spinner"></i> Progress</a>
             </div>
             <div id="settingssidebarpanepersonal">
                 <h3>Personal</h3>
-                <a id="sidebaranchor" href="#appearanceoptions"><i style="background-color:#00b2ff" class="fa-solid fa-circle-half-stroke"></i> Appearance</a>
+                <a class="sidebaranchor" href="#appearanceoptions"><i style="background-color:#00b2ff" class="fa-solid fa-circle-half-stroke"></i> Appearance</a>
                 <br>
-                <a id="sidebaranchor" href="#eouoptions"><i style="background-color:#00FF5E" class="fa-solid fa-child-reaching"></i> Ease of Use</a>
+                <a class="sidebaranchor" href="#eouoptions"><i style="background-color:#00FF5E" class="fa-solid fa-child-reaching"></i> Ease of Use</a>
                 <br>
-                <a id="sidebaranchor" href="#inclusionoptions"><i style="background-color:#FF9900; font-size:15px !important" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
+                <a class="sidebaranchor" href="#inclusionoptions"><i style="background-color:#FF9900; font-size:15px !important" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
             </div>
 
         </div>
@@ -1478,7 +1474,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 width:0;
                 background:transparent;
             }
-            #sidebaranchor{
+            .sidebaranchor{
                 font-family:'Dosis';
                 background:none;
                 text-decoration:none;
@@ -1493,7 +1489,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 display:initial;
                 padding:0px;
             }
-            #sidebaranchor:hover{
+            .sidebaranchor:hover{
                 position:initial;
                 top:initial;
                 box-shadow: none;
