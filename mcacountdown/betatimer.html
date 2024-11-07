@@ -2747,6 +2747,9 @@ window.onload = function() {
     if(parameter("schedule") !== "null" && parameter("schedule")){  
         document.getElementById("clock").style.display = "none"; //hide clock
         document.getElementById("countdowntitle").style.display = "none"; //hide title
+	document.getElementById("optionsdatecontainer").style.display = "none"; //hide end date area of options
+	document.getElementById("optionsendingcontainer").style.display = "none"; //hide ending options area of options	
+	document.getElementById("optionsprogresscontainer").style.display = "none"; //hide ending options area of options	
         document.getElementById("schedule").style.display = ""; //show schedule
 
         if(!parameter("date")){
