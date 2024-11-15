@@ -194,6 +194,7 @@
                 <Br>
                 <a title="Close options" onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
                 <a title="Get a shareable link or QR code" id="sharebuttonoptions" href="#linkoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
+		<a title="Countdown Dashboard" id="dashboardbuttonoptions" href="https://michaeldors.com/mcacountdown/countdowndashboard"><i class="fa-solid fa-border-all"></i> Dashboard</a>
                 <a title="Save to Countdown Dashboard" id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
                 <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
 
@@ -1393,6 +1394,29 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 box-shadow: none;
             }
 
+	#dashboardbuttonoptions{
+		font-family: 'Fredoka One';
+        	background-color: #00ff5e;
+        text-decoration: none;
+        color: #ffffff;
+        box-shadow: 0 7px 0 #00b041;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+	}
+
+	        #dashboardbuttonoptions:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #00b041;
+        }
+
+            #dashboardbuttonoptions:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
 
             .betabutton {
         font-family: 'Fredoka One';
