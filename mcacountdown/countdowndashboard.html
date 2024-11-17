@@ -39,9 +39,9 @@
     <div class="container">
         <div class="input-container">
             <p style="font-family:'Dosis'; color:white;">Countdown Dashboard <span class="betatag">BETA</span></p>
-	    <br>
-            <a title="Import saved links from another device"><i class="fa-solid fa-gear"></i> Import</a>
-            <a title="Export links as a save code" id="sharebuttonoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Export</a>
+	    <br/>
+            <a title="Import saved links from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i> Import</a>
+            <a title="Export links as a save code" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i> Export</a>
             <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
         </div>
         <div id="linksContainer" class="links-container">
