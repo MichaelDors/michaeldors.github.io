@@ -74,7 +74,7 @@ function removeLink(index, event) {
 }
 
 function exportLinks() {
-	alert(JSON.stringify(links));
+	alert(links);
 	const data = JSON.stringify(links);
 	const blob = new Blob([data], { type: "application/json" });
 	const url = URL.createObjectURL(blob);
