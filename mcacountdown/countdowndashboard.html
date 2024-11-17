@@ -92,21 +92,23 @@ document.getElementById('hiddenFileInput').addEventListener('change', (event) =>
     if (file && file.name.endsWith('.countdown')) {
         const reader = new FileReader();
         reader.onload = (e) => {
-            const data = JSON.parse(e.target.result);
-                    try {
-            links = JSON.parse(data);
-            saveLinks();
-            renderLinks();
-            alert('Links imported successfully');
-        } catch (error) {
-            alert('Invalid save code');
-        }
+            try {
+                const data = JSON.parse(e.target.result);
+                links = data;
+                saveLinks();
+                renderLinks();
+                alert('Links imported successfully');
+            } catch (error) {
+                alert('Invalid save code');
+                console.error(error);
+            }
         };
         reader.readAsText(file);
     } else {
         alert("Please upload a valid .countdown file.");
     }
 });
+
 	    
 function importLinks() {
 	const hiddenFileInput = document.getElementById('hiddenFileInput');
