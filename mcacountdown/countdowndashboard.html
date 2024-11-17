@@ -39,10 +39,9 @@
     <div class="container">
         <div class="input-container">
             <p style="font-family:'Dosis'; color:white;">Countdown Dashboard <span class="betatag">BETA</span></p>
-            <a title="Close options" onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
-            <a title="Get a shareable link or QR code" id="sharebuttonoptions" href="#linkoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
-		    <a title="Countdown Dashboard" id="dashboardbuttonoptions" href="https://michaeldors.com/mcacountdown/countdowndashboard"><i class="fa-solid fa-border-all"></i> Dashboard</a>
-            <a title="Save to Countdown Dashboard" id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
+	    <br>
+            <a title="Import saved links from another device"><i class="fa-solid fa-gear"></i> Import</a>
+            <a title="Export links as a save code" id="sharebuttonoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Export</a>
             <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
         </div>
         <div id="linksContainer" class="links-container">
@@ -140,6 +139,44 @@ function renderLinks() {
         placeholder = null;
     }
 }
+
+function resetcookies() { //remove all saved cookies
+        eraseCookie('memsav');
+        eraseCookie('coce');
+        eraseCookie('minute');
+        eraseCookie('millisecond');
+        eraseCookie('week');
+        eraseCookie('second');
+        eraseCookie('day');
+        eraseCookie('hour');
+        eraseCookie('cookiesAccepted');
+        eraseCookie('lcdu');
+        updateoptions(); //update classes of settings buttons
+        localStorage.removeItem('dashboardsaved'); //reset dashboard
+    }
+
+	       function setCookie(name, value, days) {
+        var expires = "";
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+    function getCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+    function eraseCookie(name) {
+        document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    }
 
 let draggedElement = null;
 let isDragging = false;
