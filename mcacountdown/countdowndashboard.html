@@ -39,6 +39,11 @@
     <div class="container">
         <div class="input-container">
             <p style="font-family:'Dosis'; color:white;">Countdown Dashboard <span class="betatag">BETA</span></p>
+            <a title="Close options" onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
+            <a title="Get a shareable link or QR code" id="sharebuttonoptions" href="#linkoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
+		    <a title="Countdown Dashboard" id="dashboardbuttonoptions" href="https://michaeldors.com/mcacountdown/countdowndashboard"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+            <a title="Save to Countdown Dashboard" id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
+            <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
         </div>
         <div id="linksContainer" class="links-container">
         </div>
@@ -461,6 +466,154 @@ iframe {
         color:white;
         font-size:20px;
         margin-left:10px;
+    }
+
+    .warning {
+        font-family: 'Fredoka One';
+        background-color: #ff5353;
+        text-decoration: none;
+        color: #ffffff;
+        box-shadow: 0 7px 0 #d00000;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+    }
+
+        .warning:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #d00000;
+        }
+
+            .warning:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
+            
+    #savedash {
+        font-family: 'Fredoka One';
+        background-color: #FF9900;
+        text-decoration: none;
+        color: #ffffff;
+        box-shadow: 0 7px 0 #bf7200;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+    }
+
+        #savedash:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #bf7200;
+        }
+
+            #savedash:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
+
+        #sharebuttonoptions {
+        font-family: 'Fredoka One';
+        background-color: #3AB6FF;
+        text-decoration: none;
+        color: #ffffff;
+        box-shadow: 0 7px 0 #1374ad;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+    }
+
+        #sharebuttonoptions:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #1374ad;
+        }
+
+            #sharebuttonoptions:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
+
+	#dashboardbuttonoptions{
+		font-family: 'Fredoka One';
+        	background-color: #00ff5e;
+        text-decoration: none;
+        color: #ffffff;
+        box-shadow: 0 7px 0 #00b041;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+	}
+
+	        #dashboardbuttonoptions:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #00b041;
+        }
+
+            #dashboardbuttonoptions:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
+
+            .betabutton {
+        font-family: 'Fredoka One';
+        background: linear-gradient(#8c52ff, #ff914d);
+        text-decoration: none;
+        color: white;
+        box-shadow: 0 7px 0 #c67700;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+    }
+
+        .betabutton:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #c67700;
+        }
+
+            .betabutton:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
+
+        a {
+        font-family: 'Fredoka One';
+        background-color: #8426ff;
+        text-decoration: none;
+        color: white;
+        box-shadow: 0 7px 0 #4d00b2;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+        margin: 0px 5px 25px 5px;
+        display: inline-block;
+    }
+    a:hover {
+        position: relative;
+        top: 4px;
+        box-shadow: 0 5px 0 #4d00b2;
+        display: inline-block;
+    }
+        a:hover:active {
+        position: relative;
+        top: 9px;
+        box-shadow: none;
+        display: inline-block;
     }
 </style>
 </html>
