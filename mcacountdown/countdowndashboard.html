@@ -74,7 +74,6 @@ function removeLink(index, event) {
 }
 
 function exportLinks() {
-	alert(localStorage.getItem("dashboardsaved"));
 	const data = localStorage.getItem("dashboardsaved");
 	const blob = new Blob([data], { type: "application/json" });
 	const url = URL.createObjectURL(blob);
@@ -423,8 +422,7 @@ h1 {
 }
 
 .input-container {
-    display: flex;
-    justify-content: center;
+    margin: 0 auto;
     margin-bottom: 20px;
 }
 
