@@ -62,7 +62,7 @@
       }
   </script>
 
-<body id="body" style="background-color:white;  overflow-x:hidden;">
+<body id="body" style="background-color:#141414;  overflow-x:hidden;">
     <input onblur="setcountdowntitle('front');" id="countdowntitle" type="text" />
     <p id="clock" class="clock"></p>
 
@@ -125,7 +125,7 @@
 
     <div class="hidden" id="settings">
         <div id="settingssidebar">
-            <div style="position: relative;">
+            <div style="position: relative; display:none;">
                 <input type="input" list="settingsheaders" placeholder="Search for an option">
                 <button type="button">Go</button>
             </div>
@@ -194,17 +194,9 @@
                 <Br>
                 <a title="Close options" onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
                 <a title="Get a shareable link or QR code" id="sharebuttonoptions" href="#linkoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
+		<!--<a title="Countdown Dashboard" id="dashboardbuttonoptions" href="https://michaeldors.com/mcacountdown/countdowndashboard"><i class="fa-solid fa-border-all"></i> Dashboard</a>-->
                 <a title="Save to Countdown Dashboard" id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
                 <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
-
-		    
-		<h1>Debug Options</h1>
-		<p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
-                    <strong>Why am I seeing this?</strong> These options are displayed on some Beta builds to help test these versions.
-                </p>
-		
-		<a id="reset" class="warning" onclick="schedule_resetAll();"><i class="fa-solid fa-trash"></i> Reset Schedule</a>
-		<a id="reset" class="warning" onclick="eraseCookie('cookiesAccepted');"><i class="fa-solid fa-trash"></i> Revoke Cookie Consent</a>
 
 
 
@@ -298,7 +290,7 @@
                 <br>
 
                 <h2 class="textelement" style="font-family: 'Dosis';">
-                    Foreground Colors <span class="betatag">BEING UPDATED</span>
+                    Foreground Colors
                 </h2>
 
 
@@ -319,7 +311,7 @@
                         <div class="remove-button" onclick="removeColorPicker(this)">-</div>
                     </div>
                 </div>
-                <div class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus"></i></div>
+                <div style="display:none;" class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus"></i></div>
 
                 <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
                     The foreground elements will cycle through the chosen colors.
@@ -368,12 +360,8 @@
                 <br>
                 <br>
 		<div id="optionsendingcontainer">
+            <div style="display:none">
                 <h1 id="endingoptions">Ending Options</h1>
-                <h2 class="textelement" style="font-family: 'Dosis';">Confetti Options <span class="betatag">BETA</span></h2>
-                <a class="aintext" href="#appearanceoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; color:white; text-decoration: underline;">You can disable confetti for all countdowns in your Personal Options.</a>
-                <br>
-                <br>
-                <br>
                 <h2 class="textelement" style="font-family: 'Dosis';">Ending Sound</h2>
                 <div class="container">
                     <input class="input" type="text" id="audioLink" placeholder="Audio link">
@@ -385,11 +373,12 @@
                 </p>
                 <a class="aintext" href="#eouoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; color:white; text-decoration: underline;">You can disable ending sounds for all countdowns in your Personal Options.</a>
                 <div id="playerContainer" style="display: none;"></div>
+                </div>
                 <br>
                 <br>
                 <br>
 		</div>
-                <h1 id="scheduleoptions">Countdown Schedule <span class="betatag">BETA</span></h1>
+                <h1 id="scheduleoptions">Countdown Schedule <span class="betatag">NEW</span></h1>
                 <div class="schedule-editor" style="color: white !important;">
                     <div class="schedule-container">
                         <h2 style="font-family: 'Dosis';">Edit Schedule</h2>
@@ -435,7 +424,7 @@
                 </div>
                 <br>
                 <br>
-		<div id="optionsprogresscontainer">
+		<div id="optionsprogresscontainer" style="display:none"> 
                 <h1 id="progressoptions">Progress <span class="betatag">BETA</span></h1>
 		<h2 style="font-family: 'Dosis';">Starting Date</h2>
 		<input class="progressdatepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
@@ -487,19 +476,17 @@
     <Br>
     <Br>
     <Br>
-    <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Time Units <span class="betatag">BEING UPDATED</span></a>
-    <a id="coce" class="disabled"><i class="fa-solid fa-hand"></i> Disable Animations <span class="betatag">BETA</span></a>
+    <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Time Units</a>
     <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
 
     <h1 class="textelement" id="eouoptions">
         Ease of Use
     </h1>
     <Br>
-    <a id="coce" class="disabled"><i class="fa-solid fa-volume-mute"></i> Disable End Sounds <span class="betatag">BETA</span></a>
     <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
 
     <h1 id="inclusionoptions" class="textelement">
-        Only Include <span class="betatag">BEING UPDATED</span>
+        Only Include
     </h1>
     <br>
     <a id="week" class="disabled" onclick="week();"><i class="fa-solid fa-calendar-week"></i> Weeks</a>
@@ -521,11 +508,11 @@
 
 
     <div id="autopilotpopup" style="margin:0; padding:0; position:absolute; top:80%; left:0px; width:100%; height:20%; border-top:solid 3px white; opacity:1; transition:0.5s opacity;">
-        <h1 style="position: absolute; top: 15%; left: calc(50vw - 21px); paint-order: stroke fill; -webkit-text-stroke-width: 10px; -webkit-text-stroke-color: white;">or</h1>
+        <h1 style="position: absolute; top: 15%; left: calc(50vw - 21px); paint-order: stroke fill; -webkit-text-stroke-width: 10px; -webkit-text-stroke-color: #141414;">or</h1>
         <div onclick="settings()" id="manualpilot" style="background-image:url(calendarbg.png); background-size:cover; width: 50%; float: left; height: 100%; cursor:pointer;">
             <h1 style="margin-left:3.75%" id="gearpointer"><i style="margin-right:30px;" class="fa-solid fa-angle-down"></i><span style="padding-top:100px;">pick a date</span></h1>
         </div>
-        <div id="autopilot" style="float: right; width: 50%; background: linear-gradient(to right, white, #01FE5E); height: 100%; outline: 3px white solid; ">
+        <div id="autopilot" style="float: right; width: 50%; background: linear-gradient(to right, #141414, #01FE5E); height: 100%; outline: 3px white solid; ">
             <div id="autopilotinfo" style="margin-left: 60px;">
                 <h3 style="position: relative; display: inline-block; background-color: white; border-radius: 20px; padding: 5px 10px 5px 10px;">
                     <span style="color: #11371f;">
@@ -557,7 +544,7 @@
                 <h1 id="autopilotpredictionmobile" style="line-height:0.000001">Finding...</h1>
             </div>
         </div>
-        <h1 style="position: absolute; top: 33%; text-align: center; width:100%; color: white; paint-order: stroke fill; -webkit-text-stroke-width: 10px; -webkit-text-stroke-color: white;">or</h1>
+        <h1 style="position: absolute; top: 33%; text-align: center; width:100%; color: white; paint-order: stroke fill; -webkit-text-stroke-width: 10px; -webkit-text-stroke-color: #141414;">or</h1>
         <div id="manualpilotmobile" style="background-image:url(calendarbg.png); margin-top:0px; background-size:cover; width: 100%; height: 100%; border-top:3px solid white;">
             <h2 id="gearpointer" style="text-align: center; width:100%; padding-top:20px;">
                 <span style="padding-top:100px;">pick a date under</span>
@@ -612,7 +599,7 @@
         font-weight: 100;
         border-radius: 20px;
         outline: 1px solid #8426ff;
-        background: white;
+        background: #141414;
         border: none;
         cursor: pointer;
     }
@@ -682,7 +669,7 @@
         font-weight: 100;
         border-radius: 20px;
         outline: 1px solid #8426ff;
-        background: white;
+        background: #141414;
         border: none;
         transition: 0.3s all;
     }
@@ -695,7 +682,7 @@
         font-weight: 100;
         border-radius: 20px;
         outline: 1px solid #01FE5E;
-        background: white;
+        background: #141414;
         border: none;
         transition: 0.3s all;
     }
@@ -708,7 +695,7 @@
         font-size: 20px;
         border-radius: 20px;
         outline: 1px solid #8426ff;
-        background: white;
+        background: #141414;
         border: none;
         transition: 0.3s all;
         padding-top: 20px;
@@ -716,7 +703,7 @@
 
     .selectedfontpicker {
         outline: 1px solid #01FE5E;
-        background: white;
+        background: #141414;
         border: none;
         transition: 0.3s all;
         padding-top: 20px;
@@ -736,7 +723,7 @@
         font-weight: 100;
         border-radius: 20px;
         outline: 1px solid #202020;
-        background: white;
+        background: #141414;
         border: none;
         opacity: 0.5;
         cursor: not-allowed;
@@ -768,7 +755,7 @@
         font-weight: 100;
         border-radius: 20px;
         outline: 1px solid #8426ff;
-        background: white;
+        background: #141414;
         animation: pulseborder 2s infinite;
     }
 
@@ -813,7 +800,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         }
 
         50% {
-            outline: 1px solid white;
+            outline: 1px solid #141414;
         }
 
         100% {
@@ -846,7 +833,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         font-size: 20px;
         font-weight: 100;
         outline: 1px solid #8426ff;
-        background: linear-gradient(to left, rgba(40,23,64,88), #ffffff00);
+        background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
         font-family: 'Fredoka One';
         border: 0px transparent;
     }
@@ -858,7 +845,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         font-size: 20px;
         font-weight: 100;
         outline: 1px solid #8426ff;
-        background: linear-gradient(to left, rgba(40,23,64,88), #ffffff00);
+        background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
         font-family: 'Fredoka One';
         border: 0px transparent;
     }
@@ -870,7 +857,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         font-size: 20px;
         font-weight: 100;
         outline: 1px solid #8426ff;
-        background: linear-gradient(to left, rgba(40,23,64,88), #ffffff00);
+        background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
         font-family: 'Fredoka One';
         border: 0px transparent;
         transition: 0.5s all;
@@ -883,7 +870,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     form {
         width: 70%;
         box-sizing: border-box;
-        background-color: #ffffff00;
+        background-color: #14141400;
         text-align: center;
         position: relative;
         border-radius: 100px;
@@ -899,7 +886,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             left: -4px;
             bottom: -4px;
             width: calc(33.33% + 8px);
-            background: linear-gradient(to left, #ffffff50,#4d00b2);
+            background: linear-gradient(to left, #14141450,#4d00b2);
             border-radius: 100px;
             z-index: 1;
             pointer-events: none;
@@ -996,7 +983,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         padding-left: 50px;
         padding-right: 50px;
         border-radius: 35px;
-        background: linear-gradient(to left, rgba(40,23,64,88), white);
+        background: linear-gradient(to left, rgba(40,23,64,88), #141414);
         border: #8426FF 1px solid;
     }
 
@@ -1030,7 +1017,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         #countdowntitle:-webkit-autofill:hover,
         #countdowntitle:-webkit-autofill:focus,
         #countdowntitle:-webkit-autofill:active {
-            -webkit-box-shadow: 0 0 0 30px white inset !important;
+            -webkit-box-shadow: 0 0 0 30px #141414 inset !important;
             -webkit-background-clip: text;
             -webkit-text-fill-color: #ffffff;
         }
@@ -1188,7 +1175,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
     .outlinebutton {
         font-family: 'Fredoka One';
-        background-color: white;
+        background-color: #141414;
         text-decoration: none;
         color: white;
         border: #8426ff solid 1px;
@@ -1225,10 +1212,10 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
     .enabled {
         font-family: 'Fredoka One';
-        background-color: #00ff40;
+        background-color: #00ff5e;
         text-decoration: none;
         color: black;
-        box-shadow: 0 7px 0 #008f2d;
+        box-shadow: 0 7px 0 #00b041;
         border-radius: 20px;
         padding: 20px;
         user-select: none;
@@ -1239,7 +1226,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
         .enabled:hover {
             position: relative;
-            box-shadow: 0 5px 0 #008f2d;
+            box-shadow: 0 5px 0 #00b041;
         }
 
             .enabled:hover:active {
@@ -1393,6 +1380,29 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 box-shadow: none;
             }
 
+	#dashboardbuttonoptions{
+		font-family: 'Fredoka One';
+        	background-color: #00ff5e;
+        text-decoration: none;
+        color: #ffffff;
+        box-shadow: 0 7px 0 #00b041;
+        border-radius: 20px;
+        padding: 20px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+	}
+
+	        #dashboardbuttonoptions:hover {
+            position: relative;
+            box-shadow: 0 5px 0 #00b041;
+        }
+
+            #dashboardbuttonoptions:hover:active {
+                position: relative;
+                box-shadow: none;
+            }
 
             .betabutton {
         font-family: 'Fredoka One';
@@ -1471,8 +1481,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 left:-5px;
                 top:-5px;
                 padding-top:25px;
-                background-color:white;
+                background-color:black;
                 z-index:10000;
+		white-space:nowrap;
             }
             #settingssidebar::-webkit-scrollbar {
                 width:0;
@@ -1482,7 +1493,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 font-family:'Dosis';
                 background:none;
                 text-decoration:none;
-                color:black;
+                color:white;
                 box-shadow:none;
                 border-radius: none;
                 user-select: none;
@@ -1492,6 +1503,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 margin:0px;
                 display:initial;
                 padding:0px;
+		overflow:hidden;
+		white-space:nowrap;
             }
             .sidebaranchor:hover{
                 position:initial !important;
@@ -1555,7 +1568,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
 
     .hiddentext {
-        color: white;
+        color: #141414;
         user-select: none;
     }
 
@@ -1586,13 +1599,13 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     .icon:first-child {
         left: 0;
         display: none;
-        background: linear-gradient(90deg, white, transparent);
+        background: linear-gradient(90deg, #141414, transparent);
     }
 
     .icon:last-child {
         right: 0;
         justify-content: flex-end;
-        background: linear-gradient(-90deg, white, transparent);
+        background: linear-gradient(-90deg, #141414, transparent);
     }
 
     .icon i {
@@ -1603,7 +1616,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         text-align: center;
         line-height: 75px;
         color: white;
-        background: white;
+        background: #141414;
         border-radius: 50%;
     }
 
@@ -1635,13 +1648,13 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     .presetsicon:first-child {
         left: 0;
         display: none;
-        background: linear-gradient(90deg, white, transparent);
+        background: linear-gradient(90deg, #141414, transparent);
     }
 
     .presetsicon:last-child {
         right: 0;
         justify-content: flex-end;
-        background: linear-gradient(-90deg, white, transparent);
+        background: linear-gradient(-90deg, #141414, transparent);
     }
 
     .presetsicon i {
@@ -1652,7 +1665,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         text-align: center;
         line-height: 75px;
         color: white;
-        background: white;
+        background: #141414;
         border-radius: 50%;
     }
 
@@ -1733,7 +1746,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         cursor: pointer;
         font-size: 1.18rem;
         white-space: nowrap;
-        background: linear-gradient(to left, rgba(94, 0, 225, 0.8), #ffffff00);
+        background: linear-gradient(to left, rgba(94, 0, 225, 0.8), #14141400);
         border: #8426FF 1px solid;
         padding: 13px 20px;
         border-radius: 30px;
@@ -1747,7 +1760,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         cursor: pointer;
         font-size: 1.18rem;
         white-space: nowrap;
-        background: linear-gradient(to left, rgba(31,179,255,0.5), #ffffff00);
+        background: linear-gradient(to left, rgba(31,179,255,0.5), #14141400);
         border: #26b3ff 1px solid;
         padding: 13px 20px;
         border-radius: 30px;
@@ -1761,7 +1774,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         cursor: pointer;
         font-size: 1.18rem;
         white-space: nowrap;
-        background: linear-gradient(to left, #00ff5e90, #ffffff00);
+        background: linear-gradient(to left, #00ff5e90, #14141400);
         border: #00FF5E 1px solid;
         padding: 13px 20px;
         border-radius: 30px;
@@ -1788,7 +1801,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         color: #fff;
         background: #8426ff;
         border-color: transparent;
-        border: white 1px solid;
+        border: #141414 1px solid;
         transform: scale(0.9);
         animation: jiggle 0.6s infinite;
         overflow-y: visible;
@@ -1818,7 +1831,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         cursor: pointer;
         font-size: 1.18rem;
         white-space: nowrap;
-        background: linear-gradient(to left, rgba(94, 0, 225, 0.8), #ffffff00);
+        background: linear-gradient(to left, rgba(94, 0, 225, 0.8), #14141400);
         border: #8426FF 1px solid;
         padding: 13px 20px;
         border-radius: 30px;
@@ -1832,7 +1845,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         cursor: pointer;
         font-size: 1.18rem;
         white-space: nowrap;
-        background: linear-gradient(to left, rgba(31,179,255,0.5), #ffffff00);
+        background: linear-gradient(to left, rgba(31,179,255,0.5), #14141400);
         border: #26b3ff 1px solid;
         padding: 13px 20px;
         border-radius: 30px;
@@ -1859,7 +1872,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         color: #fff;
         background: #8426ff;
         border-color: transparent;
-        border: white 1px solid;
+        border: #141414 1px solid;
         transform: scale(0.9);
         animation: jiggle 0.6s infinite;
         overflow-y: visible;
@@ -1943,7 +1956,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         color: #fff;
         background: #26b3ff;
         border-color: transparent;
-        border: white 1px solid;
+        border: #141414 1px solid;
         transform: scale(0.9);
         animation: jiggle 0.6s infinite;
         overflow-y: visible;
@@ -1953,7 +1966,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         color: #fff;
         background: #00FF5E;
         border-color: transparent;
-        border: white 1px solid;
+        border: #141414 1px solid;
         transform: scale(0.9);
         animation: jiggle 0.6s infinite;
         overflow-y: visible;
@@ -1975,7 +1988,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         color: #fff;
         background: #26b3ff;
         border-color: transparent;
-        border: white 1px solid;
+        border: #141414 1px solid;
         transform: scale(0.9);
         animation: jiggle 0.6s infinite;
         overflow-y: visible;
@@ -2074,9 +2087,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
 
     @media only screen and (max-width: 1290px) and (orientation:portrait) {
-        body {
+       /* body {
             zoom: 75%;
-        }
+        }*/
 
         #settingsmainpane{
                 width:100vw;
@@ -2315,8 +2328,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             stroke-dasharray: 182; /* Circumference of the outer circle */
             stroke-dashoffset: 0;
             stroke-width: 6; /* Width of the gray border */
-            stroke: white; /* Gray border color */
-            fill: white;
+            stroke: #141414; /* Gray border color */
+            fill: #141414;
         }
 
         .autopilot-countdown-circle .progressbarr {
@@ -2324,7 +2337,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             stroke-dashoffset: 170;
             stroke-width: 4; /* Adjusted for the inset effect */
             stroke: #01fb5d; /* Progress bar color */
-            fill: white;
+            fill: #141414;
             stroke-linecap: round; /* Rounds out the start and end of the stroke */
             stroke-linejoin: round;
         }
@@ -2427,7 +2440,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         }
         .schedule-progress {
             height: 100%;
-            background: #ffffffe5;
+            background: #141414e5;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(75px);
             -webkit-backdrop-filter: blur(75px);
@@ -2440,7 +2453,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(75px);
             -webkit-backdrop-filter: blur(75px);
-            border-bottom:3px solid #ffffff91;
+            border-bottom:3px solid #14141491;
             padding:15px;
             display: flex;
             justify-content: space-between;
@@ -2482,7 +2495,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         font-size: 20px;
         font-weight: 100;
         outline: 1px solid #8426ff;
-        background: linear-gradient(to left, rgba(40,23,64,88), #ffffff00);
+        background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
         font-family: 'Fredoka One';
         border: 0px transparent;
         transition: 0.5s all;
@@ -2495,7 +2508,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         font-size: 20px;
         font-weight: 100;
         outline: 1px solid #8426ff;
-        background: linear-gradient(to left, rgba(40,23,64,88), #ffffff00);
+        background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
         font-family: "Dosis";
         border: 0px transparent;
         transition: 0.5s all;
@@ -2529,7 +2542,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         }
         .schedule-collapsible {
             outline: 1px solid #8426ff;
-        background: linear-gradient(to left, rgba(40,23,64,88), #ffffff00);
+        background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
         color:white;
         border-radius: 20px 20px 20px 20px;
             cursor: pointer;
@@ -2541,7 +2554,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             transition:0.2s border-radius;
         }
         .active, .schedule-collapsible:hover {
-            background: linear-gradient(to left, rgba(40,23,64,100), #ffffff00);
+            background: linear-gradient(to left, rgba(40,23,64,100), #14141400);
         }
         .active{
             border-radius: 20px 20px 0 0;
@@ -2559,7 +2572,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.2s ease-out;
-            background-color: #ffffff00;
+            background-color: #14141400;
             outline: 1px solid #8426ff;
             border-bottom-left-radius: 20px;
             border-bottom-right-radius: 20px;
@@ -2780,7 +2793,7 @@ window.onload = function() {
         else if (decodeURIComponent(parameter('typeface')) == "Yeseva One") {
             FontDMSerif('auto'); //fallback for old depreciated font option Yeseva, replaced by DM Serif Display
         }
-        else if (decodeURIComponent(parameter('typeface')) == "DM Serif Display") {
+        else if (decodeURIComponent(parameter('typeface')) == "DMSerif") {
             FontDMSerif('auto');
         }
         else if (decodeURIComponent(parameter('typeface')) == "Orbitron") {
@@ -3262,7 +3275,7 @@ window.onload = function() {
     //grey out color pickers and theme color for background
     if (!isNaN(parameter("atc"))) { //if animated background is enabled
         document.getElementById("animatedbackground").classList.remove("hidden"); //unhide background
-        document.querySelector("meta[name=theme-color]").setAttribute("content", '#ffffff'); //sets the theme color to grey
+        document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414'); //sets the theme color to grey
         disablecolor(); //greys out color picker
     }
     else { //if animated background is disabled
@@ -3306,7 +3319,7 @@ window.onload = function() {
             document.getElementById("clock").classList.add("staticclock"); //add white only clock
             if (document.getElementById("settings").classList.contains("hidden")) { //if settings is hidden
                 document.getElementById("animatedbackground").classList.remove("hidden"); //add animated background
-                document.querySelector("meta[name=theme-color]").setAttribute("content", '#ffffff'); //greys theme color
+                document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414'); //greys theme color
                 disablecolor(); //greys out color picker
             }
         }
@@ -4072,7 +4085,6 @@ window.onload = function() {
                     // handle cases where nextHoliday.name doesn't match any of the above
                     console.error('Unexpected holiday name:', nextHoliday.name);
             }
-            SetCountDowngeneral();
         }
 
 
@@ -4714,6 +4726,7 @@ let schedule_events = [];
             document.getElementById('schedule-startTime').value = event.startTime;
             document.getElementById('schedule-endTime').value = event.endTime;
             document.getElementById('schedule-addOrUpdateEventBtn').innerHTML = '<i class="fa-solid fa-check-circle"></i> Update Event';
+            document.querySelector("schedule-editor").scrollIntoView();
         }
 
         function schedule_removeEvent(index, isException = false, day = null) {
