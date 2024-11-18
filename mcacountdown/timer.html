@@ -2820,12 +2820,6 @@ window.onload = function() {
         document.getElementById("autopilotpopupmobile").remove(); //same with mobile Autopilot popup
     }
     else { //if there is no date parameter
-        const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
-
-        if((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null')){ //if countdowns have been saved
-            window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html"; //take the user to their dashboard
-        }
-        else{ //no countdowns have been saved; new user experience with Autopilot
             var now = new Date(); //getting the current date
             var nextyear = new Date().getFullYear() + 1; //setting up a next year variable
             var thisyear = new Date().getFullYear(); //setting up a this year variable
@@ -2977,7 +2971,6 @@ window.onload = function() {
                     // handle cases where nextHoliday.name doesn't match any of the above
                     console.error('Unexpected holiday name:', nextHoliday.name);
             }
-        }
     }
 
     if(parameter("schedule") !== "null" && parameter("schedule")){
