@@ -4740,6 +4740,7 @@ let schedule_events = [];
             document.getElementById('schedule-startTime').value = event.startTime;
             document.getElementById('schedule-endTime').value = event.endTime;
             document.getElementById('schedule-addOrUpdateEventBtn').innerHTML = '<i class="fa-solid fa-check-circle"></i> Update Event';
+		document.getElementById("schedule-eventTitle").scrollIntoView();
         }
 
         function schedule_removeEvent(index, isException = false, day = null) {
