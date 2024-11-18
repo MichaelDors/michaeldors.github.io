@@ -4722,13 +4722,13 @@ let schedule_events = [];
         }
 
         function schedule_editEvent(event, isException = false, day = null) {
+            document.getElementById("schedule-eventTitle").scrollIntoView();
             schedule_editingEvent = event;
             schedule_editingExceptionDay = isException ? day : null;
             document.getElementById('schedule-eventTitle').value = event.title;
             document.getElementById('schedule-startTime').value = event.startTime;
             document.getElementById('schedule-endTime').value = event.endTime;
             document.getElementById('schedule-addOrUpdateEventBtn').innerHTML = '<i class="fa-solid fa-check-circle"></i> Update Event';
-            document.getElementById("schedule-eventTitle").scrollIntoView();
         }
 
         function schedule_removeEvent(index, isException = false, day = null) {
