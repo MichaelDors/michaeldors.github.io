@@ -3184,17 +3184,17 @@ window.onload = function() {
         makeQR(); //refresh the QR code
     }
 
-    function parameter(name) { //returns the value of the parameter it's sent
-        var query = window.location.search.substring(1);
-        var parameters = query.split('&');
-        for (var i = 0; i < parameters.length; i++) {
-            var pair = parameters[i].split('=');
-            if (pair[0] == name) {
-                return pair[1];
-            }
+function parameter(name) {
+    var query = window.location.search.substring(1).replace(/\?/g, '&');
+    var parameters = query.split('&');
+    for (var i = 0; i < parameters.length; i++) {
+        var pair = parameters[i].split('=');
+        if (pair[0] == name) {
+            return pair[1];
         }
-        return null;
     }
+    return null;
+}
 
     //memory saver 
     document.addEventListener('visibilitychange', function () { //when the tab changes focus state
