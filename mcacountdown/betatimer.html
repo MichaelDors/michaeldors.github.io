@@ -4949,7 +4949,7 @@ let schedule_events = [];
             const tomorrowSchedule = schedule_getScheduleForDay(tomorrow);
 
             if (tomorrowSchedule.length === 0) {
-                document.getElementById('schedule-classTitle').innerHTML = '<i class="fa-solid fa-calendar-check"></i> Enjoy your day! <br/>There are no events on your schedule- enjoy the free time!';
+                document.getElementById('schedule-classTitle').innerHTML = '<h1><i class="fa-solid fa-calendar-check"></i> <br/> Enjoy your day!</h1><p style="font-family: 'Dosis', sans-serif; color:#666666 !important;">There are no events on your schedule- enjoy the free time!</p>';
                 document.getElementById('schedule-timeRemaining').textContent = '';
                 document.getElementById('schedule-remainingText').textContent = '';
                 document.getElementById('schedule-progress').style.width = '0%';
