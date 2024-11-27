@@ -2118,8 +2118,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
     @media only screen and (max-width: 1290px) and (orientation:portrait) {
        body {
-            zoom: 75%;
-        }
+    transform: scale(0.75);
+    transform-origin: top left; /* Ensure scaling starts from top-left */
+}
 
         #settingsmainpane{
                 width:100vw;
