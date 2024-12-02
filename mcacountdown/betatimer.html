@@ -515,8 +515,9 @@
     <a id="coce" class="disabled"><i class="fa-solid fa-volume-mute"></i> Disable End Sounds <span class="betatag">BETA</span></a>
     <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
 
+	<div id="optionsonlyincludecontainer">
     <h1 id="inclusionoptions" class="textelement">
-        Only Include <span class="betatag">BEING UPDATED</span>
+        Only Include
     </h1>
     <br>
     <a id="week" class="disabled" onclick="week();"><i class="fa-solid fa-calendar-week"></i> Weeks</a>
@@ -525,6 +526,7 @@
     <a id="minute" class="disabled" onclick="minute();"><i class="fa-solid fa-hourglass-start"></i> Minutes</a>
     <a id="second" class="disabled" onclick="second();"><i class="fa-solid fa-stopwatch-20"></i> Seconds</a>
     <a id="millisecond" class="disabled" onclick="millisecond();"><i class="fa-solid fa-meteor"></i> Milliseconds</a>
+</div>
     <br>
     <br>
     <br>
@@ -2813,6 +2815,7 @@ window.onload = function() {
 	document.getElementById("optionsendinganchor").style.opacity = "0.5"; //grayscaling ending options anchor 	
 	document.getElementById("optionsprogresscontainer").style.display = "none"; //hide ending options area of options
 	document.getElementById("optionsprogressanchor").style.opacity = "0.5"; //greyscape progress options anchor	
+	document.getElementById("optionsonlyincludecontainer").style.display = "none"; //hide only include area of options
         document.getElementById("schedule").style.display = ""; //show schedule
 
         if(!parameter("date")){
