@@ -177,7 +177,7 @@
                 <br>
                 <a class="sidebaranchor" href="#eouoptions"><i style="background-color:#00FF5E" class="fa-solid fa-child-reaching"></i> Ease of Use</a>
                 <br>
-                <a class="sidebaranchor" href="#inclusionoptions"><i style="background-color:#FF9900; font-size:15px !important" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
+                <a id="optionsoianchor" class="sidebaranchor" href="#inclusionoptions"><i style="background-color:#FF9900; font-size:15px !important" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
             </div>
 
         </div>
@@ -2812,10 +2812,11 @@ window.onload = function() {
         document.getElementById("countdowntitle").style.display = "none"; //hide title
 	document.getElementById("optionsdatecontainer").style.display = "none"; //hide end date area of options
 	document.getElementById("optionsendingcontainer").style.display = "none"; //hide ending options area of options	
-	document.getElementById("optionsendinganchor").style.opacity = "0.5"; //grayscaling ending options anchor 	
+	document.getElementById("optionsendinganchor").style.opacity = "0.5"; //grey out ending options anchor 	
 	document.getElementById("optionsprogresscontainer").style.display = "none"; //hide ending options area of options
-	document.getElementById("optionsprogressanchor").style.opacity = "0.5"; //greyscape progress options anchor	
+	document.getElementById("optionsprogressanchor").style.opacity = "0.5"; //grey out progress options anchor	
 	document.getElementById("optionsonlyincludecontainer").style.display = "none"; //hide only include area of options
+	document.getElementById("optionsoianchor").style.opacity = "0.5"; //grey out progress only include anchor	
         document.getElementById("schedule").style.display = ""; //show schedule
 
         if(!parameter("date")){
