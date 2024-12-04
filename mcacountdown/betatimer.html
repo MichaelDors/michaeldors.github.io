@@ -4837,7 +4837,7 @@ let schedule_events = [];
                 const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day];
                 dayDiv.innerHTML = `
                     <button class="schedule-collapsible" style="font-family: Fredoka One; font-size: 20px;" onclick="schedule_toggleCollapsible(this)">${dayName}       
-		    	<div style="position:absolute; right:25%;">
+		    	<div style="position:absolute; right:15%;">
        				<a onclick="schedule_editEvent(null, true, '${day}')">Add Event</a>
                         	<a class="warning" onclick="schedule_removeExceptionDay('${day}')"><i class="fa-solid fa-trash"></i></a>
        			</div>
