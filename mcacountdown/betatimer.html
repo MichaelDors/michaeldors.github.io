@@ -4836,12 +4836,13 @@ let schedule_events = [];
                 dayDiv.className = 'schedule-exception-day';
                 const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day];
                 dayDiv.innerHTML = `
-                    <button class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">${dayName}</button>
+                    <button class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">${dayName}                         
+		        <a onclick="schedule_editEvent(null, true, '${day}')">Add Event to ${dayName}</a>
+                        <a class="warning" onclick="schedule_removeExceptionDay('${day}')"><i class="fa-solid fa-trash"></i></a>
+		    </button>
                     <div class="schedule-content">
                         <br>
                         <br>
-                        <a onclick="schedule_editEvent(null, true, '${day}')">Add Event to ${dayName}</a>
-                        <a class="warning" onclick="schedule_removeExceptionDay('${day}')">Remove ${dayName} Exception</a>
                         <ul style="list-style-type:none; margin:0; padding:0;">
                             ${dayEvents.map((event, index) => `
                                 <li class="schedule-exception-item">
