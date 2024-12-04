@@ -4836,9 +4836,11 @@ let schedule_events = [];
                 dayDiv.className = 'schedule-exception-day';
                 const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day];
                 dayDiv.innerHTML = `
-                    <button class="schedule-collapsible" style="font-family: Fredoka One; font-size: 20px;" onclick="schedule_toggleCollapsible(this)">${dayName}                         
-		        <a onclick="schedule_editEvent(null, true, '${day}')">Add Event</a>
-                        <a class="warning" onclick="schedule_removeExceptionDay('${day}')"><i class="fa-solid fa-trash"></i></a>
+                    <button class="schedule-collapsible" style="font-family: Fredoka One; font-size: 20px;" onclick="schedule_toggleCollapsible(this)">${dayName}       
+		    	<div style="position:absolute; right:10px;">
+       				<a onclick="schedule_editEvent(null, true, '${day}')">Add Event</a>
+                        	<a class="warning" onclick="schedule_removeExceptionDay('${day}')"><i class="fa-solid fa-trash"></i></a>
+       			</div>
 		    </button>
                     <div class="schedule-content">
                         <br>
