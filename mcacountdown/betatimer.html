@@ -3561,7 +3561,27 @@ window.onload = function() {
 
 
             if (!getCookie('coce')) { //if disable confetti is not enabled, 
-                startConfetti(); //START THE PARTY!!
+                if(parameter("atc") == "none"){
+                    confetticolorstring = document.getElementById("color1").value + ', ' + document.getElementById("color2").value + ', ' + document.getElementById("color3").value + ', ' + document.getElementById("color4").value 
+                }
+                else{
+                    bg1colors = '[#8426ff, #8426ff, #8426ff, #8426ff, #5702c7, #974df7, #3ab6ff, #00ff5e, #ff9900]';
+                    bg2colors = '[#FF3131, #FF3131, #FF3131, #FF3131, #00FF5E, #00FF5E, #00FF5E, #3AB6FF, #FFFFFF]';
+                    bg3colors = '[#3AB6FF, #FF3131]';
+                    bg4colors = '[#FF9900, #FF9900, #FFCC00, #FF3131]';
+                    bg5colors = '[#FF3131, #00FF5E, #FFCC00, #3AB6FF]';
+                    bg6colors = '[#FF3169, #FF5400, #FF8A00, #FF0026]';
+                    bg7colors = '[#3AB6FF, #3AB6FF, #8426FF, #00FF5E]';
+                    bg8colors = '[#FA8F55, #8E53FD]';
+                    bg9colors = '[#FF3131, #FF0000, #8D0000, #E40000]';
+                    bg10colors = '[#148D00, #0BE400, #05FF00, #4EFF31]';
+                    bg11colors = '[#3177FF, #0029FF, #00568D, #0069E4]';
+                    bg12colors = '[#C931FF, #BD00FF, #60008D, #A200E4]';
+
+                    confetticolorstring = eval(`bg${parameter("atc")}colors`);
+                }
+
+                startConfetti(confetticolorstring); //START THE PARTY!!
             }
         }
 
