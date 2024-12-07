@@ -10,7 +10,7 @@ var removeConfetti; //call to stop the confetti animation and remove all confett
 	stopConfetti = stopConfettiInner;
 	toggleConfetti = toggleConfettiInner;
 	removeConfetti = removeConfettiInner;
-	var colors = ["#8426ff", "#8426ff", "#8426ff", "#8426ff", "#5702c7", "#974df7", "#3ab6ff", "#00ff5e", "#ff9900"]
+	var colors = ["#8426ff", "#8426ff", "#8426ff", "#8426ff", "#5702c7", "#974df7", "#3ab6ff", "#00ff5e", "#ff9900"];
 	var streamingConfetti = false;
 	var animationTimer = null;
 	var particles = [];
@@ -27,7 +27,10 @@ var removeConfetti; //call to stop the confetti animation and remove all confett
 		return particle;
 	}
 
-	function startConfettiInner() {
+	function startConfettiInner(coloroverride) {
+		if(coloroverride){
+			colors = coloroverride.replace(/[\[\]]/g, '').split(',').map(color => color.trim());
+		}
 		var width = window.innerWidth;
 		var height = window.innerHeight;
 		window.requestAnimFrame = (function() {
