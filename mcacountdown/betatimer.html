@@ -370,7 +370,13 @@
                 <br>
 		<div id="optionsendingcontainer">
                 <h1 id="endingoptions">Ending Options</h1>
-                <h2 class="textelement" style="font-family: 'Dosis';">Confetti Options <span class="betatag">BETA</span></h2>
+                <h2 class="textelement" style="font-family: 'Dosis';">Confetti Options</h2>
+                <a title="Default confetti themed to your colors" class="aintext selectedfontpicker" id="defaultconfetti" onmouseup="ConfettiModeDefault(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-solid fa-star-of-life"></i></a>
+                <a title="Input an emoji or symbol to use as confetti" class="aintext fontpicker" id="emojiconfetti" onmouseup="ConfettiModeEmoji(); SetCountDowngeneral();"><input onblur="ConfettiModeEmoji(); SetCountDowngeneral();" id="confettiEmojiPicker" placeholder="😃"></a>
+                <a title="Festive snowflakes instead of confetti" class="aintext fontpicker" id="snowconfetti" onmouseup="ConfettiModeSnow(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-solid fa-snowflake"></i></a>
+                <a title="Disable confetti on this Countdown (you can disable confetti on all Countdowns in your Personal Options)" class="aintext fontpicker" id="noconfetti" onmouseup="ConfettiModeNone(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-regular fa-circle-xmark"></i></a>
+                <br>
+                <br>
                 <a class="aintext" href="#appearanceoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; color:white; text-decoration: underline;">You can disable confetti for all countdowns in your Personal Options.</a>
                 <br>
                 <br>
@@ -2666,6 +2672,18 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     80% { transform: translate(14px); }
     100% { transform: translate(0px); }
 }
+
+#confettiEmojiPicker{
+    width:100%;
+    background:transparent;
+    border:none;
+    outline:none;
+    height:96px;
+    text-align: center;
+    color:white;
+    font-family:Fredoka One;
+    font-size:20px;
+}
 </style>
 
 
@@ -2751,7 +2769,6 @@ window.onload = function() {
     });
 
     //onload url parameter translation into the correlating customization settings
-
     //backgrounds
     var bgstring = "none"; //declaring bgstring to none at the very beginning so it's able to be changed anywhere
     if (parameter('atc')) {
@@ -3036,6 +3053,7 @@ window.onload = function() {
         setcountdowntitle("front"); //tell the setcountdowntitle function to set the back (settings) to the same. sending which it came from the the function, not which to send it to
     }
 
+
     //bg again this time to finish the job
     var bgstring = "none";
     if (parameter('atc') && parameter('atc') != "none" && parameter('atc') != "undefined") { //checking it has a good value
@@ -3048,7 +3066,6 @@ window.onload = function() {
         document.getElementById("animatedbackground").style.display = "none"; //remove the rotating blurred images that would hold the bgs
         document.getElementById("clock").classList.add("clock"); //make the clock normal
         document.getElementById("clock").classList.remove("staticclock"); //not just white clock
-        SetCountDowngeneral(); //set the changes
     }
 
         //countdown schedule styling
@@ -3058,6 +3075,104 @@ window.onload = function() {
         else{
             document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
         }
+
+                //confetti
+                var confettiType = "none"; //declaring confettitype to none at the very beginning so it's able to be changed anywhere
+    if(parameter("confettitype")){
+        confettiType = decodeURIComponent(parameter("confettitype")); //if the confetti type exists, set it
+    }
+    else{
+        confettiType = "1";
+    }
+
+    if(confettiType == "1"){
+        ConfettiModeDefault();
+    }else if(confettiType == "2"){
+        ConfettiModeSnow();
+    }else if(confettiType == ""){
+        ConfettiModeNone();
+    }else{
+        ConfettiModeEmoji();
+        document.getElementById("confettiEmojiPicker").value = decodeURIComponent(parameter("confettitype"));
+    }
+
+
+    //confetti groundwork for snowflakes and emoji
+    class ConfettiManager {
+            createParticle(type, content) {
+                const confettiParticle = document.createElement('div');
+                confettiParticle.style.position = 'fixed';
+                confettiParticle.style.pointerEvents = 'none';
+                confettiParticle.style.zIndex = '1000';
+                
+                const size = Math.random() * 20 + 10;
+                confettiParticle.style.width = `${size}px`;
+                confettiParticle.style.height = `${size}px`;
+                
+                const startX = Math.random() * window.innerWidth;
+                confettiParticle.style.left = `${startX}px`;
+                confettiParticle.style.top = '-20px';
+                
+                switch (type) {
+                    case 'snowflake':
+                        confettiParticle.innerHTML = '<i class="fa-regular fa-snowflake"></i>';
+                        const snowflakered = Math.floor(Math.random() * 50); // Low red for a blue tone (0-49)
+                        const snowflakegreen = Math.floor(Math.random() * 100) + 150; // Moderate green for a soft blue (150-249)
+                        const snowflakeblue = Math.floor(Math.random() * 56) + 200; // High blue for brightness (200-255)
+                        
+                            confettiParticle.style.color=`rgb(${snowflakered}, ${snowflakegreen}, ${snowflakeblue})`;
+                            confettiParticle.style.fontSize = `${size}px`;
+                        break;
+                    case 'emoji':
+                        const emojiArray = Array.from(content); // Convert the content to an array of characters
+                        confettiParticle.innerHTML = emojiArray.length > 1 ? emojiArray[Math.floor(Math.random() * emojiArray.length)] : content;
+                        confettiParticle.style.fontSize = `${size}px`;
+                        confettiParticle.style.color = `#FFFFFF`;
+                        confettiParticle.style.fontFamily = `Fredoka One`;
+                    break;
+                }
+                
+                document.body.appendChild(confettiParticle);
+                return confettiParticle;
+            }
+
+            animateParticle(confettiParticle, type) {
+                const duration = Math.random() * 2000 + 3000;
+                const startX = parseFloat(confettiParticle.style.left);
+                const amplitude = Math.random() * 100 + 50;
+                
+                const keyframes = [
+                    { 
+                        transform: 'translate(0, 0)',
+                        opacity: 1 
+                    },
+                    { 
+                        transform: type === 'bubble' 
+                            ? `translate(${Math.sin(Math.random() * Math.PI) * amplitude}px, -${window.innerHeight}px)` 
+                            : `translate(${Math.sin(Math.random() * Math.PI) * amplitude}px, ${window.innerHeight}px)`,
+                        opacity: 0 
+                    }
+                ];
+
+                const animation = confettiParticle.animate(keyframes, {
+                    duration,
+                    easing: type === 'bubble' ? 'ease-in' : 'ease-out',
+                });
+
+                animation.onfinish = () => confettiParticle.remove();
+            }
+
+            createMultipleParticles(type, content) {
+                const createParticleLoop = () => {
+                    const confettiParticle = this.createParticle(type, content);
+                    this.animateParticle(confettiParticle, type);
+                    setTimeout(createParticleLoop, Math.random() * 200);
+                };
+                createParticleLoop();
+            }
+        }
+
+        const confettiManager = new ConfettiManager();
 
     //animation speed toggle
     document.querySelector('#searchTypeToggle').addEventListener('click', function (event) {
@@ -3230,7 +3345,11 @@ window.onload = function() {
 
         var cdtitle = document.getElementById("countdowntitle").value; //set the title
 
-        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + document.querySelector(".datepicker").value + '&colorone=' + color1normalized + '&colortwo=' + color2normalized + '&colorthree=' + color3normalized + '&colorfour=' + color4normalized + '&typeface=' + css.style.getPropertyValue('--typeface') + '&atc=' + bgstring + '&title=' + cdtitle + '&schedule=' + parameter('schedule');
+        if(!confettiType){
+            confettiType = document.getElementById("confettiEmojiPicker").value;
+        }
+
+        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + document.querySelector(".datepicker").value + '&colorone=' + color1normalized + '&colortwo=' + color2normalized + '&colorthree=' + color3normalized + '&colorfour=' + color4normalized + '&typeface=' + css.style.getPropertyValue('--typeface') + '&atc=' + bgstring + '&title=' + cdtitle + '&confettitype=' + confettiType + '&schedule=' + parameter('schedule');
         window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
 
         document.getElementById("linkinput").value = refresh; //refresh the link
@@ -3561,27 +3680,33 @@ window.onload = function() {
 
 
             if (!getCookie('coce')) { //if disable confetti is not enabled, 
-                if(parameter("atc") == "none"){
+                if(parameter("confettitype") == "1"){ //default confetti
+                    if(parameter("atc") == "none"){
                     confetticolorstring = document.getElementById("color1").value + ', ' + document.getElementById("color2").value + ', ' + document.getElementById("color3").value + ', ' + document.getElementById("color4").value 
-                }
-                else{
-                    bg1colors = '[#8426ff, #8426ff, #8426ff, #8426ff, #5702c7, #974df7, #3ab6ff, #00ff5e, #ff9900]';
-                    bg2colors = '[#FF3131, #FF3131, #FF3131, #FF3131, #00FF5E, #00FF5E, #00FF5E, #3AB6FF, #FFFFFF]';
-                    bg3colors = '[#3AB6FF, #FF3131]';
-                    bg4colors = '[#FF9900, #FF9900, #FFCC00, #FF3131]';
-                    bg5colors = '[#FF3131, #00FF5E, #FFCC00, #3AB6FF]';
-                    bg6colors = '[#FF3169, #FF5400, #FF8A00, #FF0026]';
-                    bg7colors = '[#3AB6FF, #3AB6FF, #8426FF, #00FF5E]';
-                    bg8colors = '[#FA8F55, #8E53FD]';
-                    bg9colors = '[#FF3131, #FF0000, #8D0000, #E40000]';
-                    bg10colors = '[#148D00, #0BE400, #05FF00, #4EFF31]';
-                    bg11colors = '[#3177FF, #0029FF, #00568D, #0069E4]';
-                    bg12colors = '[#C931FF, #BD00FF, #60008D, #A200E4]';
+                    }else{
+                        bg1colors = '[#8426ff, #8426ff, #8426ff, #8426ff, #5702c7, #974df7, #3ab6ff, #00ff5e, #ff9900]';
+                        bg2colors = '[#FF3131, #FF3131, #FF3131, #FF3131, #00FF5E, #00FF5E, #00FF5E, #3AB6FF, #FFFFFF]';
+                        bg3colors = '[#3AB6FF, #FF3131]';
+                        bg4colors = '[#FF9900, #FF9900, #FFCC00, #FF3131]';
+                        bg5colors = '[#FF3131, #00FF5E, #FFCC00, #3AB6FF]';
+                        bg6colors = '[#FF3169, #FF5400, #FF8A00, #FF0026]';
+                        bg7colors = '[#3AB6FF, #3AB6FF, #8426FF, #00FF5E]';
+                        bg8colors = '[#FA8F55, #8E53FD]';
+                        bg9colors = '[#FF3131, #FF0000, #8D0000, #E40000]';
+                        bg10colors = '[#148D00, #0BE400, #05FF00, #4EFF31]';
+                        bg11colors = '[#3177FF, #0029FF, #00568D, #0069E4]';
+                        bg12colors = '[#C931FF, #BD00FF, #60008D, #A200E4]';
 
-                    confetticolorstring = eval(`bg${parameter("atc")}colors`);
-                }
+                        confetticolorstring = eval(`bg${parameter("atc")}colors`);
+                    }
 
-                startConfetti(confetticolorstring); //START THE PARTY!!
+                    startConfetti(confetticolorstring); //START THE PARTY!!
+                }else if (parameter("confettitype") == "2"){ //snowflakes
+                    confettiManager.createMultipleParticles('snowflake');
+                }else{ //emojis or input
+                    const confettiEmoji = document.getElementById('confettiEmojiPicker').value;
+                    confettiManager.createMultipleParticles('emoji', confettiEmoji);
+                }
             }
         }
 
@@ -5307,6 +5432,64 @@ function magictitle(){
             }
         }
     
+    }
+
+    function ConfettiModeDefault(){
+        document.getElementById("defaultconfetti").classList.remove("fontpicker");
+        document.getElementById("defaultconfetti").classList.add("selectedfontpicker");
+
+        document.getElementById("emojiconfetti").classList.add("fontpicker");
+        document.getElementById("emojiconfetti").classList.remove("selectedfontpicker");
+
+        document.getElementById("snowconfetti").classList.add("fontpicker");
+        document.getElementById("snowconfetti").classList.remove("selectedfontpicker");
+
+        document.getElementById("noconfetti").classList.add("fontpicker");
+        document.getElementById("noconfetti").classList.remove("selectedfontpicker");
+
+        confettiType = "1";
+    }function ConfettiModeEmoji(){
+        document.getElementById("emojiconfetti").classList.remove("fontpicker");
+        document.getElementById("emojiconfetti").classList.add("selectedfontpicker");
+
+        document.getElementById("defaultconfetti").classList.add("fontpicker");
+        document.getElementById("defaultconfetti").classList.remove("selectedfontpicker");
+
+        document.getElementById("snowconfetti").classList.add("fontpicker");
+        document.getElementById("snowconfetti").classList.remove("selectedfontpicker");
+
+        document.getElementById("noconfetti").classList.add("fontpicker");
+        document.getElementById("noconfetti").classList.remove("selectedfontpicker");
+
+        confettiType = decodeURIComponent(document.getElementById("confettiEmojiPicker").value);
+    }function ConfettiModeSnow(){
+        document.getElementById("snowconfetti").classList.remove("fontpicker");
+        document.getElementById("snowconfetti").classList.add("selectedfontpicker");
+
+        document.getElementById("defaultconfetti").classList.add("fontpicker");
+        document.getElementById("defaultconfetti").classList.remove("selectedfontpicker");
+
+        document.getElementById("emojiconfetti").classList.add("fontpicker");
+        document.getElementById("emojiconfetti").classList.remove("selectedfontpicker");
+
+        document.getElementById("noconfetti").classList.add("fontpicker");
+        document.getElementById("noconfetti").classList.remove("selectedfontpicker");
+
+        confettiType = "2";
+    }function ConfettiModeNone(){
+        document.getElementById("noconfetti").classList.remove("fontpicker");
+        document.getElementById("noconfetti").classList.add("selectedfontpicker");
+
+        document.getElementById("defaultconfetti").classList.add("fontpicker");
+        document.getElementById("defaultconfetti").classList.remove("selectedfontpicker");
+
+        document.getElementById("emojiconfetti").classList.add("fontpicker");
+        document.getElementById("emojiconfetti").classList.remove("selectedfontpicker");
+
+        document.getElementById("snowconfetti").classList.add("fontpicker");
+        document.getElementById("snowconfetti").classList.remove("selectedfontpicker");
+
+        confettiType = " ";
     }
 
 </script>
