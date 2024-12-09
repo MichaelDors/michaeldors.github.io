@@ -4854,8 +4854,16 @@ let schedule_events = [];
         }
 
 	function startCountdownSchedule(){
-	     history.replaceState(null, '', `?schedule=eyJzY2hlZHVsZV9ldmVudHMiOltdLCJzY2hlZHVsZV9leGNlcHRpb25zIjp7fX0=`);
-		SetCountDowngeneral();
+		history.replaceState(null, '', `?schedule=eyJzY2hlZHVsZV9ldmVudHMiOltdLCJzY2hlZHVsZV9leGNlcHRpb25zIjp7fX0=`);
+		document.querySelector(".datepicker").value = '9999-12-30T00:00';
+
+        	if(parameter("atc") == "none"){
+            		document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
+        	}
+        	else{
+            		document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+        	}
+	     SetCountDowngeneral();
 	}
 
         function schedule_resetAll(){
