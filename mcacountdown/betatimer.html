@@ -4864,6 +4864,17 @@ let schedule_events = [];
             		document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
         	}
 	     SetCountDowngeneral();
+
+	document.getElementById("clock").style.display = "none"; //hide clock
+        document.getElementById("countdowntitle").style.display = "none"; //hide title
+	document.getElementById("optionsdatecontainer").style.display = "none"; //hide end date area of options
+	document.getElementById("optionsendingcontainer").style.display = "none"; //hide ending options area of options	
+	document.getElementById("optionsendinganchor").style.opacity = "0.5"; //grey out ending options anchor 	
+	document.getElementById("optionsprogresscontainer").style.display = "none"; //hide ending options area of options
+	document.getElementById("optionsprogressanchor").style.opacity = "0.5"; //grey out progress options anchor	
+	document.getElementById("optionsonlyincludecontainer").style.display = "none"; //hide only include area of options
+	document.getElementById("optionsoianchor").style.opacity = "0.5"; //grey out progress only include anchor	
+        document.getElementById("schedule").style.display = ""; //show schedule
 	}
 
         function schedule_resetAll(){
