@@ -2836,7 +2836,7 @@ window.onload = function() {
 	document.getElementById("optionsonlyincludecontainer").style.display = "none"; //hide only include area of options
 	document.getElementById("optionsoianchor").style.opacity = "0.5"; //grey out progress only include anchor	
         document.getElementById("schedule").style.display = ""; //show schedule
-	document.querySelector("schedule-editor").style.display = ""; //show editor
+	document.querySelector(".schedule-editor").style.display = ""; //show editor
 
         if(!parameter("date")){
             document.getElementById("autopilotpopup").remove(); //removes the Autopilot popup if a schedule exists
@@ -2845,7 +2845,7 @@ window.onload = function() {
     }
     else{
         document.getElementById("schedule").style.display = "none"; //hide schedule
-	document.querySelector("schedule-editor").style.display = "none"; //hide editor
+	document.querySelector(".schedule-editor").style.display = "none"; //hide editor
         document.getElementById("countdowntitle").style.display = ""; //show title
         document.getElementById("clock").style.display = ""; //show clock
     }
@@ -4876,7 +4876,7 @@ let schedule_events = [];
 	document.getElementById("optionsonlyincludecontainer").style.display = "none"; //hide only include area of options
 	document.getElementById("optionsoianchor").style.opacity = "0.5"; //grey out progress only include anchor	
 
-	document.querySelector("schedule-editor").style.display = ""; //show the schedule editor
+	document.querySelector(".schedule-editor").style.display = ""; //show the schedule editor
 	document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
 	}
 
