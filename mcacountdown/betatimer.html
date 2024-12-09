@@ -3080,26 +3080,20 @@ window.onload = function() {
                 var confettiType = "none"; //declaring confettitype to none at the very beginning so it's able to be changed anywhere
     if(parameter("confettitype")){
         confettiType = decodeURIComponent(parameter("confettitype")); //if the confetti type exists, set it
-	    alert("1");
     }
     else{
         confettiType = "1";
-	    alert("2");
     }
 
     if(confettiType == "1"){
         ConfettiModeDefault();
-	    alert("3");
     }else if(confettiType == "2"){
         ConfettiModeSnow();
-	    alert("4");
     }else if(confettiType == ""){
         ConfettiModeNone();
-	    alert("5");
     }else{
         ConfettiModeEmoji();
         document.getElementById("confettiEmojiPicker").value = decodeURIComponent(parameter("confettitype"));
-	    alert("6");
     }
 
 
@@ -3686,7 +3680,7 @@ window.onload = function() {
 
 
             if (!getCookie('coce')) { //if disable confetti is not enabled, 
-                if(parameter("confettitype") == "1"){ //default confetti
+                if(confettiType == "1"){ //default confetti
                     if(parameter("atc") == "none"){
                     confetticolorstring = document.getElementById("color1").value + ', ' + document.getElementById("color2").value + ', ' + document.getElementById("color3").value + ', ' + document.getElementById("color4").value 
                     }else{
@@ -3707,7 +3701,7 @@ window.onload = function() {
                     }
 
                     startConfetti(confetticolorstring); //START THE PARTY!!
-                }else if (parameter("confettitype") == "2"){ //snowflakes
+                }else if (confettiType == "2"){ //snowflakes
                     confettiManager.createMultipleParticles('snowflake');
                 }else{ //emojis or input
                     const confettiEmoji = document.getElementById('confettiEmojiPicker').value;
