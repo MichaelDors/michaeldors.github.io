@@ -407,7 +407,7 @@
 		    <i style="color:#ff9900" class="fa-solid fa-circle-exclamation"></i> Once you convert this Countdown to be a Schedule, it cannot be changed back
 			</h3>
 		</div>
-		<a>Supercharge Your Schedule</a>
+		<a onclick="startCountdownSchedule();">Supercharge Your Schedule</a>
 
 		<br>
 		<br>
@@ -4851,6 +4851,10 @@ let schedule_events = [];
             const encoded = schedule_encodeSchedule();
             history.replaceState(null, '', `?schedule=${encoded}`);
         }
+
+	function startCountdownSchedule(){
+	     history.replaceState(null, '', `?schedule=eyJzY2hlZHVsZV9ldmVudHMiOltdLCJzY2hlZHVsZV9leGNlcHRpb25zIjp7fX0=`);
+	}
 
         function schedule_resetAll(){
             history.replaceState(null, '', `?schedule=null`);
