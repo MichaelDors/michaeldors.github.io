@@ -2837,6 +2837,7 @@ window.onload = function() {
 	document.getElementById("optionsoianchor").style.opacity = "0.5"; //grey out progress only include anchor	
         document.getElementById("schedule").style.display = ""; //show schedule
 	document.querySelector(".schedule-editor").style.display = ""; //show editor
+	document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
 
         if(!parameter("date")){
             document.getElementById("autopilotpopup").remove(); //removes the Autopilot popup if a schedule exists
