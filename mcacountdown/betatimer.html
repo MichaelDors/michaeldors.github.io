@@ -396,8 +396,8 @@
                 <br>
                 <br>
 		</div>
-                <h1 id="scheduleoptions">Countdown Schedule <span class="betatag">BETA</span></h1>
-		<h2 style="font-family: 'Dosis';" >Convert to Countdown Schedule</h2>
+                <h1 id="scheduleoptions">Countdown Schedule <span class="betatag">NEW</span></h1>
+		    <div id="presetupScheduleContent">
 		<div style="text-align:left; width: fit-content;">
 		    <h3 style="font-family: 'Dosis', sans-serif; color:white; font-size:23px; text-justify:inter-word;">
 			<i style="color:#3ab6ff" class="fa-solid fa-calendar"></i> Keep track of your recurring events
@@ -408,11 +408,10 @@
 			</h3>
 		</div>
 		<a onclick="startCountdownSchedule();">Supercharge Your Schedule</a>
-
+		</div>
 		<br>
 		<br>
 		<br>
-
                 <div class="schedule-editor" style="color: white !important;">
                     <div class="schedule-container">
                         <h2 style="font-family: 'Dosis';">Edit Schedule</h2>
@@ -2837,6 +2836,7 @@ window.onload = function() {
 	document.getElementById("optionsonlyincludecontainer").style.display = "none"; //hide only include area of options
 	document.getElementById("optionsoianchor").style.opacity = "0.5"; //grey out progress only include anchor	
         document.getElementById("schedule").style.display = ""; //show schedule
+	document.querySelector("schedule-editor").style.display = ""; //show editor
 
         if(!parameter("date")){
             document.getElementById("autopilotpopup").remove(); //removes the Autopilot popup if a schedule exists
@@ -2845,7 +2845,8 @@ window.onload = function() {
     }
     else{
         document.getElementById("schedule").style.display = "none"; //hide schedule
-        document.getElementById("countdowntitle").style.display = ""; //show schedule
+	document.querySelector("schedule-editor").style.display = "none"; //hide editor
+        document.getElementById("countdowntitle").style.display = ""; //show title
         document.getElementById("clock").style.display = ""; //show clock
     }
 
@@ -4874,6 +4875,9 @@ let schedule_events = [];
 	document.getElementById("optionsprogressanchor").style.opacity = "0.5"; //grey out progress options anchor	
 	document.getElementById("optionsonlyincludecontainer").style.display = "none"; //hide only include area of options
 	document.getElementById("optionsoianchor").style.opacity = "0.5"; //grey out progress only include anchor	
+
+	document.querySelector("schedule-editor").style.display = ""; //show the schedule editor
+	document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
 	}
 
         function schedule_resetAll(){
