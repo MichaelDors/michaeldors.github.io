@@ -4850,6 +4850,7 @@ let schedule_events = [];
         function schedule_updateURL() {
             const encoded = schedule_encodeSchedule();
             history.replaceState(null, '', `?schedule=${encoded}`);
+		SetCountDowngeneral();
         }
 
 	function startCountdownSchedule(){
