@@ -536,7 +536,7 @@
                     <Br>
                 <br>
                 <br>
-    <a id="soce" class="disabled"><i class="fa-solid fa-volume-mute"></i> Disable End Sounds</a>
+    <a id="soce" class="disabled" onclick="soce();"><i class="fa-solid fa-volume-mute"></i> Disable End Sounds</a>
     <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
 
 	<div id="optionsonlyincludecontainer">
@@ -3761,13 +3761,17 @@ window.onload = function() {
             document.getElementById("coce").classList.add("enabled");
             document.getElementById("coce").classList.remove("disabled");
         }
+        else {
+            document.getElementById("coce").classList.remove("enabled");
+            document.getElementById("coce").classList.add("disabled");
+        }
 	if (getCookie("soce")) { //disable end sound
             document.getElementById("soce").classList.add("enabled");
             document.getElementById("soce").classList.remove("disabled");
         }
-        else {
-            document.getElementById("coce").classList.remove("enabled");
-            document.getElementById("coce").classList.add("disabled");
+	else {
+            document.getElementById("soce").classList.remove("enabled");
+            document.getElementById("soce").classList.add("disabled");
         }
         if (getCookie("lcdu")) { //label countdown units
             document.getElementById("lcdu").classList.add("enabled");
