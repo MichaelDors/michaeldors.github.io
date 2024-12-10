@@ -525,7 +525,7 @@
     <Br>
     <Br>
     <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Time Units <span class="betatag">BEING UPDATED</span></a>
-    <a id="coce" class="disabled"><i class="fa-solid fa-hand"></i> Disable Animations <span class="betatag">BETA</span></a>
+    <a id="aaaaaaaa" class="disabled"><i class="fa-solid fa-hand"></i> Disable Animations <span class="betatag">BETA</span></a>
     <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
     <br>
     <Br>
@@ -536,7 +536,7 @@
                     <Br>
                 <br>
                 <br>
-    <a id="coce" class="disabled"><i class="fa-solid fa-volume-mute"></i> Disable End Sounds <span class="betatag">BETA</span></a>
+    <a id="soce" class="disabled"><i class="fa-solid fa-volume-mute"></i> Disable End Sounds</a>
     <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
 
 	<div id="optionsonlyincludecontainer">
@@ -3685,11 +3685,13 @@ window.onload = function() {
             }
         }
 
-        if(distance == 1000){
-            //check if ending sound url input has value
-            if(document.getElementById("audioLink").value !== ""){
-                playAudio();
-            }
+        if(distance == 1000){ //when countdown is one second from ending, to give time to load
+		if(!getCookie('soce')){ //if disable end sound is not enabled
+			//check if ending sound url input has value
+            		if(document.getElementById("audioLink").value !== ""){
+                		playAudio(); //play end sound
+            		}
+		}
         }
 
         if (distance < 0) { //if the timer is over
@@ -3758,6 +3760,10 @@ window.onload = function() {
         if (getCookie("coce")) { //disable confetti
             document.getElementById("coce").classList.add("enabled");
             document.getElementById("coce").classList.remove("disabled");
+        }
+	if (getCookie("soce")) { //disable end sound
+            document.getElementById("soce").classList.add("enabled");
+            document.getElementById("soce").classList.remove("disabled");
         }
         else {
             document.getElementById("coce").classList.remove("enabled");
@@ -3848,6 +3854,16 @@ window.onload = function() {
         }
         else {
             setCookie('coce', 'true', '70');
+        }
+        updateoptions();
+    }
+
+    function soce() { //disable end sound set or remove cookie 
+        if (getCookie('soce')) {
+            eraseCookie('soce');
+        }
+        else {
+            setCookie('soce', 'true', '70');
         }
         updateoptions();
     }
