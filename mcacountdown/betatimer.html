@@ -386,7 +386,7 @@
                 <br>
                 <h2 class="textelement" style="font-family: 'Dosis';">Ending Sound</h2>
                 <div class="container">
-                    <input class="input" type="text" id="audioLink" placeholder="Audio link">
+                    <input class="input" type="text" id="audioLink" onblur="SetCountDowngeneral();" placeholder="Audio link">
                 </div>
                 <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
                     Enter a <i class="fa-brands fa-youtube"></i>, <i class="fa-brands fa-soundcloud"></i>, or <i class="fa-solid fa-file-audio"></i> audio file link to play when the Countdown ends.
@@ -3081,6 +3081,10 @@ window.onload = function() {
         setcountdowntitle("front"); //tell the setcountdowntitle function to set the back (settings) to the same. sending which it came from the the function, not which to send it to
     }
 
+	if(parameter('endingsound')){
+		document.getElementById("audioLink").value = atob(parameter('endingsound'));
+	}
+
 
     //bg again this time to finish the job
     var bgstring = "none";
@@ -3377,7 +3381,7 @@ window.onload = function() {
             confettiType = document.getElementById("confettiEmojiPicker").value;
         }
 
-        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + document.querySelector(".datepicker").value + '&colorone=' + color1normalized + '&colortwo=' + color2normalized + '&colorthree=' + color3normalized + '&colorfour=' + color4normalized + '&typeface=' + css.style.getPropertyValue('--typeface') + '&atc=' + bgstring + '&title=' + cdtitle + '&confettitype=' + confettiType + '&schedule=' + parameter('schedule');
+        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + document.querySelector(".datepicker").value + '&colorone=' + color1normalized + '&colortwo=' + color2normalized + '&colorthree=' + color3normalized + '&colorfour=' + color4normalized + '&typeface=' + css.style.getPropertyValue('--typeface') + '&atc=' + bgstring + '&title=' + cdtitle + '&confettitype=' + confettiType + '&endingsound=' + btoa(document.getElementById("audioLink").value) + '&schedule=' + parameter('schedule');
         window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
 
         document.getElementById("linkinput").value = refresh; //refresh the link
