@@ -2917,7 +2917,7 @@ window.onload = function() {
     else { //if there is no date parameter
         const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
 
-        if((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null')){ //if countdowns have been saved
+        if((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !parameter("createnew")){ //if countdowns have been saved
             window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html"; //take the user to their dashboard
         }
         else{ //no countdowns have been saved; new user experience with Autopilot
