@@ -2801,6 +2801,10 @@ window.onload = function() {
         bgstring = "none"; //hypothetically not necessary since that's already the value but there just in case
     }
 
+	if(parameter('endingsound')){
+		document.getElementById("audioLink").value = atob(parameter('endingsound'));
+	}
+
 	
     document.body.scrollTop = document.documentElement.scrollTop = 0; //sometimes browsers are weird and you start already scrolled down a little
 
@@ -3080,10 +3084,6 @@ window.onload = function() {
         document.getElementById("countdowntitle").value = decodeURIComponent(parameter('title')); //set the front-facing countdown title input to the parameter value, decoding all %20s and such
         setcountdowntitle("front"); //tell the setcountdowntitle function to set the back (settings) to the same. sending which it came from the the function, not which to send it to
     }
-
-	if(parameter('endingsound')){
-		document.getElementById("audioLink").value = atob(parameter('endingsound'));
-	}
 
 
     //bg again this time to finish the job
