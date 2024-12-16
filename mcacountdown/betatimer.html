@@ -3629,25 +3629,31 @@ window.onload = function() {
         //only include
         if (getCookie("day")) {
             document.getElementById("clock").innerHTML = days + " days"; //no calc, just use days
+            document.getElementById("clock").style.fontSize = '75px';
         }
         else if (getCookie("hour")) {
             var hourcount = Math.floor(distance / 3600000); //figure out how many hours in that many milliseconds
             document.getElementById("clock").innerHTML = hourcount + " hours";
+            document.getElementById("clock").style.fontSize = '75px';
         }
         else if (getCookie("minute")) {
             var minutecount = Math.floor(distance / 60000); //milliseconds converted to days
             document.getElementById("clock").innerHTML = minutecount + " minutes";
+            document.getElementById("clock").style.fontSize = '75px';
         }
         else if (getCookie("second")) {
             var secondcount = Math.floor(distance / 1000); //milliseconds converted to seconds
             document.getElementById("clock").innerHTML = secondcount + " seconds";
+            document.getElementById("clock").style.fontSize = '75px';
         }
         else if (getCookie("millisecond")) {
             document.getElementById("clock").innerHTML = distance + " milliseconds"; //no calc, just use milliseconds
+            document.getElementById("clock").style.fontSize = '75px';
         }
         else if (getCookie("week")) {
             var weekcount = Math.floor(days / 7); //days / seven, weeks
             document.getElementById("clock").innerHTML = weekcount + " weeks";
+            document.getElementById("clock").style.fontSize = '75px';
         }
         else if (getCookie("lcdu")) { //label countdown units
             if (days > 0) {
