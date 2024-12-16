@@ -199,8 +199,8 @@
                 <a title="Save to Countdown Dashboard" id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
                 <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
 
-		    
-		<h1>Debug Options</h1>
+		<div id="debugoptions" style="display:none;">
+			<h1>Debug Options</h1>
 		<p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
                     <strong>Why am I seeing this?</strong> These options are displayed on some Beta builds to help test these versions.
                 </p>
@@ -208,6 +208,7 @@
 		<a id="reset" class="warning" onclick="schedule_resetAll();"><i class="fa-solid fa-trash"></i> Reset Schedule</a>
 		<a id="reset" class="warning" onclick="eraseCookie('cookiesAccepted');"><i class="fa-solid fa-trash"></i> Revoke Cookie Consent</a>
 
+		</div>
 
 
                 <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
@@ -5568,5 +5569,16 @@ function magictitle(){
 
         confettiType = " ";
     }
+
+	document.addEventListener('keydown', (() => {
+    let input = '';
+    return (event) => {
+        input += event.key;
+        if (input.endsWith('debug')) {
+            document.getElementById('debugoptions').style.display = '';
+            input = ''; // Reset the input
+        }
+    };
+})());
 
 </script>
