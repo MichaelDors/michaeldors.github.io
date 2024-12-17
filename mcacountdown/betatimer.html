@@ -251,7 +251,7 @@
                     <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
                     <ul class="tabs-box" id="tabs-box">
                         <!--<li id="customtab" class="tab active">Custom</li>-->
-                        <li title="Automatically pick the next upcoming holiday" id="autopilottab" class="autopilottab" onclick="autopilottab();"><i class="fa-solid fa-wand-magic-sparkles"></i> Autopilot</li>
+                        <li title="Automatically pick the next upcoming holiday" id="autopilottab" class="autopilottab" onclick="autopilottab(); autopilotsparkle(event);"><i class="fa-solid fa-wand-magic-sparkles"></i> Autopilot</li>
                         <li id="endtab" class="mcatab" onclick="MES();">MCA</li>
                         <li id="nydtab" class="tab" onclick="NYD();">New Year's Day</li>
                         <li id="vdtab" class="tab" onclick="VD();">Valentine's Day</li>
@@ -271,7 +271,7 @@
                 </h2>
                 <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;" />
                 <button style="background:transparent; color:white; border:none; outline:none; cursor:pointer">
-                    <i id="magictitle" title="Magic Title" class="fa fa-wand-magic-sparkles" style="transform:scale(1.75); padding-left:10px;" onclick="magictitle()"></i>
+                    <i id="magictitle" title="Magic Title" class="fa fa-wand-magic-sparkles" style="transform:scale(1.75); padding-left:10px;" onclick="magictitle(); autopilotsparkle(event);"></i>
                 </button>
                 <h2 class="textelement" style="font-family: 'Dosis';" id="linkoptions">
                     Link
@@ -3075,6 +3075,54 @@ window.onload = function() {
     if(parameter("schedule") !== "null" && parameter("schedule")){
         document.querySelector(".datepicker").value = '9999-12-30T00:00';
     }
+
+//autopilot onnclick animation
+	function autopilotsparkle(event) {
+    const create_sparkle = (x, y) => {
+        const sparkle = document.createElement('div');
+        sparkle.innerHTML = `
+            <svg viewBox="0 0 100 100" width="20" height="20">
+                <path d="M50 0 L60 40 L100 50 L60 60 L50 100 L40 60 L0 50 L40 40 Z" 
+                      fill="url(#grad)" />
+                <defs>
+                    <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color: #00FF5E; stop-opacity:1" />
+                        <stop offset="100%" style="stop-color: #03a662; stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+            </svg>
+        `;
+        sparkle.style.position = 'absolute';
+        sparkle.style.pointerEvents = 'none';
+        sparkle.style.left = `${x - 10}px`;
+        sparkle.style.top = `${y - 10}px`;
+        sparkle.style.transform = 'scale(1)';
+        sparkle.style.opacity = '1';
+        sparkle.style.transition = 'transform 0.8s ease-out, opacity 0.8s ease-out';
+
+        document.body.appendChild(sparkle);
+
+        // Randomize direction
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = 50 + Math.random() * 30;
+        const offsetX = Math.cos(angle) * distance;
+        const offsetY = Math.sin(angle) * distance;
+
+        requestAnimationFrame(() => {
+            sparkle.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(0.5)`;
+            sparkle.style.opacity = '0';
+        });
+
+        setTimeout(() => sparkle.remove(), 1000);
+    };
+
+    const x = event.pageX;
+    const y = event.pageY;
+
+    for (let i = 0; i < 5; i++) {
+        create_sparkle(x, y);
+    }
+}
 
     //countdown title
     if (parameter('title')) { 
