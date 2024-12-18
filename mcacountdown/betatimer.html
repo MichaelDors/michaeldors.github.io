@@ -3078,7 +3078,7 @@ window.onload = function() {
 
 //autopilot onnclick animation
 	function autopilotsparkle(event) {
-    const create_sparkle = (x, y) => {
+const create_sparkle = (x, y) => {
         const sparkle = document.createElement('div');
         sparkle.innerHTML = `
             <svg viewBox="0 0 100 100" width="20" height="20">
@@ -3086,8 +3086,8 @@ window.onload = function() {
                       fill="url(#grad)" />
                 <defs>
                     <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style="stop-color: #00FF5E; stop-opacity:1" />
-                        <stop offset="100%" style="stop-color: #03a662; stop-opacity:1" />
+                        <stop offset="0%" style="stop-color: #FFD700; stop-opacity:1" />
+                        <stop offset="100%" style="stop-color: #FF4500; stop-opacity:1" />
                     </linearGradient>
                 </defs>
             </svg>
@@ -3102,7 +3102,6 @@ window.onload = function() {
 
         document.body.appendChild(sparkle);
 
-        // Randomize direction
         const angle = Math.random() * 2 * Math.PI;
         const distance = 50 + Math.random() * 30;
         const offsetX = Math.cos(angle) * distance;
@@ -3116,8 +3115,9 @@ window.onload = function() {
         setTimeout(() => sparkle.remove(), 1000);
     };
 
-    const x = event.pageX;
-    const y = event.pageY;
+    // Handle both touch and mouse events
+    const x = event.touches ? event.touches[0].pageX : event.pageX;
+    const y = event.touches ? event.touches[0].pageY : event.pageY;
 
     for (let i = 0; i < 5; i++) {
         create_sparkle(x, y);
