@@ -5673,14 +5673,12 @@ function magictitle(){
 })());
 
 	function TestProgressOptionsRemoveAtSomePoint(){
-		if(parameter('progress')){ //if the user has their progress bar enabled
 			document.getElementByID("progress-bar").style.display = "";
 			const countdownduration = document.querySelector('.progressdatepicker').value - document.querySelector('.datepicker').value;
 			alert(countdownduration);
 			const progressbarvalue = 100 - (distance / countdownduration * 100);
 			alert(progressbarvalue);
                 	document.getElementById('schedule-progress').style.width = `${progress}%`;
-		}
 	}
 
 </script>
