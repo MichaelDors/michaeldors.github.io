@@ -480,7 +480,7 @@
                 <br>
                 <br>
 		<h2 style="font-family: 'Dosis';">Starting Date</h2>
-		<input class="progressdatepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
+		<input class="progressdatepicker" type="datetime-local" onblur="TestProgressOptionsRemoveAtSomePoint();" />
 		<br>
 		<br>
 		<br>
@@ -5671,5 +5671,16 @@ function magictitle(){
         }
     };
 })());
+
+	function TestProgressOptionsRemoveAtSomePoint(){
+		if(parameter('progress')){ //if the user has their progress bar enabled
+			document.getElementByID("progress-bar").style.display = "";
+			const countdownduration = document.querySelector('.progressdatepicker').value - document.querySelector('.datepicker').value;
+			alert(countdownduration);
+			const progressbarvalue = 100 - (distance / countdownduration * 100);
+			alert(progressbarvalue);
+                	document.getElementById('schedule-progress').style.width = `${progress}%`;
+		}
+	}
 
 </script>
