@@ -91,6 +91,10 @@
     </div>
     </div>
 
+
+<div id="progress-bar" class="progress-bar">
+	<div class="progress" id="progress" style="display:none;"></div>
+</div>
     <a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index:1000000;"><i id="innergear" class="fa-solid fa-gear"></i></a>
 
 
@@ -472,7 +476,7 @@
                 <br>
 		<div id="optionsprogresscontainer">
                 <h1 id="progressoptions">Progress <span class="betatag">BETA</span></h1>
-			                <Br>
+		<Br>
                 <br>
                 <br>
 		<h2 style="font-family: 'Dosis';">Starting Date</h2>
@@ -484,7 +488,7 @@
 		<a class="aintext selectedfontpicker"><img title="No progress bar" alt="No progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/1no.png"/></a>
                 <a class="aintext fontpicker"><img title="Bottom progress bar" alt="Bottom progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/2bottom.png"/></a>
                 <a class="aintext fontpicker"><img title="Under clock progress bar" alt="Under clock progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/3middle.png"/></a>
-                <a class="aintext fontpicker"><img title="Top progress bar" alt="Top progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/4top.png"/></a>
+                <a class="aintext fontpicker"><img title="Top progress bar" alt="Fullscreen progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/4top.png"></a>
                 <br>
                 <br>
                 <br>
@@ -2705,6 +2709,25 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     font-family:Fredoka One;
     font-size:20px;
 }
+
+
+        .progress-bar {
+            height: 7px;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        .progress {
+            height: 100%;
+            background: #141414e5;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(75px);
+            -webkit-backdrop-filter: blur(75px);
+            width: 0;
+            transition: width 1s linear;
+            border-top-right-radius: 20px;
+        }
 </style>
 
 
@@ -2790,6 +2813,10 @@ window.onload = function() {
     });
 
     //onload url parameter translation into the correlating customization settings
+if(parameter('progress')){
+	document.getElementByID("progress-bar").style.display = "";
+}
+
     //backgrounds
     var bgstring = "none"; //declaring bgstring to none at the very beginning so it's able to be changed anywhere
     if (parameter('atc')) {
@@ -3739,6 +3766,15 @@ const create_sparkle = (x, y) => {
                 document.getElementById("clock").style.fontSize = '175px'; //just seconds
             }
         }
+
+	if(parameter('progress')){ //if the user has their progress bar enabled
+		document.getElementByID("progress-bar").style.display = "";
+		const countdownduration = document.querySelector('.progressdatepicker').value - document.querySelector('.datepicker').value;
+		alert(countdownduration);
+		const progressbarvalue = 100 - (distance / countdownduration * 100);
+		alert(progressbarvalue);
+                document.getElementById('schedule-progress').style.width = `${progress}%`;
+	}
 
         if(distance == 1000){ //when countdown is one second from ending, to give time to load
 		if(!getCookie('soce')){ //if disable end sound is not enabled
