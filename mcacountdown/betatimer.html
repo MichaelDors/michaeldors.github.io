@@ -5674,11 +5674,13 @@ function magictitle(){
 
 	function TestProgressOptionsRemoveAtSomePoint(){
 			document.getElementByID("progress-bar").style.display = "";
-			const countdownduration = document.querySelector('.progressdatepicker').value - document.querySelector('.datepicker').value;
-			alert(countdownduration);
+    			const countdownduration = new Date(document.querySelector('.progressdatepicker').value) - new Date(document.querySelector('.datepicker').value);
+    			alert(countdownduration);
+			const distance = new Date() - new Date(document.querySelector('.datepicker').value);
+			alert(distance);
 			const progressbarvalue = 100 - (distance / countdownduration * 100);
 			alert(progressbarvalue);
-                	document.getElementById('schedule-progress').style.width = `${progress}%`;
+                	document.getElementById('schedule-progress').style.width = `${progressbarvalue}%`;
 	}
 
 </script>
