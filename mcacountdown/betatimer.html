@@ -5673,6 +5673,7 @@ function magictitle(){
 })());
 
 	function TestProgressOptionsRemoveAtSomePoint(){
+		alert("test mode entered");
 			document.getElementByID("progress-bar").style.display = "";
     			const countdownduration = new Date(document.querySelector('.progressdatepicker').value) - new Date(document.querySelector('.datepicker').value);
     			alert(countdownduration);
