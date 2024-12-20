@@ -3623,10 +3623,10 @@ const create_sparkle = (x, y) => {
     		return num < 10 ? '0' + num : num;
 	}
 	
-        var days = formatZeroesofNumber(Math.floor(distance / (1000 * 60 * 60 * 24)));
-        var hours = formatZeroesofNumber(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)));
-        var minutes = formatZeroesofNumber(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)));
-        var seconds = formatZeroesofNumber(Math.floor((distance % (1000 * 60)) / 1000));
+        var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
 
         if(parameter("schedule") == "null"){ //will only trigger when there is no schedule active. schedule titles are handled with the cdschedule code.
@@ -3755,15 +3755,15 @@ const create_sparkle = (x, y) => {
         }
         else { //not labeling or only including
             if (days > 0) {
-                document.getElementById("clock").innerHTML = days + ":" + hours + ":" + minutes + ":" + seconds; //same as labeled just without labels
+                document.getElementById("clock").innerHTML =  formatZeroesofNumber(days) + ":" +  formatZeroesofNumber(hours) + ":" +  formatZeroesofNumber(minutes) + ":" +  formatZeroesofNumber(seconds); //same as labeled just without labels
                 document.getElementById("clock").style.fontSize = '75px';
             }
             else if (hours > 0) {
-                document.getElementById("clock").innerHTML = hours + ":" + minutes + ":" + seconds; //only for hours no more days
+                document.getElementById("clock").innerHTML =  formatZeroesofNumber(hours) + ":" +  formatZeroesofNumber(minutes) + ":" +  formatZeroesofNumber(seconds); //only for hours no more days
                 document.getElementById("clock").style.fontSize = '100px';
             }
             else if (minutes > 0) {
-                document.getElementById("clock").innerHTML = minutes + ":" + seconds; //only for minutes no more hours
+                document.getElementById("clock").innerHTML =  formatZeroesofNumber(minutes) + ":" +  formatZeroesofNumber(seconds); //only for minutes no more hours
                 document.getElementById("clock").style.fontSize = '150px';
             }
             else {
