@@ -2813,6 +2813,15 @@ window.onload = function() {
     });
 
     //onload url parameter translation into the correlating customization settings
+               //confetti
+                var confettiType = "none"; //declaring confettitype to none at the very beginning so it's able to be changed anywhere
+    if(parameter("confettitype")){
+        confettiType = decodeURIComponent(parameter("confettitype")); //if the confetti type exists, set it
+    }
+    else{
+        confettiType = "1";
+    }
+
 if(parameter('progress')){
 	document.getElementByID("progress-bar").style.display = "";
 }
@@ -3180,14 +3189,6 @@ const create_sparkle = (x, y) => {
             document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
         }
 
-                //confetti
-                var confettiType = "none"; //declaring confettitype to none at the very beginning so it's able to be changed anywhere
-    if(parameter("confettitype")){
-        confettiType = decodeURIComponent(parameter("confettitype")); //if the confetti type exists, set it
-    }
-    else{
-        confettiType = "1";
-    }
 
     if(confettiType == "1"){
         ConfettiModeDefault();
