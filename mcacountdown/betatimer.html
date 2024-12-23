@@ -3164,6 +3164,7 @@ const create_sparkle = (x, y) => {
     if (parameter('title')) { 
         document.getElementById("countdowntitle").value = decodeURIComponent(parameter('title')); //set the front-facing countdown title input to the parameter value, decoding all %20s and such
         setcountdowntitle("front"); //tell the setcountdowntitle function to set the back (settings) to the same. sending which it came from the the function, not which to send it to
+        document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + decodeURIComponent(parameter('title')));
     }
 
 
@@ -3449,6 +3450,13 @@ const create_sparkle = (x, y) => {
         var color4normalized = color4.replace("#", "");
 
         var cdtitle = document.getElementById("countdowntitle").value; //set the title
+        
+        if(cdtitle){
+            document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + cdtitle);
+        }
+        else{
+            document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown - Michael Dors');
+        }
 
         if(!confettiType){
             confettiType = document.getElementById("confettiEmojiPicker").value;
