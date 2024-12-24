@@ -3202,6 +3202,9 @@ const create_sparkle = (x, y) => {
         document.getElementById("confettiEmojiPicker").value = decodeURIComponent(parameter("confettitype"));
     }
 
+if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && new Date(document.querySelector(".datepicker").value).getDate() === 25) { // December is month 11 (0-based)
+	document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/christmasshare.jpg');
+}
 
     //confetti groundwork for snowflakes and emoji
     class ConfettiManager {
