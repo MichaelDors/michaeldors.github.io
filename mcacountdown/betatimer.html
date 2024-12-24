@@ -3204,6 +3204,8 @@ const create_sparkle = (x, y) => {
 
 if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && new Date(document.querySelector(".datepicker").value).getDate() === 25) { // December is month 11 (0-based)
 	document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/christmasshare.jpg');
+}else{
+	document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/defaultshare.jpg');
 }
 
     //confetti groundwork for snowflakes and emoji
@@ -3463,7 +3465,9 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
 
         if(countDownDate.getMonth() === 11 && countDownDate.getDate() === 25) { // December is month 11 (0-based)
             document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/christmasshare.jpg');
-        }
+        }else{
+		document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/defaultshare.jpg');
+	}
 
         if(!confettiType){
             confettiType = document.getElementById("confettiEmojiPicker").value;
