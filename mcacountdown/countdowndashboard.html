@@ -5,6 +5,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@600&display=swap" rel="stylesheet">
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -43,9 +44,14 @@
             <a title="Export as a .countdown file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i> Export</a>
             <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
 		<input type="file" id="hiddenFileInput" accept=".countdown" style="display: none;">
+        
         </div>
         <div id="linksContainer" class="links-container">
         </div>
+        <model-viewer id="threedtrash" alt="Trash Can" src="3d/trash.glb" ar shadow-intensity="1" touch-action="none" disable-pan disable-tap disable-zoom camera-orbit="0deg 75deg 5.5m"></model-viewer>
+        <model-viewer id="foregroundtrash" alt="Trash Can" src="3d/cuttrash.glb" ar shadow-intensity="0" touch-action="none" disable-pan disable-tap disable-zoom camera-orbit="0deg 75deg 5.5m"></model-viewer>
+
+
 <div id="trashZone" class="trash-zone">
     <i class="fa-solid fa-trash-can"></i>
     <span>Drop to Delete</span>
@@ -297,6 +303,8 @@ function startDragging(e, card) {
     // Show the trash zone
     const trashZone = document.getElementById('trashZone');
     trashZone.classList.add('visible');
+    document.getElementById('threedtrash').classList.add('visible');
+    document.getElementById('foregroundtrash').classList.add('visible');
 }
 
 function cancelDrag() {
@@ -324,8 +332,10 @@ function drag(e) {
         draggedRect.bottom > trashRect.top && 
         draggedRect.top < trashRect.bottom) {
         trashZone.classList.add('drag-over');
+        draggedElement.classList.add('dragging-over-trash');
     } else {
         trashZone.classList.remove('drag-over');
+        draggedElement.classList.remove('dragging-over-trash');
         
         // Only handle card positioning if not over trash
         const cards = Array.from(document.querySelectorAll('.card:not(.placeholder)'));
@@ -386,9 +396,10 @@ function dragEnd(e) {
     const trashZone = document.getElementById('trashZone');
     
     if (draggedElement) {
+        draggedElement.classList.remove('dragging-over-trash');
         const draggedRect = draggedElement.getBoundingClientRect();
         const trashRect = trashZone.getBoundingClientRect();
-        
+                
         // Check if the card was dropped on the trash zone
         if (draggedRect.right > trashRect.left && 
             draggedRect.left < trashRect.right &&
@@ -428,6 +439,8 @@ function dragEnd(e) {
 
     // Hide the trash zone
     trashZone.classList.remove('visible');
+    document.getElementById('threedtrash').classList.remove('visible');
+    document.getElementById('foregroundtrash').classList.remove('visible');
     trashZone.classList.remove('drag-over');
 
     // Reset all drag-related variables
@@ -535,9 +548,14 @@ button:hover {
     position: relative;
     display: flex;
     flex-direction: column;
-    user-select: none; /* Prevent text selection during drag */
-    transition: transform 0.3s ease; /* Add this */
+    user-select: none;
+    transition: transform 0.3s ease, opacity 0.3s ease, background 0.3s ease; 
     z-index: 2000;
+}
+
+.card.dragging-over-trash {
+    transform:rotate3d(0,1,0,-60deg) rotate(75deg) scale(0.5);
+    background: rgba(255, 83, 83, 0.5);
 }
 
 .card-content {
@@ -790,6 +808,40 @@ z-index: 1000;
         display: inline-block;
     }
 
+    #threedtrash{
+        position: fixed;
+    bottom: -100px; /* Start hidden below the viewport */
+    right: -1000px;
+    z-index: 2010;
+    height:150px;
+    transition:0.5s all ease;
+    transform: scale(1);
+    }
+
+    #foregroundtrash{
+        position: fixed;
+    bottom: -100px; /* Start hidden below the viewport */
+    right: -1000px;
+    z-index: 40000;
+    height:150px;
+    transition:0.5s all ease;
+    transform: scale(1);
+    }
+
+    #threedtrash.visible{
+    bottom: 20px;
+    right:-60px;
+    overflow: hidden;
+    height:200px;
+}
+
+#foregroundtrash.visible{
+    bottom: 20px;
+    right:-60px;
+    overflow: hidden;
+    height:200px;
+}
+
     .trash-zone {
         opacity:0.5;
         filter: blur(0px);
@@ -801,7 +853,7 @@ z-index: 1000;
     display: flex;
     flex-direction: column;
     align-items: center;
-    transition: all 0.3s ease;
+    transition: all 0.5s ease;
     width:200px;
     height:150px;
     z-index: 2000;
