@@ -46,6 +46,10 @@
         </div>
         <div id="linksContainer" class="links-container">
         </div>
+<div id="trashZone" class="trash-zone">
+    <i class="fa-solid fa-trash-can"></i>
+    <span>Drop to Delete</span>
+</div>
     </div>
     <script>
         let links = [];
@@ -269,6 +273,10 @@ function startDragging(e, card) {
 
     // Add the drag handler
     document.addEventListener('mousemove', drag);
+
+    // Show the trash zone
+    const trashZone = document.getElementById('trashZone');
+    trashZone.classList.add('visible');
 }
 
 function drag(e) {
@@ -276,89 +284,108 @@ function drag(e) {
     
     updateElementPosition(e.clientX, e.clientY);
 
-    const cards = Array.from(document.querySelectorAll('.card:not(.placeholder)'));
-    let closestCard = null;
-    let closestDistance = Infinity;
-    let newIndex = startIndex;
-
+    // Check if the dragged element is over the trash zone
+    const trashZone = document.getElementById('trashZone');
     const draggedRect = draggedElement.getBoundingClientRect();
-    const dragCenterX = draggedRect.left + draggedRect.width / 2;
-    const dragCenterY = draggedRect.top + draggedRect.height / 2;
+    const trashRect = trashZone.getBoundingClientRect();
+    
+    if (draggedRect.right > trashRect.left && 
+        draggedRect.left < trashRect.right &&
+        draggedRect.bottom > trashRect.top && 
+        draggedRect.top < trashRect.bottom) {
+        trashZone.classList.add('drag-over');
+    } else {
+        trashZone.classList.remove('drag-over');
+        
+        // Only handle card positioning if not over trash
+        const cards = Array.from(document.querySelectorAll('.card:not(.placeholder)'));
+        let closestCard = null;
+        let closestDistance = Infinity;
+        let newIndex = startIndex;
 
-    cards.forEach((card, index) => {
-        if (card !== draggedElement) {
-            const rect = card.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            const distance = Math.hypot(dragCenterX - centerX, dragCenterY - centerY);
+        const dragCenterX = draggedRect.left + draggedRect.width / 2;
+        const dragCenterY = draggedRect.top + draggedRect.height / 2;
 
-            if (distance < closestDistance) {
-                closestDistance = distance;
-                closestCard = card;
-                newIndex = index;
+        cards.forEach((card, index) => {
+            if (card !== draggedElement) {
+                const rect = card.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const distance = Math.hypot(dragCenterX - centerX, dragCenterY - centerY);
+
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestCard = card;
+                    newIndex = index;
+                }
             }
-        }
-    });
+        });
 
-    if (closestCard) {
-        const closestRect = closestCard.getBoundingClientRect();
-        const isAfter = dragCenterY > closestRect.top + closestRect.height / 2 ||
-                        (dragCenterY <= closestRect.top + closestRect.height / 2 && dragCenterX > closestRect.left + closestRect.width / 2);
+        if (closestCard) {
+            const closestRect = closestCard.getBoundingClientRect();
+            const isAfter = dragCenterY > closestRect.top + closestRect.height / 2 ||
+                            (dragCenterY <= closestRect.top + closestRect.height / 2 && dragCenterX > closestRect.left + closestRect.width / 2);
 
-        if (isAfter) {
-            newIndex++;
-        }
+            if (isAfter) {
+                newIndex++;
+            }
 
-        const currentIndex = cards.indexOf(draggedElement);
-        if (newIndex !== currentIndex) {
-            // Move the placeholder to the new position
-            closestCard.parentNode.insertBefore(placeholder, 
-                isAfter ? closestCard.nextSibling : closestCard);
+            const currentIndex = cards.indexOf(draggedElement);
+            if (newIndex !== currentIndex) {
+                closestCard.parentNode.insertBefore(placeholder, 
+                    isAfter ? closestCard.nextSibling : closestCard);
+            }
         }
     }
 }
 
 function dragEnd(e) {
-    const currentTime = new Date().getTime();
-    const timeDiff = currentTime - mouseDownTime;
-
-    // If it's a quick click (less than 200ms) and we haven't started dragging, treat it as a click
-    if (timeDiff < 200 && !isDragging) {
-        const card = e.target.closest('.card');
-        if (card && !e.target.classList.contains('remove-button')) {
-            const url = decodeURIComponent(card.getAttribute('data-url'));
-            if (e.ctrlKey) {
-                window.open(url, '_blank', 'noopener,noreferrer');
-            } else {
-                window.open(url, '_self', 'noopener,noreferrer');
-            }
-        }
-    }
-
-    // Clean up drag-related states and elements
+    const trashZone = document.getElementById('trashZone');
+    
     if (draggedElement) {
-        draggedElement.style.position = '';
-        draggedElement.style.zIndex = '';
-        draggedElement.style.width = '';
-        draggedElement.style.height = '';
-        draggedElement.style.left = '';
-        draggedElement.style.top = '';
+        const draggedRect = draggedElement.getBoundingClientRect();
+        const trashRect = trashZone.getBoundingClientRect();
+        
+        // Check if the card was dropped on the trash zone
+        if (draggedRect.right > trashRect.left && 
+            draggedRect.left < trashRect.right &&
+            draggedRect.bottom > trashRect.top && 
+            draggedRect.top < trashRect.bottom) {
+            
+            // Get the index of the card and remove it
+            const index = parseInt(draggedElement.getAttribute('data-index'));
+            links.splice(index, 1);
+            saveLinks();
+            renderLinks();
+        } else {
+            // Clean up drag-related states and elements
+            draggedElement.style.position = '';
+            draggedElement.style.zIndex = '';
+            draggedElement.style.width = '';
+            draggedElement.style.height = '';
+            draggedElement.style.left = '';
+            draggedElement.style.top = '';
 
-        if (placeholder) {
-            placeholder.parentNode.insertBefore(draggedElement, placeholder);
-            placeholder.remove();
-            placeholder = null;
+            if (placeholder) {
+                placeholder.parentNode.insertBefore(draggedElement, placeholder);
+                placeholder.remove();
+                placeholder = null;
+            }
+
+            // Update the links array based on the new order
+            links = Array.from(document.querySelectorAll('.card')).map(card => {
+                const url = decodeURIComponent(card.getAttribute('data-url'));
+                return links.find(link => link.url === url);
+            });
+
+            saveLinks();
+            updateCardIndices();
         }
-
-        // Update the links array based on the new order
-        links = Array.from(document.querySelectorAll('.card')).map(card => {
-            const url = decodeURIComponent(card.getAttribute('data-url'));
-            return links.find(link => link.url === url);
-        });
-
-        saveLinks();
-        updateCardIndices();
     }
+
+    // Hide the trash zone
+    trashZone.classList.remove('visible');
+    trashZone.classList.remove('drag-over');
 
     // Reset all drag-related variables
     draggedElement = null;
@@ -366,7 +393,6 @@ function dragEnd(e) {
     mouseDownTime = null;
 
     // Remove all event listeners
-    document.removeEventListener('mousemove', mouseMoveHandler);
     document.removeEventListener('mousemove', drag);
     document.removeEventListener('mouseup', dragEnd);
 }
@@ -466,6 +492,7 @@ button:hover {
     flex-direction: column;
     user-select: none; /* Prevent text selection during drag */
     transition: transform 0.3s ease; /* Add this */
+    z-index: 1000;
 }
 
 .card-content {
@@ -473,21 +500,32 @@ button:hover {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    min-height:20px;
+    position:relative;
+    align-items: flex-start;
 }
 
 .card h3 {
-    position: absolute;
-    bottom: 15px;
-    left: 15px;
+    top:50%;
+    transform:translateY(-45%);
+    position: relative;
+    text-align: left;
 	margin: 0;
-	padding-right:30px;
+    width:100%;
     font-family: 'Dosis' , sans-serif;
-	margin-top:100px;
+    overflow:hidden;
+    line-height: 1;
+}
+
+.card:hover .remove-button{
+    opacity: 1;
 }
 
 .remove-button {
+    opacity: 0;
     position: absolute;
-    bottom: 15px;
+    top:50%;
+    transform:translateY(-50%);
     right: 15px;
     background-color: #ff5353;
     color: white;
@@ -495,7 +533,7 @@ button:hover {
     border-radius: 4px;
     padding: 5px 10px;
     cursor: pointer;
-	transition:0.3s all;
+	transition:0.5s all ease-in-out;
 }
 
 .remove-button:hover {
@@ -704,5 +742,37 @@ iframe {
         box-shadow: none;
         display: inline-block;
     }
+
+    .trash-zone {
+    position: fixed;
+    bottom: -100px; /* Start hidden below the viewport */
+    right: -1000px;
+    background: radial-gradient(circle at bottom right, rgba(255, 83, 83, 0.95) 0%, rgba(255, 83, 83, 0.8) 10%, rgba(255, 83, 83, 0.4) 30%, rgba(255, 83, 83, 0.1) 60%, rgba(255, 83, 83, 0) 80%);
+
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.3s ease;
+    width:15%;
+    height:15%;
+}
+
+.trash-zone.visible {
+    bottom: 0px;
+    right:0px;
+}
+
+.trash-zone i {
+    font-size: 2em;
+    margin-bottom: 5px;
+}
+
+.trash-zone.drag-over {
+    transform: scale(1.1);
+    background: rgba(208, 0, 0, 0.9);
+}
 </style>
 </html>
