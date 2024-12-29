@@ -637,11 +637,10 @@ button:hover {
 }
 
 .card.dragging-over-trash {
-    transform: rotate(75deg) scale(0.5);
+    transform: rotate3d(0, 1, 0, -60deg) rotate(75deg) scale(0.5);
     background: rgba(255, 83, 83, 0.5);
     z-index: 4000;
     overflow: visible;
-    perspective: 1000px;
     transform-origin: center;
     backface-visibility:visible;
 }
