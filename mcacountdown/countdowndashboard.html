@@ -57,9 +57,17 @@
     <span>Drop to Delete</span>
 </div>
     </div>
+
+    <!-- New drag-and-drop overlay -->
+    <div id="dragDropOverlay" class="drag-drop-overlay">
+        <i class="fa-solid fa-file-import"></i>
+        <span>Drop to Import File</span>
+    </div>
+
     <script>
         let links = [];
         let placeholder = null;
+        let dragCounter = 0;
 
 
 function loadLinks() {
@@ -77,9 +85,38 @@ function saveLinks() {
 
 function removeLink(index, event) {
     event.stopPropagation();
-    links.splice(index, 1);
-    saveLinks();
-    renderLinks();
+    event.preventDefault();
+    
+    const cards = document.querySelectorAll('.card');
+    const cardToDelete = cards[index];
+    
+    // Add deletion animation
+    cardToDelete.classList.add('currentlybeingdeleted');
+    
+    // Add shift animation to cards after the deleted one
+    cards.forEach((card, i) => {
+        if (i > index) {
+            // Update the card's index and remove button
+            card.setAttribute('data-index', i - 1);
+            const removeButton = card.querySelector('.remove-button');
+            removeButton.setAttribute('onclick', `removeLink(${i - 1}, event)`);
+            
+            // Add shift class
+            card.classList.add('card-shift');
+        }
+    });
+    
+    setTimeout(() => {
+        // Remove the deleted card
+        cardToDelete.remove();
+        links.splice(index, 1);
+        saveLinks();
+        
+        // Remove shift class from remaining cards
+        document.querySelectorAll('.card-shift').forEach(card => {
+            card.classList.remove('card-shift');
+        });
+    }, 500);
 }
 
 function exportLinks() {
@@ -124,51 +161,25 @@ function importLinks() {
 
 function renderLinks() {
     const linksContainer = document.getElementById('linksContainer');
+    linksContainer.innerHTML = '';
     
-    // Clear the container without removing its contents
-    while (linksContainer.firstChild) {
-        linksContainer.removeChild(linksContainer.firstChild);
-    }
-
     links.forEach((link, index) => {
-        let card = document.querySelector(`.card[data-url="${encodeURIComponent(link.url)}"]`);
-        
-        if (!card) {
-            card = document.createElement('div');
-            card.className = 'card';
-            card.setAttribute('data-url', encodeURIComponent(link.url));
-            card.innerHTML = `
-                <iframe src="${link.url}" title="${link.title}" sandbox="allow-scripts allow-same-origin"></iframe>
-                <div class="card-content">
-                    <h3>${link.title}</h3>
-                    <i class="remove-button fa-solid fa-trash" onclick="removeLink(${index}, event)" style="cursor:pointer;"></i>
-                </div>
-            `;
-
-            card.addEventListener('mousedown', dragStart);
-        } else {
-            // Update the remove button's onclick attribute
-            const removeButton = card.querySelector('.remove-button');
-            removeButton.setAttribute('onclick', `removeLink(${index}, event)`);
-        }
-
+        let card = document.createElement('div');
+        // Remove card-shift class from initial render
+        card.className = 'card';
         card.setAttribute('data-index', index);
+        card.setAttribute('data-url', encodeURIComponent(link.url));
+        card.innerHTML = `
+            <iframe src="${link.url}" title="${link.title}" sandbox="allow-scripts allow-same-origin"></iframe>
+            <div class="card-content">
+                <h3>${link.title}</h3>
+                <i class="remove-button fa-solid fa-trash" onclick="removeLink(${index}, event)" style="cursor:pointer;"></i>
+            </div>
+        `;
+        
+        card.addEventListener('mousedown', dragStart);
         linksContainer.appendChild(card);
     });
-
-    // Remove any cards that are no longer in the links array
-    document.querySelectorAll('.card').forEach(card => {
-        const url = decodeURIComponent(card.getAttribute('data-url'));
-        if (!links.some(link => link.url === url)) {
-            card.remove();
-        }
-    });
-
-    // Remove the placeholder if it exists
-    if (placeholder) {
-        placeholder.remove();
-        placeholder = null;
-    }
 }
 
 function resetcookies() { //remove all saved cookies
@@ -221,6 +232,9 @@ function dragStart(e) {
     const card = e.target.closest('.card');
     if (!card) return;
 
+    // Check if click was on the delete button
+    if (e.target.classList.contains('remove-button')) return;
+
     mouseDownTime = new Date().getTime();
     
     // Setup the potential drag
@@ -236,7 +250,8 @@ function dragStart(e) {
         const timeDiff = mouseUpTime - mouseDownTime;
         
         // If it was a quick click (less than 200ms), treat it as a click to open the link
-        if (timeDiff < 200 && !isDragging) {
+        // Also check that the click wasn't on the delete button
+        if (timeDiff < 200 && !isDragging && !upEvent.target.classList.contains('remove-button')) {
             const url = decodeURIComponent(card.getAttribute('data-url'));
             if (upEvent.ctrlKey || upEvent.metaKey) {
                 window.open(url, '_blank');
@@ -475,6 +490,58 @@ function updateElementPosition(mouseX, mouseY) {
     draggedElement.style.top = `${mouseY - offsetY}px`;
 }
 
+document.addEventListener('dragenter', (event) => {
+    event.preventDefault();
+    dragCounter++;
+    if (dragCounter === 1) { // Show overlay only on the first enter
+        document.getElementById('dragDropOverlay').style.opacity = '1';
+        document.getElementById('dragDropOverlay').style.zIndex = '10000';
+    }
+});
+
+document.addEventListener('dragleave', (event) => {
+    event.preventDefault();
+    dragCounter--;
+    if (dragCounter === 0) { // Hide overlay only when all leaves are done
+        document.getElementById('dragDropOverlay').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('dragDropOverlay').style.zIndex = '-10000';
+        }, 300);
+    }
+});
+
+document.addEventListener('dragover', (event) => {
+    event.preventDefault();
+});
+
+document.addEventListener('drop', (event) => {
+    event.preventDefault();
+    dragCounter = 0;
+    document.getElementById('dragDropOverlay').style.opacity = '0';
+    setTimeout(() => {
+        document.getElementById('dragDropOverlay').style.zIndex = '-10000';
+        }, 300);
+    
+    const file = event.dataTransfer.files[0];
+    if (file && file.name.endsWith('.countdown')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                links = data;
+                saveLinks();
+                renderLinks();
+            } catch (error) {
+                alert('Invalid save code');
+                console.error(error);
+            }
+        };
+        reader.readAsText(file);
+    } else {
+        alert("Please upload a valid .countdown file.");
+    }
+});
+
 loadLinks();
     </script>
 </body>
@@ -533,7 +600,7 @@ button:hover {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 20px;
-    position: relative; /* Add this */
+    position: relative;
 }
 
 .card {
@@ -549,13 +616,25 @@ button:hover {
     display: flex;
     flex-direction: column;
     user-select: none;
-    transition: transform 0.3s ease, opacity 0.3s ease, background 0.3s ease; 
+    filter:blur(0px);
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.3s ease, 
+                background 0.3s ease, 
+                filter 0.2s ease-in;
+    transform: translateX(0);
+    will-change: transform, opacity;
     z-index: 2000;
 }
 
 .card.dragging-over-trash {
     transform:rotate3d(0,1,0,-60deg) rotate(75deg) scale(0.5);
     background: rgba(255, 83, 83, 0.5);
+}
+
+.card.currentlybeingdeleted{
+    transform: scale(0.8) !important;
+    opacity: 0 !important;
+    filter: blur(50px) !important;
 }
 
 .card-content {
@@ -877,6 +956,50 @@ z-index: 1000;
     transform: scale(1.1);
     filter:blur(30px);
     background: radial-gradient(circle at bottom right, rgba(255, 35, 35,1) 0%, rgba(255, 55, 55, 1) 10%, rgba(255, 83, 83, 0.7) 30%, rgba(255, 83, 83, 0.1) 60%, rgba(255, 83, 83, 0) 80%);
+}
+
+/* Add new animation for remaining cards */
+.card-shift {
+    transform: translateX(-100%);
+}
+
+.currentlybeingdeleted {
+    transform: scale(0.8) !important;
+    opacity: 0 !important;
+    filter: blur(50px) !important;
+}
+
+/* Remove these unused classes */
+.card-shift.shift-left,
+.card-shift.shift-up,
+.card-shift.shift-diagonal {
+    display: none;
+}
+
+.drag-drop-overlay {
+    display: flex;
+    opacity: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(130, 70, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+        color: white;
+    font-size: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: -10000;
+    transition: opacity 0.3s ease;
+}
+
+.drag-drop-overlay i {
+    font-size: 48px;
+    margin-bottom: 10px;
 }
 </style>
 </html>
