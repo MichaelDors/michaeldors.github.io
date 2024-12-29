@@ -68,7 +68,7 @@
     <script>
 
 // Check if the browser is WebKit-based
-const isWebKit = 'WebkitAppearance' in document.documentElement.style;
+const isWebKit = /webkit/i.test(navigator.userAgent) && 'WebkitAppearance' in document.documentElement.style;
 	    alert(isWebKit);
 
 // Create a <style> tag
