@@ -38,24 +38,25 @@
 </script>
 <body>
     <div class="container">
-        <div class="input-container">
-		<a title="Create a new Countdown" href="https://michaeldors.com/mcacountdown/betatimer.html?createnew=1" id="newcountdownbutton"><i class="fa-solid fa-circle-plus"></i> New Countdown</a>
-            <a title="Import a .countdown file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i> Import</a>
-            <a title="Export as a .countdown file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i> Export</a>
-            <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
-		<input type="file" id="hiddenFileInput" accept=".countdown" style="display: none;">
-        
-        </div>
         <div id="linksContainer" class="links-container">
         </div>
         <model-viewer id="threedtrash" alt="Trash Can" src="3d/trash.glb" ar shadow-intensity="1" touch-action="none" disable-pan disable-tap disable-zoom camera-orbit="0deg 75deg 5.5m"></model-viewer>
         <model-viewer id="foregroundtrash" alt="Trash Can" src="3d/cuttrash.glb" ar shadow-intensity="0" touch-action="none" disable-pan disable-tap disable-zoom camera-orbit="0deg 75deg 5.5m"></model-viewer>
 
 
+        <div class="input-container">
+            <a title="Create a new Countdown" href="https://michaeldors.com/mcacountdown/betatimer.html?createnew=1" id="newcountdownbutton"><i class="fa-solid fa-circle-plus"></i> New Countdown</a>
+                <a title="Import a .countdown file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i> Import</a>
+                <a title="Export as a .countdown file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i> Export</a>
+                <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
+            <input type="file" id="hiddenFileInput" accept=".countdown" style="display: none;">
+            </div>
+
 <div id="trashZone" class="trash-zone">
     <i class="fa-solid fa-trash-can"></i>
     <span>Drop to Delete</span>
 </div>
+
     </div>
 
     <!-- New drag-and-drop overlay -->
@@ -573,9 +574,9 @@ h1 {
 }
 
 .input-container {
-	width:100%;
-    margin: 0 auto;
-    margin-bottom: 10px;
+    position:absolute;
+    bottom:0;
+    left:0;
 }
 
 input, button {
@@ -627,14 +628,19 @@ button:hover {
 }
 
 .card.dragging-over-trash {
-    transform:rotate3d(0,1,0,-60deg) rotate(75deg) scale(0.5);
+    transform: rotate3d(0, 1, 0, -60deg) rotate(75deg) scale(0.5);
     background: rgba(255, 83, 83, 0.5);
+    z-index: 4000;
+    overflow: visible;
+    perspective: 1000px;
+    transform-origin: center;
 }
 
 .card.currentlybeingdeleted{
     transform: scale(0.8) !important;
     opacity: 0 !important;
     filter: blur(50px) !important;
+    z-index: 3000;
 }
 
 .card-content {
