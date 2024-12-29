@@ -548,7 +548,9 @@ loadLinks();
 </body>
 <style>
 *{
-	user-select: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
 }
 body {
     font-family: 'Dosis' , sans-serif;
@@ -561,6 +563,9 @@ body {
     background-position:bottom center;
     background-attachment:fixed;
     background-repeat: no-repeat; /* Prevent the image from repeating */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
 }
 
 .container {
@@ -621,10 +626,11 @@ button:hover {
     flex-direction: column;
     user-select: none;
     filter:blur(0px);
-    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+    transition: transform 0.5s ease, 
                 opacity 0.3s ease, 
                 background 0.3s ease, 
-                filter 0.2s ease-in;
+                filter 0.2s ease-in,
+                z-index 0.01s;
     transform: translateX(0);
     will-change: transform, opacity;
     z-index: 2000;
@@ -637,7 +643,7 @@ button:hover {
     overflow: visible;
     perspective: 1000px;
     transform-origin: center;
-    backface-visibility: hidden;
+    backface-visibility:visible;
 }
 
 .card.currentlybeingdeleted{
@@ -712,7 +718,7 @@ iframe {
     -webkit-backdrop-filter: blur(75px);
     box-shadow: none;
     transition: all 0.2s ease; /* Faster transition for more responsive feel */
-z-index: 1000;
+z-index: 0;
 }
 
 .betatag {
