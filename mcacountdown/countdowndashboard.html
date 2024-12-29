@@ -6,7 +6,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@600&display=swap" rel="stylesheet">
 <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
-    
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Countdown Dashboard</title>
@@ -14,7 +14,7 @@
 
     <link rel="icon" type="image/x-icon" href="icon.ico">
     <meta name="theme-color" content="#8426ff" />
-    
+
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Countdown">
@@ -66,37 +66,48 @@
     </div>
 
     <script>
+
 // Check if the browser is WebKit-based
 const isWebKit = 'WebkitAppearance' in document.documentElement.style;
 
-// Set up a MutationObserver to watch for changes to the DOM
-const observer = new MutationObserver((mutationsList) => {
-    mutationsList.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === 1 && node.classList.contains('card')) {
-                if (node.classList.contains('dragging-over-trash')) {
-                    // Apply the appropriate style based on the browser
-                    if (isWebKit) {
-                        node.style.transform = 'rotate(75deg) scale(0.5)';
-                    } else {
-                        node.style.transform = 'rotate3d(0, 1, 0, -60deg) rotate(75deg) scale(0.5)';
-                    }
-                }
-            }
-        });
-    });
-});
+// Create a <style> tag
+let dynamicStyle = document.createElement('style');
+dynamicStyle.id = 'dynamic-style';
+document.head.appendChild(dynamicStyle);
 
-// Start observing the document for dynamically added elements
-observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-});
+// Function to update styles dynamically
+function updateStyles() {
+    if (isWebKit) {
+        dynamicStyle.innerHTML = `
+.card.dragging-over-trash {
+    transform: rotate(75deg) scale(0.5);
+    background: rgba(255, 83, 83, 0.5);
+    z-index: 4000;
+    overflow: visible;
+    transform-origin: center;
+    backface-visibility:visible;
+perspective:1000;
+}
+        `;
+    } else {
+        dynamicStyle.innerHTML = `
+.card.dragging-over-trash {
+    transform: rotate3d(0, 1, 0, -60deg) rotate(75deg) scale(0.5);
+    background: rgba(255, 83, 83, 0.5);
+    z-index: 4000;
+    overflow: visible;
+    transform-origin: center;
+    backface-visibility:visible;
+perspective:1000;
+}
+        `;
+    }
+}
 
-// Optional: Cleanup observer (if needed)
-window.addEventListener('beforeunload', () => observer.disconnect());
+// Call the function to apply the initial styles
+updateStyles();
 
-	    
+
         let links = [];
         let placeholder = null;
         let dragCounter = 0;
@@ -118,13 +129,13 @@ function saveLinks() {
 function removeLink(index, event) {
     event.stopPropagation();
     event.preventDefault();
-    
+
     const cards = document.querySelectorAll('.card');
     const cardToDelete = cards[index];
-    
+
     // Add deletion animation
     cardToDelete.classList.add('currentlybeingdeleted');
-    
+
     // Add shift animation to cards after the deleted one
     cards.forEach((card, i) => {
         if (i > index) {
@@ -132,18 +143,18 @@ function removeLink(index, event) {
             card.setAttribute('data-index', i - 1);
             const removeButton = card.querySelector('.remove-button');
             removeButton.setAttribute('onclick', `removeLink(${i - 1}, event)`);
-            
+
             // Add shift class
             card.classList.add('card-shift');
         }
     });
-    
+
     setTimeout(() => {
         // Remove the deleted card
         cardToDelete.remove();
         links.splice(index, 1);
         saveLinks();
-        
+
         // Remove shift class from remaining cards
         document.querySelectorAll('.card-shift').forEach(card => {
             card.classList.remove('card-shift');
@@ -185,7 +196,7 @@ document.getElementById('hiddenFileInput').addEventListener('change', (event) =>
     }
 });
 
-	    
+
 function importLinks() {
 	const hiddenFileInput = document.getElementById('hiddenFileInput');
 	hiddenFileInput.click(); // Trigger the hidden file input
@@ -194,7 +205,7 @@ function importLinks() {
 function renderLinks() {
     const linksContainer = document.getElementById('linksContainer');
     linksContainer.innerHTML = '';
-    
+
     links.forEach((link, index) => {
         let card = document.createElement('div');
         // Remove card-shift class from initial render
@@ -208,7 +219,7 @@ function renderLinks() {
                 <i class="remove-button fa-solid fa-trash" onclick="removeLink(${index}, event)" style="cursor:pointer;"></i>
             </div>
         `;
-        
+
         card.addEventListener('mousedown', dragStart);
         linksContainer.appendChild(card);
     });
@@ -260,7 +271,7 @@ let mouseMoveHandler;
 
 function dragStart(e) {
     if (e.button !== 0) return; // Only respond to left mouse button
-    
+
     const card = e.target.closest('.card');
     if (!card) return;
 
@@ -268,7 +279,7 @@ function dragStart(e) {
     if (e.target.classList.contains('remove-button')) return;
 
     mouseDownTime = new Date().getTime();
-    
+
     // Setup the potential drag
     startX = e.clientX;
     startY = e.clientY;
@@ -280,7 +291,7 @@ function dragStart(e) {
     document.addEventListener('mouseup', (upEvent) => {
         const mouseUpTime = new Date().getTime();
         const timeDiff = mouseUpTime - mouseDownTime;
-        
+
         // If it was a quick click (less than 200ms), treat it as a click to open the link
         // Also check that the click wasn't on the delete button
         if (timeDiff < 200 && !isDragging && !upEvent.target.classList.contains('remove-button')) {
@@ -291,7 +302,7 @@ function dragStart(e) {
                 window.location.href = url;
             }
         }
-        
+
         dragEnd(upEvent);
     });
 }
@@ -358,7 +369,7 @@ function cancelDrag() {
     if (isDragging) {
         dragEnd({ clientX: startX, clientY: startY }); // Simulate a mouseup event
     }
-    
+
     // Remove the event listeners
     document.removeEventListener('visibilitychange', cancelDrag);
     window.removeEventListener('blur', cancelDrag);
@@ -366,14 +377,14 @@ function cancelDrag() {
 
 function drag(e) {
     if (!draggedElement) return;
-    
+
     updateElementPosition(e.clientX, e.clientY);
 
     // Check if the dragged element is over the trash zone
     const trashZone = document.getElementById('trashZone');
     const draggedRect = draggedElement.getBoundingClientRect();
     const trashRect = trashZone.getBoundingClientRect();
-    
+
     if (draggedRect.right > trashRect.left && 
         draggedRect.left < trashRect.right &&
         draggedRect.bottom > trashRect.top && 
@@ -383,7 +394,7 @@ function drag(e) {
     } else {
         trashZone.classList.remove('drag-over');
         draggedElement.classList.remove('dragging-over-trash');
-        
+
         // Only handle card positioning if not over trash
         const cards = Array.from(document.querySelectorAll('.card:not(.placeholder)'));
         let targetCard = null;
@@ -406,7 +417,7 @@ function drag(e) {
                 // Check if dragged card is within snap zone
                 if (Math.abs(dragCenterX - centerX) < snapZoneX && 
                     Math.abs(dragCenterY - centerY) < snapZoneY) {
-                    
+
                     // If we haven't found a target yet, or this card is closer
                     if (!targetCard || 
                         (Math.abs(dragCenterY - centerY) < Math.abs(dragCenterY - targetCard.getBoundingClientRect().top + targetCard.getBoundingClientRect().height / 2))) {
@@ -419,7 +430,7 @@ function drag(e) {
 
         if (targetCard) {
             const targetRect = targetCard.getBoundingClientRect();
-            
+
             // Determine if we should place before or after the target
             // Prioritize vertical position first, then horizontal
             const isAfter = dragCenterY > targetRect.top + targetRect.height / 2 ||
@@ -441,18 +452,18 @@ function drag(e) {
 
 function dragEnd(e) {
     const trashZone = document.getElementById('trashZone');
-    
+
     if (draggedElement) {
         draggedElement.classList.remove('dragging-over-trash');
         const draggedRect = draggedElement.getBoundingClientRect();
         const trashRect = trashZone.getBoundingClientRect();
-                
+
         // Check if the card was dropped on the trash zone
         if (draggedRect.right > trashRect.left && 
             draggedRect.left < trashRect.right &&
             draggedRect.bottom > trashRect.top && 
             draggedRect.top < trashRect.bottom) {
-            
+
             // Get the index of the card and remove it
             const index = parseInt(draggedElement.getAttribute('data-index'));
             links.splice(index, 1);
@@ -517,7 +528,7 @@ function updateElementPosition(mouseX, mouseY) {
 
     const offsetX = width / 2;
     const offsetY = height / 2;
-    
+
     draggedElement.style.left = `${mouseX - offsetX}px`;
     draggedElement.style.top = `${mouseY - offsetY}px`;
 }
@@ -553,7 +564,7 @@ document.addEventListener('drop', (event) => {
     setTimeout(() => {
         document.getElementById('dragDropOverlay').style.zIndex = '-10000';
         }, 300);
-    
+
     const file = event.dataTransfer.files[0];
     if (file && file.name.endsWith('.countdown')) {
         const reader = new FileReader();
@@ -588,7 +599,7 @@ body {
     margin: 0;
     padding: 0;
     background-color: #141414;
-    
+
     /*background-image: url("Backgrounds/dashboardbg.png") !important;*/
     background-size: cover; /* Ensure the image covers the entire background */
     background-position:bottom center;
@@ -666,16 +677,6 @@ button:hover {
     will-change: transform, opacity;
     z-index: 2000;
 }
-
-.card.dragging-over-trash {
-    background: rgba(255, 83, 83, 0.5);
-    z-index: 4000;
-    overflow: visible;
-    transform-origin: center;
-    backface-visibility: visible;
-    perspective: 1000;
-}
-
 
 .card.currentlybeingdeleted{
     transform: scale(0.8) !important;
@@ -784,7 +785,7 @@ z-index: 0;
                 position: relative;
                 box-shadow: none;
             }
-            
+
     #savedash {
         font-family: 'Fredoka One';
         background-color: #FF9900;
