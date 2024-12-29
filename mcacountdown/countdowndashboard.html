@@ -66,6 +66,37 @@
     </div>
 
     <script>
+// Check if the browser is WebKit-based
+const isWebKit = 'WebkitAppearance' in document.documentElement.style;
+
+// Set up a MutationObserver to watch for changes to the DOM
+const observer = new MutationObserver((mutationsList) => {
+    mutationsList.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === 1 && node.classList.contains('card')) {
+                if (node.classList.contains('dragging-over-trash')) {
+                    // Apply the appropriate style based on the browser
+                    if (isWebKit) {
+                        node.style.transform = 'rotate(75deg) scale(0.5)';
+                    } else {
+                        node.style.transform = 'rotate3d(0, 1, 0, -60deg) rotate(75deg) scale(0.5)';
+                    }
+                }
+            }
+        });
+    });
+});
+
+// Start observing the document for dynamically added elements
+observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+});
+
+// Optional: Cleanup observer (if needed)
+window.addEventListener('beforeunload', () => observer.disconnect());
+
+	    
         let links = [];
         let placeholder = null;
         let dragCounter = 0;
@@ -637,20 +668,12 @@ button:hover {
 }
 
 .card.dragging-over-trash {
-    transform: rotate3d(0, 1, 0, -60deg) rotate(75deg) scale(0.5);
     background: rgba(255, 83, 83, 0.5);
     z-index: 4000;
     overflow: visible;
     transform-origin: center;
     backface-visibility: visible;
     perspective: 1000;
-}
-
-@supports (-webkit-transform: rotate(75deg)) {
-    .card.dragging-over-trash {
-        -webkit-transform: rotate(75deg) scale(0.5);
-        transform: rotate(75deg) scale(0.5);
-    }
 }
 
 
