@@ -5,7 +5,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@600&display=swap" rel="stylesheet">
-<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -40,8 +39,6 @@
     <div class="container">
         <div id="linksContainer" class="links-container">
         </div>
-        <model-viewer id="threedtrash" alt="Trash Can" src="3d/trash.glb" ar shadow-intensity="1" touch-action="none" disable-pan disable-tap disable-zoom camera-orbit="0deg 75deg 5.5m"></model-viewer>
-        <model-viewer id="foregroundtrash" alt="Trash Can" src="3d/cuttrash.glb" ar shadow-intensity="0" touch-action="none" disable-pan disable-tap disable-zoom camera-orbit="0deg 75deg 5.5m"></model-viewer>
 
 
         <div class="input-container">
@@ -52,6 +49,8 @@
             <input type="file" id="hiddenFileInput" accept=".countdown" style="display: none;">
             </div>
 
+<img id="threedtrash" alt="Trash Can" src="3d/backoftrashcanexport.png">
+<img id="foregroundtrash" alt="Trash Can" src="3d/frontoftrashcanexport.png">
 <div id="trashZone" class="trash-zone">
     <i class="fa-solid fa-trash-can"></i>
     <span>Drop to Delete</span>
@@ -86,7 +85,7 @@ function updateStyles() {
     overflow: visible;
     transform-origin: center;
     backface-visibility:visible;
-perspective:1000;
+    perspective:1000;
 }
         `;
     } else {
@@ -98,7 +97,7 @@ perspective:1000;
     overflow: visible;
     transform-origin: center;
     backface-visibility:visible;
-perspective:1000;
+    perspective:1000;
 }
         `;
     }
@@ -391,9 +390,49 @@ function drag(e) {
         draggedRect.top < trashRect.bottom) {
         trashZone.classList.add('drag-over');
         draggedElement.classList.add('dragging-over-trash');
+
+        // Get the trash can elements
+        const threedTrash = document.getElementById('threedtrash');
+        const foregroundTrash = document.getElementById('foregroundtrash');
+
+        threedTrash.classList.add('following');
+        foregroundTrash.classList.add('following');
+
+        // Calculate the center position of the dragged element
+        const draggedCenterX = draggedRect.left + (draggedRect.width / 2);
+        const draggedCenterY = draggedRect.top + (draggedRect.height / 2);
+
+        // Update trash can positions to follow the card
+        // Offset the trash can slightly to the right and down
+        const trashOffsetX = 100; // Adjust this value to position the trash can
+        const trashOffsetY = 80; // Adjust this value to position the trash can
+        
+        threedTrash.style.transform = `translate(${-trashOffsetX}px, ${-trashOffsetY}px)`;
+        foregroundTrash.style.transform = `translate(${-trashOffsetX}px, ${-trashOffsetY}px)`;
+
+        
+        // Position the trash cans relative to the card
+        threedTrash.style.left = `${draggedCenterX}px`;
+        threedTrash.style.top = `${draggedCenterY}px`;
+        foregroundTrash.style.left = `${draggedCenterX}px`;
+        foregroundTrash.style.top = `${draggedCenterY}px`;
     } else {
         trashZone.classList.remove('drag-over');
         draggedElement.classList.remove('dragging-over-trash');
+
+        // Reset trash can positions
+        const threedTrash = document.getElementById('threedtrash');
+        const foregroundTrash = document.getElementById('foregroundtrash');
+
+        threedTrash.classList.remove('following');
+        foregroundTrash.classList.remove('following');
+
+        threedTrash.style.transform = '';
+        foregroundTrash.style.transform = '';
+        threedTrash.style.left = '';
+        threedTrash.style.top = '';
+        foregroundTrash.style.left = '';
+        foregroundTrash.style.top = '';
 
         // Only handle card positioning if not over trash
         const cards = Array.from(document.querySelectorAll('.card:not(.placeholder)'));
@@ -935,38 +974,37 @@ z-index: 0;
         display: inline-block;
     }
 
-    #threedtrash{
-        position: fixed;
-    bottom: -100px; /* Start hidden below the viewport */
+    #threedtrash {
+    position: fixed;
+    bottom: -100px;
     right: -1000px;
     z-index: 2010;
-    height:150px;
-    transition:0.5s all ease;
+    height: 150px;
+    transition: 0.5s all ease;
     transform: scale(1);
-    }
-
-    #foregroundtrash{
-        position: fixed;
-    bottom: -100px; /* Start hidden below the viewport */
-    right: -1000px;
-    z-index: 40000;
-    height:150px;
-    transition:0.5s all ease;
-    transform: scale(1);
-    }
-
-    #threedtrash.visible{
-    bottom: 20px;
-    right:-60px;
-    overflow: hidden;
-    height:200px;
+    pointer-events: none;
 }
 
-#foregroundtrash.visible{
+#foregroundtrash {
+    position: fixed;
+    bottom: -100px;
+    right: -1000px;
+    z-index: 40000;
+    height: 150px;
+    transition: 0.5s all ease;
+    transform: scale(1);
+    pointer-events: none;
+}
+
+#threedtrash.visible, #foregroundtrash.visible {
     bottom: 20px;
-    right:-60px;
-    overflow: hidden;
-    height:200px;
+    right: 0px;
+    overflow: visible;
+    height: 200px;
+}
+
+#threedtrash.following, #foregroundtrash.following{
+    transition: transform 0.1s ease;
 }
 
     .trash-zone {
