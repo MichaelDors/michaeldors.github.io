@@ -491,6 +491,8 @@ function drag(e) {
 
 function dragEnd(e) {
     const trashZone = document.getElementById('trashZone');
+    const threedTrash = document.getElementById('threedtrash');
+    const foregroundTrash = document.getElementById('foregroundtrash');
 
     if (draggedElement) {
         draggedElement.classList.remove('dragging-over-trash');
@@ -538,6 +540,14 @@ function dragEnd(e) {
     trashZone.classList.remove('visible');
     document.getElementById('threedtrash').classList.remove('visible');
     document.getElementById('foregroundtrash').classList.remove('visible');
+    document.getElementById('threedtrash').classList.remove('following');
+    document.getElementById('foregroundtrash').classList.remove('following');
+    threedTrash.style.left='';
+    threedTrash.style.top='';
+    foregroundTrash.style.left='';
+    foregroundTrash.style.top='';
+    threedTrash.style.transform='';
+    foregroundTrash.style.transform='';
     trashZone.classList.remove('drag-over');
 
     // Reset all drag-related variables
@@ -707,7 +717,7 @@ button:hover {
     flex-direction: column;
     user-select: none;
     filter:blur(0px);
-    transition: transform 0.5s ease, 
+    transition: transform 0.3s ease, 
                 opacity 0.3s ease, 
                 background 0.3s ease, 
                 filter 0.2s ease-in,
