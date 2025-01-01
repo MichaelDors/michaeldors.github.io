@@ -3473,7 +3473,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             confettiType = document.getElementById("confettiEmojiPicker").value;
         }
 
-        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + document.querySelector(".datepicker").value + '&colorone=' + color1normalized + '&colortwo=' + color2normalized + '&colorthree=' + color3normalized + '&colorfour=' + color4normalized + '&typeface=' + css.style.getPropertyValue('--typeface') + '&atc=' + bgstring + '&title=' + cdtitle + '&confettitype=' + confettiType + '&endingsound=' + btoa(document.getElementById("audioLink").value) + '&schedule=' + parameter('schedule');
+        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + document.querySelector(".datepicker").value + '&colorone=' + color1normalized + '&colortwo=' + color2normalized + '&colorthree=' + color3normalized + '&colorfour=' + color4normalized + '&typeface=' + encodeURIComponent(css.style.getPropertyValue('--typeface')) + '&atc=' + bgstring + '&title=' + encodeURIComponent(cdtitle) + '&confettitype=' + confettiType + '&endingsound=' + btoa(document.getElementById("audioLink").value) + '&schedule=' + parameter('schedule');
         window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
 
         document.getElementById("linkinput").value = refresh; //refresh the link
