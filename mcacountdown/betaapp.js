@@ -17,7 +17,7 @@
 function handleTitleNavigation() {
     // Get the path from URL (everything after the domain)
     const path = window.location.pathname;
-    const urlTitle = path.split('/').pop().toLowerCase();
+    const urlTitle = path.split('#').pop().toLowerCase();
 
     // If there's no specific title in the URL, return early
     if (!urlTitle || urlTitle === 'betatimer.html' || urlTitle === 'timer.html') {
