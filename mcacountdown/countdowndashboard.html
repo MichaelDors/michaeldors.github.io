@@ -212,7 +212,7 @@ function renderLinks() {
         card.setAttribute('data-index', index);
         card.setAttribute('data-url', encodeURIComponent(link.url));
         card.innerHTML = `
-            <iframe src="${link.url}" title="${link.title}" sandbox="allow-scripts allow-same-origin"></iframe>
+            <iframe src="${link.url}${link.url.includes('?') ? '&' : '?'}cardmode=true" title="${link.title}" sandbox="allow-scripts allow-same-origin"></iframe>
             <div class="card-content">
                 <h3>${link.title}</h3>
                 <i class="remove-button fa-solid fa-trash" onclick="removeLink(${index}, event)" style="cursor:pointer;"></i>
