@@ -74,6 +74,12 @@ function updateSaveButtonText() {
     }
 }
 
+if(parameter('cardmode')){
+    document.getElementById("gear").style.display = 'none';
+    document.getElementById("countdowntitle").style.display = 'none';
+    document.getElementById("clock").style.fontSize = `90vw !important`;
+}
+
 window.onload = function() {
     const cookiebanner = document.getElementById('cookie-banner');
     const cookiebannerimage = document.getElementById('cookiebannerimg');
@@ -648,12 +654,6 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
         }
 
     });
-
-    if(parameter('cardmode')){
-        document.getElementById("gear").style.display = 'none';
-        document.getElementById("countdowntitle").style.display = 'none';
-        document.getElementById("clock").style.fontSize = `90vw !important`;
-    }
 
 
     function speed1() {
