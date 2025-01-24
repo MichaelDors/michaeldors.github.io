@@ -13,11 +13,11 @@
   document.head.appendChild(style);
 }
 
-// Function to handle URL-based navigation for countdown titles
 function handleTitleNavigation() {
-    // Get the path from URL (everything after the domain)
-    const path = window.location.pathname;
-    const urlTitle = path.split('#').pop().toLowerCase();
+    // Get the full URL including the hash
+    const fullUrl = window.location.href;
+    // Extract everything after the # symbol
+    const urlTitle = fullUrl.split('#').pop().toLowerCase();
 
     // If there's no specific title in the URL, return early
     if (!urlTitle || urlTitle === 'betatimer.html' || urlTitle === 'timer.html') {
