@@ -53,21 +53,37 @@ updateSaveButtonText();
 
 	
 function updateSaveButtonText() {
-    const currentTitle = document.getElementById('countdowntitle').value;
-    const savedLinks = localStorage.getItem('dashboardsaved');
-    const links = savedLinks ? JSON.parse(savedLinks) : [];
+    const url = window.location.href; // Get the current page URL
+    const urlObj = new URL(url);
+    title = urlObj.searchParams.get('title') || '';
+    // If no title found in URL, use the date as a fallback
+    if (!title) {
+        const dateStr = urlObj.searchParams.get('date') || '';
+        if (dateStr) {
+            const date = new Date(dateStr);
+            const options = { year: '2-digit', month: '2-digit', day: '2-digit' };
+            title = date.toLocaleDateString('en-US', options);
+            }
+        }
 
-    // Check if a countdown with the same title exists
-    const existingCountdown = links.find(link => {
+    // Get the existing links from localStorage
+    const savedLinks = localStorage.getItem("dashboardsaved");
+    let links = savedLinks ? JSON.parse(savedLinks) : [];
+
+    // Check if a countdown with the same title already exists
+    const existingIndex = links.findIndex(link => {
         const linkUrl = new URL(link.url);
         const linkTitle = linkUrl.searchParams.get('title') || '';
-        return linkTitle.toLowerCase() === currentTitle.toLowerCase();
+        return linkTitle.toLowerCase() === title.toLowerCase();
     });
 
-    // Update the save button text based on whether the countdown exists
     const saveButton = document.getElementById('savedash');
-    if (saveButton) {
-        saveButton.innerHTML = existingCountdown ? '<i class="fa-solid fa-star"></i> Update' : '<i class="fa-solid fa-star"></i> Save';
+
+    // If found, update the existing countdown, otherwise add a new one
+    if (existingIndex !== -1) {
+        saveButton.innerHTML='<i class="fa-solid fa-star"></i> Update';
+    } else {
+        saveButton.innerHTML='<i class="fa-solid fa-star"></i> Save';
     }
 }
 
