@@ -1,4 +1,4 @@
-	//So pretty much there was a weird bug where CSS zoom works differently from Chrome VS Safari, so I needed to target each one seperately. Safari would scale each item to 75% as if someone used the browser zoom buttons. Chrome would scale the whole page, only using 75% of the space, leaving a border.
+//So pretty much there was a weird bug where CSS zoom works differently from Chrome VS Safari, so I needed to target each one seperately. Safari would scale each item to 75% as if someone used the browser zoom buttons. Chrome would scale the whole page, only using 75% of the space, leaving a border.
 
 	if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
   // If user is using Safari
@@ -49,8 +49,28 @@ function handleTitleNavigation() {
 
 // Run the title navigation handler when the page loads
 document.addEventListener('DOMContentLoaded', handleTitleNavigation);
+updateSaveButtonText();
 
 	
+function updateSaveButtonText() {
+    const currentTitle = document.getElementById('countdowntitle').value;
+    const savedLinks = localStorage.getItem('dashboardsaved');
+    const links = savedLinks ? JSON.parse(savedLinks) : [];
+
+    // Check if a countdown with the same title exists
+    const existingCountdown = links.find(link => {
+        const linkUrl = new URL(link.url);
+        const linkTitle = linkUrl.searchParams.get('title') || '';
+        return linkTitle.toLowerCase() === currentTitle.toLowerCase();
+    });
+
+    // Update the save button text based on whether the countdown exists
+    const saveButton = document.querySelector('a[onclick="savetodash()"]');
+    if (saveButton) {
+        saveButton.innerHTML = existingCountdown ? '<i class="fa-solid fa-pen"></i> Update' : '<i class="fa-solid fa-floppy-disk"></i> Save';
+    }
+}
+
 window.onload = function() {
     const cookiebanner = document.getElementById('cookie-banner');
     const cookiebannerimage = document.getElementById('cookiebannerimg');
@@ -2203,6 +2223,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             settingstitlepicker.value = fronttitlepicker.value;
         }
 
+        updateSaveButtonText(); // Update save button text when title changes
         SetCountDowngeneral();
     }
 
@@ -2767,15 +2788,26 @@ function savetodash() {
             }
         }
 
-    // Get the existing links from the cookie
+    // Get the existing links from localStorage
     const savedLinks = localStorage.getItem("dashboardsaved");
     let links = savedLinks ? JSON.parse(savedLinks) : [];
 
-    // Add the new link
-    links.push({ url, title: title || '' });
+    // Check if a countdown with the same title already exists
+    const existingIndex = links.findIndex(link => {
+        const linkUrl = new URL(link.url);
+        const linkTitle = linkUrl.searchParams.get('title') || '';
+        return linkTitle.toLowerCase() === title.toLowerCase();
+    });
 
-    // Save the updated links back to the cookie
-    localStorage.setItem('dashboardsaved', JSON.stringify(links), 70);
+    // If found, update the existing countdown, otherwise add a new one
+    if (existingIndex !== -1) {
+        links[existingIndex] = { url, title: title || '' };
+    } else {
+        links.push({ url, title: title || '' });
+    }
+
+    // Save the updated links back to localStorage
+    localStorage.setItem('dashboardsaved', JSON.stringify(links));
 
     window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html";
 }
