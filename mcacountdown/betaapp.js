@@ -49,22 +49,9 @@ function handleTitleNavigation() {
 
 // Run the title navigation handler when the page loads
 document.addEventListener('DOMContentLoaded', handleTitleNavigation);
-updateSaveButtonText();
-
 	
 function updateSaveButtonText() {
-    const url = window.location.href; // Get the current page URL
-    const urlObj = new URL(url);
-    title = urlObj.searchParams.get('title') || '';
-    // If no title found in URL, use the date as a fallback
-    if (!title) {
-        const dateStr = urlObj.searchParams.get('date') || '';
-        if (dateStr) {
-            const date = new Date(dateStr);
-            const options = { year: '2-digit', month: '2-digit', day: '2-digit' };
-            title = date.toLocaleDateString('en-US', options);
-            }
-        }
+    title = document.getElementById("countdowntitle").value;
 
     // Get the existing links from localStorage
     const savedLinks = localStorage.getItem("dashboardsaved");
@@ -798,6 +785,8 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
         var color4normalized = color4.replace("#", "");
 
         var cdtitle = document.getElementById("countdowntitle").value; //set the title
+
+        updateSaveButtonText();
         
         if(cdtitle){
             document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + cdtitle);
