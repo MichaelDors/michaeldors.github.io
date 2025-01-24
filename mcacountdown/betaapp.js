@@ -65,9 +65,9 @@ function updateSaveButtonText() {
     });
 
     // Update the save button text based on whether the countdown exists
-    const saveButton = document.querySelector('a[onclick="savetodash()"]');
+    const saveButton = document.getElementById('savedash');
     if (saveButton) {
-        saveButton.innerHTML = existingCountdown ? '<i class="fa-solid fa-pen"></i> Update' : '<i class="fa-solid fa-floppy-disk"></i> Save';
+        saveButton.innerHTML = existingCountdown ? '<i class="fa-solid fa-star"></i> Update' : '<i class="fa-solid fa-star"></i> Save';
     }
 }
 
