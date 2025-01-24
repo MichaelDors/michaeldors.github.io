@@ -365,11 +365,55 @@ function startDragging(e, card) {
 }
 
 function cancelDrag() {
-    if (isDragging) {
-        dragEnd({ clientX: startX, clientY: startY }); // Simulate a mouseup event
+    if (draggedElement) {
+        // Clean up drag-related states and elements
+        draggedElement.style.position = '';
+        draggedElement.style.zIndex = '';
+        draggedElement.style.width = '';
+        draggedElement.style.height = '';
+        draggedElement.style.left = '';
+        draggedElement.style.top = '';
+
+        // Remove drag-over classes
+        draggedElement.classList.remove('dragging-over-trash');
+        document.getElementById('trashZone').classList.remove('drag-over');
+
+        // Reset trash can elements
+        const threedTrash = document.getElementById('threedtrash');
+        const foregroundTrash = document.getElementById('foregroundtrash');
+        threedTrash.classList.remove('visible', 'following');
+        foregroundTrash.classList.remove('visible', 'following');
+        threedTrash.style.transform = '';
+        foregroundTrash.style.transform = '';
+        threedTrash.style.left = '';
+        threedTrash.style.top = '';
+        foregroundTrash.style.left = '';
+        foregroundTrash.style.top = '';
+
+        // Handle placeholder
+        if (placeholder) {
+            placeholder.parentNode.insertBefore(draggedElement, placeholder);
+            placeholder.remove();
+            placeholder = null;
+        }
+
+        // Update links array and save
+        links = Array.from(document.querySelectorAll('.card')).map(card => {
+            const url = decodeURIComponent(card.getAttribute('data-url'));
+            return links.find(link => link.url === url);
+        });
+        saveLinks();
+        updateCardIndices();
+
+        // Reset all drag-related variables
+        draggedElement = null;
+        isDragging = false;
+        mouseDownTime = null;
     }
 
-    // Remove the event listeners
+    // Remove all event listeners
+    document.removeEventListener('mousemove', drag);
+    document.removeEventListener('mouseup', dragEnd);
     document.removeEventListener('visibilitychange', cancelDrag);
     window.removeEventListener('blur', cancelDrag);
 }
