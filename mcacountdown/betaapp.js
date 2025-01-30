@@ -33,9 +33,14 @@ function handleTitleNavigation() {
         
         // Search for a countdown with matching title
         const matchingCountdown = links.find(link => {
-            const linkUrl = new URL(link.url);
-            const titleParam = linkUrl.searchParams.get('title');
-            return titleParam && decodeURIComponent(titleParam).toLowerCase() === urlTitle;
+            try {
+                const linkUrl = new URL(link.url);
+                const titleParam = linkUrl.searchParams.get('title');
+                return titleParam && decodeURIComponent(titleParam).toLowerCase() === urlTitle;
+            } catch (e) {
+                console.error('Error parsing URL:', e);
+                return false;
+            }
         });
 
         // If found, redirect to the matching countdown
