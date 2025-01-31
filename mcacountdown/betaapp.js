@@ -63,7 +63,7 @@ function updateSaveButtonText() {
     let links = savedLinks ? JSON.parse(savedLinks) : [];
 
     // Get the current URL
-    const currentUrl = window.location.href;
+    const currentUrl = document.getElementById("linkinput").value;
 
     // Check if a countdown with the same title already exists
     let buttonText = '<i class="fa-solid fa-star"></i> Save';
