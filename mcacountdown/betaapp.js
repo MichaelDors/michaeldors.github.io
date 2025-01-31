@@ -72,6 +72,8 @@ function updateSaveButtonText() {
         const linkUrl = new URL(link.url);
         const linkTitle = linkUrl.searchParams.get('title') || '';
         if (linkTitle.toLowerCase() === title.toLowerCase()) {
+	alert(link.url);
+	alert(currentUrl);
             // If the entire link is the same as the saved link
             if (link.url === currentUrl) {
                 buttonText = '<i class="fa-solid fa-circle-check"></i> Saved';
