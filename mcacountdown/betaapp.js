@@ -56,27 +56,35 @@ function handleTitleNavigation() {
 document.addEventListener('DOMContentLoaded', handleTitleNavigation);
 	
 function updateSaveButtonText() {
-    title = document.getElementById("countdowntitle").value;
+    const title = document.getElementById("countdowntitle").value;
 
     // Get the existing links from localStorage
     const savedLinks = localStorage.getItem("dashboardsaved");
     let links = savedLinks ? JSON.parse(savedLinks) : [];
 
+    // Get the current URL
+    const currentUrl = window.location.href;
+
     // Check if a countdown with the same title already exists
+    let buttonText = '<i class="fa-solid fa-star"></i> Save';
+
     const existingIndex = links.findIndex(link => {
         const linkUrl = new URL(link.url);
         const linkTitle = linkUrl.searchParams.get('title') || '';
-        return linkTitle.toLowerCase() === title.toLowerCase();
+        if (linkTitle.toLowerCase() === title.toLowerCase()) {
+            // If the entire link is the same as the saved link
+            if (link.url === currentUrl) {
+                buttonText = '<i class="fa-solid fa-circle-check"></i> Saved';
+            } else {
+                buttonText = '<i class="fa-solid fa-star"></i> Update';
+            }
+            return true;
+        }
+        return false;
     });
 
     const saveButton = document.getElementById('savedash');
-
-    // If found, update the existing countdown, otherwise add a new one
-    if (existingIndex !== -1) {
-        saveButton.innerHTML='<i class="fa-solid fa-star"></i> Update';
-    } else {
-        saveButton.innerHTML='<i class="fa-solid fa-star"></i> Save';
-    }
+    saveButton.innerHTML = buttonText;
 }
 
 if(parameter('cardmode')){
