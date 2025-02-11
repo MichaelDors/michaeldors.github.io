@@ -89,6 +89,7 @@ function updateSaveButtonText() {
 
 if(parameter('cardmode')){
     document.getElementById("gear").style.display = 'none';
+    document.getElementById("toolbar-notch").style.display = 'none';
     document.getElementById("countdowntitle").style.display = 'none';
     document.getElementById("clock").style.fontSize = `90vw !important`;
 }
@@ -755,6 +756,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
 
     document.getElementById("body").style.overflowY = 'hidden';
     document.getElementById("gear").classList.remove("hidden");
+    document.getElementById("toolbar-notch").style.display = "";
 
     function setCookie(name, value, days) {
         var expires = "";
@@ -872,6 +874,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             document.getElementById("schedule").style.display = "none"; //hide schedule
             document.getElementById("countdowntitle").style.display = "none"; //hide title
             document.getElementById("gear").classList.add("hidden"); //hide settings icon
+            document.getElementById("toolbar-notch").style.display = "none"; //hide settings icon
             document.getElementById("innergear").classList.add("hidden"); //hide inner settings icon
             document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
             document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
@@ -891,6 +894,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             }
             document.getElementById("settings").classList.add("hidden"); //hide settings
             document.getElementById("gear").classList.remove("hidden"); //unhide gear icon
+            document.getElementById("toolbar-notch").style.display = ""; //unhide gear icon
             document.getElementById("innergear").classList.remove("hidden"); //unhide inner settings icon
             document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
             document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
@@ -2214,6 +2218,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
     document.getElementById("body").addEventListener("mousemove", function (event) {
         // Get element dimensions
         const rect = document.getElementById("countdowntitle").getBoundingClientRect();
+        const recttoolbar = document.getElementById("toolbar-notch").getBoundingClientRect();
 
         // Calculate distance from mouse to center of element
         const centerX = rect.left + rect.width / 2;
@@ -2222,11 +2227,19 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
         const distanceY = Math.abs(event.clientY - centerY);
         const distance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
 
+        // Calculate distance from mouse to center of element
+        const toolbarcenterX = recttoolbar.left + recttoolbar.width / 2;
+        const toolbarcenterY = recttoolbar.top + recttoolbar.height / 2;
+        const toolbardistanceX = Math.abs(event.clientX - toolbarcenterX);
+        const toolbardistanceY = Math.abs(event.clientY - toolbarcenterY);
+        const toolbardistance = Math.sqrt(toolbardistanceX ** 2 + toolbardistanceY ** 2);
+
         // Normalize distance to 0-1 based on threshold (300px)
         const opacity = Math.max(0, 1 - distance / 300) / 3;
 
         // Set element opacity
         document.getElementById("countdowntitle").style.border = `1px solid rgba(255, 255, 255, ${opacity})`;
+        
     });
 
     //set countdown title
