@@ -97,7 +97,17 @@
 <div id="progress-bar" class="progress-bar">
 	<div class="progress" id="progress" style="display:none;"></div>
 </div>
+
+<div class="notch-container" id="toolbar-notch">
+    <svg style="display: none;" class="curve left" viewBox="0 0 80 45" preserveAspectRatio="none">
+      <path d="M80,0 L80,45 L0,45 C30,45 50,0 80,0" fill="black"/>
+    </svg>
     <a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index:1000000;"><i id="innergear" class="fa-solid fa-gear"></i></a>
+    <div class="center"></div>
+    <svg class="curve right" viewBox="0 0 80 45" preserveAspectRatio="none">
+      <path d="M0,0 C30,0 50,45 80,45 L0,45 L0,0" fill="black"/>
+    </svg>
+  </div>
 
 
     <center id="preloader" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
@@ -184,6 +194,8 @@
                 <a class="sidebaranchor" href="#eouoptions"><i style="background-color:#00FF5E" class="fa-solid fa-child-reaching"></i> Ease of Use</a>
                 <br>
                 <a id="optionsoianchor" class="sidebaranchor" href="#inclusionoptions"><i style="background-color:#FF9900; transition:opacity 1s ease-in-out; font-size:15px !important" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
+                <br>
+                <a class="sidebaranchor" href="#dangerzone"><i style="background-color:#ff5353; transition:opacity 1s ease-in-out; font-size:15px !important" class="fa-solid fa-trash"></i> Danger Zone</a>
             </div>
 
         </div>
@@ -565,9 +577,11 @@
     <br>
     <br>
     <br>
-	<h1>Danger Zone</h1>
-	<h2 class="textelement" style="font-family: 'Dosis';">Resetting all options will restore Countdown to a point where no trace of your interaction is left. All cookies will be removed, your Dashboard reset.</h2>
-        <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
+    <div id="dangerzone">
+        <h1>Danger Zone</h1>
+        <h2 class="textelement" style="font-family: 'Dosis';">Resetting all options will restore Countdown to a point where no trace of your interaction is left. All cookies will be removed, your Dashboard reset.</h2>
+            <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
+    </div>
     <br>
     <br>
     <br>
