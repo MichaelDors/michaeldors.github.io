@@ -411,8 +411,12 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
 
     #gear {
-        top: 95%;
-        left: 3%;
+        top: 50%;
+        left: 37%;
+    }
+
+    #gear:active{
+        color:#ffffff;
     }
 
 
@@ -897,7 +901,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
             #settingsmainpane{
                 float:right;
-                width:80vw;
+                width:calc(100vw * 0.8);
                 background: rgba(20, 20, 20, 0.83);
                 box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
                 backdrop-filter: blur(75px);
@@ -916,13 +920,13 @@ border: 1px solid rgba(255, 0, 0, 0.64);
                 scrollbar-width: none;  /* Firefox */
                 -ms-overflow-style: none;  /* Internet Explorer 10+ */
                 float:left;
-                width:20vw;
+                width:calc(100vw * 0.2);
                 left:-5px;
                 top:-5px;
                 padding-top:25px;
                 background-color:black;
                 z-index:10000;
-		white-space:nowrap;
+		        white-space:nowrap;
             }
             #settingssidebar::-webkit-scrollbar {
                 width:0;
@@ -1541,8 +1545,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
         #gear {
             z-index: 100000;
-            top: 95%;
-            left: 7%;
+            top: 50%;
+            left: 37%;
         }
 
         #autopilotpopup {
@@ -1581,8 +1585,8 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
     @media only screen and (min-width: 1300px) {
         #gear {
-            top: 95%;
-            left: 3%;
+            top: 50%;
+            left: 37%;
         }
     }
 
@@ -2104,3 +2108,49 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             transition: width 1s linear;
             border-top-right-radius: 20px;
         }
+
+
+        .notch-container {
+            z-index:10000000000;
+    display: flex;
+    align-items: flex-end;
+    height: 45px;
+    width: 260px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-27%);
+    font-size: 0; /* Removes any potential whitespace gaps */
+  }
+
+  .curve {
+    width: 81px; /* Slight overlap to prevent gaps */
+    height: 45px;
+    flex-shrink: 0;
+    margin-right: -1px; /* Compensate for overlap */
+  }
+
+  .curve:last-child {
+    margin-right: 0;
+  }
+
+  .center {
+    height: 45px;
+    background: black;
+    width: 100px;
+    flex-shrink: 0;
+    margin: 0 -1px; /* Small overlap with curves */
+  }
+
+  /* Update SVG paths for smoother curves */
+  .left path, .right path {
+    transition: all 0.3s ease;
+  }
+
+  #dangerzone{
+    border:#ff5353 2px dashed;
+    width:75%;
+    border-radius: 20px;
+    padding:50px;
+    background:linear-gradient(to bottom right, #ff53535f, #00000000);
+  }
