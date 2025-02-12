@@ -2242,6 +2242,24 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
         
     });
 
+    const superchargeyourschedulecard = document.getElementById("presetupScheduleContent");
+
+    superchargeyourschedulecard.addEventListener("mousemove", (e) => {
+        const { left, top, width, height } = superchargeyourschedulecard.getBoundingClientRect();
+        const x = (e.clientX - left) / width - 0.5; // Range: -0.5 to 0.5
+        const y = (e.clientY - top) / height - 0.5; // Range: -0.5 to 0.5
+    
+        const rotateX = y * -15; // Invert Y-axis for natural feel
+        const rotateY = x * 15;
+    
+        superchargeyourschedulecard.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+    });
+    
+    superchargeyourschedulecard.addEventListener("mouseleave", () => {
+        superchargeyourschedulecard.style.transform = "perspective(1000px) rotateX(0) rotateY(0) scale(1)";
+    });
+
+
     //set countdown title
     function setcountdowntitle(from) {
         var fronttitlepicker = document.getElementById("countdowntitle");
