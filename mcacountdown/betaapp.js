@@ -238,13 +238,12 @@ if (!hasAnyColorParams) {
     // Handle additional color parameters (color5 through color8)
     for (let i = 5; i <= 8; i++) {
         const colorParam = parameter(`color${i}`);
-	    alert(colorParam);
         if (colorParam && colorParam !== "null") {
             const colorToUse = '#' + colorParam;
-		alert(colorToUse);
             if (!document.getElementById(`color${i}`)) {
-		    alert("adding");
                 addColorPicker();
+		    alert("a");
+		//seems to be breaking around here
             }
             document.getElementById(`color${i}`).value = colorToUse;
             css.style.setProperty(`--color${i}`, colorToUse);
