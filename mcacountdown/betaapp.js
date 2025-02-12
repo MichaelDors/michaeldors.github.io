@@ -92,6 +92,7 @@ if(parameter('cardmode')){
     document.getElementById("toolbar-notch").style.display = 'none';
     document.getElementById("countdowntitle").style.display = 'none';
     document.getElementById("clock").style.fontSize = `90vw !important`;
+	var enablecardmode = "1";
 }
 
 window.onload = function() {
@@ -168,10 +169,6 @@ window.onload = function() {
 
 if(parameter('progress')){
 	document.getElementByID("progress-bar").style.display = "";
-}
-
-if(parameter('cardmode')){
-	var enablecardmode= "1";
 }
 
 
