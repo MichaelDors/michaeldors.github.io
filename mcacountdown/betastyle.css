@@ -1435,7 +1435,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
 
 
-    @keyframes backgroundgradient {
+    /*@keyframes backgroundgradient {
         0% {
             color: var(--one);
         }
@@ -1510,7 +1510,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         100% {
             background-color: var(--one);
         }
-    }
+    }*/
 
     @media only screen and (max-width: 1290px) and (orientation:portrait) {
 
