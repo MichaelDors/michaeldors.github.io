@@ -177,30 +177,30 @@
             </datalist>
             <div id="settingssidebarpaneshareable">
                 <h3>Shareable</h3>
-                <a class="sidebaranchor" href="#generaloptions"><i style="background-color:#8426FF" class="fa-regular fa-clock"></i> General</a>
-                <Br>
-                <a class="sidebaranchor" href="#customizationoptions"><i style="background-color:#00b2ff" class="fa-solid fa-palette"></i> Customization</a>
+                <a class="sidebaranchor" href="#generaloptions"><i style="background:linear-gradient(to bottom right, #000000, #2e0960); color:#8426FF" class="fa-regular fa-clock"></i> General</a>
                 <br>
-                <a id="optionsendinganchor" class="sidebaranchor" href="#endingoptions"><i style="background-color:#00FF5E; transition:opacity 1s ease-in-out;" class="fa-solid fa-flag-checkered"></i> Ending</a>
+                <a class="sidebaranchor" href="#customizationoptions"><i style="background:linear-gradient(to bottom right, #000000, #033246); color:#00b2ff" class="fa-solid fa-palette"></i> Customization</a>
                 <br>
-                <a class="sidebaranchor" href="#scheduleoptions"><i style="background-color:#FF9900" class="fa-solid fa-calendar"></i> Schedule</a>
+                <a id="optionsendinganchor" class="sidebaranchor" href="#endingoptions"><i style="background:linear-gradient(to bottom right, #000000, #033415); color:#00ba44; transition:opacity 1s ease-in-out;" class="fa-solid fa-flag-checkered"></i> Ending</a>
                 <br>
-                <a id="optionsprogressanchor" class="sidebaranchor" href="#progressoptions"><i style="background-color:#8426FF; transition:opacity 1s ease-in-out;" class="fa-solid fa-spinner"></i> Progress</a>
+                <a class="sidebaranchor" href="#scheduleoptions"><i style="background:linear-gradient(to bottom right, #000000, #482e06); color:#FF9900;" class="fa-solid fa-calendar"></i> Schedule</a>
+                <br>
+                <a id="optionsprogressanchor" class="sidebaranchor" href="#progressoptions"><i style="background:linear-gradient(to bottom right, #000000, #2e0960); color:#8426FF; transition:opacity 1s ease-in-out;" class="fa-solid fa-spinner"></i> Progress</a>
             </div>
             <div id="settingssidebarpanepersonal">
                 <h3>Personal</h3>
-                <a class="sidebaranchor" href="#appearanceoptions"><i style="background-color:#00b2ff" class="fa-solid fa-circle-half-stroke"></i> Appearance</a>
+                <a class="sidebaranchor" href="#appearanceoptions"><i style="background:linear-gradient(to bottom right, #000000, #033246); color:#00b2ff" class="fa-solid fa-circle-half-stroke"></i> Appearance</a>
                 <br>
-                <a class="sidebaranchor" href="#eouoptions"><i style="background-color:#00FF5E" class="fa-solid fa-child-reaching"></i> Ease of Use</a>
+                <a class="sidebaranchor" href="#eouoptions"><i style="background:linear-gradient(to bottom right, #000000, #033415); color:#00ba44" class="fa-solid fa-child-reaching"></i> Ease of Use</a>
                 <br>
-                <a id="optionsoianchor" class="sidebaranchor" href="#inclusionoptions"><i style="background-color:#FF9900; transition:opacity 1s ease-in-out; font-size:15px !important" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
+                <a id="optionsoianchor" class="sidebaranchor" href="#inclusionoptions"><i style="background:linear-gradient(to bottom right, #000000, #482e06); color:#FF9900; transition:opacity 1s ease-in-out; font-size:15px !important" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
                 <br>
-                <a class="sidebaranchor" href="#dangerzone"><i style="background-color:#ff5353; transition:opacity 1s ease-in-out; font-size:15px !important" class="fa-solid fa-trash"></i> Danger Zone</a>
+                <a class="sidebaranchor" href="#dangerzone"><i style="background:linear-gradient(to bottom right, #000000, #4c0c0c); color:#ff5353; transition:opacity 1s ease-in-out; font-size:15px !important" class="fa-solid fa-trash"></i> Danger Zone</a>
             </div>
 
         </div>
         <div id="settingsmainpane">
-            <center>
+            <center id="mainpanebodycontainer">
                 <br>
                 <Br>
                 <h1 class="textelement">Options</h1>
@@ -214,7 +214,7 @@
                 <a title="Close options" onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
                 <a title="Get a shareable link or QR code" id="sharebuttonoptions" href="#linkoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
 		<a title="Countdown Dashboard" id="dashboardbuttonoptions" href="https://michaeldors.com/mcacountdown/countdowndashboard"><i class="fa-solid fa-border-all"></i> Dashboard</a>
-                <a title="Save to Countdown Dashboard" id="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
+                <a title="Save to Countdown Dashboard" id="savedash" class="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
 
 		<div id="debugoptions" style="display:none;">
 			<h1>Debug Options</h1>
@@ -333,7 +333,7 @@
                         <div class="remove-button" onclick="removeColorPicker(this)">-</div>
                     </div>
                     <div class="colorpicker-container">
-                        <input class="colorpicker" id="color3" type="color" value="#00ff5e" onblur="SetCountDowngeneral();" />
+                        <input class="colorpicker" id="color3" type="color" value="#00df52" onblur="SetCountDowngeneral();" />
                         <div class="remove-button" onclick="removeColorPicker(this)">-</div>
                     </div>
                     <div class="colorpicker-container">
@@ -341,7 +341,7 @@
                         <div class="remove-button" onclick="removeColorPicker(this)">-</div>
                     </div>
                 </div>
-                <div class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus"></i></div>
+                <a class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus"></i></a>
 
                 <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
                     The foreground elements will cycle through the chosen colors.
@@ -410,7 +410,7 @@
                     <input class="input" type="text" id="audioLink" onblur="SetCountDowngeneral();" placeholder="Audio link">
                 </div>
                 <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
-                    Enter a <i class="fa-brands fa-youtube"></i>, <i class="fa-brands fa-soundcloud"></i>, or <i class="fa-solid fa-file-audio"></i> audio file link to play when the Countdown ends.
+                    Enter a <i class="fa-brands fa-youtube"></i> YouTube, <i class="fa-brands fa-soundcloud"></i> SoundCloud, or <i class="fa-solid fa-file-audio"></i> audio file link to play when the Countdown ends.
                     <br />
                     Any ADs that may be placed by the service will remain.
                 </p>
@@ -429,7 +429,7 @@
                 <br>
 		    <div id="presetupScheduleContent">
 		<h2 style="font-family: 'Dosis';">Convert to Countdown Schedule</h2>
-		<div style="text-align:left; width:fit-content; max-width:80%;">
+		<div style="text-align:left; width:fit-content;">
 		    <h3 style="font-family: 'Dosis', sans-serif; color:white; font-size:23px; text-justify:inter-word;">
 			<i style="color:#3ab6ff" class="fa-solid fa-calendar"></i> Keep track of your recurring events
 			<br>
@@ -438,7 +438,7 @@
 		    <i style="color:#ff9900" class="fa-solid fa-circle-exclamation"></i> Once you convert this Countdown to be a Schedule, it cannot be changed back
 			</h3>
 		</div>
-		<a onclick="startCountdownSchedule();">Supercharge Your Schedule</a>
+		<a class="savedash" onclick="startCountdownSchedule();">Supercharge Your Schedule</a>
 		</div>
                 <div class="schedule-editor" style="color: white !important;">
                     <div class="schedule-container">
@@ -530,7 +530,7 @@
     </h2>
 
     <form action="" id="searchTypeToggle" style="zoom:150%">
-        <div></div>
+        <div id="selectedSpeedDiv"></div>
         <label>
             <input type="radio" name="searchtype" data-location="0" value="one" id="speed2">
             <div style="font-family: 'Dosis';"><i class="fa-solid fa-seedling"></i>  Slow</div>
@@ -594,7 +594,7 @@
     <div id="autopilotpopup" style="margin:0; padding:0; position:absolute; top:80%; left:0px; width:100%; height:20%; border-top:solid 3px white; opacity:1; transition:0.5s opacity;">
         <h1 style="position: absolute; top: 15%; left: calc(50vw - 21px); paint-order: stroke fill; -webkit-text-stroke-width: 10px; -webkit-text-stroke-color: #141414;">or</h1>
         <div onclick="settings()" id="manualpilot" style="background-image:url(calendarbg.png); background-size:cover; width: 50%; float: left; height: 100%; cursor:pointer;">
-            <h1 style="margin-left:3.75%" id="gearpointer"><i style="margin-right:30px;" class="fa-solid fa-angle-down"></i><span style="padding-top:100px;">pick a date</span></h1>
+            <h1 style="margin-left:10px" id="gearpointer"><i style="margin-right:30px;" class="fa-solid fa-angle-down"></i><span style="padding-top:100px;">pick a date</span></h1>
         </div>
         <div id="autopilot" style="float: right; width: 50%; background: linear-gradient(to right, #141414, #01FE5E); height: 100%; outline: 3px white solid; ">
             <div id="autopilotinfo" style="margin-left: 60px;">
