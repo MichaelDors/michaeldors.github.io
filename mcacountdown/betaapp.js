@@ -92,7 +92,6 @@ if(parameter('cardmode')){
     document.getElementById("toolbar-notch").style.display = 'none';
     document.getElementById("countdowntitle").style.display = 'none';
     document.getElementById("clock").style.fontSize = `90vw !important`;
-	var enablecardmode = "1";
 }
 
 window.onload = function() {
@@ -170,7 +169,6 @@ window.onload = function() {
 if(parameter('progress')){
 	document.getElementByID("progress-bar").style.display = "";
 }
-
 
     //backgrounds
     var bgstring = "none"; //declaring bgstring to none at the very beginning so it's able to be changed anywhere
@@ -844,14 +842,6 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             confettiType = document.getElementById("confettiEmojiPicker").value;
         }
 
-	if(enablecardmode == "1"){
-    		document.getElementById("gear").style.display = 'none';
-    		document.getElementById("toolbar-notch").style.display = 'none';
-    		document.getElementById("countdowntitle").style.display = 'none';
-    		document.getElementById("clock").style.fontSize = `90vw !important`;
-		alert("test2");
-	}
-
         // Build color parameters string
         let colorParams = '';
         colorsNormalized.forEach((color, index) => {
@@ -865,8 +855,6 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             }
         });
 
-	    alert("cardmode=" + enablecardmode);
-
         var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + 
             '?date=' + document.querySelector(".datepicker").value + 
             colorParams + 
@@ -875,8 +863,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             '&title=' + encodeURIComponent(cdtitle) + 
             '&confettitype=' + confettiType + 
             '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
-            '&schedule=' + parameter('schedule') +
-		'&cardmode=' parameter('cardmode');
+            '&schedule=' + parameter('schedule');
         window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
 
         document.getElementById("linkinput").value = refresh; //refresh the link
