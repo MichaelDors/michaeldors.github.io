@@ -240,7 +240,7 @@
                     <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
                     <ul class="tabs-box" id="tabs-box">
                         <!--<li id="customtab" class="tab active">Custom</li>-->
-                        <li title="Automatically pick the next upcoming holiday" id="autopilottab" class="autopilottab" onclick="autopilottab();"><i class="fa-solid fa-wand-magic-sparkles"></i> Autopilot</li>
+                        <li style="display:none;" title="Automatically pick the next upcoming holiday" id="autopilottab" class="autopilottab" onclick="autopilottab();"><i class="fa-solid fa-wand-magic-sparkles"></i> Autopilot</li>
                         <li id="endtab" class="mcatab" onclick="MES();">MCA</li>
                         <li id="nydtab" class="tab" onclick="NYD();">New Year's Day</li>
                         <li id="vdtab" class="tab" onclick="VD();">Valentine's Day</li>
@@ -259,7 +259,7 @@
                     Title
                 </h2>
                 <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;" />
-                <button style="background:transparent; color:white; border:none; outline:none; cursor:pointer">
+                <button style="background:transparent; color:white; border:none; outline:none; cursor:pointer; display:none;">
                     <i id="magictitle" title="Magic Title" class="fa fa-wand-magic-sparkles" style="transform:scale(1.75); padding-left:10px;" onclick="magictitle()"></i>
                 </button>
                 <h2 class="textelement" style="font-family: 'Dosis';" id="linkoptions">
@@ -378,8 +378,8 @@
                 <br>
                 <br>
 		</div>
-                <h1 id="scheduleoptions">Countdown Schedule <span class="betatag">NEW</span></h1>
-		<p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">Creating a Countdown Schedule will irreversibly convert this Countdown to schedule mode.</p>
+                <h1 style="display:none;" id="scheduleoptions">Countdown Schedule <span class="betatag">NEW</span></h1>
+		<p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; display:none;">Creating a Countdown Schedule will irreversibly convert this Countdown to schedule mode.</p>
                 <div class="schedule-editor" style="color: white !important; display:none !important;">
                     <div class="schedule-container">
                         <h2 style="font-family: 'Dosis';">Edit Schedule</h2>
