@@ -170,6 +170,11 @@ if(parameter('progress')){
 	document.getElementByID("progress-bar").style.display = "";
 }
 
+if(parameter('cardmode')){
+	var enablecardmode= "1";
+}
+
+
     //backgrounds
     var bgstring = "none"; //declaring bgstring to none at the very beginning so it's able to be changed anywhere
     if (parameter('atc')) {
@@ -842,6 +847,13 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             confettiType = document.getElementById("confettiEmojiPicker").value;
         }
 
+	if(enablecardmode == "1"){
+    		document.getElementById("gear").style.display = 'none';
+    		document.getElementById("toolbar-notch").style.display = 'none';
+    		document.getElementById("countdowntitle").style.display = 'none';
+    		document.getElementById("clock").style.fontSize = `90vw !important`;
+	}
+
         // Build color parameters string
         let colorParams = '';
         colorsNormalized.forEach((color, index) => {
@@ -863,7 +875,8 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             '&title=' + encodeURIComponent(cdtitle) + 
             '&confettitype=' + confettiType + 
             '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
-            '&schedule=' + parameter('schedule');
+            '&schedule=' + parameter('schedule') +
+		'&cardmode=' enabledcardmode;
         window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
 
         document.getElementById("linkinput").value = refresh; //refresh the link
