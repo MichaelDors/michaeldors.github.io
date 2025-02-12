@@ -134,11 +134,11 @@ window.onload = function() {
     and so on until 1s. This is to ensure the image is the same size as the banner even if the first
     couple iterations mess with the text wrapping and cange the size of the banner
     */
-    
 };
 
 
         document.addEventListener("DOMContentLoaded", function () {
+            updateColorAnimations();
         var cookieBanner = document.getElementById("cookie-banner");
         var acceptButton = document.getElementById("accept-cookies");
 
@@ -188,47 +188,66 @@ if(parameter('progress')){
 
     //text colors
     var css = document.querySelector(':root'); //easily allowing JS to reference CSS variables
-    if (parameter('colorone')) { 
-        if (parameter('colorone') == "null") {
-            console.log("Colors(1) could not be imported properly."); //helps debug
-        }
-        else {
-            var coloronetouse = '#' + parameter('colorone'); //in the param, the hex code is stored without the #, this is adding it back
-            document.getElementById("color1").value = coloronetouse; //sets the color picker in settings to the corresponding color
-            css.style.setProperty('--one', coloronetouse); //sets the CSS variable to the corresponding color
-        }
+    
+// Handle legacy color parameters (colorone through colorfour)
+const legacyParams = [
+    { param: 'colorone', id: 'color1', cssVar: '--one', defaultColor: '#8426ff' },
+    { param: 'colortwo', id: 'color2', cssVar: '--two', defaultColor: '#3ab6ff' },
+    { param: 'colorthree', id: 'color3', cssVar: '--three', defaultColor: '#00df52' },
+    { param: 'colorfour', id: 'color4', cssVar: '--four', defaultColor: '#ff9900' }
+];
 
+// Check if any color parameters exist
+const hasAnyColorParams = legacyParams.some(({param}) => parameter(param)) || 
+    Array.from({length: 4}, (_, i) => i + 5).some(i => parameter(`color${i}`));
+
+if (!hasAnyColorParams) {
+    // No color parameters found, set up default colors
+    legacyParams.forEach(({id, cssVar, defaultColor}) => {
+        if (!document.getElementById(id)) {
+            addColorPicker();
+        }
+        document.getElementById(id).value = defaultColor;
+        css.style.setProperty(cssVar, defaultColor);
+        css.style.setProperty(`--color${id.slice(-1)}`, defaultColor);
+    });
+} else {
+    // Handle existing color parameters
+    legacyParams.forEach(({param, id, cssVar}) => {
+        if (parameter(param)) {
+            if (parameter(param) === "null") {
+                console.log(`Colors(${id.slice(-1)}) could not be imported properly.`);
+            } else {
+                const colorToUse = '#' + parameter(param);
+                if (!document.getElementById(id)) {
+                    addColorPicker();
+                }
+                document.getElementById(id).value = colorToUse;
+                css.style.setProperty(cssVar, colorToUse);
+                css.style.setProperty(`--color${id.slice(-1)}`, colorToUse);
+            }
+        } else {
+            // Remove color picker if parameter doesn't exist
+            const picker = document.getElementById(id);
+            if (picker) {
+                picker.parentElement.remove();
+            }
+        }
+    });
+
+    // Handle additional color parameters (color5 through color8)
+    for (let i = 5; i <= 8; i++) {
+        const colorParam = parameter(`color${i}`);
+        if (colorParam && colorParam !== "null") {
+            const colorToUse = '#' + colorParam;
+            if (!document.getElementById(`color${i}`)) {
+                addColorPicker();
+            }
+            document.getElementById(`color${i}`).value = colorToUse;
+            css.style.setProperty(`--color${i}`, colorToUse);
+        }
     }
-    if (parameter('colortwo')) { //see colorone for docs
-        if (parameter('colortwo') == "null") {
-            console.log("Colors(2) could not be imported properly.");
-        }
-        else {
-            var colortwotouse = '#' + parameter('colortwo');
-            document.getElementById("color2").value = colortwotouse;
-            css.style.setProperty('--two', colortwotouse);
-        }
-    }
-    if (parameter('colorthree')) { //see colorone for docs
-        if (parameter('colorthree') == "null") {
-            console.log("Colors(3) could not be imported properly.");
-        }
-        else {
-            var colorthreetouse = '#' + parameter('colorthree');
-            document.getElementById("color3").value = colorthreetouse;
-            css.style.setProperty('--three', colorthreetouse);
-        }
-    }
-    if (parameter('colorfour')) { //see colorone for docs
-        if (parameter('colorfour') == "null") {
-            console.log("Colors(4) could not be imported properly.");
-        }
-        else {
-            var colorfourtouse = '#' + parameter('colorfour');
-            document.getElementById("color4").value = colorfourtouse;
-            css.style.setProperty('--four', colorfourtouse);
-        }
-    }
+}
 
     //set up countdown schedules
     if(parameter("schedule") !== "null" && parameter("schedule")){  
@@ -785,19 +804,22 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
     function SetCountDowngeneral() { //gets called quite a bit, updates all settings and parameters to match the current state
         countDownDate = new Date(document.querySelector(".datepicker").value);
         var css = document.querySelector(':root');
-        var color1 = document.getElementById("color1").value; //get the color values
-        var color2 = document.getElementById("color2").value;
-        var color3 = document.getElementById("color3").value;
-        var color4 = document.getElementById("color4").value;
-        css.style.setProperty('--one', color1); //set the color values as CSS vars
-        css.style.setProperty('--two', color2);
-        css.style.setProperty('--three', color3);
-        css.style.setProperty('--four', color4);
+        var colors = [];
+        var colorsNormalized = [];
+        
+        // Get all color pickers dynamically
+        const colorPickers = document.querySelectorAll('.colorpicker');
+        colorPickers.forEach((picker, index) => {
+            colors[index] = picker.value;
+            colorsNormalized[index] = picker.value.replace("#", "");
+            css.style.setProperty(`--color${index + 1}`, colors[index]);
+        });
 
-        var color1normalized = color1.replace("#", ""); //remove the #s from the color params to get them ready
-        var color2normalized = color2.replace("#", "");
-        var color3normalized = color3.replace("#", "");
-        var color4normalized = color4.replace("#", "");
+        // Maintain backwards compatibility with old CSS variables
+        css.style.setProperty('--one', colors[0] || '#8426ff');
+        css.style.setProperty('--two', colors[1] || '#3ab6ff');
+        css.style.setProperty('--three', colors[2] || '#00ff5e');
+        css.style.setProperty('--four', colors[3] || '#ff9900');
 
         var cdtitle = document.getElementById("countdowntitle").value; //set the title
 
@@ -820,7 +842,28 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             confettiType = document.getElementById("confettiEmojiPicker").value;
         }
 
-        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + '?date=' + document.querySelector(".datepicker").value + '&colorone=' + color1normalized + '&colortwo=' + color2normalized + '&colorthree=' + color3normalized + '&colorfour=' + color4normalized + '&typeface=' + encodeURIComponent(css.style.getPropertyValue('--typeface')) + '&atc=' + bgstring + '&title=' + encodeURIComponent(cdtitle) + '&confettitype=' + confettiType + '&endingsound=' + btoa(document.getElementById("audioLink").value) + '&schedule=' + parameter('schedule');
+        // Build color parameters string
+        let colorParams = '';
+        colorsNormalized.forEach((color, index) => {
+            if (index < 4) {
+                // Maintain backwards compatibility with original parameter names
+                const paramNames = ['colorone', 'colortwo', 'colorthree', 'colorfour'];
+                colorParams += `&${paramNames[index]}=${color}`;
+            } else {
+                // Add additional colors with new parameter names
+                colorParams += `&color${index + 1}=${color}`;
+            }
+        });
+
+        var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + 
+            '?date=' + document.querySelector(".datepicker").value + 
+            colorParams + 
+            '&typeface=' + encodeURIComponent(css.style.getPropertyValue('--typeface')) + 
+            '&atc=' + bgstring + 
+            '&title=' + encodeURIComponent(cdtitle) + 
+            '&confettitype=' + confettiType + 
+            '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
+            '&schedule=' + parameter('schedule');
         window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
 
         document.getElementById("linkinput").value = refresh; //refresh the link
@@ -1204,7 +1247,8 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             if (!getCookie('coce')) { //if disable confetti is not enabled, 
                 if(confettiType == "1"){ //default confetti
                     if(parameter("atc") == "none"){
-                    confetticolorstring = document.getElementById("color1").value + ', ' + document.getElementById("color2").value + ', ' + document.getElementById("color3").value + ', ' + document.getElementById("color4").value 
+                    const colorPickers = document.querySelectorAll('.colorpicker');
+                    confetticolorstring = Array.from(colorPickers).map(picker => picker.value).join(', ');
                     }else{
                         bg1colors = '[#8426ff, #8426ff, #8426ff, #8426ff, #5702c7, #974df7, #3ab6ff, #00ff5e, #ff9900]';
                         bg2colors = '[#FF3131, #FF3131, #FF3131, #FF3131, #00FF5E, #00FF5E, #00FF5E, #3AB6FF, #FFFFFF]';
@@ -1477,14 +1521,23 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
         bgstring = "none"; //set the background var to none
 
         var css = document.querySelector(':root'); //access the CSS variables
+        // Remove any additional color pickers beyond the first four
+        const container = document.getElementById('colorPickersContainer');
+        while (container.children.length > 4) {
+            container.lastChild.remove();
+        }
+        colorPickerCount = 4;
+        // Reset the original four color pickers
         document.getElementById("color1").value = "#8426ff";
         document.getElementById("color2").value = "#3ab6ff";
         document.getElementById("color3").value = "#00ff5e";
-        document.getElementById("color4").value = "#ff9900"; //reset all four color values
+        document.getElementById("color4").value = "#ff9900";
+        // Reset CSS variables
         css.style.setProperty('--one', "#8426ff");
         css.style.setProperty('--two', "#3ab6ff");
         css.style.setProperty('--three', "#00ff5e");
-        css.style.setProperty('--four', "#ff9900"); //mirror that reset in the CSS variables
+        css.style.setProperty('--four', "#ff9900");
+        adjustHeightOfColorPickerContainer();
         css.style.setProperty('--typeface', "Fredoka One"); //reset typeface
 
         localStorage.removeItem('dashboardsaved'); //reset dashboard
@@ -1949,26 +2002,20 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
 
     //Function to enable color when a background is disabled
     function enablecolor() {
-        document.getElementById("color1").classList.add("colorpicker");
-        document.getElementById("color1").classList.remove("disabledcolorpicker");
-        document.getElementById("color2").classList.add("colorpicker");
-        document.getElementById("color2").classList.remove("disabledcolorpicker");
-        document.getElementById("color3").classList.add("colorpicker");
-        document.getElementById("color3").classList.remove("disabledcolorpicker");
-        document.getElementById("color4").classList.add("colorpicker");
-        document.getElementById("color4").classList.remove("disabledcolorpicker");
+        const colorPickers = document.querySelectorAll('input[type="color"]');
+        colorPickers.forEach(picker => {
+            picker.classList.add("colorpicker");
+            picker.classList.remove("disabledcolorpicker");
+        });
     }
 
     //Function to disable color when a background is enabled
     function disablecolor() {
-        document.getElementById("color1").classList.remove("colorpicker");
-        document.getElementById("color1").classList.add("disabledcolorpicker");
-        document.getElementById("color2").classList.remove("colorpicker");
-        document.getElementById("color2").classList.add("disabledcolorpicker");
-        document.getElementById("color3").classList.remove("colorpicker");
-        document.getElementById("color3").classList.add("disabledcolorpicker");
-        document.getElementById("color4").classList.remove("colorpicker");
-        document.getElementById("color4").classList.add("disabledcolorpicker");
+        const colorPickers = document.querySelectorAll('input[type="color"]');
+        colorPickers.forEach(picker => {
+            picker.classList.remove("colorpicker");
+            picker.classList.add("disabledcolorpicker");
+        });
     }
 
     function setbg(bgint, method) {
@@ -2335,6 +2382,7 @@ function addColorPicker() {
 
         adjustHeightOfColorPickerContainer();
         SetCountDowngeneral();
+        updateColorAnimations();
     }
 }
 
@@ -2364,6 +2412,7 @@ function removeColorPicker(button) {
     
     adjustHeightOfColorPickerContainer();
     SetCountDowngeneral();
+    updateColorAnimations();
     }, 300);
 }
 
@@ -3123,3 +3172,68 @@ function magictitle(){
 			alert(progressbarvalue);
                 	document.getElementById('schedule-progress').style.width = `${progressbarvalue}%`;
 	}
+
+    function updateColorAnimations() {
+        const styleTag = document.getElementById('animationHandler');
+        if (!styleTag) {
+            console.error('Animation handler style tag not found');
+            return;
+        }
+        
+        const colorPickers = document.querySelectorAll('.colorpicker');
+        const colors = Array.from(colorPickers).map(picker => picker.value);
+        
+        if (colors.length === 0) {
+            styleTag.textContent = ''; // Clear animations if no colors
+            return;
+        }
+    
+        // Calculate the percentage steps
+        const step = 100 / colors.length;
+        
+        // Generate keyframes for text color animation
+        let textKeyframes = '';
+        let bgKeyframes = '';
+        
+        colors.forEach((color, index) => {
+            const startPercent = index * step;
+            const midPercent = startPercent + (step / 2);
+            const endPercent = startPercent + step;
+            
+            // Add keyframes for this color
+            textKeyframes += `
+                ${startPercent}% { color: ${color}; }
+                ${midPercent}% { color: ${color}; }
+            `;
+            
+            bgKeyframes += `
+                ${startPercent}% { background-color: ${color}; }
+                ${midPercent}% { background-color: ${color}; }
+            `;
+            
+            // Add transition to next color if not the last color
+            if (index < colors.length - 1) {
+                textKeyframes += `${endPercent}% { color: ${colors[(index + 1) % colors.length]}; }\n`;
+                bgKeyframes += `${endPercent}% { background-color: ${colors[(index + 1) % colors.length]}; }\n`;
+            } else {
+                // Complete the loop back to the first color
+                textKeyframes += `100% { color: ${colors[0]}; }\n`;
+                bgKeyframes += `100% { background-color: ${colors[0]}; }\n`;
+            }
+        });
+    
+        // Force browser to reflow by removing and re-adding the style element
+        const newStyle = document.createElement('style');
+        newStyle.id = 'animationhandler';
+        newStyle.textContent = `
+            @keyframes backgroundgradient {
+                ${textKeyframes}
+            }
+            @keyframes schedulebackgroundgradient {
+                ${bgKeyframes}
+            }
+        `;
+        
+        //styleTag.parentNode.replaceChild(newStyle, styleTag);
+        styleTag.innerHTML = newStyle.textContent;
+    }
