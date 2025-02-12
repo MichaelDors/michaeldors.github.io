@@ -41,6 +41,8 @@
         background: #141414;
         border: none;
         cursor: pointer;
+        vertical-align:top;
+        display:inline-block;
     }
 
     .clradd{
@@ -65,11 +67,13 @@
     width: auto; /* Adjust as needed */
     opacity: 1;
     transform:scale(1);
-
+    position: relative;
+    display: inline-block;
 }
 
     #colorPickersContainer{
         transition:0.25s all ease;
+        font-size:0;
     }
 
     #animatedbackground {
@@ -179,11 +183,6 @@
         animation: pulseborder 2s infinite;
     }
 
-    .colorpicker-container {
-        position: relative;
-        display: inline-block;
-    }
-
     .remove-button {
         position: absolute;
         top: 0px;
@@ -204,6 +203,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         opacity:0;
         transition:opacity 0.3s ease-in-out;
         font-family: Fredoka One;
+        font-size:initial;
     }
 
 

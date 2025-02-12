@@ -188,7 +188,8 @@ if(parameter('progress')){
 
     //text colors
     var css = document.querySelector(':root'); //easily allowing JS to reference CSS variables
-    
+    let colorPickerCount = 4;  //set the default value to 4, as it will always be 4 on load
+
 // Handle legacy color parameters (colorone through colorfour)
 const legacyParams = [
     { param: 'colorone', id: 'color1', cssVar: '--one', defaultColor: '#8426ff' },
@@ -205,7 +206,7 @@ if (!hasAnyColorParams) {
     // No color parameters found, set up default colors
     legacyParams.forEach(({id, cssVar, defaultColor}) => {
         if (!document.getElementById(id)) {
-            addColorPicker();
+            addColorPicker("auto");
         }
         document.getElementById(id).value = defaultColor;
         css.style.setProperty(cssVar, defaultColor);
@@ -220,7 +221,8 @@ if (!hasAnyColorParams) {
             } else {
                 const colorToUse = '#' + parameter(param);
                 if (!document.getElementById(id)) {
-                    addColorPicker();
+                    addColorPicker("auto");
+                    adjustHeightOfColorPickerContainer();
                 }
                 document.getElementById(id).value = colorToUse;
                 css.style.setProperty(cssVar, colorToUse);
@@ -238,12 +240,10 @@ if (!hasAnyColorParams) {
     // Handle additional color parameters (color5 through color8)
     for (let i = 5; i <= 8; i++) {
         const colorParam = parameter(`color${i}`);
-        if (colorParam && colorParam !== "null") {
+        if (colorParam !== "null") {
             const colorToUse = '#' + colorParam;
             if (!document.getElementById(`color${i}`)) {
-                addColorPicker();
-		    alert("a");
-		//seems to be breaking around here
+                addColorPicker("auto");
             }
             document.getElementById(`color${i}`).value = colorToUse;
             css.style.setProperty(`--color${i}`, colorToUse);
@@ -822,6 +822,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
         css.style.setProperty('--two', colors[1] || '#3ab6ff');
         css.style.setProperty('--three', colors[2] || '#00ff5e');
         css.style.setProperty('--four', colors[3] || '#ff9900');
+        adjustHeightOfColorPickerContainer();
 
         var cdtitle = document.getElementById("countdowntitle").value; //set the title
 
@@ -2156,8 +2157,10 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             const offset = length - (length * (10000 + autocountdown) / 10000);
             autocircle.style.strokeDashoffset = offset;
             if (autocountdown < 1) {
+                if(document.getElementById("autopilotpopup") || document.getElementById("autopilotpopupmobile")){
                 document.getElementById("autopilotpopup").style.opacity = "0";
                 document.getElementById("autopilotpopupmobile").style.opacity = "0";
+                }
 
                 autocircle.remove();
             }
@@ -2335,10 +2338,8 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
   return color;
 }
 
-    let colorPickerCount = 4;
-
     //create a new color picker
-function addColorPicker() {
+function addColorPicker(method) {
     if (colorPickerCount < 8) {
         colorPickerCount++;
         const container = document.getElementById('colorPickersContainer');
@@ -2383,8 +2384,11 @@ function addColorPicker() {
 
 
         adjustHeightOfColorPickerContainer();
-        SetCountDowngeneral();
         updateColorAnimations();
+
+        if(method !== "auto"){
+            SetCountDowngeneral();
+        }
     }
 }
 
