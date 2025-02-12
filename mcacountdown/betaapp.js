@@ -876,7 +876,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             '&confettitype=' + confettiType + 
             '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
             '&schedule=' + parameter('schedule') +
-		'&cardmode=' enabledcardmode;
+		'&cardmode=' enablecardmode;
         window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
 
         document.getElementById("linkinput").value = refresh; //refresh the link
