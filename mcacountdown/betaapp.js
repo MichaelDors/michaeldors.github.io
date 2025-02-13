@@ -71,16 +71,33 @@ function updateSaveButtonText() {
     // Get the current URL parameters
     const currentUrl = document.getElementById("linkinput").value;
     
-    // Function to get sorted parameters from URL
-    const getUrlParams = (url) => {
-        try {
-            const urlObj = new URL(url);
-            const params = new URLSearchParams(urlObj.search);
-            return new URLSearchParams([...params.entries()].sort()).toString();
-        } catch (e) {
-            return '';
-        }
-    };
+// Function to get sorted parameters from URL, filtering out default values
+const getUrlParams = (url) => {
+    try {
+        const urlObj = new URL(url);
+        const params = new URLSearchParams(urlObj.search);
+        
+        // Define default values to filter out
+        const defaults = {
+            colorone: '8426ff',
+            colortwo: '3ab6ff',
+            colorthree: '00df52',
+            colorfour: 'ff9900'
+        };
+
+        // Filter out parameters that match defaults
+        const filteredParams = [...params.entries()].filter(([key, value]) => {
+            if (defaults[key] && value === defaults[key]) {
+                return false;
+            }
+            return true;
+        });
+
+        return new URLSearchParams(filteredParams.sort()).toString();
+    } catch (e) {
+        return '';
+    }
+};
 
     // Default button text
     let buttonText = '<i class="fa-solid fa-star"></i> Save';
