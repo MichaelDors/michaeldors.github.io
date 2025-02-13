@@ -306,12 +306,14 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             left: -4px;
             bottom: -4px;
             width: calc(33.33% + 8px);
-            background: linear-gradient(to bottom right, #000000, #2e0960);
+            background: linear-gradient(to bottom right, #00000000, #2e0960);
             border-radius: 100px;
             pointer-events: none;
             border: 1px solid #8426FF;
             transition: transform 0.3s ease-out;
             z-index: 1;
+	    backdrop-filter: blur(17.1px);
+	-webkit-backdrop-filter: blur(17.1px);
         }
 
         form::after {
