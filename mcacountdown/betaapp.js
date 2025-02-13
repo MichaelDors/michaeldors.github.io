@@ -70,6 +70,8 @@ function updateSaveButtonText() {
 
     const existingIndex = links.findIndex(link => {
         const linkUrl = new URL(link.url);
+	    alert(linkUrl);
+	    alert(currentUrl);
         const linkTitle = linkUrl.searchParams.get('title') || '';
         if (linkTitle.toLowerCase() === title.toLowerCase()) {
             // If the entire link is the same as the saved link
