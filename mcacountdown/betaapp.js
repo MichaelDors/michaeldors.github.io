@@ -108,20 +108,17 @@ const getUrlParams = (url) => {
             try {
                 const linkUrl = new URL(link.url);
                 const linkTitle = linkUrl.searchParams.get('title');
-                if (linkTitle && linkTitle.toLowerCase() === title.toLowerCase()) {
-                    // Compare only the parameters
-                    alert(getUrlParams(link.url) + "\n" + getUrlParams(currentUrl))
-                    return getUrlParams(link.url) === getUrlParams(currentUrl);
-                }
-                return false;
+                // Only check if titles match, don't compare URLs here
+                return linkTitle && linkTitle.toLowerCase() === title.toLowerCase();
             } catch (e) {
                 return false;
             }
         });
 
         if (matchingLink) {
-            // If parameters match exactly
-            if (getUrlParams(matchingLink.url) === getUrlParams(currentUrl)) {
+            // Now compare the URLs separately
+            const urlsMatch = getUrlParams(matchingLink.url) === getUrlParams(currentUrl);
+            if (urlsMatch) {
                 buttonText = '<i class="fa-solid fa-circle-check"></i> Saved';
             } else {
                 buttonText = '<i class="fa-solid fa-star"></i> Update';
