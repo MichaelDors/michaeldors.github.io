@@ -68,15 +68,19 @@ function updateSaveButtonText() {
         return;
     }
 
-    // Get the current URL and normalize it
+    // Get the current URL parameters
     const currentUrl = document.getElementById("linkinput").value;
-    let currentTitle;
-    try {
-        const currentLinkUrl = new URL(currentUrl);
-        currentTitle = currentLinkUrl.searchParams.get('title');
-    } catch (e) {
-        return;
-    }
+    
+    // Function to get sorted parameters from URL
+    const getUrlParams = (url) => {
+        try {
+            const urlObj = new URL(url);
+            const params = new URLSearchParams(urlObj.search);
+            return new URLSearchParams([...params.entries()].sort()).toString();
+        } catch (e) {
+            return '';
+        }
+    };
 
     // Default button text
     let buttonText = '<i class="fa-solid fa-star"></i> Save';
@@ -87,14 +91,19 @@ function updateSaveButtonText() {
             try {
                 const linkUrl = new URL(link.url);
                 const linkTitle = linkUrl.searchParams.get('title');
-                return linkTitle && linkTitle.toLowerCase() === title.toLowerCase();
+                if (linkTitle && linkTitle.toLowerCase() === title.toLowerCase()) {
+                    // Compare only the parameters
+                    return getUrlParams(link.url) === getUrlParams(currentUrl);
+                }
+                return false;
             } catch (e) {
                 return false;
             }
         });
 
         if (matchingLink) {
-            if (matchingLink.url === currentUrl) {
+            // If parameters match exactly
+            if (getUrlParams(matchingLink.url) === getUrlParams(currentUrl)) {
                 buttonText = '<i class="fa-solid fa-circle-check"></i> Saved';
             } else {
                 buttonText = '<i class="fa-solid fa-star"></i> Update';
@@ -107,6 +116,7 @@ function updateSaveButtonText() {
         saveButton.innerHTML = buttonText;
     }
 }
+
 
 if(parameter('cardmode')){
     document.getElementById("gear").style.display = 'none';
@@ -155,6 +165,7 @@ window.onload = function() {
     and so on until 1s. This is to ensure the image is the same size as the banner even if the first
     couple iterations mess with the text wrapping and cange the size of the banner
     */
+    updateSaveButtonText();
 };
 
 
