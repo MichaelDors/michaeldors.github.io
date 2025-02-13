@@ -156,6 +156,13 @@ window.onload = function() {
         });
     });
 
+var enablecardmode = "0";
+if (parameter("cardmode")){
+	enablecardmode = "1";
+} else{
+	enablecardmode = "0";
+}
+
     //onload url parameter translation into the correlating customization settings
                //confetti
                 var confettiType = "none"; //declaring confettitype to none at the very beginning so it's able to be changed anywhere
@@ -1213,6 +1220,13 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
                 } 
             }
         }
+
+	if(enablecardmode == "1"){
+    document.getElementById("gear").style.display = 'none';
+    document.getElementById("toolbar-notch").style.display = 'none';
+    document.getElementById("countdowntitle").style.display = 'none';
+    document.getElementById("clock").style.fontSize = `90vw !important`;
+}
 
 	if(parameter('progress')){ //if the user has their progress bar enabled
 		document.getElementByID("progress-bar").style.display = "";
