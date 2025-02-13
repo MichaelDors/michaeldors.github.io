@@ -2152,8 +2152,10 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             }
         }
 
-        SetCountDowngeneral();
-
+        if(method !== "auto"){
+            SetCountDowngeneral();
+        }
+        updateSaveButtonText();
     }
 
 
