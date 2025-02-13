@@ -2266,7 +2266,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
         }
     }
 
-
+if (!window.matchMedia("(max-width: 767px)").matches) {
     document.getElementById("body").addEventListener("mousemove", function (event) {
         // Get element dimensions
         const rect = document.getElementById("countdowntitle").getBoundingClientRect();
@@ -2310,6 +2310,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
     superchargeyourschedulecard.addEventListener("mouseleave", () => {
         superchargeyourschedulecard.style.transform = "perspective(1000px) rotateX(0) rotateY(0) scale(1)";
     });
+}
 
 
     //set countdown title
