@@ -60,31 +60,52 @@ function updateSaveButtonText() {
 
     // Get the existing links from localStorage
     const savedLinks = localStorage.getItem("dashboardsaved");
-    let links = savedLinks ? JSON.parse(savedLinks) : [];
+    let links = [];
+    
+    try {
+        links = savedLinks ? JSON.parse(savedLinks) : [];
+    } catch (e) {
+        return;
+    }
 
-    // Get the current URL
+    // Get the current URL and normalize it
     const currentUrl = document.getElementById("linkinput").value;
+    let currentTitle;
+    try {
+        const currentLinkUrl = new URL(currentUrl);
+        currentTitle = currentLinkUrl.searchParams.get('title');
+    } catch (e) {
+        return;
+    }
 
-    // Check if a countdown with the same title already exists
+    // Default button text
     let buttonText = '<i class="fa-solid fa-star"></i> Save';
 
-    const existingIndex = links.findIndex(link => {
-        const linkUrl = new URL(link.url);
-        const linkTitle = linkUrl.searchParams.get('title') || '';
-        if (linkTitle.toLowerCase() === title.toLowerCase()) {
-            // If the entire link is the same as the saved link
-            if (link.url === currentUrl) {
+    // Only proceed if we have a title to compare
+    if (title) {
+        const matchingLink = links.find(link => {
+            try {
+                const linkUrl = new URL(link.url);
+                const linkTitle = linkUrl.searchParams.get('title');
+                return linkTitle && linkTitle.toLowerCase() === title.toLowerCase();
+            } catch (e) {
+                return false;
+            }
+        });
+
+        if (matchingLink) {
+            if (matchingLink.url === currentUrl) {
                 buttonText = '<i class="fa-solid fa-circle-check"></i> Saved';
             } else {
                 buttonText = '<i class="fa-solid fa-star"></i> Update';
             }
-            return true;
         }
-        return false;
-    });
+    }
 
     const saveButton = document.getElementById('savedash');
-    saveButton.innerHTML = buttonText;
+    if (saveButton) {
+        saveButton.innerHTML = buttonText;
+    }
 }
 
 if(parameter('cardmode')){

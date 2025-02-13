@@ -76,6 +76,10 @@
         font-size:0;
     }
 
+    #backgroundpickercontainer{
+        font-size:0;
+    }
+
     #animatedbackground {
         opacity: 1;
         transition: 1s opacity ease-in-out;
