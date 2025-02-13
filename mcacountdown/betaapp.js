@@ -93,6 +93,7 @@ function updateSaveButtonText() {
                 const linkTitle = linkUrl.searchParams.get('title');
                 if (linkTitle && linkTitle.toLowerCase() === title.toLowerCase()) {
                     // Compare only the parameters
+                    alert(getUrlParams(link.url) + getUrlParams(currentUrl))
                     return getUrlParams(link.url) === getUrlParams(currentUrl);
                 }
                 return false;
