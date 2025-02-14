@@ -14,38 +14,33 @@
 }
 
 function handleTitleNavigation() {
-    // Get the full URL including the hash
     const fullUrl = window.location.href;
-    // Extract everything after the # symbol
-    const urlTitle = fullUrl.split('#').pop().toLowerCase();
+    const urlParts = fullUrl.split('#');
+    if (urlParts.length < 2) return;
 
-    // If there's no specific title in the URL, return early
-    if (!urlTitle || urlTitle === 'betatimer.html' || urlTitle === 'timer.html') {
-        return;
-    }
+    const urlTitle = urlParts.pop().toLowerCase().trim();
+    if (!urlTitle || urlTitle === 'betatimer.html' || urlTitle === 'timer.html') return;
 
-    // Get saved countdowns from localStorage
     const savedLinks = localStorage.getItem('dashboardsaved');
     if (!savedLinks) return;
 
     try {
         const links = JSON.parse(savedLinks);
-        
-        // Search for a countdown with matching title
+
         const matchingCountdown = links.find(link => {
             try {
-                const linkUrl = new URL(link.url);
+                const linkUrl = new URL(link.url, window.location.origin);
                 const titleParam = linkUrl.searchParams.get('title');
-                return titleParam && decodeURIComponent(titleParam).toLowerCase() === urlTitle;
+                return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === urlTitle;
             } catch (e) {
                 console.error('Error parsing URL:', e);
                 return false;
             }
         });
 
-        // If found, redirect to the matching countdown
         if (matchingCountdown) {
             window.location.href = matchingCountdown.url;
+            window.location.replace(matchingCountdown.url);
         }
     } catch (e) {
         console.error('Error parsing saved countdowns:', e);
@@ -138,6 +133,7 @@ if(parameter('cardmode')){
     document.getElementById("toolbar-notch").style.display = 'none';
     document.getElementById("countdowntitle").style.display = 'none';
     document.getElementById("clock").style.fontSize = `90vw !important`;
+    document.getElementById("cookie-banner").style.display = 'none';
 }
 
 window.onload = function() {
