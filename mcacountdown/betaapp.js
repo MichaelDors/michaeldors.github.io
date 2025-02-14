@@ -2152,7 +2152,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             }
         }
 
-        if(method !== "auto"){
+        if(method == "manual"){
             SetCountDowngeneral();
         }
         updateSaveButtonText();
