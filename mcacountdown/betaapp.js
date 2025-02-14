@@ -2161,14 +2161,12 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
 
     //QR code generation
     function makeQR() {
-        const qrcode = document.getElementById("qrcode");
-        const qrCanvas = qrcode.getElementsByTagName('canvas')[0];  // Get the canvas element
-
-        if (qrCanvas) {
-            qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height); // Clear only if canvas exists
+        const qrcodeElement = document.getElementById("qrcode");
+        
+        // Clear any existing content
+        while (qrcodeElement.firstChild) {
+            qrcodeElement.removeChild(qrcodeElement.firstChild);
         }
-
-        document.getElementById('qrcode').innerHTML = '';
 
         function imgQR(qrCanvas, centerImage, factor) {
             var h = qrCanvas.height;
@@ -2177,20 +2175,30 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             var ctx = qrCanvas.getContext("2d");
             ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
         }
+
+        // Create QR code only after clearing
         const icon = new Image();
         icon.onload = function generateQR() {
-            var qrcode = new QRCode(document.getElementById("qrcode"), {
-                text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
-                width: 150,
-                height: 150,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
-            imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
+            // Make sure element is empty before generating new QR
+            if (qrcodeElement.children.length === 0) {
+                var qrcode = new QRCode(qrcodeElement, {
+                    text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
+                    width: 150,
+                    height: 150,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                // Add slight delay to ensure QR is fully rendered before adding icon
+                setTimeout(() => {
+                    const canvas = qrcodeElement.querySelector('canvas');
+                    if (canvas) {
+                        imgQR(canvas, this, 0.3);
+                    }
+                }, 50);
+            }
         }
         icon.src = 'icon.ico';
-
     }
 
     //Shareable QR Code download
