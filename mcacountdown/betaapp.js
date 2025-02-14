@@ -2940,7 +2940,7 @@ function savetodash() {
 
     // Check if there's a title
     if (!title) {
-        showToast('You must select a title before saving to Dashboard', 'error')
+        showToast('Please add a title before saving to Dashboard', 'error');
         return;
     }
 
@@ -2954,6 +2954,12 @@ function savetodash() {
         const linkTitle = linkUrl.searchParams.get('title') || '';
         return linkTitle.toLowerCase() === title.toLowerCase();
     });
+
+    // If this is a new countdown and we already have 8 saved
+    if (existingIndex === -1 && links.length >= 8) {
+        showToast('Your Dashboard is full, remove a Countdown to save this', 'error');
+        return;
+    }
 
     // If found, update the existing countdown, otherwise add a new one
     if (existingIndex !== -1) {
@@ -3212,6 +3218,10 @@ function magictitle(){
 	document.addEventListener('keydown', (() => {
     let input = '';
     return (event) => {
+        if (event.key === 'Escape') {
+            settings();
+            return;
+        }
         input += event.key;
         if (input.endsWith('debug')) {
             document.getElementById('debugoptions').style.display = '';
