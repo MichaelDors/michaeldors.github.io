@@ -15,38 +15,22 @@
 
 function handleTitleNavigation() {
     const fullUrl = window.location.href;
-    console.log("Full URL:", fullUrl);
-
     const urlParts = fullUrl.split('#');
-    if (urlParts.length < 2) {
-        console.log("No hash found, exiting.");
-        return;
-    }
+    if (urlParts.length < 2) return; // No hash present
 
     const urlTitle = urlParts.pop().toLowerCase().trim();
-    console.log("Extracted title:", urlTitle);
-
-    if (!urlTitle || urlTitle === 'betatimer.html' || urlTitle === 'timer.html') {
-        console.log("Title is empty or excluded, exiting.");
-        return;
-    }
+    if (!urlTitle || urlTitle === 'betatimer.html' || urlTitle === 'timer.html') return;
 
     const savedLinks = localStorage.getItem('dashboardsaved');
-    if (!savedLinks) {
-        console.log("No saved links in localStorage, exiting.");
-        return;
-    }
+    if (!savedLinks) return;
 
     try {
         const links = JSON.parse(savedLinks);
-        console.log("Parsed links:", links);
 
         const matchingCountdown = links.find(link => {
             try {
                 const linkUrl = new URL(link.url, window.location.origin);
                 const titleParam = linkUrl.searchParams.get('title');
-                console.log("Checking link:", linkUrl.href, "Title param:", titleParam);
-
                 return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === urlTitle;
             } catch (e) {
                 console.error('Error parsing URL:', e);
@@ -55,19 +39,13 @@ function handleTitleNavigation() {
         });
 
         if (matchingCountdown) {
-            console.log("Match found, redirecting to:", matchingCountdown.url);
             window.location.href = matchingCountdown.url;
-        } else {
-            console.log("No matching countdown found.");
+            window.location.replace(matchingCountdown.url);
         }
     } catch (e) {
         console.error('Error parsing saved countdowns:', e);
     }
 }
-
-
-// Run the title navigation handler when the page loads
-document.addEventListener('DOMContentLoaded', handleTitleNavigation);
 	
 function updateSaveButtonText() {
     const title = document.getElementById("countdowntitle").value;
@@ -367,6 +345,8 @@ if (!hasAnyColorParams) {
     else {
         css.style.setProperty('--typeface', "Fredoka One"); //if no parameter is found for the typeface, simply set it to the default (Fredoka One)
     }
+
+    handleTitleNavigation();
 
     //date
     if (parameter('date')) {
