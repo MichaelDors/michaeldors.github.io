@@ -2550,7 +2550,7 @@ let schedule_events = [];
 
 	document.querySelector(".schedule-editor").style.display = ""; //show the schedule editor
 	document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
-
+    document.title = "Countdown Schedule";
     showToast('Schedule created successfully!', 'success');
 	}
 
