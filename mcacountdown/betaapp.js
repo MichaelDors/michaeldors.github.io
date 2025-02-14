@@ -2550,6 +2550,8 @@ let schedule_events = [];
 
 	document.querySelector(".schedule-editor").style.display = ""; //show the schedule editor
 	document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
+
+    showToast('Schedule created successfully!', 'success');
 	}
 
         function schedule_resetAll(){
@@ -2934,16 +2936,13 @@ function playDirectAudio(link) {
 function savetodash() {
     const url = window.location.href; // Get the current page URL
     const urlObj = new URL(url);
-    title = urlObj.searchParams.get('title') || '';
-    // If no title found in URL, use the date as a fallback
+    const title = urlObj.searchParams.get('title');
+
+    // Check if there's a title
     if (!title) {
-        const dateStr = urlObj.searchParams.get('date') || '';
-        if (dateStr) {
-            const date = new Date(dateStr);
-            const options = { year: '2-digit', month: '2-digit', day: '2-digit' };
-            title = date.toLocaleDateString('en-US', options);
-            }
-        }
+        showToast('You must select a title before saving to Dashboard', 'error')
+        return;
+    }
 
     // Get the existing links from localStorage
     const savedLinks = localStorage.getItem("dashboardsaved");
@@ -2958,9 +2957,9 @@ function savetodash() {
 
     // If found, update the existing countdown, otherwise add a new one
     if (existingIndex !== -1) {
-        links[existingIndex] = { url, title: title || '' };
+        links[existingIndex] = { url, title };
     } else {
-        links.push({ url, title: title || '' });
+        links.push({ url, title });
     }
 
     // Save the updated links back to localStorage
@@ -3142,6 +3141,7 @@ function magictitle(){
                 default:
                     // handle cases where nextHoliday.name doesn't match any of the above
                     console.error('Magic Title did not find a matching holiday.');
+                    showToast('Autopilot did not find an event matching that date', 'error')
                     document.getElementById("magictitle").classList.add("magictitle-failed");
                     setTimeout(function() {
                         document.getElementById("magictitle").classList.remove("magictitle-failed");
