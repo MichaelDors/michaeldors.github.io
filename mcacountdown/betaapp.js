@@ -1597,8 +1597,45 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
     let isDragging = false;
     const handleIcons = (scrollVal) => {
         let maxScrollableWidth = tabsBox.scrollWidth - tabsBox.clientWidth;
-        arrowIcons[0].parentElement.style.display = scrollVal <= 0 ? "none" : "flex";
-        arrowIcons[1].parentElement.style.display = maxScrollableWidth - scrollVal <= 1 ? "none" : "flex";
+// Fade out left arrow when at start, fade in when not
+if (scrollVal <= 0) {
+    arrowIcons[0].parentElement.style.opacity = "0";
+    setTimeout(() => {
+        arrowIcons[0].parentElement.style.display = "none";
+    }, 200);
+} else {
+    arrowIcons[0].parentElement.style.display = "flex";
+    setTimeout(() => {
+        arrowIcons[0].parentElement.style.opacity = "1";
+    }, 200);
+}
+
+// Fade out right arrow when at end, fade in when not 
+if (maxScrollableWidth - scrollVal <= 1) {
+    arrowIcons[1].parentElement.style.opacity = "0";
+    setTimeout(() => {
+        arrowIcons[1].parentElement.style.display = "none";
+    }, 200);
+} else {
+    arrowIcons[1].parentElement.style.display = "flex";
+    setTimeout(() => {
+        arrowIcons[1].parentElement.style.opacity = "1"; 
+    }, 200);
+}
+
+        if (scrollVal <= 0) {
+            // At the start, remove left fade
+            tabsBox.style.maskImage = "linear-gradient(to right, black 0%, black 85%, rgba(0, 0, 0, 0))";
+            tabsBox.style.webkitMaskImage = "linear-gradient(to right, black 0%, black 85%, rgba(0, 0, 0, 0))";
+        } else if (scrollVal >= maxScrollableWidth) {
+            // At the end, remove right fade
+            tabsBox.style.maskImage = "linear-gradient(to right, rgba(0, 0, 0, 0), black 15%, black 100%)";
+            tabsBox.style.webkitMaskImage = "linear-gradient(to right, rgba(0, 0, 0, 0), black 15%, black 100%)";
+        } else {
+            // In the middle, apply full fading effect
+            tabsBox.style.maskImage = "linear-gradient(to right, rgba(0, 0, 0, 0), black 15%, black 85%, rgba(0, 0, 0, 0))";
+            tabsBox.style.webkitMaskImage = "linear-gradient(to right, rgba(0, 0, 0, 0), black 15%, black 85%, rgba(0, 0, 0, 0))";
+        }
     }
     arrowIcons.forEach(icon => {
         icon.addEventListener("click", () => {
@@ -2022,10 +2059,12 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
 
         if (e.deltaY > 0) {
             container.scrollLeft += 200;
+            handleIcons(container.scrollLeft);
             e.preventDefault();
         }
         else {
             container.scrollLeft -= 200;
+            handleIcons(container.scrollLeft);
             e.preventDefault();
         }
     });

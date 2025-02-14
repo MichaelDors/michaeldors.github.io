@@ -303,22 +303,24 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
 
     #selectedSpeedDiv {
-            color: white;
-            display: block;
-            position: absolute;
-            top: -4px;
-            left: -4px;
-            bottom: -4px;
-            width: calc(33.33% + 8px);
-            background: linear-gradient(to bottom right, #00000000, #2e0960);
-            border-radius: 100px;
-            pointer-events: none;
-            border: 1px solid #8426FF;
-            transition: transform 0.3s ease-out;
-            z-index: 1;
-	    backdrop-filter: blur(17.1px);
-	-webkit-backdrop-filter: blur(17.1px);
-        }
+        color: white;
+        display: block;
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        bottom: -4px;
+        width: calc(33.33% + 8px);
+        background: linear-gradient(to bottom right, #00000000, #2e0960);
+        border-radius: 100px;
+        pointer-events: none;
+        border: 1px solid #8426FF;
+        transition: transform 0.3s ease-out;
+        z-index: 1;
+        backdrop-filter: blur(17.1px);
+        -webkit-backdrop-filter: blur(17.1px);
+        transform-origin: center;
+    }
+    
 
         form::after {
             content: "";
@@ -1031,13 +1033,15 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     .icon:first-child {
         left: 0;
         display: none;
-        background: linear-gradient(90deg, #141414, transparent);
+        /*background: linear-gradient(90deg, #141414, transparent);*/
+        transition:all 0.3s ease;
     }
 
     .icon:last-child {
         right: 0;
         justify-content: flex-end;
-        background: linear-gradient(-90deg, #141414, transparent);
+        /*background: linear-gradient(-90deg, #141414, transparent);*/
+        transition:all 0.3s ease;
     }
 
     .icon i {
@@ -1048,7 +1052,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         text-align: center;
         line-height: 75px;
         color: white;
-        background: #141414;
+        /*background: #141414;*/
         border-radius: 50%;
     }
 
@@ -1166,6 +1170,9 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             overflow-y: hidden;
             scroll-behavior: smooth;
             max-width: 90%;
+
+            -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0), black 15%, black 85%, rgba(0, 0, 0, 0));
+            mask-image: linear-gradient(to right, rgba(0, 0, 0, 0), black 15%, black 85%, rgba(0, 0, 0, 0));
         }
 
     .tabs-box.dragging {
