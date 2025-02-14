@@ -2162,3 +2162,92 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     perspective: 100000000px;
     transform-style: flat; 
 }
+
+#toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+  }
+  
+  .toast {
+    width: var(--toast-width);
+    padding: 16px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(6.1px);
+  -webkit-backdrop-filter: blur(6.1px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    animation: toastslideIn 0.3s ease forwards;
+    transition: all 0.3s ease;
+  }
+  
+  .toast.success {
+    border-left: 4px solid var(--success-color);
+  }
+  
+  .toast.error {
+    border-left: 4px solid var(--error-color);
+  }
+  
+  .toast.info {
+    border-left: 4px solid var(--info-color);
+  }
+  
+  .toast-content {
+    flex-grow: 1;
+    font-size: 14px;
+    color: #000000;
+  }
+  
+  .toast-close {
+    background: none;
+    border: none;
+    color: #000000;
+    cursor: pointer;
+    padding: 0 8px;
+    font-size: 18px;
+    transition: color 0.2s ease;
+  }
+  
+  .toast-close:hover {
+    color: #1d1d1f;
+  }
+  
+  @keyframes toastslideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes toastslideOut {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    :root {
+      --toast-width: calc(100vw - 40px);
+    }
+    
+    #toast-container {
+      right: 50%;
+      transform: translateX(50%);
+    }
+  }
+  
