@@ -2174,28 +2174,17 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             var ctx = qrCanvas.getContext("2d");
             ctx.drawImage(centerImage, 0, 0, centerImage.width, centerImage.height, co, co, cs, cs);
         }
-
-        // Create QR code only after clearing
         const icon = new Image();
         icon.onload = function generateQR() {
-            // Make sure element is empty before generating new QR
-            if (qrcodeElement.children.length === 0) {
-                new QRCode(qrcodeElement, {
-                    text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
-                    width: 150,
-                    height: 150,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H,
-                    callback: function(qr) {
-                        // Once QR is fully rendered, add the icon
-                        const canvas = qrcodeElement.querySelector('canvas');
-                        if (canvas) {
-                            imgQR(canvas, icon, 0.3);
-                        }
-                    }
-                });
-            }
+            var qrcode = new QRCode(document.getElementById("qrcode"), {
+                text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
+                width: 150,
+                height: 150,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            imgQR(qrcode._oDrawing._elCanvas, this, 0.3)
         }
         icon.src = 'icon.ico';
     }
