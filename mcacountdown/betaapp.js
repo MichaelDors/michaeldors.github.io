@@ -3296,3 +3296,39 @@ function magictitle(){
         //styleTag.parentNode.replaceChild(newStyle, styleTag);
         styleTag.innerHTML = newStyle.textContent;
     }
+
+    
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toast-container');
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    // Create toast content
+    const content = document.createElement('div');
+    content.className = 'toast-content';
+    content.textContent = message;
+    
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.className = 'toast-close';
+    closeButton.innerHTML = '×';
+    closeButton.onclick = () => removeToast(toast);
+    
+    // Assemble toast
+    toast.appendChild(content);
+    toast.appendChild(closeButton);
+    toastContainer.appendChild(toast);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => removeToast(toast), 5000);
+  }
+  
+  function removeToast(toast) {
+    toast.style.animation = 'slideOut 0.3s ease forwards';
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  }
+  
