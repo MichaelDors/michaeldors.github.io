@@ -3342,37 +3342,73 @@ function magictitle(){
     }
 
     
-function showToast(message, type = 'info') {
-    const toastContainer = document.getElementById('toast-container');
-    
-    // Create toast element
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    
-    // Create toast content
-    const content = document.createElement('div');
-    content.className = 'toast-content';
-    content.textContent = message;
-    
-    // Create close button
-    const closeButton = document.createElement('button');
-    closeButton.className = 'toast-close';
-    closeButton.innerHTML = '×';
-    closeButton.onclick = () => removeToast(toast);
-    
-    // Assemble toast
-    toast.appendChild(content);
-    toast.appendChild(closeButton);
-    toastContainer.appendChild(toast);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => removeToast(toast), 5000);
-  }
-  
-  function removeToast(toast) {
-    toast.style.animation = 'slideOut 0.3s ease forwards';
-    setTimeout(() => {
-      toast.remove();
-    }, 300);
-  }
-  
+
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container');
+        
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        // Create icon element
+        const icon = document.createElement('img');
+        icon.className = 'toast-icon';
+        icon.src = "https://images.squarespace-cdn.com/content/v1/5ee52f7d9edc8a7ee635591a/8df50655-6b68-460e-ad6c-5230001b9d5a/240404+-+063944+-+001.jpg";
+        
+        // Create toast content
+        const content = document.createElement('div');
+        content.className = 'toast-content';
+        content.textContent = message;
+        
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.className = 'toast-close';
+        closeButton.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+        closeButton.onclick = () => removeToast(toast);
+        
+        // Assemble toast
+        toast.appendChild(icon);
+        toast.appendChild(content);
+        toast.appendChild(closeButton);
+        toastContainer.appendChild(toast);
+
+        // Use setTimeout to ensure the banner is fully rendered
+        setTimeout(() => {
+            const toastHeight = toast.offsetHeight;
+            icon.style.height = `${toastHeigh}px`;
+        }, 1); // Adjust the timeout duration if necessary
+        setTimeout(() => {
+            const toastHeight = toast.offsetHeight;
+            icon.style.height = `${toastHeight}px`;
+        }, 3); // Adjust the timeout duration if necessary
+        setTimeout(() => {
+            const toastHeight = toast.offsetHeight;
+            icon.style.height = `${toastHeight}px`;
+        }, 5); // Adjust the timeout duration if necessary
+        setTimeout(() => {
+            const toastHeight = toast.offsetHeight;
+            icon.style.height = `${toastHeight}px`;
+        }, 10); // Adjust the timeout duration if necessary
+        setTimeout(() => {
+            const toastHeight = toast.offsetHeight;
+            icon.style.height = `${toastHeight}px`;
+        }, 20); // Adjust the timeout duration if necessary
+        setTimeout(() => {
+            const toastHeight = toast.offsetHeight;
+            icon.style.height = `${toastHeight}px`;
+        }, 50); // Adjust the timeout duration if necessary
+        setTimeout(() => {
+            const toastHeight = toast.offsetHeight;
+            icon.style.height = `${toastHeight}px`;
+        }, 100); // Adjust the timeout duration if necessary
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => removeToast(toast), 5000);
+    }
+
+    function removeToast(toast) {
+        toast.style.animation = 'slideOut 0.3s ease forwards';
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }
