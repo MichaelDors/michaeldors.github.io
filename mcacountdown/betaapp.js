@@ -129,7 +129,7 @@ if(parameter('cardmode')){
     document.getElementById("gear").style.display = 'none';
     document.getElementById("toolbar-notch").style.display = 'none';
     document.getElementById("countdowntitle").style.display = 'none';
-    document.getElementById("clock").style.fontSize = `10px !important`;
+    document.getElementById("clock").style.fontSize = `10vw !important`;
     document.getElementById("cookie-banner").style.display = 'none';
 }
 
@@ -1160,66 +1160,66 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
         //only include
         if (getCookie("day")) {
             document.getElementById("clock").innerHTML = days + " days"; //no calc, just use days
-            if(!parameter('cardmode')){
+            if(enablecardmode == "0"){
                 document.getElementById("clock").style.fontSize = '75px';
             }
         }
         else if (getCookie("hour")) {
             var hourcount = Math.floor(distance / 3600000); //figure out how many hours in that many milliseconds
             document.getElementById("clock").innerHTML = hourcount + " hours";
-            if(!parameter('cardmode')){
+            if(enablecardmode == "0"){
                 document.getElementById("clock").style.fontSize = '75px';
             }
         }
         else if (getCookie("minute")) {
             var minutecount = Math.floor(distance / 60000); //milliseconds converted to days
             document.getElementById("clock").innerHTML = minutecount + " minutes";
-            if(!parameter('cardmode')){
+            if(enablecardmode == "0"){
                 document.getElementById("clock").style.fontSize = '75px';
             }
         }
         else if (getCookie("second")) {
             var secondcount = Math.floor(distance / 1000); //milliseconds converted to seconds
             document.getElementById("clock").innerHTML = secondcount + " seconds";
-            if(!parameter('cardmode')){
+            if(enablecardmode == "0"){
                 document.getElementById("clock").style.fontSize = '75px';
             }
         }
         else if (getCookie("millisecond")) {
             document.getElementById("clock").innerHTML = distance + " milliseconds"; //no calc, just use milliseconds
-            if(!parameter('cardmode')){
+            if(enablecardmode == "0"){
                 document.getElementById("clock").style.fontSize = '75px';
             }
         }
         else if (getCookie("week")) {
             var weekcount = Math.floor(days / 7); //days / seven, weeks
             document.getElementById("clock").innerHTML = weekcount + " weeks";
-            if(!parameter('cardmode')){
+            if(enablecardmode == "0"){
                 document.getElementById("clock").style.fontSize = '75px';
             }
         }
         else if (getCookie("lcdu")) { //label countdown units
             if (days > 0) {
                 document.getElementById("clock").innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s "; //same as title, change the text as needed depending on what's left
-                if(!parameter('cardmode')){
+                if(enablecardmode == "0"){
                     document.getElementById("clock").style.fontSize = '75px';
                 }
             }
             else if (hours > 0) {
                 document.getElementById("clock").innerHTML = hours + "h " + minutes + "m " + seconds + "s "; //only for hours, no more days
-                if(!parameter('cardmode')){
+                if(enablecardmode == "0"){
                     document.getElementById("clock").style.fontSize = '100px';
                 }
             }
             else if (minutes > 0) {
                 document.getElementById("clock").innerHTML = minutes + "m " + seconds + "s "; //only for minutes no more hours
-                if(!parameter('cardmode')){
+                if(enablecardmode == "0"){
                     document.getElementById("clock").style.fontSize = '150px';
                 }
             }
             else {
                 document.getElementById("clock").innerHTML = seconds + "s"; //just seconds
-                if(!parameter('cardmode')){
+                if(enablecardmode == "0"){
                     document.getElementById("clock").style.fontSize = '175px';
                 }
             }
@@ -1227,25 +1227,25 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
         else { //not labeling or only including
             if (days > 0) {
                 document.getElementById("clock").innerHTML =  formatZeroesofNumber(days) + ":" +  formatZeroesofNumber(hours) + ":" +  formatZeroesofNumber(minutes) + ":" +  formatZeroesofNumber(seconds); //same as labeled just without labels
-                if(!parameter('cardmode')){
+                if(enablecardmode == "0"){
                     document.getElementById("clock").style.fontSize = '75px';
                 }
             }
             else if (hours > 0) {
                 document.getElementById("clock").innerHTML =  formatZeroesofNumber(hours) + ":" +  formatZeroesofNumber(minutes) + ":" +  formatZeroesofNumber(seconds); //only for hours no more days
-                if(!parameter('cardmode')){   
+                if(enablecardmode == "0"){   
                     document.getElementById("clock").style.fontSize = '100px';
                 }
             }
             else if (minutes > 0) {
                 document.getElementById("clock").innerHTML =  formatZeroesofNumber(minutes) + ":" +  formatZeroesofNumber(seconds); //only for minutes no more hours
-                if(!parameter('cardmode')){
+                if(enablecardmode == "0"){
                     document.getElementById("clock").style.fontSize = '150px';
                 }
             }
             else {
                 document.getElementById("clock").innerHTML = seconds;
-                if(!parameter('cardmode')){
+                if(enablecardmode == "0"){
                     document.getElementById("clock").style.fontSize = '175px'; //just seconds
                 } 
             }
@@ -1255,7 +1255,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
     document.getElementById("gear").style.display = 'none';
     document.getElementById("toolbar-notch").style.display = 'none';
     document.getElementById("countdowntitle").style.display = 'none';
-    document.getElementById("clock").style.fontSize = `10px !important`;
+    document.getElementById("clock").style.fontSize = `10vw !important`;
 }
 
 	if(parameter('progress')){ //if the user has their progress bar enabled
