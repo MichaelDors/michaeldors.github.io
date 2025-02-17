@@ -2199,24 +2199,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     height:1px;
     border-top-left-radius: 12px;
     border-bottom-left-radius: 12px;
-}
-
-.toast.success .toast-icon {
-    background-color: #2ecc71;
-}
-
-.toast.error .toast-icon {
-    background-color: #e74c3c;
-}
-
-.toast.warning .toast-icon {
-    background-color: #f1c40f;
-}
-
-.toast.info .toast-icon {
-    background-color: #3498db;
-}
-  
+} 
   .toast-content {
     flex-grow: 1;
     font-size: 14px;
