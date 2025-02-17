@@ -1551,8 +1551,12 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
         #autopilotpopupmobile {
             display: block;
-		z-index:10000000;
+		z-index:100000000000000;
         }
+
+	.notch-container {
+		opacity:0;
+	}
 
 
         #innergear {
