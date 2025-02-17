@@ -93,7 +93,7 @@ const getUrlParams = (url) => {
 
     // Default button text
     let buttonText = '<i class="fa-solid fa-star"></i> Save';
-let savedStatus = "false";
+var savedStatus = "false";
 
     // Only proceed if we have a title to compare
     if (title) {
