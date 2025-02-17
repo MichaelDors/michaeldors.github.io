@@ -2222,7 +2222,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
   @keyframes toastslideIn {
     from {
       transform: translateX(100%);
-	filter: blur(60px);
+	filter: blur(40px);
       opacity: 0;
     }
     to {
