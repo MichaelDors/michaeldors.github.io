@@ -2091,7 +2091,6 @@ if (maxScrollableWidth - scrollVal <= 1) {
 
     //Function to enable color when a background is disabled
     function enablecolor() {
-	showToast("You've enabled foreground colors again, disabling the background", 'info');
         const colorPickers = document.querySelectorAll('input[type="color"]');
         colorPickers.forEach(picker => {
             picker.classList.add("colorpicker");
@@ -2101,7 +2100,6 @@ if (maxScrollableWidth - scrollVal <= 1) {
 
     //Function to disable color when a background is enabled
     function disablecolor() {
-	showToast('Enabling a background disables the foreground colors', 'info');
         const colorPickers = document.querySelectorAll('input[type="color"]');
         colorPickers.forEach(picker => {
             picker.classList.remove("colorpicker");
@@ -2113,6 +2111,7 @@ if (maxScrollableWidth - scrollVal <= 1) {
         if ((method != "auto") && (parameter("atc") == bgint)) {
             //the selected background is already the set background - turn off background
             enablecolor();
+		showToast("You've enabled foreground colors again, disabling the background", 'info');
             document.getElementById("animatedbackground").style.opacity = "0"; //fade out the animated background (as it has a transition property for opacity)
             setTimeout(() => {
                 document.getElementById("animatedbackground").style.display = "none"; //in one second when the fade is done, hide the background
@@ -2124,6 +2123,7 @@ if (maxScrollableWidth - scrollVal <= 1) {
         else if ((parameter("atc") == "none") && bgint != "none") {
             //param is none, but the selected background is not - turn on and set background
             disablecolor();
+		showToast('Enabling a background disables the foreground colors', 'info');
             //grey out color pickers and theme color for background
             document.getElementById("animatedbackground").classList.remove("hidden"); //unhide background
             document.getElementById("animatedbackground").style.zIndex = "-3"; //set the bg to be behind all other elements
