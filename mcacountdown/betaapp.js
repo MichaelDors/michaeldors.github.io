@@ -3015,6 +3015,7 @@ function magictitle(){
         setTimeout(function() {
             document.getElementById("magictitle").classList.remove("magictitle-success");
         }, 500);
+	setcountdowntitle("front"); 
     }
     else{
             var now = new Date(); //getting the current date
