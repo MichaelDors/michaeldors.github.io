@@ -3427,7 +3427,7 @@ function magictitle(){
     }
 
     function removeToast(toast) {
-        toast.style.animation = 'slideOut 0.3s ease forwards';
+        toast.style.animation = 'toastslideOut 0.3s ease forwards';
         setTimeout(() => {
           toast.remove();
         }, 300);
