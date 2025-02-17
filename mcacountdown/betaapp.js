@@ -93,7 +93,6 @@ const getUrlParams = (url) => {
 
     // Default button text
     let buttonText = '<i class="fa-solid fa-star"></i> Save';
-var savedStatus = "false";
 
     // Only proceed if we have a title to compare
     if (title) {
@@ -113,10 +112,8 @@ var savedStatus = "false";
             const urlsMatch = getUrlParams(matchingLink.url) === getUrlParams(currentUrl);
             if (urlsMatch) {
                 buttonText = '<i class="fa-solid fa-circle-check"></i> Saved';
-		    savedStatus = "true";
             } else {
                 buttonText = '<i class="fa-solid fa-star"></i> Update';
-		    savedStatus = "revised";
             }
         }
     }
@@ -975,9 +972,6 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
                 document.getElementById("countdowntitle").style.display = ""; //unhide title
                 document.getElementById("schedule").style.display = "none"; //unhide schedule
             }
-	if(savedStatus == "revised"){
-		showToast('Your changes have not been saved to Dashboard yet', 'save');	
-	}
             document.getElementById("settings").classList.add("hidden"); //hide settings
             document.getElementById("gear").classList.remove("hidden"); //unhide gear icon
             document.getElementById("toolbar-notch").style.display = ""; //unhide gear icon
@@ -986,6 +980,9 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
             document.getElementById("body").style.overflowY = 'hidden'; //don't allow scrolling
             document.body.scrollTop = document.documentElement.scrollTop = 0; //once again scroll to top for good measure
+		if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
+		showToast('Some changes have not been saved to Dashboard yet', 'save');	
+		}
         }
 
         SetCountDowngeneral();
