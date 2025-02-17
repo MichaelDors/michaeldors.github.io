@@ -93,6 +93,7 @@ const getUrlParams = (url) => {
 
     // Default button text
     let buttonText = '<i class="fa-solid fa-star"></i> Save';
+let savedStatus = "false";
 
     // Only proceed if we have a title to compare
     if (title) {
@@ -112,8 +113,10 @@ const getUrlParams = (url) => {
             const urlsMatch = getUrlParams(matchingLink.url) === getUrlParams(currentUrl);
             if (urlsMatch) {
                 buttonText = '<i class="fa-solid fa-circle-check"></i> Saved';
+		    savedStatus = "true";
             } else {
                 buttonText = '<i class="fa-solid fa-star"></i> Update';
+		    savedStatus = "revised";
             }
         }
     }
@@ -972,6 +975,9 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
                 document.getElementById("countdowntitle").style.display = ""; //unhide title
                 document.getElementById("schedule").style.display = "none"; //unhide schedule
             }
+	if(savedStatus == "revised"){
+		showToast('Your changes have not been saved to Dashboard yet', 'save');	
+	}
             document.getElementById("settings").classList.add("hidden"); //hide settings
             document.getElementById("gear").classList.remove("hidden"); //unhide gear icon
             document.getElementById("toolbar-notch").style.display = ""; //unhide gear icon
@@ -2085,6 +2091,7 @@ if (maxScrollableWidth - scrollVal <= 1) {
 
     //Function to enable color when a background is disabled
     function enablecolor() {
+	showToast("You've enabled foreground colors again, disabling the background", 'info');
         const colorPickers = document.querySelectorAll('input[type="color"]');
         colorPickers.forEach(picker => {
             picker.classList.add("colorpicker");
@@ -2094,6 +2101,7 @@ if (maxScrollableWidth - scrollVal <= 1) {
 
     //Function to disable color when a background is enabled
     function disablecolor() {
+	showToast('Enabling a background disables the foreground colors', 'info');
         const colorPickers = document.querySelectorAll('input[type="color"]');
         colorPickers.forEach(picker => {
             picker.classList.remove("colorpicker");
