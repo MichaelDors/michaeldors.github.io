@@ -126,11 +126,15 @@ const getUrlParams = (url) => {
 
 
 if(parameter('cardmode')){
-    document.getElementById("gear").style.display = 'none';
+	document.getElementById("cookie-banner").style.display = 'none';
+	document.getElementById("gear").style.display = 'none';
     document.getElementById("toolbar-notch").style.display = 'none';
     document.getElementById("countdowntitle").style.display = 'none';
-    document.getElementById("clock").style.fontSize = `10vw !important`;
-    document.getElementById("cookie-banner").style.display = 'none';
+    document.getElementById("clock").style.fontSize = `15vw !important`;
+	document.getElementById("schedule-upcomingClasses").style.display = 'none';
+	document.getElementById("schedule-classTitle").style.fontSize = '15vw !important';
+	document.getElementById("schedule-timeRemaining").style.fontSize = '15vw !important';
+	document.getElementById("schedule-remainingText").style.display = 'none';
 }
 
 window.onload = function() {
@@ -1252,10 +1256,15 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
         }
 
 	if(enablecardmode == "1"){
+    document.getElementById("cookie-banner").style.display = 'none';
     document.getElementById("gear").style.display = 'none';
     document.getElementById("toolbar-notch").style.display = 'none';
     document.getElementById("countdowntitle").style.display = 'none';
-    document.getElementById("clock").style.fontSize = `10vw !important`;
+    document.getElementById("clock").style.fontSize = `15vw !important`;
+	document.getElementById("schedule-upcomingClasses").style.display = 'none';
+	document.getElementById("schedule-classTitle").style.fontSize = '15vw !important';
+	document.getElementById("schedule-timeRemaining").style.fontSize = '15vw !important';
+	document.getElementById("schedule-remainingText").style.display = 'none';
 }
 
 	if(parameter('progress')){ //if the user has their progress bar enabled
