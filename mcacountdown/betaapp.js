@@ -132,8 +132,8 @@ if(parameter('cardmode')){
     document.getElementById("countdowntitle").style.display = 'none';
     document.getElementById("clock").style.fontSize = '50px';
 	document.getElementById("schedule-upcomingClasses").style.display = 'none';
-	document.getElementById("schedule-classTitle").style.fontSize = '50px';
-	document.getElementById("schedule-timeRemaining").style.fontSize = '50px';
+	document.getElementById("schedule-classTitle").style.fontSize = '20px';
+	document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
 	document.getElementById("schedule-remainingText").style.display = 'none';
 }
 
@@ -1262,8 +1262,8 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
     document.getElementById("countdowntitle").style.display = 'none';
     document.getElementById("clock").style.fontSize = '50px';
 	document.getElementById("schedule-upcomingClasses").style.display = 'none';
-	document.getElementById("schedule-classTitle").style.fontSize = '50px';
-	document.getElementById("schedule-timeRemaining").style.fontSize = '50px';
+	document.getElementById("schedule-classTitle").style.fontSize = '20px';
+	document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
 	document.getElementById("schedule-remainingText").style.display = 'none';
 }
 
