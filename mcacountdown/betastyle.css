@@ -2195,7 +2195,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
   
 
 .toast-icon {
-    margin-right: 12px;
+    margin-right: 5px;
     height:1px;
     border-top-left-radius: 12px;
     border-bottom-left-radius: 12px;
@@ -2222,10 +2222,12 @@ border: 1px solid rgba(255, 0, 0, 0.64);
   @keyframes toastslideIn {
     from {
       transform: translateX(100%);
+	filter: blur(30px);
       opacity: 0;
     }
     to {
       transform: translateX(0);
+	filter: blur(0px);
       opacity: 1;
     }
   }
@@ -2233,10 +2235,12 @@ border: 1px solid rgba(255, 0, 0, 0.64);
   @keyframes toastslideOut {
     from {
       transform: translateX(0);
+	filter: blur(0px);
       opacity: 1;
     }
     to {
-      transform: translateX(100%);
+	transform: translateX(50%);
+	filter: blur(3000px);
       opacity: 0;
     }
   }
