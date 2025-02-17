@@ -1551,6 +1551,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 
         #autopilotpopupmobile {
             display: block;
+		z-index:10000000;
         }
 
 
