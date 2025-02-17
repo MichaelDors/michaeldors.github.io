@@ -3353,7 +3353,21 @@ function magictitle(){
         // Create icon element
         const icon = document.createElement('img');
         icon.className = 'toast-icon';
-        icon.src = "https://images.squarespace-cdn.com/content/v1/5ee52f7d9edc8a7ee635591a/8df50655-6b68-460e-ad6c-5230001b9d5a/240404+-+063944+-+001.jpg";
+	if(type == "error"){
+		icon.src = "toasticons/error.png";
+	}
+	else if(type == "info"){
+		icon.src = "toasticons/info.png";
+	}
+	else if(type == "success"){
+		icon.src = "toasticons/success.png";
+	}
+	else if(type == "save"){
+		icon.src = "toasticons/save.png";
+	}
+	else{
+		icon.src = "toasticons/info.png";
+	}
         
         // Create toast content
         const content = document.createElement('div');
