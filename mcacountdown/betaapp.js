@@ -129,7 +129,7 @@ if(parameter('cardmode')){
     document.getElementById("gear").style.display = 'none';
     document.getElementById("toolbar-notch").style.display = 'none';
     document.getElementById("countdowntitle").style.display = 'none';
-    document.getElementById("clock").style.fontSize = `10vw !important`;
+    document.getElementById("clock").style.fontSize = `10px !important`;
     document.getElementById("cookie-banner").style.display = 'none';
 }
 
@@ -1255,7 +1255,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
     document.getElementById("gear").style.display = 'none';
     document.getElementById("toolbar-notch").style.display = 'none';
     document.getElementById("countdowntitle").style.display = 'none';
-    document.getElementById("clock").style.fontSize = `10vw !important`;
+    document.getElementById("clock").style.fontSize = `10px !important`;
 }
 
 	if(parameter('progress')){ //if the user has their progress bar enabled
