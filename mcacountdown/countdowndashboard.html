@@ -306,6 +306,12 @@ function dragStart(e) {
     });
 }
 
+    document.addEventListener('visibilitychange', function () { //when the tab changes focus state
+       dragEnd();
+    }, false);
+
+window.onbeforeunload = dragend;
+
 function checkDragThreshold(moveEvent, card) {
     const moveX = moveEvent.clientX - startX;
     const moveY = moveEvent.clientY - startY;
