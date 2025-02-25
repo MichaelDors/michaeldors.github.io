@@ -310,7 +310,7 @@ function dragStart(e) {
        dragEnd();
     }, false);
 
-window.onbeforeunload = dragend;
+window.onbeforeunload = dragEnd;
 
 function checkDragThreshold(moveEvent, card) {
     const moveX = moveEvent.clientX - startX;
