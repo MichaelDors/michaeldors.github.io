@@ -3027,6 +3027,8 @@ function savetodash() {
     // Save the updated links back to localStorage
     localStorage.setItem('dashboardsaved', JSON.stringify(links));
 
+updateSaveButtonText();
+
     window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html";
 }
 
