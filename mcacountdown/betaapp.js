@@ -130,8 +130,10 @@ function unloadPage(){
 		return "Some of your changes have not been saved to Dashboard. Are you sure you want to close this page?";
 	}
 }
-        
+
+if(enablecardmode !== "1"){
 window.onbeforeunload = unloadPage;
+}
 
 if(parameter('cardmode')){
 	document.getElementById("cookie-banner").style.display = 'none';
@@ -3028,8 +3030,7 @@ function savetodash() {
     localStorage.setItem('dashboardsaved', JSON.stringify(links));
 
 updateSaveButtonText();
-
-    window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html";
+	showToast('Your Countdown was saved to Dashboard', 'success');
 }
 
 function magictitle(){
