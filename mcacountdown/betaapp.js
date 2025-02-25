@@ -62,6 +62,7 @@ function updateSaveButtonText() {
 
     // Get the current URL parameters
     const currentUrl = document.getElementById("linkinput").value;
+
     
 // Function to get sorted parameters from URL, filtering out default values
 const getUrlParams = (url) => {
@@ -124,6 +125,13 @@ const getUrlParams = (url) => {
     }
 }
 
+function unloadPage(){ 
+	if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
+		return "Some of your changes have not been saved to Dashboard. Are you sure you want to close this page?";
+	}
+}
+        
+window.onbeforeunload = unloadPage;
 
 if(parameter('cardmode')){
 	document.getElementById("cookie-banner").style.display = 'none';
