@@ -588,6 +588,14 @@ border: 1px solid rgba(255, 0, 0, 0.64);
             box-shadow: 0 0px 0 transparent;
             top: 0px;
         }
+.dependencieslink{
+	font-family: 'Dosis' , sans-serif;
+	color:#ffffff !important;
+	opacity:0.4;
+	margin-left:30px;
+	margin-bottom:10px;
+	font-size: 15px;
+}
     .a2 {
         font-family: 'Fredoka One';
         background-color: #8426ff;
