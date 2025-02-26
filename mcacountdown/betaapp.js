@@ -125,15 +125,15 @@ const getUrlParams = (url) => {
     }
 }
 
-function unloadPage(){ 
-	if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
-		return "Some of your changes have not been saved to Dashboard. Are you sure you want to close this page?";
-	}
-}
+//function unloadPage(){ 
+//	if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
+//		return "Some of your changes have not been saved to Dashboard. Are you sure you want to close this page?";
+//	}
+//}
 
-if(enablecardmode !== "1"){
-window.onbeforeunload = unloadPage;
-}
+//if(enablecardmode !== "1"){
+//window.onbeforeunload = unloadPage;
+//}
 
 if(parameter('cardmode')){
 	document.getElementById("cookie-banner").style.display = 'none';
