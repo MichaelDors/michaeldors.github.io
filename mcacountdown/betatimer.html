@@ -92,7 +92,7 @@
 
 
 <div id="progress-bar" class="progress-bar">
-	<div class="progress" id="progress" style="display:none;"></div>
+	<div class="progress" id="progress"></div>
 </div>
 
 <div class="notch-container" id="toolbar-notch">
@@ -500,10 +500,17 @@
                 <br>
                 <br>
 		<h2 style="font-family: 'Dosis';">Starting Date</h2>
-		<input class="progressdatepicker" type="datetime-local" onblur="TestProgressOptionsRemoveAtSomePoint();" />
+		<input id="progressdatepicker" class="progressdatepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
+        <button style="background:transparent; color:white; border:none; outline:none; cursor:pointer">
+            <i title="Copy link" class="fa-solid fa-circle-xmark" style="transform:scale(1.75); padding-left:10px;" onclick="resetprogressinput()"></i>
+        </button>
+        <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
+            Displays a progress bar to visualize the percent completion, if the event has a starting date
+        </p>
 		<br>
 		<br>
 		<br>
+        <div style="display:none">
 		<h2 style="font-family: 'Dosis';">Position</h2>
 		<a class="aintext selectedfontpicker"><img title="No progress bar" alt="No progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/1no.png"/></a>
                 <a class="aintext fontpicker"><img title="Bottom progress bar" alt="Bottom progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/2bottom.png"/></a>
@@ -512,7 +519,10 @@
                 <br>
                 <br>
                 <br>
-		</div>
+            </div>
+        </div>
+
+	
     <br>
     <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
         <h1><i style="color: #FE9A00" class="fa-solid fa-user-lock"></i> Personal Options</h1>
