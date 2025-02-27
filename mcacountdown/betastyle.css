@@ -1561,7 +1561,11 @@ a:hover:active {
     z-index:100000000000000;
     }
 
-.notch-container {
+.notch-container .right{
+    opacity:0;
+}
+
+.notch-container .center{
     opacity:0;
 }
 
