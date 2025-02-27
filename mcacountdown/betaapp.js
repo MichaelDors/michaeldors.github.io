@@ -228,7 +228,7 @@ if (parameter("cardmode")){
     }
 
 if(parameter('progress')){
-	document.querySelector('.progressdatepicker').value = parameter('progress');
+	//document.querySelector('.progressdatepicker').value = parameter('progress');
 	document.getElementByID("progress-bar").style.display = "";
 }
 
