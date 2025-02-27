@@ -2156,8 +2156,8 @@ margin-right: 0;
 
 .center {
 height: 45px;
-background: black;
 width: 100px;
+background-color: black;
 flex-shrink: 0;
 margin: 0 -1px; /* Small overlap with curves */
 }

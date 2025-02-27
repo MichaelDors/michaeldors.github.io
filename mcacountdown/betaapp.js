@@ -1027,6 +1027,9 @@ const countdownDate = new Date(parameter('date')).getTime();
                 document.getElementById('progress').classList.remove("progressblur");
             }
           }
+          else{
+            document.getElementById('progress-bar').style.display = "none";
+          }
   
           SetCountDowngeneral();
           }
