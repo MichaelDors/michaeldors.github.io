@@ -913,6 +913,7 @@ if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && ne
             '&atc=' + bgstring + 
             '&title=' + encodeURIComponent(cdtitle) + 
             '&confettitype=' + confettiType + 
+		'&progress=' + parameter("progress") + 
             '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
             '&schedule=' + parameter('schedule');
         window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
