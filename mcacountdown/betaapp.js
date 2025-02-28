@@ -140,7 +140,7 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
       document.getElementById("gear").style.display = 'none';
       document.getElementById("toolbar-notch").style.display = 'none';
       document.getElementById("countdowntitle").style.display = 'none';
-      document.getElementById("clock").style.fontSize = '50px';
+      document.getElementById("clock").style.fontSize = '40px';
       document.getElementById("schedule-upcomingClasses").style.display = 'none';
       document.getElementById("schedule-classTitle").style.fontSize = '20px';
       document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
@@ -1315,7 +1315,7 @@ const countdownDate = new Date(parameter('date')).getTime();
       document.getElementById("gear").style.display = 'none';
       document.getElementById("toolbar-notch").style.display = 'none';
       document.getElementById("countdowntitle").style.display = 'none';
-      document.getElementById("clock").style.fontSize = '50px';
+      document.getElementById("clock").style.fontSize = '40px';
       document.getElementById("schedule-upcomingClasses").style.display = 'none';
       document.getElementById("schedule-classTitle").style.fontSize = '20px';
       document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
