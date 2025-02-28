@@ -1983,6 +1983,7 @@ a:hover:active {
         margin-top: 10px;
         width: auto;
     }
+    
     .schedule-event-item button:hover, .schedule-exception-item button:hover {
         background-color: #c82333;
     }

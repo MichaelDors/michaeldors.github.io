@@ -140,7 +140,7 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
       document.getElementById("gear").style.display = 'none';
       document.getElementById("toolbar-notch").style.display = 'none';
       document.getElementById("countdowntitle").style.display = 'none';
-      document.getElementById("clock").style.fontSize = '50px';
+      document.getElementById("clock").style.fontSize = '40px';
       document.getElementById("schedule-upcomingClasses").style.display = 'none';
       document.getElementById("schedule-classTitle").style.fontSize = '20px';
       document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
@@ -1315,7 +1315,7 @@ const countdownDate = new Date(parameter('date')).getTime();
       document.getElementById("gear").style.display = 'none';
       document.getElementById("toolbar-notch").style.display = 'none';
       document.getElementById("countdowntitle").style.display = 'none';
-      document.getElementById("clock").style.fontSize = '50px';
+      document.getElementById("clock").style.fontSize = '40px';
       document.getElementById("schedule-upcomingClasses").style.display = 'none';
       document.getElementById("schedule-classTitle").style.fontSize = '20px';
       document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
@@ -2795,7 +2795,7 @@ if(parameter('progress')){ //if the user has their progress bar enabled
                   dayDiv.className = 'schedule-exception-day';
                   const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day];
                   dayDiv.innerHTML = `
-                      <button class="schedule-collapsible" style="font-family: Fredoka One; font-size: 20px;" onclick="schedule_toggleCollapsible(this)">${dayName}       
+                      <button class="schedule-collapsible" style="font-family: Dosis; font-size: 20px;" onclick="schedule_toggleCollapsible(this)">${dayName}       
                   <div style="position:absolute; right:15%;">
                          <a onclick="schedule_editEvent(null, true, '${day}')">Add Event</a>
                               <a class="warning" onclick="schedule_removeExceptionDay('${day}')"><i class="fa-solid fa-trash"></i></a>
