@@ -576,7 +576,27 @@ const countdownDate = new Date(parameter('date')).getTime();
                       </defs>
                   </svg>
               `;
-              // ... rest of create_sparkle function remains the same ...
+              sparkle.style.position = 'absolute';
+              sparkle.style.pointerEvents = 'none';
+              sparkle.style.left = `${x - 10}px`;
+              sparkle.style.top = `${y - 10}px`;
+              sparkle.style.transform = 'scale(1)';
+              sparkle.style.opacity = '1';
+              sparkle.style.transition = 'transform 0.8s ease-out, opacity 0.8s ease-out';
+      
+              document.body.appendChild(sparkle);
+      
+              const angle = Math.random() * 2 * Math.PI;
+              const distance = 50 + Math.random() * 30;
+              const offsetX = Math.cos(angle) * distance;
+              const offsetY = Math.sin(angle) * distance;
+      
+              requestAnimationFrame(() => {
+                  sparkle.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(0.5)`;
+                  sparkle.style.opacity = '0';
+              });
+      
+              setTimeout(() => sparkle.remove(), 1000);
           };
   
           // Only handle mouse events now (removed touch events)
