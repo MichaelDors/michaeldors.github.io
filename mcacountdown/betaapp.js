@@ -3518,3 +3518,7 @@ if(parameter('progress')){ //if the user has their progress bar enabled
         function resetprogressinput(){
             document.getElementById("progressdatepicker").value = "";
         }
+
+        function resetendsoundinput(){
+            document.getElementById("audioLink").value = "";
+        }
