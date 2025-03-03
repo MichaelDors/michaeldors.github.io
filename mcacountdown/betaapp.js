@@ -1092,6 +1092,13 @@ const countdownDate = new Date(parameter('date')).getTime();
           } //if settings is closed we perpetually scroll to the top of the tab 
   
           updateoptions();
+
+        if(getCookie('increasecontrast')){
+            document.documentElement.style.filter = 'contrast(150%)';
+        }
+        else{
+            document.documentElement.style.filter = 'contrast(100%)';
+        }
   
           if (getCookie("speed1")) { //if speed one has been chosen in the past and still has a cookie representing it
               document.getElementById("speed1").click(); //simulate a click on speed one to remember that choice
@@ -1433,6 +1440,14 @@ if(parameter('progress')){ //if the user has their progress bar enabled
               document.getElementById("memsav").classList.remove("enabled");
               document.getElementById("memsav").classList.add("disabled");
           }
+            if (getCookie("increasecontrast")) { //memory saver
+              document.getElementById("contrast").classList.add("enabled");
+              document.getElementById("contrast").classList.remove("disabled");
+          }
+          else {
+              document.getElementById("contrast").classList.remove("enabled");
+              document.getElementById("contrast").classList.add("disabled");
+          }
           if (getCookie("coce")) { //disable confetti
               document.getElementById("coce").classList.add("enabled");
               document.getElementById("coce").classList.remove("disabled");
@@ -1537,6 +1552,15 @@ if(parameter('progress')){ //if the user has their progress bar enabled
           }
           updateoptions();
       }
+
+function contrast(){ //increase contrast set or remove cookie
+    if(getCookie('increasecontrast')){
+        eraseCookie('increasecontrast');
+    }
+    else{
+        setCookie('increasecontrast', 'true', '70');
+    }
+}
   
       function soce() { //disable end sound set or remove cookie 
           if (getCookie('soce')) {
@@ -1655,6 +1679,7 @@ if(parameter('progress')){ //if the user has their progress bar enabled
           eraseCookie('hour');
           eraseCookie('cookiesAccepted');
           eraseCookie('lcdu');
+          eraseCookie('increasecontrast');
           updateoptions(); //update classes of settings buttons
   
           document.getElementById("animatedbackground").style.display = "none"; //remove animated bg
