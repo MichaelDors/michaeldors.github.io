@@ -1008,6 +1008,7 @@ const countdownDate = new Date(parameter('date')).getTime();
               document.getElementById("innergear").classList.add("hidden"); //hide inner settings icon
               document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
               document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
+            document.getElementById("progress-bar").classList.add("hidden"); //hide progress bar
               document.getElementById("body").style.overflowY = ''; //allow scrolling
               document.body.scrollTop = document.documentElement.scrollTop = 0; //scroll to top for good measure
           }
@@ -1028,6 +1029,7 @@ const countdownDate = new Date(parameter('date')).getTime();
               document.getElementById("innergear").classList.remove("hidden"); //unhide inner settings icon
               document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
               document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
+              document.getElementById("progress-bar").classList.remove("hidden"); //unhide progress bar
               document.getElementById("body").style.overflowY = 'hidden'; //don't allow scrolling
               document.body.scrollTop = document.documentElement.scrollTop = 0; //once again scroll to top for good measure
           if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
