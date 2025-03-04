@@ -270,6 +270,13 @@ function resetcookies() { //remove all saved cookies
         document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     }
 
+        if(getCookie('increasecontrast')){
+            document.documentElement.style.filter = 'contrast(150%)';
+        }
+        else{
+            document.documentElement.style.filter = 'contrast(100%)';
+        }
+
 let draggedElement = null;
 let isDragging = false;
 let startX, startY, startIndex;
