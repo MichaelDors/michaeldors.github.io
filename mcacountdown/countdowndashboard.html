@@ -172,6 +172,7 @@ function exportLinks() {
 	link.download = "dashboardsave.countdown";
 	link.click();
 	URL.revokeObjectURL(url);
+	showToast("Downloading your Dashboard save file", 'info');
 }
 
 document.addEventListener('keydown', (event) => {
@@ -699,6 +700,91 @@ document.addEventListener('drop', (event) => {
     }
 });
 
+      function showToast(message, type = 'info') {
+          const toastContainer = document.getElementById('toast-container');
+          
+          // Create toast element
+          const toast = document.createElement('div');
+          toast.className = `toast ${type}`;
+          
+          // Create icon element
+          const icon = document.createElement('img');
+          icon.className = 'toast-icon';
+      if(type == "error"){
+          icon.src = "toasticons/error.png";
+      }
+      else if(type == "info"){
+          icon.src = "toasticons/info.png";
+      }
+      else if(type == "success"){
+          icon.src = "toasticons/success.png";
+      }
+      else if(type == "save"){
+          icon.src = "toasticons/save.png";
+      }
+      else{
+          icon.src = "toasticons/info.png";
+      }
+          
+          // Create toast content
+          const content = document.createElement('div');
+          content.className = 'toast-content';
+          content.textContent = message;
+          
+          // Create close button
+          const closeButton = document.createElement('button');
+          closeButton.className = 'toast-close';
+          closeButton.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+          closeButton.onclick = () => removeToast(toast);
+          
+          // Assemble toast
+          toast.appendChild(icon);
+          toast.appendChild(content);
+          toast.appendChild(closeButton);
+          toastContainer.appendChild(toast);
+  
+          // Use setTimeout to ensure the banner is fully rendered
+          setTimeout(() => {
+              const toastHeight = toast.offsetHeight;
+              icon.style.height = `${toastHeigh}px`;
+          }, 1); // Adjust the timeout duration if necessary
+          setTimeout(() => {
+              const toastHeight = toast.offsetHeight;
+              icon.style.height = `${toastHeight}px`;
+          }, 3); // Adjust the timeout duration if necessary
+          setTimeout(() => {
+              const toastHeight = toast.offsetHeight;
+              icon.style.height = `${toastHeight}px`;
+          }, 5); // Adjust the timeout duration if necessary
+          setTimeout(() => {
+              const toastHeight = toast.offsetHeight;
+              icon.style.height = `${toastHeight}px`;
+          }, 10); // Adjust the timeout duration if necessary
+          setTimeout(() => {
+              const toastHeight = toast.offsetHeight;
+              icon.style.height = `${toastHeight}px`;
+          }, 20); // Adjust the timeout duration if necessary
+          setTimeout(() => {
+              const toastHeight = toast.offsetHeight;
+              icon.style.height = `${toastHeight}px`;
+          }, 50); // Adjust the timeout duration if necessary
+          setTimeout(() => {
+              const toastHeight = toast.offsetHeight;
+              icon.style.height = `${toastHeight}px`;
+          }, 100); // Adjust the timeout duration if necessary
+          
+          // Auto remove after 5 seconds
+          setTimeout(() => removeToast(toast), 5000);
+      }
+  
+      function removeToast(toast) {
+          toast.style.animation = 'toastslideOut 0.3s ease forwards';
+          setTimeout(() => {
+            toast.remove();
+          }, 300);
+        }
+
+
 loadLinks();
     </script>
 </body>
@@ -1161,6 +1247,92 @@ z-index: 0;
 .drag-drop-overlay i {
     font-size: 48px;
     margin-bottom: 10px;
+}
+
+#toast-container {
+position: fixed;
+top: 20px;
+right: 20px;
+z-index: 1000;
+}
+
+.toast {
+width: var(--toast-width);
+margin-bottom: 10px;
+border-radius: 12px;
+background: rgba(14, 14, 14, 0.65);
+box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+backdrop-filter: blur(12px);
+-webkit-backdrop-filter: blur(12px);
+border: 1px solid rgba(125, 125, 125, 0.3);
+display: flex;
+align-items: center;
+animation: toastslideIn 0.3s ease forwards;
+transition: all 0.3s ease;
+font-family:Dosis, sans-serif;
+}
+
+
+.toast-icon {
+margin-right: 5px;
+height:1px;
+border-top-left-radius: 12px;
+border-bottom-left-radius: 12px;
+} 
+.toast-content {
+flex-grow: 1;
+font-size: 14px;
+color: #ffffff;
+margin:16px
+}
+
+.toast-close {
+background: none;
+border: none;
+color: #ffffff;
+cursor: pointer;
+padding: 0 8px;
+margin-left:10px;
+margin-right:10px;
+font-size: 18px;
+transition: color 0.2s ease;
+}
+
+@keyframes toastslideIn {
+from {
+  transform: translateX(100%);
+filter: blur(40px);
+  opacity: 0;
+}
+to {
+  transform: translateX(0);
+filter: blur(0px);
+  opacity: 1;
+}
+}
+
+@keyframes toastslideOut {
+from {
+  transform: translateX(0);
+filter: blur(0px);
+  opacity: 1;
+}
+to {
+transform: translateX(100%);
+filter: blur(60px);
+  opacity: 0;
+}
+}
+
+@media (max-width: 768px) {
+:root {
+  --toast-width: calc(100vw - 40px);
+}
+
+#toast-container {
+  right: 50%;
+  transform: translateX(50%);
+}
 }
 </style>
 </html>
