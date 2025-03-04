@@ -175,7 +175,7 @@ function exportLinks() {
 }
 
 document.addEventListener('keydown', (event) => {
-    if (event.ctrlKey && event.key === 's') {
+    if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault(); // Prevent the default save action
         exportLinks();
         return;
