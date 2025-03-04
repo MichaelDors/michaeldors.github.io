@@ -3381,6 +3381,11 @@ function contrast(){ //increase contrast set or remove cookie
               settings();
               return;
           }
+        if (event.ctrlKey && event.key === 's') {
+            event.preventDefault(); // Prevent the default save action
+            savetodash();
+            return;
+        }
           input += event.key;
           if (input.endsWith('debug')) {
               document.getElementById('debugoptions').style.display = '';
