@@ -2173,6 +2173,12 @@ function contrast(){ //increase contrast set or remove cookie
           let linkinputfield = document.getElementById("linkinput"); //Get the value of the link input box
           navigator.clipboard.writeText(linkinputfield.value); //Save that value to clipboard
       }
+
+      //Local Shortcut copy buttom
+      function copyinputtextlocalshortcutlink() {
+          let locallinkinputfield = document.getElementById("locallinkinput"); //Get the value of the link input box
+          navigator.clipboard.writeText(locallinkinputfield.value); //Save that value to clipboard
+      }
   
       //Scrolling controls tabs box too
       const container = document.getElementById("tabs-box");
