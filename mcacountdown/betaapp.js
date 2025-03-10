@@ -955,6 +955,7 @@ const countdownDate = new Date(parameter('date')).getTime();
   
           document.getElementById("linkinput").value = refresh; //refresh the link
           document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer.html#" + encodeURIComponent(cdtitle);
+          document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth;
           makeQR(); //refresh the QR code
       }
   
