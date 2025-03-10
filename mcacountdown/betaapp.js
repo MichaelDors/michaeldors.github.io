@@ -2566,6 +2566,7 @@ function contrast(){ //increase contrast set or remove cookie
           const removeButton = document.createElement('div');
           removeButton.className = 'remove-button';
           removeButton.innerHTML = '-';
+          removeButton.title = "Remove this color";
           removeButton.onclick = function() { removeColorPicker(removeButton); };
   
           newColorPickerContainer.appendChild(newColorPicker);
