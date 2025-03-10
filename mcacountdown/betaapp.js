@@ -954,6 +954,7 @@ const countdownDate = new Date(parameter('date')).getTime();
           window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
   
           document.getElementById("linkinput").value = refresh; //refresh the link
+          document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer.html#" + encodeURIComponent(cdtitle);
           makeQR(); //refresh the QR code
       }
   
