@@ -19,7 +19,7 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
       if (urlParts.length < 2) return; // No hash present
   
       const urlTitle = urlParts.pop().toLowerCase().trim();
-      if (!urlTitle || urlTitle === 'betatimer.html' || urlTitle === 'timer.html') return;
+      if (!urlTitle || urlTitle === 'betatimer.html' || urlTitle === 'timer.html' || urlTitle === 'betatimer' || urlTitle === 'timer') return;
   
       const savedLinks = localStorage.getItem('dashboardsaved');
       if (!savedLinks) return;
@@ -400,7 +400,7 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
 
     if (urlParts.length >= 2) { // Check if there's a hash
         const urlTitle = urlParts.pop().toLowerCase().trim();
-        if (urlTitle && urlTitle !== 'betatimer.html' && urlTitle !== 'timer.html') {
+        if (urlTitle && urlTitle !== 'betatimer.html' && urlTitle !== 'timer.html' || urlTitle === 'betatimer' || urlTitle === 'timer') {
             try {
                 const links = JSON.parse(savedLinks);
                 hasMatchingCountdown = links.some(link => {
@@ -420,7 +420,7 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
     }
 
     if (!hasMatchingCountdown) {
-        window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html"; //take the user to their dashboard
+        window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard"; //take the user to their dashboard
     }
 }
           else{ //no countdowns have been saved; new user experience with Autopilot
@@ -981,7 +981,7 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
           window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
   
           document.getElementById("linkinput").value = refresh; //refresh the link
-          document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer.html#" + encodeURIComponent(cdtitle);
+          document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(cdtitle);
           document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth;
           makeQR(); //refresh the QR code
       }
@@ -2357,7 +2357,7 @@ function contrast(){ //increase contrast set or remove cookie
           icon.onload = function generateQR() {
               if (qrcodeElement.children.length === 0) {
                   new QRCode(qrcodeElement, {
-                      text: "https://michaeldors.com/mcacountdown/timer.html?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
+                      text: "https://michaeldors.com/mcacountdown/timer?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
                       width: 150,
                       height: 150,
                       colorDark: "#000000",
