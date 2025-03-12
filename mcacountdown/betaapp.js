@@ -19,7 +19,6 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
       if (urlParts.length < 2) return; // No hash present
   
       const urlTitle = urlParts.pop().toLowerCase().trim();
-      alert(urlTitle);
       if (!urlTitle || urlTitle === 'betatimer.html' || urlTitle === 'timer.html') return;
   
       const savedLinks = localStorage.getItem('dashboardsaved');
@@ -30,20 +29,25 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
   
           const matchingCountdown = links.find(link => {
               try {
+                  alert("trying");
                   const linkUrl = new URL(link.url, window.location.origin);
                   const titleParam = linkUrl.searchParams.get('title');
+                  alert(titleParam);
                   return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === urlTitle;
               } catch (e) {
+                  alert("error");
                   console.error('Error parsing URL:', e);
                   return false;
               }
           });
   
           if (matchingCountdown) {
+              alert("found matching countdown");
               window.location.href = matchingCountdown.url;
               window.location.replace(matchingCountdown.url);
           }
       } catch (e) {
+          alert("error2");
           console.error('Error parsing saved countdowns:', e);
       }
   }
