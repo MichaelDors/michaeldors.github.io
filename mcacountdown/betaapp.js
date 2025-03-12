@@ -19,6 +19,7 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
       if (urlParts.length < 2) return; // No hash present
   
       const urlTitle = urlParts.pop().toLowerCase().trim();
+      alert(urlTitle);
       if (!urlTitle || urlTitle === 'betatimer.html' || urlTitle === 'timer.html') return;
   
       const savedLinks = localStorage.getItem('dashboardsaved');
