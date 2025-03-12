@@ -29,25 +29,20 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
   
           const matchingCountdown = links.find(link => {
               try {
-                  alert("trying");
                   const linkUrl = new URL(link.url, window.location.origin);
                   const titleParam = linkUrl.searchParams.get('title');
-                  alert(titleParam);
                   return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === urlTitle;
               } catch (e) {
-                  alert("error");
                   console.error('Error parsing URL:', e);
                   return false;
               }
           });
   
           if (matchingCountdown) {
-              alert("found matching countdown");
               window.location.href = matchingCountdown.url;
               window.location.replace(matchingCountdown.url);
           }
       } catch (e) {
-          alert("error2");
           console.error('Error parsing saved countdowns:', e);
       }
   }
@@ -398,9 +393,36 @@ const countdownDate = new Date(parameter('date')).getTime();
       else { //if there is no date parameter
           const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
   
-          if((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !parameter("createnew")){ //if countdowns have been saved
-              window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html"; //take the user to their dashboard
-          }
+if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !parameter("createnew")) { //if countdowns have been saved
+    const fullUrl = window.location.href;
+    const urlParts = fullUrl.split('#');
+    let hasMatchingCountdown = false;
+
+    if (urlParts.length >= 2) { // Check if there's a hash
+        const urlTitle = urlParts.pop().toLowerCase().trim();
+        if (urlTitle && urlTitle !== 'betatimer.html' && urlTitle !== 'timer.html') {
+            try {
+                const links = JSON.parse(savedLinks);
+                hasMatchingCountdown = links.some(link => {
+                    try {
+                        const linkUrl = new URL(link.url, window.location.origin);
+                        const titleParam = linkUrl.searchParams.get('title');
+                        return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === urlTitle;
+                    } catch (e) {
+                        console.error('Error parsing URL:', e);
+                        return false;
+                    }
+                });
+            } catch (e) {
+                console.error('Error parsing saved countdowns:', e);
+            }
+        }
+    }
+
+    if (!hasMatchingCountdown) {
+        window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard.html"; //take the user to their dashboard
+    }
+}
           else{ //no countdowns have been saved; new user experience with Autopilot
               var now = new Date(); //getting the current date
               var nextyear = new Date().getFullYear() + 1; //setting up a next year variable
