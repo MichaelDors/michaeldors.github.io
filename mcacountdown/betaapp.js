@@ -31,7 +31,7 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
               try {
                   const linkUrl = new URL(link.url, window.location.origin);
                   const titleParam = linkUrl.searchParams.get('title');
-                  return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === urlTitle;
+                  return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === decodeURIComponent(urlTitle);
               } catch (e) {
                   console.error('Error parsing URL:', e);
                   return false;
@@ -407,7 +407,7 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
                     try {
                         const linkUrl = new URL(link.url, window.location.origin);
                         const titleParam = linkUrl.searchParams.get('title');
-                        return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === urlTitle;
+                        return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === decodeURIComponent(urlTitle);
                     } catch (e) {
                         console.error('Error parsing URL:', e);
                         return false;
