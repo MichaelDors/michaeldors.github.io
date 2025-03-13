@@ -1984,6 +1984,7 @@ function contrast(){ //increase contrast set or remove cookie
       }
   
           function autopilottab(){
+              showToast('Autopilot found the next holiday!', 'success');
               var now = new Date(); //getting the current date
               var nextyear = new Date().getFullYear() + 1; //setting up a next year variable
               var thisyear = new Date().getFullYear(); //setting up a this year variable
@@ -3299,14 +3300,17 @@ function contrast(){ //increase contrast set or remove cookie
                   case 'newyear':
                   document.getElementById("countdowntitle").value = "New Year's Day";
                   document.getElementById("magictitle").classList.add("magictitle-success");
+                      showToast('Autopilot found a matching event!', 'success');
                       setTimeout(function() {
                           document.getElementById("magictitle").classList.remove("magictitle-success");
                       }, 500);
+                    
                   setcountdowntitle("front"); 
                       break;
                   case 'valentines': //see NYD for docs
                   document.getElementById("countdowntitle").value = "Valentine's Day";
                   document.getElementById("magictitle").classList.add("magictitle-success");
+                      showToast('Autopilot found a matching event!', 'success');
                       setTimeout(function() {
                           document.getElementById("magictitle").classList.remove("magictitle-success");
                       }, 500);
@@ -3315,6 +3319,7 @@ function contrast(){ //increase contrast set or remove cookie
                   case 'easter': //see NYD for docs
                   document.getElementById("countdowntitle").value = "Easter";
                   document.getElementById("magictitle").classList.add("magictitle-success");
+                      showToast('Autopilot found a matching event!', 'success');
                       setTimeout(function() {
                           document.getElementById("magictitle").classList.remove("magictitle-success");
                       }, 500);
@@ -3323,6 +3328,7 @@ function contrast(){ //increase contrast set or remove cookie
                   case 'independence': //see NYD for docs
                   document.getElementById("countdowntitle").value = "Independence Day";
                   document.getElementById("magictitle").classList.add("magictitle-success");
+                      showToast('Autopilot found a matching event!', 'success');
                       setTimeout(function() {
                           document.getElementById("magictitle").classList.remove("magictitle-success");
                       }, 500);
@@ -3331,6 +3337,7 @@ function contrast(){ //increase contrast set or remove cookie
                   case 'halloween': //see NYD for docs
                   document.getElementById("countdowntitle").value = "Halloween";
                   document.getElementById("magictitle").classList.add("magictitle-success");
+                      showToast('Autopilot found a matching event!', 'success');
                       setTimeout(function() {
                           document.getElementById("magictitle").classList.remove("magictitle-success");
                       }, 500);
@@ -3339,6 +3346,7 @@ function contrast(){ //increase contrast set or remove cookie
                   case 'thanksgiving': //see NYD for docs
                   document.getElementById("countdowntitle").value = "Thanksgiving";
                   document.getElementById("magictitle").classList.add("magictitle-success");
+                      showToast('Autopilot found a matching event!', 'success');
                       setTimeout(function() {
                           document.getElementById("magictitle").classList.remove("magictitle-success");
                       }, 500);
@@ -3347,6 +3355,7 @@ function contrast(){ //increase contrast set or remove cookie
                   case 'christmas': //see NYD for docs
                   document.getElementById("countdowntitle").value = "Christmas";
                   document.getElementById("magictitle").classList.add("magictitle-success");
+                    showToast('Autopilot found a matching event!', 'success');
                       setTimeout(function() {
                           document.getElementById("magictitle").classList.remove("magictitle-success");
                       }, 500);
@@ -3355,7 +3364,7 @@ function contrast(){ //increase contrast set or remove cookie
                   default:
                       // handle cases where nextHoliday.name doesn't match any of the above
                       console.error('Magic Title did not find a matching holiday.');
-                      showToast('Autopilot did not find an event matching that date', 'error')
+                      showToast('Autopilot did not find an event matching that date', 'error');
                       document.getElementById("magictitle").classList.add("magictitle-failed");
                       setTimeout(function() {
                           document.getElementById("magictitle").classList.remove("magictitle-failed");
