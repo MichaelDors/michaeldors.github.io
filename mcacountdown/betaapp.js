@@ -940,10 +940,13 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
           
           if(cdtitle){
               document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + cdtitle);
+              document.getElementById('localshortcutcontainerdiv').style.display = '';
           }
           else{
               document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown - Michael Dors');
+              document.getElementById('localshortcutcontainerdiv').style.display = 'none';
           }
+          
   
           if(countDownDate.getMonth() === 11 && countDownDate.getDate() === 25) { // December is month 11 (0-based)
               document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/christmasshare.jpg');
