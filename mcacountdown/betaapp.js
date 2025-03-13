@@ -947,11 +947,11 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
 
           if(cdtitle && ((document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update') || document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-circle-check"></i> Saved')){
               document.getElementById('localshortcutcontainerdiv').style.display = '';
-              document.getElementById('qrcodecontainerdiv').style.marginBottom = '20px';
+              document.getElementById('qrcodelinkcautiontext').style.marginBottom = '50px';
           }
           else{
               document.getElementById('localshortcutcontainerdiv').style.display = 'none';
-              document.getElementById('qrcodecontainerdiv').style.marginBottom = '125px';
+              document.getElementById('qrcodelinkcautiontext').style.marginBottom = '125px';
           }
           
   
@@ -3178,6 +3178,7 @@ function contrast(){ //increase contrast set or remove cookie
   
   updateSaveButtonText();
       showToast('Your Countdown was saved to Dashboard', 'success');
+      SetCountDowngeneral();
   }
   
   function magictitle(){
