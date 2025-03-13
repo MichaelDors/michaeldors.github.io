@@ -982,7 +982,9 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
   
           document.getElementById("linkinput").value = refresh; //refresh the link
           document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(cdtitle);
+          if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
           document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth;
+          }
           makeQR(); //refresh the QR code
       }
   
