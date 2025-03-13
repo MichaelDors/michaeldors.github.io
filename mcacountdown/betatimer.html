@@ -301,7 +301,7 @@
 
                 <input id="linkinput" class="input" />
                 <button style="background:transparent; color:white; border:none; outline:none; cursor:pointer">
-                    <i title="Copy link" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlink()"></i>
+                    <i title="Copy link" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlink(); showToast('Shareable link copied', 'success');"></i>
                 </button>
                 <br />
                 <br />
@@ -312,7 +312,7 @@
                         <p style="font-family: 'Dosis', sans-serif; color:black; font-size:16px; line-height:0.9">
                             Scan on most camera apps<br />to go to the countdown.
                         </p>
-                        <a onmouseup="downloadQR()"><i class="fa-solid fa-download"></i> Download</a>
+                        <a onmouseup="downloadQR(); showToast('Downloading QR Code', 'success');"><i class="fa-solid fa-download"></i> Download</a>
                     </div>
 
                 </div>
@@ -326,7 +326,7 @@
                         </p>
 			<input id="locallinkinput" class="localshortcutinput" />
                 	<button style="background:transparent; color:white; border:none; outline:none; cursor:pointer">
-                    		<i title="Copy Local Shortcut" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px; color:#000000;" onclick="copyinputtextlocalshortcutlink()"></i>
+                    		<i title="Copy Local Shortcut" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px; color:#000000;" onclick="copyinputtextlocalshortcutlink(); showToast('Local Shortcut link copied', 'success');"></i>
                 	</button>
 			<br>
 			<br>
