@@ -940,11 +940,18 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
           
           if(cdtitle){
               document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + cdtitle);
-              document.getElementById('localshortcutcontainerdiv').style.display = '';
           }
           else{
               document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown - Michael Dors');
+          }
+
+          if(cdtitle && ((document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update') || document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-circle-check"></i> Saved')){
+              document.getElementById('localshortcutcontainerdiv').style.display = '';
+              document.getElementById('qrcodecontainerdiv').style.marginBottom = '20px';
+          }
+          else{
               document.getElementById('localshortcutcontainerdiv').style.display = 'none';
+              document.getElementById('qrcodecontainerdiv').style.marginBottom = '125px';
           }
           
   
