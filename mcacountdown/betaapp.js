@@ -3009,12 +3009,15 @@ function contrast(){ //increase contrast set or remove cookie
                   const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHours, startMinutes);
                   const timeUntilStart = startTime - now;
                   const minutesUntilStart = Math.floor(timeUntilStart / 60000);
+                  const formattedTimeUntilStart = minutesUntilStart >= 60 ? 
+                    `${Math.floor(minutesUntilStart / 60)}:${String(minutesUntilStart % 60).padStart(2, '0')}` : 
+                    `${minutesUntilStart} mins`;
                   const upcomingEl = document.createElement('div');
                   upcomingEl.className = 'schedule-upcoming-class';
                   upcomingEl.innerHTML = `
                       <div class="schedule-upcoming-class-title">${event.title}</div>
                       <div class="schedule-upcoming-class-time">
-                          <div><i class="fa-regular fa-clock"></i> In ${minutesUntilStart} min</div>
+                          <div><i class="fa-regular fa-clock"></i> In ${formattedTimeUntilStart}</div>
                           <div><i class="fa-regular fa-calendar"></i> ${schedule_formatTime(event.startTime)} - ${schedule_formatTime(event.endTime)}</div>
                       </div>
                   `;
