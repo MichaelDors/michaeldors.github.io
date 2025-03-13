@@ -1981,6 +1981,59 @@ a:hover:active {
     .schedule-form-group {
         margin-bottom: 15px;
     }
+    #schedule-exceptionDay{
+        font-family: 'Fredoka One';
+        background-color: #8426ff;
+        text-decoration: none;
+        color: white;
+        box-shadow: 0 7px 0 #4d00b2;
+        border-radius: 20px;
+        border-top-right-radius: 0px;
+        border-bottom-right-radius: 0px;
+        padding: 20px;
+        padding-right:100px;
+        user-select: none;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: 100;
+        margin: 0px 0px 25px 5px;
+        display: inline-block;
+         -webkit-appearance: none;
+    -moz-appearance: none; 
+    -webkit-appearance: none; 
+    appearance: none;
+    transition:none;
+    cursor:row-resize;
+    background: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gR2VuZXJhdG9yOiBBZG9iZSBJbGx1c3RyYXRvciAyMC4wLjAsIFNWRyBFeHBvcnQgUGx1Zy1JbiAuIFNWRyBWZXJzaW9uOiA2LjAwIEJ1aWxkIDApICAtLT4NCjxzdmcgdmVyc2lvbj0iMS4xIiBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeD0iMHB4IiB5PSIwcHgiDQoJIHZpZXdCb3g9IjAgMCA0LjkgMTAiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDQuOSAxMDsiIHhtbDpzcGFjZT0icHJlc2VydmUiPg0KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4NCgkuc3Qwe2ZpbGw6I2ZmZmZmZjt9DQo8L3N0eWxlPg0KPHRpdGxlPmFycm93czwvdGl0bGU+DQo8cG9seWdvbiBjbGFzcz0ic3QwIiBwb2ludHM9IjEuNCw0LjcgMi41LDMuMiAzLjUsNC43ICIvPg0KPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIzLjUsNS4zIDIuNSw2LjggMS40LDUuMyAiLz4NCjwvc3ZnPg==) no-repeat 95% 50%;
+    }
+
+
+    #schedule-addExceptionBtn{
+transform: translateX(-10px);
+outline: 1px solid #8426ff;
+    }
+
+    #schedule-addExceptionBtn:active{
+        transform: translateX(-10px);
+outline: 1px solid #8426ff;
+    }
+
+    .schedule-form-group:hover #schedule-exceptionDay,
+    .schedule-form-group:hover #schedule-addExceptionBtn {
+        position: relative;
+        top: 4px;
+        box-shadow: 0 5px 0 #4d00b2;
+        display: inline-block;
+    }
+    
+    .schedule-form-group:hover #schedule-exceptionDay:active,
+    .schedule-form-group:hover #schedule-addExceptionBtn:active {
+        position: relative;
+        top: 9px;
+        box-shadow: none;
+        display: inline-block;
+    }
+    
     #schedule-eventList, #schedule-exceptionList {
         list-style-type: none;
         padding: 0;
@@ -2032,6 +2085,7 @@ a:hover:active {
         transition: max-height 0.2s ease-out;
         background-color: transparent;
         outline: 0px solid #8426ff;
+        margin-bottom:35px;
     }
     .active + .schedule-content {
         padding: 0 18px;

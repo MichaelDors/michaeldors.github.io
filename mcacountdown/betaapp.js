@@ -2891,13 +2891,11 @@ function contrast(){ //increase contrast set or remove cookie
                   dayDiv.className = 'schedule-exception-day';
                   const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][day];
                   dayDiv.innerHTML = `
-                      <button class="schedule-collapsible" style="font-family: Dosis; font-size: 20px;" onclick="schedule_toggleCollapsible(this)">${dayName}       
-                  <div style="position:absolute; right:15%;">
-                         <a onclick="schedule_editEvent(null, true, '${day}')">Add Event</a>
-                              <a class="warning" onclick="schedule_removeExceptionDay('${day}')"><i class="fa-solid fa-trash"></i></a>
-                     </div>
-              </button>
+                      <button class="schedule-collapsible" style="font-family: Dosis; font-size: 20px;" onclick="schedule_toggleCollapsible(this)">${dayName}</button>
                       <div class="schedule-content">
+                      <h1>${dayName} Exception</h1>
+                        <a onclick="schedule_editEvent(null, true, '${day}')"><i class="fa-solid fa-plus-circle"></i> Add Event</a>
+                        <a class="warning" onclick="schedule_removeExceptionDay('${day}')"><i class="fa-solid fa-trash"></i> Remove Exception Day</a>
                           <br>
                           <br>
                           <ul style="list-style-type:none; margin:0; padding:0;">
@@ -3032,7 +3030,7 @@ function contrast(){ //increase contrast set or remove cookie
               const tomorrowSchedule = schedule_getScheduleForDay(tomorrow);
   
               if (tomorrowSchedule.length === 0) {
-                  document.getElementById('schedule-classTitle').innerHTML = '<i class="fa-solid fa-calendar-check"></i> Enjoy your day!<p>There are no events on your schedule- enjoy the free time!</p>';
+                  document.getElementById('schedule-classTitle').innerHTML = '<i class="fa-solid fa-calendar-check"></i> Enjoy your time!<p style="font-family:Dosis;">There are no events on your schedule right now</p>';
                   document.getElementById('schedule-timeRemaining').textContent = '';
                   document.getElementById('schedule-remainingText').textContent = '';
                   document.getElementById('schedule-progress').style.width = '0%';
