@@ -36,16 +36,25 @@
   gtag('config', 'G-LCNP5E1F65');
 </script>
 <body>
+    <div class="notch-container" id="toolbar-notch">
+        <svg class="curve left" viewBox="0 0 80 45" preserveAspectRatio="none">
+          <path d="M80,0 L80,45 L0,45 C30,45 50,0 80,0" fill="black"/>
+        </svg>
+        <div class="center"></div>
+        <svg class="curve right" viewBox="0 0 80 45" preserveAspectRatio="none">
+          <path d="M0,0 C30,0 50,45 80,45 L0,45 L0,0" fill="black"/>
+        </svg>
+      </div>
     <div class="container">
         <div id="linksContainer" class="links-container">
         </div>
 
 
         <div class="input-container">
-            <a title="Create a new Countdown" href="https://michaeldors.com/mcacountdown/betatimer?createnew=1" id="newcountdownbutton"><i class="fa-solid fa-circle-plus"></i> New Countdown</a>
-                <a title="Import a .countdown file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i> Import</a>
-                <a title="Export as a .countdown file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i> Export</a>
-                <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
+            <a title="Create a new Countdown" href="https://michaeldors.com/mcacountdown/betatimer?createnew=1" id="newcountdownbutton"><i class="fa-solid fa-circle-plus"></i></a>
+                <a title="Import a .countdown file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i></a>
+                <a title="Export as a .countdown file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i></a>
+                <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i></a>
             <input type="file" id="hiddenFileInput" accept=".countdown" style="display: none;">
             </div>
 
@@ -827,9 +836,18 @@ h1 {
 }
 
 .input-container {
-    position:absolute;
-    bottom:0;
-    left:0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin: 0px 0;
+    flex-wrap: wrap;
+    bottom:15px;
+    position: absolute;
+    z-index: 1000000000000000;
+    left:50%;
+    transform: translateX(-50%);
+    width:fit-content;
 }
 
 input, button {
@@ -966,176 +984,55 @@ z-index: 0;
     }
 
     .warning {
-        font-family: 'Fredoka One';
         background-color: #ff5353;
-        text-decoration: none;
-        color: #ffffff;
-        box-shadow: 0 7px 0 #d00000;
-        border-radius: 20px;
-        padding: 20px;
-        user-select: none;
-        cursor: pointer;
-        font-size: 20px;
-        font-weight: 100;
     }
 
-        .warning:hover {
-            position: relative;
-            box-shadow: 0 5px 0 #d00000;
-        }
-
-            .warning:hover:active {
-                position: relative;
-                box-shadow: none;
-            }
 
     #savedash {
-        font-family: 'Fredoka One';
         background-color: #FF9900;
-        text-decoration: none;
-        color: #ffffff;
-        box-shadow: 0 7px 0 #bf7200;
-        border-radius: 20px;
-        padding: 20px;
-        user-select: none;
-        cursor: pointer;
-        font-size: 20px;
-        font-weight: 100;
     }
 
-        #savedash:hover {
-            position: relative;
-            box-shadow: 0 5px 0 #bf7200;
-        }
-
-            #savedash:hover:active {
-                position: relative;
-                box-shadow: none;
-            }
 
         #sharebuttonoptions {
-        font-family: 'Fredoka One';
         background-color: #3AB6FF;
-        text-decoration: none;
-        color: #ffffff;
-        box-shadow: 0 7px 0 #1374ad;
-        border-radius: 20px;
-        padding: 20px;
-        user-select: none;
-        cursor: pointer;
-        font-size: 20px;
-        font-weight: 100;
     }
 
-        #sharebuttonoptions:hover {
-            position: relative;
-            box-shadow: 0 5px 0 #1374ad;
-        }
-
-            #sharebuttonoptions:hover:active {
-                position: relative;
-                box-shadow: none;
-            }
 
 
 	        #newcountdownbutton {
-       font-family: 'Fredoka One';
         background-color: #00ff5e;
-        text-decoration: none;
-        color: black;
-        box-shadow: 0 7px 0 #00b041;
-        border-radius: 20px;
-        padding: 20px;
-        user-select: none;
-        cursor: pointer;
-        font-size: 20px;
-        font-weight: 100;
+        color:black;
     }
 
-        #newcountdownbutton:hover {
-            position: relative;
-            box-shadow: 0 5px 0 #00b041;
-        }
-
-            #newcountdownbutton:hover:active {
-                position: relative;
-                box-shadow: none;
-            }
 
 	#dashboardbuttonoptions{
-		font-family: 'Fredoka One';
         	background-color: #00ff5e;
-        text-decoration: none;
-        color: #ffffff;
-        box-shadow: 0 7px 0 #00b041;
-        border-radius: 20px;
-        padding: 20px;
-        user-select: none;
-        cursor: pointer;
-        font-size: 20px;
-        font-weight: 100;
 	}
 
-	        #dashboardbuttonoptions:hover {
-            position: relative;
-            box-shadow: 0 5px 0 #00b041;
-        }
-
-            #dashboardbuttonoptions:hover:active {
-                position: relative;
-                box-shadow: none;
-            }
 
             .betabutton {
-        font-family: 'Fredoka One';
         background: linear-gradient(#8c52ff, #ff914d);
-        text-decoration: none;
-        color: white;
-        box-shadow: 0 7px 0 #c67700;
-        border-radius: 20px;
-        padding: 20px;
-        user-select: none;
-        cursor: pointer;
-        font-size: 20px;
-        font-weight: 100;
     }
 
-        .betabutton:hover {
-            position: relative;
-            box-shadow: 0 5px 0 #c67700;
-        }
-
-            .betabutton:hover:active {
-                position: relative;
-                box-shadow: none;
-            }
 
         a {
         font-family: 'Fredoka One';
         background-color: #8426ff;
         text-decoration: none;
         color: white;
-        box-shadow: 0 7px 0 #4d00b2;
-        border-radius: 20px;
-        padding: 20px;
+        padding: 15px;
+        border-radius: 1000px;
         user-select: none;
         cursor: pointer;
         font-size: 20px;
         font-weight: 100;
-        margin: 0px 5px 25px 5px;
         display: inline-block;
+        width:30px;
+        height:30px;
     }
-    a:hover {
-        position: relative;
-        top: 4px;
-        box-shadow: 0 5px 0 #4d00b2;
-        display: inline-block;
-    }
-        a:hover:active {
-        position: relative;
-        top: 9px;
-        box-shadow: none;
-        display: inline-block;
+
+    a i{
+        padding-top:5px;
     }
 
     #threedtrash {
@@ -1299,6 +1196,42 @@ margin-left:10px;
 margin-right:10px;
 font-size: 18px;
 transition: color 0.2s ease;
+}
+
+    .notch-container {
+        z-index:10000000000;
+        display: flex;
+        align-items: flex-end;
+        height: 90px;
+        width: 520px;
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0; /* Removes any potential whitespace gaps */
+    }
+.curve {
+width: 161px; /* Slight overlap to prevent gaps */
+height: 90px;
+flex-shrink: 0;
+margin-right: -1px; /* Compensate for overlap */
+}
+
+.curve:last-child {
+margin-right: 0;
+}
+
+.center {
+height: 90px;
+width: 200px;
+background-color: black;
+flex-shrink: 0;
+margin: 0 -1px; /* Small overlap with curves */
+}
+
+/* Update SVG paths for smoother curves */
+.left path, .right path {
+transition: all 0.3s ease;
 }
 
 @keyframes toastslideIn {
