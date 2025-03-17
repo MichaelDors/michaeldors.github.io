@@ -275,7 +275,7 @@
                     <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
                     <ul class="tabs-box" id="tabs-box">
                         <!--<li id="customtab" class="tab active">Custom</li>-->
-			<li class="debugtab" id="onemintab" style="display:none" onclick="const datepicker = document.querySelector('.datepicker'); const now = new Date(); now.setMinutes(now.getMinutes() + 1); const localISOTime = now.toISOString().slice(0,16); datepicker.value = localISOTime; SetCountDowngeneral();">One Minute</li>
+			<li class="debugtab" id="onemintab" style="display:none" onclick="const datepicker = document.querySelector('.datepicker'); const now = new Date(); now.setMinutes(now.getMinutes() + 1); const offset = now.getTimezoneOffset(); now.setMinutes(now.getMinutes() - offset); const localISOTime = now.toISOString().slice(0, 16); datepicker.value = localISOTime; setCountDowngeneral();">One Minute</li>
                         <li title="Timekeeper will automatically pick the next upcoming holiday" id="autopilottab" class="autopilottab" onclick="autopilottab(); autopilotsparkle(event); SetCountDowngeneral();"><i class="fa-solid fa-business-time"></i> Second Sense</li>
                         <li id="endtab" class="mcatab" onclick="MES(); SetCountDowngeneral();">MCA</li>
                         <li id="nydtab" class="tab" onclick="NYD(); SetCountDowngeneral();">New Year's Day</li>
