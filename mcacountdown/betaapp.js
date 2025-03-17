@@ -1440,12 +1440,12 @@ if(parameter('progress')){ //if the user has their progress bar enabled
               }, 1000);
   
   
-                startconfetti();
+                startConfettiManagerAnimation();
           }
   
       }, 1);
 
-    function startconfetti(){
+    function startConfettiManagerAnimation(){
                       if (!getCookie('coce')) { //if disable confetti is not enabled, 
                   if(confettiType == "1"){ //default confetti
                       if(parameter("atc") == "none"){
@@ -3053,6 +3053,7 @@ function contrast(){ //increase contrast set or remove cookie
                   document.getElementById('schedule-remainingText').textContent = '';
                   document.getElementById('schedule-progress').style.width = '0%';
                   document.getElementById('schedule-upcomingClasses').innerHTML = '';
+                  startConfettiManagerAnimation();
                   return;
               }
   
