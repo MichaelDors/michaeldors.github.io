@@ -3077,7 +3077,9 @@ function contrast(){ //increase contrast set or remove cookie
                   document.getElementById('schedule-remainingText').textContent = '';
                   document.getElementById('schedule-progress').style.width = '0%';
                   document.getElementById('schedule-upcomingClasses').innerHTML = '';
-                  startConfettiManagerAnimation();
+                  if(parameter("schedule") !== "null" && parameter("schedule")){
+                      startConfettiManagerAnimation();
+                  }
                   return;
               }
   
