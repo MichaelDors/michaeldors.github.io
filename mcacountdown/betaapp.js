@@ -3499,6 +3499,7 @@ function contrast(){ //increase contrast set or remove cookie
           input += event.key;
           if (input.endsWith('debug')) {
               document.getElementById('debugoptions').style.display = '';
+              document.getElementById('onemintab').style.display = '';
               input = ''; // Reset the input
           }
       };
