@@ -3081,6 +3081,8 @@ function contrast(){ //increase contrast set or remove cookie
                       startConfettiManagerAnimation();
                   }
                   return;
+              }else{
+                  stopConfettiManagerAnimation();
               }
   
               const firstEvent = tomorrowSchedule[0];
