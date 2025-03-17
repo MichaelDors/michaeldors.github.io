@@ -140,7 +140,11 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
       document.getElementById("gear").style.display = 'none';
       document.getElementById("toolbar-notch").style.display = 'none';
       document.getElementById("countdowntitle").style.display = 'none';
-      document.getElementById("clock").style.fontSize = '40px';
+      if (getCookie("lcdu")) {
+          document.getElementById("clock").style.fontSize = '30px';
+      }else{
+          document.getElementById("clock").style.fontSize = '40px';
+      }
       document.getElementById("schedule-upcomingClasses").style.display = 'none';
       document.getElementById("schedule-classTitle").style.fontSize = '20px';
       document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
@@ -1385,7 +1389,11 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
       document.getElementById("gear").style.display = 'none';
       document.getElementById("toolbar-notch").style.display = 'none';
       document.getElementById("countdowntitle").style.display = 'none';
-      document.getElementById("clock").style.fontSize = '40px';
+      if (getCookie("lcdu")) {
+          document.getElementById("clock").style.fontSize = '30px';
+      }else{
+          document.getElementById("clock").style.fontSize = '40px';
+      }
       document.getElementById("schedule-upcomingClasses").style.display = 'none';
       document.getElementById("schedule-classTitle").style.fontSize = '20px';
       document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
