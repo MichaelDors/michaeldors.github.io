@@ -1440,7 +1440,13 @@ if(parameter('progress')){ //if the user has their progress bar enabled
               }, 1000);
   
   
-              if (!getCookie('coce')) { //if disable confetti is not enabled, 
+                startconfetti();
+          }
+  
+      }, 1);
+
+    function startconfetti(){
+                      if (!getCookie('coce')) { //if disable confetti is not enabled, 
                   if(confettiType == "1"){ //default confetti
                       if(parameter("atc") == "none"){
                       const colorPickers = document.querySelectorAll('.colorpicker');
@@ -1470,11 +1476,7 @@ if(parameter('progress')){ //if the user has their progress bar enabled
                       confettiManager.createMultipleParticles('emoji', confettiEmoji);
                   }
               }
-          }
-  
-  
-  
-      }, 1);
+    }
   
       function finishedcountdownend() {
           window.location.href = "http://countdown.michaeldors.com"; //used on the x mark for confetti, makes a new countdown
