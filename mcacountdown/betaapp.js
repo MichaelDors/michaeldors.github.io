@@ -2975,7 +2975,11 @@ function contrast(){ //increase contrast set or remove cookie
                       const timeUntilStart = currentEvent.startTime - now;
                       const minutesUntilStart = Math.floor(timeUntilStart / 60000);
                       const secondsUntilStart = Math.floor((timeUntilStart % 60000) / 1000);
-                      document.getElementById('schedule-timeRemaining').textContent = `${minutesUntilStart}:${secondsUntilStart.toString().padStart(2, '0')}`;
+                      if (!getCookie("lcdu")) {
+                          document.getElementById('schedule-timeRemaining').textContent = `${minutesUntilStart}:${secondsUntilStart.toString().padStart(2, '0')}`;
+                      }else{
+                          document.getElementById('schedule-timeRemaining').textContent = `${minutesUntilStart}m ${secondsUntilStart.toString().padStart(2, '0')}s`;
+                      }
                       document.getElementById('schedule-remainingText').textContent = 'starting';
                       document.getElementById('schedule-progress').style.width = '0%';
                       document.title = "Event Starting Soon";
@@ -2987,7 +2991,11 @@ function contrast(){ //increase contrast set or remove cookie
   
                       const minutes = Math.floor(remainingTime / 60000);
                       const seconds = Math.floor((remainingTime % 60000) / 1000);
-                      document.getElementById('schedule-timeRemaining').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                      if (!getCookie("lcdu")) {
+                          document.getElementById('schedule-timeRemaining').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                      } else{
+                          document.getElementById('schedule-timeRemaining').textContent = `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+                      }
                       document.getElementById('schedule-remainingText').textContent = 'remaining';
               if(Math.round(remainingTime/60000) > 1){
                       document.title = currentEvent.title + " | " + Math.round(remainingTime/60000) + " mins remaining";
