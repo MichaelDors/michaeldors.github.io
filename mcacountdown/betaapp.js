@@ -136,7 +136,11 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
   //}
   
   if(parameter('cardmode')){
-      document.getElementById("cookie-banner").style.display = 'none';
+    cardmodemanager();
+  }
+
+function cardmodemanager(){
+    document.getElementById("cookie-banner").style.display = 'none';
       document.getElementById("gear").style.display = 'none';
       document.getElementById("toolbar-notch").style.display = 'none';
       document.getElementById("countdowntitle").style.display = 'none';
@@ -149,7 +153,7 @@ if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
       document.getElementById("schedule-classTitle").style.fontSize = '20px';
       document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
       document.getElementById("schedule-remainingText").style.display = 'none';
-  }
+}
   
   window.onload = function() {
       const cookiebanner = document.getElementById('cookie-banner');
@@ -1403,20 +1407,8 @@ class ConfettiManager {
               }
           }
   
-      if(enablecardmode == "1"){
-      document.getElementById("cookie-banner").style.display = 'none';
-      document.getElementById("gear").style.display = 'none';
-      document.getElementById("toolbar-notch").style.display = 'none';
-      document.getElementById("countdowntitle").style.display = 'none';
-      if (getCookie("lcdu")) {
-          document.getElementById("clock").style.fontSize = '30px';
-      }else{
-          document.getElementById("clock").style.fontSize = '40px';
-      }
-      document.getElementById("schedule-upcomingClasses").style.display = 'none';
-      document.getElementById("schedule-classTitle").style.fontSize = '20px';
-      document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
-      document.getElementById("schedule-remainingText").style.display = 'none';
+if(enablecardmode == "1"){
+     cardmodemanager();
   }
   
 if(parameter('progress')){ //if the user has their progress bar enabled
