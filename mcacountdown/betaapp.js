@@ -3054,7 +3054,11 @@ function contrast(){ //increase contrast set or remove cookie
               const minutesUntilStart = Math.floor((timeUntilStart % 3600000) / 60000);
   
               document.getElementById('schedule-classTitle').textContent = `${firstEvent.title}`;
-              document.getElementById('schedule-timeRemaining').textContent = `${hoursUntilStart}:${minutesUntilStart.toString().padStart(2, '0')}`;
+              if (!getCookie("lcdu")) {
+                  document.getElementById('schedule-timeRemaining').textContent = `${hoursUntilStart}:${minutesUntilStart.toString().padStart(2, '0')}`;
+              }else{
+                  document.getElementById('schedule-timeRemaining').textContent = `${hoursUntilStart}h ${minutesUntilStart.toString().padStart(2, '0')}m`;
+              }
               document.getElementById('schedule-remainingText').textContent = 'starting';
               document.getElementById('schedule-progress').style.width = '0%';
   
