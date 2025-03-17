@@ -686,81 +686,100 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
   }else{
       document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/defaultshare.jpg');
   }
-  
-      //confetti groundwork for snowflakes and emoji
-      class ConfettiManager {
-              createParticle(type, content) {
-                  const confettiParticle = document.createElement('div');
-                  confettiParticle.style.position = 'fixed';
-                  confettiParticle.style.pointerEvents = 'none';
-                  confettiParticle.style.zIndex = '1000';
-                  
-                  const size = Math.random() * 20 + 10;
-                  confettiParticle.style.width = `${size}px`;
-                  confettiParticle.style.height = `${size}px`;
-                  
-                  const startX = Math.random() * window.innerWidth;
-                  confettiParticle.style.left = `${startX}px`;
-                  confettiParticle.style.top = '-20px';
-                  
-                  switch (type) {
-                      case 'snowflake':
-                          confettiParticle.innerHTML = '<i class="fa-regular fa-snowflake"></i>';
-                          const snowflakered = Math.floor(Math.random() * 50); // Low red for a blue tone (0-49)
-                          const snowflakegreen = Math.floor(Math.random() * 100) + 150; // Moderate green for a soft blue (150-249)
-                          const snowflakeblue = Math.floor(Math.random() * 56) + 200; // High blue for brightness (200-255)
-                          
-                              confettiParticle.style.color=`rgb(${snowflakered}, ${snowflakegreen}, ${snowflakeblue})`;
-                              confettiParticle.style.fontSize = `${size}px`;
-                          break;
-                      case 'emoji':
-                          const emojiArray = Array.from(content); // Convert the content to an array of characters
-                          confettiParticle.innerHTML = emojiArray.length > 1 ? emojiArray[Math.floor(Math.random() * emojiArray.length)] : content;
-                          confettiParticle.style.fontSize = `${size}px`;
-                          confettiParticle.style.color = `#FFFFFF`;
-                          confettiParticle.style.fontFamily = `Fredoka One`;
-                      break;
-                  }
-                  
-                  document.body.appendChild(confettiParticle);
-                  return confettiParticle;
-              }
-  
-              animateParticle(confettiParticle, type) {
-                  const duration = Math.random() * 2000 + 3000;
-                  const startX = parseFloat(confettiParticle.style.left);
-                  const amplitude = Math.random() * 100 + 50;
-                  
-                  const keyframes = [
-                      { 
-                          transform: 'translate(0, 0)',
-                          opacity: 1 
-                      },
-                      { 
-                          transform: type === 'bubble' 
-                              ? `translate(${Math.sin(Math.random() * Math.PI) * amplitude}px, -${window.innerHeight}px)` 
-                              : `translate(${Math.sin(Math.random() * Math.PI) * amplitude}px, ${window.innerHeight}px)`,
-                          opacity: 0 
-                      }
-                  ];
-  
-                  const animation = confettiParticle.animate(keyframes, {
-                      duration,
-                      easing: type === 'bubble' ? 'ease-in' : 'ease-out',
-                  });
-  
-                  animation.onfinish = () => confettiParticle.remove();
-              }
-  
-              createMultipleParticles(type, content) {
-                  const createParticleLoop = () => {
-                      const confettiParticle = this.createParticle(type, content);
-                      this.animateParticle(confettiParticle, type);
-                      setTimeout(createParticleLoop, Math.random() * 200);
-                  };
-                  createParticleLoop();
-              }
-          }
+//confetti groundwork for snowflakes and emoji
+class ConfettiManager {
+    constructor() {
+        this.particleTimeouts = [];
+        this.isRunning = false;
+    }
+
+    createParticle(type, content) {
+        const confettiParticle = document.createElement('div');
+        confettiParticle.style.position = 'fixed';
+        confettiParticle.style.pointerEvents = 'none';
+        confettiParticle.style.zIndex = '1000';
+
+        const size = Math.random() * 20 + 10;
+        confettiParticle.style.width = `${size}px`;
+        confettiParticle.style.height = `${size}px`;
+
+        const startX = Math.random() * window.innerWidth;
+        confettiParticle.style.left = `${startX}px`;
+        confettiParticle.style.top = '-20px';
+
+        switch (type) {
+            case 'snowflake':
+                confettiParticle.innerHTML = '<i class="fa-regular fa-snowflake"></i>';
+                const snowflakered = Math.floor(Math.random() * 50); // Low red for a blue tone (0-49)
+                const snowflakegreen = Math.floor(Math.random() * 100) + 150; // Moderate green for a soft blue (150-249)
+                const snowflakeblue = Math.floor(Math.random() * 56) + 200; // High blue for brightness (200-255)
+                
+                confettiParticle.style.color = `rgb(${snowflakered}, ${snowflakegreen}, ${snowflakeblue})`;
+                confettiParticle.style.fontSize = `${size}px`;
+                break;
+            case 'emoji':
+                const emojiArray = Array.from(content); // Convert the content to an array of characters
+                confettiParticle.innerHTML = emojiArray.length > 1 ? emojiArray[Math.floor(Math.random() * emojiArray.length)] : content;
+                confettiParticle.style.fontSize = `${size}px`;
+                confettiParticle.style.color = `#FFFFFF`;
+                confettiParticle.style.fontFamily = `Fredoka One`;
+                break;
+        }
+
+        document.body.appendChild(confettiParticle);
+        return confettiParticle;
+    }
+
+    animateParticle(confettiParticle, type) {
+        const duration = Math.random() * 2000 + 3000;
+        const startX = parseFloat(confettiParticle.style.left);
+        const amplitude = Math.random() * 100 + 50;
+
+        const keyframes = [
+            { 
+                transform: 'translate(0, 0)',
+                opacity: 1 
+            },
+            { 
+                transform: type === 'bubble' 
+                    ? `translate(${Math.sin(Math.random() * Math.PI) * amplitude}px, -${window.innerHeight}px)` 
+                    : `translate(${Math.sin(Math.random() * Math.PI) * amplitude}px, ${window.innerHeight}px)`,
+                opacity: 0 
+            }
+        ];
+
+        const animation = confettiParticle.animate(keyframes, {
+            duration,
+            easing: type === 'bubble' ? 'ease-in' : 'ease-out',
+        });
+
+        animation.onfinish = () => confettiParticle.remove();
+    }
+
+    createMultipleParticles(type, content) {
+        this.isRunning = true;
+
+        const createParticleLoop = () => {
+            if (!this.isRunning) {
+                return;
+            }
+
+            const confettiParticle = this.createParticle(type, content);
+            this.animateParticle(confettiParticle, type);
+
+            const timeoutId = setTimeout(createParticleLoop, Math.random() * 200);
+            this.particleTimeouts.push(timeoutId);
+        };
+
+        createParticleLoop();
+    }
+
+    stopParticles() {
+        this.isRunning = false;
+        this.particleTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+        this.particleTimeouts = [];
+    }
+}
   
           const confettiManager = new ConfettiManager();
   
@@ -1444,6 +1463,11 @@ if(parameter('progress')){ //if the user has their progress bar enabled
           }
   
       }, 1);
+
+function stopConfettiManagerAnimation(){
+    stopConfetti();
+    confettiManager.stopParticles();
+}
 
     function startConfettiManagerAnimation(){
                       if (!getCookie('coce')) { //if disable confetti is not enabled, 
