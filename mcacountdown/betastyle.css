@@ -769,7 +769,7 @@ a:hover:active {
     background-color: #ff5353;
     text-decoration: none;
     color: #ffffff;
-    box-shadow: 0 7px 0 #dc0202;
+    box-shadow: 0 7px 0 #e61717;
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -780,7 +780,7 @@ a:hover:active {
 
     .warning:hover {
         position: relative;
-        box-shadow: 0 5px 0 #d00000;
+        box-shadow: 0 5px 0 #e61717;
     }
 
         .warning:hover:active {
