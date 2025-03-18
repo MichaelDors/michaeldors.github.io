@@ -5,6 +5,33 @@
     --four: #ff9900;
     --typeface: 'Fredoka One';
     --comptypeface: 'Dosis';
+    --mainbgcolor: #141414;
+    /*#ffffff*/
+    --mainforegroundcolor:#ffffff;
+    /*#000000*/
+    --selectedgreen: #01FE5E;
+    /*#00d04c*/
+    --selectedgreengradient: linear-gradient(to bottom right, #14141400, #01fe5e34);
+    /*background: linear-gradient(to bottom right, #ffffff00, #00d04c44);*/
+    --inputbackground: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+    /*background: linear-gradient(to left, rgba(220,200,250,88), transparent);*/
+    --speeddivbackground: linear-gradient(to bottom right, #00000000, #2e0960);
+    /*linear-gradient(to bottom right, #ffffff, #9a4cff);*/
+    --blurbackground: rgba(20, 20, 20, 0.83);
+    /*rgba(239, 239, 239, 0.73);*/
+    --blurbackgroundshadowcolor: rgba(0, 0, 0, 0.1);
+    /*rgba(255, 255, 255, 0.1)*/
+    --sidebarcolor:#000000;
+    /*#ffffff*/
+    --scheduleblurbg: rgba(20, 20, 20, 0.83);
+    /*rgba(239, 239, 239, 0.73)*/
+    --schedulebgbottomblur:#14141491;
+    /*#ffffff*/
+}
+
+#body{
+    background-color:var(--mainbgcolor);
+    overflow-x:hidden;
 }
 
 * {
@@ -38,7 +65,7 @@ input[type="color"] {
     font-weight: 100;
     border-radius: 20px;
     outline: 1px solid #8426ff;
-    background: #141414;
+    background: var(--mainbgcolor);
     border: none;
     cursor: pointer;
     vertical-align:top;
@@ -97,7 +124,7 @@ display: inline-block;
     font-weight: 100;
     border-radius: 20px;
     outline: 1px solid #8426ff;
-    background: #141414;
+    background: var(--mainbgcolor);
     border: none;
     transition: 0.3s all;
 }
@@ -109,33 +136,33 @@ display: inline-block;
     font-size: 20px;
     font-weight: 100;
     border-radius: 20px;
-    outline: 1px solid #01FE5E;
-    background: #141414;
+    outline: 3px solid var(--selectedgreen);
+    background: var(--mainbgcolor);
     border: none;
     transition: 0.3s all;
 }
 
 .fontpicker {
-    color: white !important;
+    color: var(--mainforegroundcolor) !important;
     line-height: 100px;
     margin: 10px !important;
     width: 1in;
     font-size: 20px;
     border-radius: 20px;
     outline: 1px solid #8426ff;
-    background: #141414;
+    background: var(--mainbgcolor);
     border: none;
     transition: 0.3s all;
     padding-top: 20px;
 }
 
 .selectedfontpicker {
-    outline: 1px solid #01FE5E;
-    background: #141414;
+    outline: 3px solid var(--selectedgreen);
+    background: var(--selectedgreengradient);
     border: none;
     transition: 0.3s all;
     padding-top: 20px;
-    color: white !important;
+    color: var(--mainforegroundcolor) !important;
     line-height: 100px;
     margin: 10px !important;
     width: 1in;
@@ -151,7 +178,7 @@ display: inline-block;
     font-weight: 100;
     border-radius: 20px;
     outline: 1px solid #202020;
-    background: #141414;
+    background: var(--mainbgcolor);
     border: none;
     opacity: 0.5;
     cursor: not-allowed;
@@ -183,8 +210,12 @@ display: inline-block;
     font-weight: 100;
     border-radius: 20px;
     outline: 1px solid #8426ff;
-    background: #141414;
+    background: var(--mainbgcolor);
     animation: pulseborder 2s infinite;
+}
+
+button{
+    color:var(--mainforegroundcolor);
 }
 
 .remove-button {
@@ -224,7 +255,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
 
     50% {
-        outline: 1px solid #141414;
+        outline: 1px solid var(--mainbgcolor);
     }
 
     100% {
@@ -251,49 +282,49 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 }
 
 .datepicker {
-    color: white;
+    color: var(--mainforegroundcolor);
     border-radius: 20px;
     padding: 20px;
     font-size: 20px;
     font-weight: 100;
     outline: 1px solid #8426ff;
-    background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+    background: var(--inputbackground);
     font-family: 'Fredoka One';
     border: 0px transparent;
 }
 
 .progressdatepicker {
-    color: white;
+    color: var(--mainforegroundcolor);
     border-radius: 20px;
     padding: 20px;
     font-size: 20px;
     font-weight: 100;
     outline: 1px solid #8426ff;
-    background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+    background: var(--inputbackground);
     font-family: 'Fredoka One';
     border: 0px transparent;
 }
 
 .input {
-    color: white;
+    color: var(--mainforegroundcolor);
     border-radius: 20px;
     padding: 20px;
     font-size: 20px;
     font-weight: 100;
     outline: 1px solid #8426ff;
-    background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+    background: var(--inputbackground);
     font-family: 'Fredoka One';
     border: 0px transparent;
     transition: 0.5s all;
 }
 
 .localshortcutinput {
-    color: black;
+    color: var(--mainforegroundcolor);
     border-radius: 20px;
     padding: 20px;
     font-size: 20px;
     font-weight: 100;
-    outline: 1px solid black;
+    outline: 1px solid var(--mainforegroundcolor);
     background: transparent;
     font-family: 'Fredoka One';
     border: 0px transparent;
@@ -307,23 +338,23 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 form {
     width: 70%;
     box-sizing: border-box;
-    background-color: #14141400;
+    background-color: transparent;
     text-align: center;
     position: relative;
     border-radius: 100px;
     border: 1px solid #4d00b2;
-    color: white;
+    color: var(--mainforegroundcolor);
 }
 
 #selectedSpeedDiv {
-    color: white;
+    color: var(--mainforegroundcolor);
     display: block;
     position: absolute;
     top: -4px;
     left: -4px;
     bottom: -4px;
     width: calc(33.33% + 8px);
-    background: linear-gradient(to bottom right, #00000000, #2e0960);
+    background: var(--speeddivbackground);
     border-radius: 100px;
     pointer-events: none;
     border: 1px solid #8426FF;
@@ -351,7 +382,7 @@ form {
         position: relative;
         padding: 20px 0px 40px;
         overflow: hidden;
-        border-left: solid 1px rgba(0,0,0,0);
+        border-left: solid 1px transparent;
         transition: color 0.3s;
         cursor: pointer;
         -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
@@ -373,7 +404,7 @@ form {
         }
 
         form label.selected {
-            color: white;
+            color: var(--mainforegroundcolor);
         }
 
 
@@ -432,7 +463,7 @@ form {
     padding-left: 50px;
     padding-right: 50px;
     border-radius: 35px;
-    background: linear-gradient(to left, rgba(40,23,64,88), #141414);
+    background: var(--inputbackground);
     border: #8426FF 1px solid;
 }
 
@@ -537,26 +568,26 @@ form {
 h1 {
     font-size: 42px;
     font-family: 'Fredoka One';
-    color: #fff;
+    color: var(--mainforegroundcolor);
     font-weight: 100;
 }
 
 h3 {
     font-family: 'Fredoka One';
-    color: #fff;
+    color: var(--mainforegroundcolor);
     font-weight: 100;
 }
 
 h2 {
     font-size: 30px;
     font-family: 'Fredoka One';
-    color: #fff;
+    color: var(--mainforegroundcolor);
     font-weight: 100;
 }
 
 p {
     font-family: 'Fredoka One';
-    color: white;
+    color: var(--mainforegroundcolor);
     font-size: 20px;
     font-weight: 100;
 }
@@ -607,7 +638,7 @@ a:hover {
     }
 .dependencieslink{
 font-family: 'Dosis' , sans-serif;
-color:#ffffff !important;
+color:var(--mainforegroundcolor) !important;
 opacity:0.4;
 margin-left:30px;
 margin-bottom:10px;
@@ -631,7 +662,7 @@ margin-bottom:10px;
 
 .outlinebutton {
     font-family: 'Fredoka One';
-    background-color: #141414;
+    background-color: var(--mainbgcolor);
     text-decoration: none;
     color: white;
     border: #8426ff solid 1px;
@@ -916,8 +947,8 @@ a:hover:active {
         #settingsmainpane{
             float:right;
             width:calc(100vw * 0.8);
-            background: rgba(20, 20, 20, 0.83);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            background: var(--blurbackground);
+            box-shadow: 0 4px 30px var(--blurbackgroundshadowcolor);
             backdrop-filter: blur(75px);
             -webkit-backdrop-filter: blur(75px);
             position:absolute;
@@ -939,7 +970,7 @@ a:hover:active {
             left:-5px;
             top:-5px;
             padding-top:25px;
-            background-color:black;
+            background-color:var(--sidebarcolor);
             z-index:10000;
             white-space:nowrap;
         }
@@ -951,7 +982,7 @@ a:hover:active {
             font-family:'Dosis';
             background:none;
             text-decoration:none;
-            color:white;
+            color:var(--mainforegroundcolor);
             box-shadow:none;
             border-radius: none;
             user-select: none;
@@ -1026,7 +1057,7 @@ a:hover:active {
 }
 
 .hiddentext {
-    color: #141414;
+    color: var(--mainbgcolor);
     user-select: none;
 }
 
@@ -1108,13 +1139,13 @@ a:hover:active {
 .presetsicon:first-child {
     left: 0;
     display: none;
-    background: linear-gradient(90deg, #141414, transparent);
+    background: linear-gradient(90deg, var(--mainbgcolor), transparent);
 }
 
 .presetsicon:last-child {
     right: 0;
     justify-content: flex-end;
-    background: linear-gradient(-90deg, #141414, transparent);
+    background: linear-gradient(-90deg, var(--mainbgcolor), transparent);
 }
 
 .presetsicon i {
@@ -1125,7 +1156,7 @@ a:hover:active {
     text-align: center;
     line-height: 75px;
     color: white;
-    background: #141414;
+    background: var(--mainbgcolor);
     border-radius: 50%;
 }
 
@@ -1209,12 +1240,12 @@ a:hover:active {
     cursor: pointer;
     font-size: 1.18rem;
     white-space: nowrap;
-    background: linear-gradient(to left, rgba(94, 0, 225, 0.8), #14141400);
+    background: linear-gradient(to left, rgba(94, 0, 225, 0.8), transparent);
     border: #8426FF 1px solid;
     padding: 13px 20px;
     border-radius: 30px;
     transition: 0.5s all;
-    color: white;
+    color: var(--mainforegroundcolor);
     font-family: 'Fredoka One';
 }
 
@@ -1223,12 +1254,12 @@ a:hover:active {
     cursor: pointer;
     font-size: 1.18rem;
     white-space: nowrap;
-    background: linear-gradient(to left, rgba(31,179,255,0.5), #14141400);
+    background: linear-gradient(to left, rgba(31,179,255,0.5), transparent);
     border: #26b3ff 1px solid;
     padding: 13px 20px;
     border-radius: 30px;
     transition: 0.5s all;
-    color: white;
+    color: var(--mainforegroundcolor);
     font-family: 'Fredoka One';
 }
 
@@ -1237,12 +1268,12 @@ a:hover:active {
     cursor: pointer;
     font-size: 1.18rem;
     white-space: nowrap;
-    background: linear-gradient(to left, #00df5290, #14141400);
+    background: linear-gradient(to left, #00df5290, transparent);
     border: #00df52 1px solid;
     padding: 13px 20px;
     border-radius: 30px;
     transition: 0.5s all;
-    color: white;
+    color: var(--mainforegroundcolor);
     font-family: 'Fredoka One';
 }
 
@@ -1251,12 +1282,12 @@ a:hover:active {
     cursor: pointer;
     font-size: 1.18rem;
     white-space: nowrap;
-    background: linear-gradient(to left, #ff535390, #14141400);
+    background: linear-gradient(to left, #ff535390, transparent);
     border: #ff5353 1px solid;
     padding: 13px 20px;
     border-radius: 30px;
     transition: 0.5s all;
-    color: white;
+    color: var(--mainforegroundcolor);
     font-family: 'Fredoka One';
 }
 
@@ -1276,7 +1307,7 @@ a:hover:active {
     color: #fff;
     background: #8426ff;
     border-color: transparent;
-    border: #141414 1px solid;
+    border: var(--mainbgcolor) 1px solid;
     transform: scale(0.9);
     animation: jiggle 0.6s infinite;
     overflow-y: visible;
@@ -1443,7 +1474,7 @@ a:hover:active {
     color: #fff;
     background: #26b3ff;
     border-color: transparent;
-    border: #141414 1px solid;
+    border: var(--mainbgcolor) 1px solid;
     transform: scale(0.9);
     animation: jiggle 0.6s infinite;
     overflow-y: visible;
@@ -1453,7 +1484,7 @@ a:hover:active {
     color: #fff;
     background: #00df52;
     border-color: transparent;
-    border: #141414 1px solid;
+    border: var(--mainbgcolor) 1px solid;
     transform: scale(0.9);
     animation: jiggle 0.6s infinite;
     overflow-y: visible;
@@ -1463,7 +1494,7 @@ a:hover:active {
     color: #fff;
     background: #ff5353;
     border-color: transparent;
-    border: #141414 1px solid;
+    border: var(--mainbgcolor) 1px solid;
     transform: scale(0.9);
     animation: jiggle 0.6s infinite;
     overflow-y: visible;
@@ -1485,7 +1516,7 @@ a:hover:active {
     color: #fff;
     background: #26b3ff;
     border-color: transparent;
-    border: #141414 1px solid;
+    border: var(--mainbgcolor) 1px solid;
     transform: scale(0.9);
     animation: jiggle 0.6s infinite;
     overflow-y: visible;
@@ -1952,11 +1983,11 @@ a:hover:active {
         border-top-right-radius: 20px;
     }
     .schedule-upcoming-class {
-        background: rgba(20, 20, 20, 0.83);
+        background: var(--scheduleblurbg);
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         backdrop-filter: blur(75px);
         -webkit-backdrop-filter: blur(75px);
-        border-bottom:3px solid #14141491;
+        border-bottom:3px solid var(--schedulebgbottomblur);
         padding:15px;
         display: flex;
         justify-content: space-between;
@@ -1966,12 +1997,12 @@ a:hover:active {
     .schedule-upcoming-class-title {
         font-size: 1.5em;
         font-weight: bold;
-        color:white;
+        color:var(--mainforegroundcolor);
         margin-left:20px;
     }
     .schedule-upcoming-class-time {
         text-align: right;
-        color:white;
+        color:var(--mainforegroundcolor);
         margin:20px 20px 20px 0px;
     }
     .schedule-upcoming-class-time .fa-regular{
@@ -1981,6 +2012,7 @@ a:hover:active {
 
     .schedule-editor {
         font-family: "Dosis";
+        color: var(--mainforegroundcolor) !important;
     }
     .schedule-container {
         max-width: 80%;
@@ -1992,26 +2024,26 @@ a:hover:active {
     }
 
     .schedule-container input{
-        color: white;
+        color: var(--mainforegroundcolor);
     border-radius: 20px;
     padding: 20px;
     font-size: 20px;
     font-weight: 100;
     outline: 1px solid #8426ff;
-    background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+    background: var(--inputbackground);
     font-family: 'Fredoka One';
     border: 0px transparent;
     transition: 0.5s all;
     }
 
     .schedule-container select{
-        color: white;
+        color: var(--mainforegroundcolor);
     border-radius: 20px;
     padding: 20px;
     font-size: 20px;
     font-weight: 100;
     outline: 1px solid #8426ff;
-    background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+    background: var(--inputbackground);
     font-family: "Dosis";
     border: 0px transparent;
     transition: 0.5s all;
@@ -2023,7 +2055,7 @@ a:hover:active {
         font-family: 'Fredoka One';
         background-color: #8426ff;
         text-decoration: none;
-        color: white;
+        color: var(--mainforegroundcolor);
         box-shadow: 0 7px 0 #4d00b2;
         border-radius: 20px;
         border-top-right-radius: 0px;
@@ -2099,8 +2131,8 @@ outline: 1px solid #8426ff;
     }
     .schedule-collapsible {
         outline: 1px solid #8426ff;
-    background: linear-gradient(to left, rgba(40,23,64,88), #14141400);
-    color:white;
+    background: var(--inputbackground);
+    color:var(--mainforegroundcolor);
     border-radius: 20px 20px 20px 20px;
         cursor: pointer;
         padding: 18px;
@@ -2111,7 +2143,7 @@ outline: 1px solid #8426ff;
         transition:0.2s border-radius;
     }
     .active, .schedule-collapsible:hover {
-        background: linear-gradient(to left, rgba(40,23,64,100), #14141400);
+        background: var(--inputbackground);
     }
     .active{
         border-radius: 20px 20px 0 0;
@@ -2130,7 +2162,7 @@ outline: 1px solid #8426ff;
         max-height: 0;
         overflow: hidden;
         transition: max-height 0.2s ease-out;
-        background-color: #14141400;
+        background-color: transparent;
         outline: 1px solid #8426ff;
         border-bottom-left-radius: 20px;
         border-bottom-right-radius: 20px;

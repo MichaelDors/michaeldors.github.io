@@ -1167,6 +1167,13 @@ class ConfettiManager {
         else{
             document.documentElement.style.filter = 'contrast(100%)';
         }
+
+        if(getCookie('preferlightscheme')){
+            setLightMode();
+        }
+        else{
+            setDarkMode();
+        }
   
           if (getCookie("speed1")) { //if speed one has been chosen in the past and still has a cookie representing it
               document.getElementById("speed1").click(); //simulate a click on speed one to remember that choice
@@ -1507,7 +1514,7 @@ function stopConfettiManagerAnimation(){
               document.getElementById("memsav").classList.remove("enabled");
               document.getElementById("memsav").classList.add("disabled");
           }
-            if (getCookie("increasecontrast")) { //memory saver
+            if (getCookie("increasecontrast")) {
               document.getElementById("contrast").classList.add("enabled");
               document.getElementById("contrast").classList.remove("disabled");
           }
@@ -1515,6 +1522,14 @@ function stopConfettiManagerAnimation(){
               document.getElementById("contrast").classList.remove("enabled");
               document.getElementById("contrast").classList.add("disabled");
           }
+          if (getCookie("preferlightscheme")) {
+            document.getElementById("lightmode").classList.add("enabled");
+            document.getElementById("lightmode").classList.remove("disabled");
+        }
+        else {
+            document.getElementById("lightmode").classList.remove("enabled");
+            document.getElementById("lightmode").classList.add("disabled");
+        }
           if (getCookie("coce")) { //disable confetti
               document.getElementById("coce").classList.add("enabled");
               document.getElementById("coce").classList.remove("disabled");
@@ -1626,6 +1641,15 @@ function contrast(){ //increase contrast set or remove cookie
     }
     else{
         setCookie('increasecontrast', 'true', '70');
+    }
+}
+
+function lightmode(){ //increase contrast set or remove cookie
+    if(getCookie('preferlightscheme')){
+        eraseCookie('preferlightscheme');
+    }
+    else{
+        setCookie('preferlightscheme', 'true', '70');
     }
 }
   
@@ -1747,6 +1771,7 @@ function contrast(){ //increase contrast set or remove cookie
           eraseCookie('cookiesAccepted');
           eraseCookie('lcdu');
           eraseCookie('increasecontrast');
+          eraseCookie('preferlightscheme');
           updateoptions(); //update classes of settings buttons
   
           document.getElementById("animatedbackground").style.display = "none"; //remove animated bg
@@ -3655,3 +3680,32 @@ function contrast(){ //increase contrast set or remove cookie
         function resetendsoundinput(){
             document.getElementById("audioLink").value = "";
         }
+
+        function setLightMode() {
+            document.documentElement.style.setProperty('--mainbgcolor', '#ffffff');
+            document.documentElement.style.setProperty('--mainforegroundcolor', '#000000');
+            document.documentElement.style.setProperty('--selectedgreen', '#00d04c');
+            document.documentElement.style.setProperty('--selectedgreengradient', 'linear-gradient(to bottom right, #ffffff00, #00d04c44)');
+            document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left, rgba(220,200,250,88), transparent)');
+            document.documentElement.style.setProperty('--speeddivbackground', 'linear-gradient(to bottom right, #ffffff, #9a4cff)');
+            document.documentElement.style.setProperty('--blurbackground', 'rgba(239, 239, 239, 0.73)');
+            document.documentElement.style.setProperty('--blurbackgroundshadowcolor', 'rgba(255, 255, 255, 0.1)');
+            document.documentElement.style.setProperty('--sidebarcolor', '#ffffff');
+            document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(239, 239, 239, 0.73)');
+            document.documentElement.style.setProperty('--schedulebgbottomblur', '#ffffff');
+        }
+        
+        function setDarkMode() {
+            document.documentElement.style.setProperty('--mainbgcolor', '#141414');
+            document.documentElement.style.setProperty('--mainforegroundcolor', '#ffffff');
+            document.documentElement.style.setProperty('--selectedgreen', '#01FE5E');
+            document.documentElement.style.setProperty('--selectedgreengradient', 'linear-gradient(to bottom right, #14141400, #01fe5e34)');
+            document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left, rgba(40,23,64,88), #14141400)');
+            document.documentElement.style.setProperty('--speeddivbackground', 'linear-gradient(to bottom right, #00000000, #2e0960)');
+            document.documentElement.style.setProperty('--blurbackground', 'rgba(20, 20, 20, 0.83)');
+            document.documentElement.style.setProperty('--blurbackgroundshadowcolor', 'rgba(0, 0, 0, 0.1)');
+            document.documentElement.style.setProperty('--sidebarcolor', '#000000');
+            document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(20, 20, 20, 0.83)');
+            document.documentElement.style.setProperty('--schedulebgbottomblur', '#14141491');
+        }
+        

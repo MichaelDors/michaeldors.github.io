@@ -22,7 +22,7 @@
     <script src="Dependencies/confetti.js"></script>
     <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
 
-	<link rel="stylesheet" href="betastyle.css"/>
+	<link rel="stylesheet" id="stylesheetmain" href="betastyle.css"/>
     <style id="animationHandler"></style>
 
     <meta property="og:image" content="https://michaeldors.com/mcacountdown/sharepanels/defaultshare.jpg" />
@@ -61,7 +61,7 @@
       }
   </script>
 
-<body id="body" style="background-color:#141414;  overflow-x:hidden;">
+<body id="body">
     <input onblur="setcountdowntitle('front');" id="countdowntitle" type="text" />
     <p id="clock" class="clock"></p>
 
@@ -124,7 +124,7 @@
 
     <center class="hidden" id="unfocused" style="margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);">
         <div class="box">
-            <i style="font-size:50px; color:white" class="fa-solid fa-gauge"></i>
+            <i style="font-size:50px;" class="fa-solid fa-gauge"></i>
             <h1 class="textelement">Memory Saver</h1>
             <p class="textelement">Memory Saver engaged to prevent using system resources when the window is out of focus. You can disable this in settings.</p>
             <br>
@@ -235,9 +235,9 @@
 		</div>
 
 
-                <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
+                <div style="width:100%; margin:0px; padding:0px; border-top: #39B8FB70 2px solid; border-bottom: #39B8FB70 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
                     <h1><i style="color: #39B8FB" class="fa-solid fa-paper-plane"></i> Shareable Options</h1>
-                    <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; margin-bottom:30px;">Options that are specifically for this Countdown and everyone who visits it</p>
+                    <p style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:30px;">Options that are specifically for this Countdown and everyone who visits it</p>
                 </div>
                 <br />
                 <br />
@@ -295,7 +295,7 @@
                     Title
                 </h2>
                 <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;" />
-                <button style="background:transparent; color:white; border:none; outline:none; cursor:pointer">
+                <button style="background:transparent; border:none; outline:none; cursor:pointer">
                     <i id="magictitle" title="Timekeeper will automatically select a title for your Countdown" class="fa fa-wand-magic-sparkles" style="transform:scale(1.75); padding-left:10px;" onclick="magictitle(); autopilotsparkle(event);"></i>
                 </button>
                 <h2 class="textelement" style="font-family: 'Dosis';" id="linkoptions">
@@ -304,7 +304,7 @@
 
 
                 <input id="linkinput" class="input" />
-                <button style="background:transparent; color:white; border:none; outline:none; cursor:pointer">
+                <button style="background:transparent; border:none; outline:none; cursor:pointer">
                     <i title="Copy link" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlink(); showToast('Shareable link copied', 'success');"></i>
                 </button>
                 <br />
@@ -320,7 +320,7 @@
                     </div>
 
                 </div>
-		<p id="qrcodelinkcautiontext" style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; margin-bottom:50px;">
+		<p id="qrcodelinkcautiontext" style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:50px;">
                     Be cautious of sharing personal information
                 </p>
 		<div id="localshortcutcontainerdiv" style="border-radius: 20px; background: #fe9a00; margin-bottom:125px; color: black; padding:20px; min-width:fit-content;">
@@ -329,7 +329,7 @@
                             For a dynamic bookmark that updates with changes saved</br>to Dashboard, use your personal Local Shortcut link:
                         </p>
 			<input id="locallinkinput" class="localshortcutinput" />
-                	<button style="background:transparent; color:white; border:none; outline:none; cursor:pointer">
+                	<button style="background:transparent; border:none; outline:none; cursor:pointer">
                     		<i title="Copy Local Shortcut" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px; color:#000000;" onclick="copyinputtextlocalshortcutlink(); showToast('Local Shortcut link copied', 'success');"></i>
                 	</button>
 			<br>
@@ -365,7 +365,7 @@
                 </div>
                 <a class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus-circle"></i> Add a New Color</a>
 
-                <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
+                <p style="font-family: 'Dosis', sans-serif; font-size:16px;">
                     The foreground elements will cycle through the chosen colors
                     <br />
                     Keep contrast in mind when choosing colors
@@ -424,23 +424,23 @@
                 <a title="Disable confetti on this Countdown (you can disable confetti on all Countdowns in your Personal Options)" class="aintext fontpicker" id="noconfetti" onmouseup="ConfettiModeNone(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-regular fa-circle-xmark"></i></a>
                 <br>
                 <br>
-                <a class="aintext" href="#appearanceoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; color:white; text-decoration: underline;">You can disable confetti for all countdowns in your Personal Options.</a>
+                <a class="aintext" href="#appearanceoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; text-decoration: underline;">You can disable confetti for all countdowns in your Personal Options.</a>
                 <br>
                 <br>
                 <br>
                 <h2 class="textelement" style="font-family: 'Dosis';">Ending Sound</h2>
                 <div class="container">
                     <input class="input" type="text" id="audioLink" onblur="SetCountDowngeneral();" placeholder="Audio link">
-		        <button style="background:transparent; color:white; border:none; outline:none; cursor:pointer">
+		        <button style="background:transparent; border:none; outline:none; cursor:pointer">
            		 <i title="Clear Ending Sound" class="fa-solid fa-circle-xmark" style="transform:scale(1.75); padding-left:10px;" onclick="resetendsoundinput();"></i>
         		</button>
                 </div>
-                <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
+                <p style="font-family: 'Dosis', sans-serif; font-size:16px;">
                     Enter a <i class="fa-brands fa-youtube"></i> YouTube, <i class="fa-brands fa-soundcloud"></i> SoundCloud, or <i class="fa-solid fa-file-audio"></i> audio file link to play on ending.
                     <br />
                     Any ADs that may be placed by the service will remain.
                 </p>
-                <a class="aintext" href="#eouoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; color:white; text-decoration: underline;">You can disable ending sounds for all countdowns in your Personal Options.</a>
+                <a class="aintext" href="#eouoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; text-decoration: underline;">You can disable ending sounds for all countdowns in your Personal Options.</a>
                 <div id="playerContainer" style="display: none;"></div>
                 <br>
                 <br>
@@ -456,7 +456,7 @@
 		    <div id="presetupScheduleContent">
 		<h2 style="font-family: 'Dosis';">Convert to Countdown Schedule</h2>
 		<div style="text-align:left; width:fit-content;">
-		    <h3 style="font-family: 'Dosis', sans-serif; color:white; font-size:23px; text-justify:inter-word;">
+		    <h3 style="font-family: 'Dosis', sans-serif; font-size:23px; text-justify:inter-word;">
 			<i style="color:#3ab6ff" class="fa-solid fa-calendar"></i> Keep track of your recurring events
 			<br>
 		    <i style="color:#00FF5E" class="fa-solid fa-briefcase"></i> Set different schedules for different days
@@ -466,7 +466,7 @@
 		</div>
 		<a class="savedash" onclick="startCountdownSchedule();">Supercharge Your Schedule</a>
 		</div>
-                <div class="schedule-editor" style="color: white !important;">
+                <div class="schedule-editor">
                     <div class="schedule-container">
                         <h2 style="font-family: 'Dosis';">Edit Schedule</h2>
                         <div class="schedule-form-group">
@@ -522,10 +522,10 @@
                 <br>
 		<h2 style="font-family: 'Dosis';">Starting Date</h2>
 		<input id="progressdatepicker" class="progressdatepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
-        <button style="background:transparent; color:white; border:none; outline:none; cursor:pointer">
+        <button style="background:transparent; border:none; outline:none; cursor:pointer">
             <i title="Turn off Progress" class="fa-solid fa-circle-xmark" style="transform:scale(1.75); padding-left:10px;" onclick="resetprogressinput();"></i>
         </button>
-        <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px;">
+        <p style="font-family: 'Dosis', sans-serif; font-size:16px;">
             Displays a progress bar to visualize the percent completion, if the event has a starting date
         </p>
 		<br>
@@ -545,9 +545,9 @@
 
 	
     <br>
-    <div style="width:100%; margin:0px; padding:0px; border-top: #242424 2px solid; border-bottom: #242424 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
+    <div style="width:100%; margin:0px; padding:0px; border-top: #fe980070 2px solid; border-bottom: #fe980070 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
         <h1><i style="color: #FE9A00" class="fa-solid fa-user-lock"></i> Personal Options</h1>
-        <p style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; margin-bottom:30px;">Options that are universally applied across Countdowns you visit</p>
+        <p style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:30px;">Options that are universally applied across Countdowns you visit</p>
     </div>
     <br />
     <br />
@@ -581,6 +581,7 @@
     <br>
     <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Time Units</a>
     <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
+    <a id="lightmode" class="disabled" onclick="lightmode();"><i class="fa-solid fa-sun"></i> Prefer Light Color Scheme</a>
     <br>
     <Br>
     <Br>
@@ -593,14 +594,13 @@
     <a id="soce" class="disabled" onclick="soce();"><i class="fa-solid fa-volume-mute"></i> Disable End Sounds</a>
     <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
 	<a id="contrast" class="disabled" onclick="contrast();"><i class="fa-solid fa-circle-half-stroke"></i> Increase Contrast</a>
-
 <br>
     <Br>
     <Br>
     <h1 id="inclusionoptions" class="textelement">
         Only Include
     </h1>
-	<p id="cdscheduledisclaimer" style="font-family: 'Dosis', sans-serif; color:white; font-size:16px; margin-bottom:30px; display:none; background:linear-gradient(to bottom right, #ff53535f, #00000000); border:#ff5353 2px dashed; border-radius:100px; padding:5px 10px 5px 10px; width:fit-content;"><i class="fa-regular fa-calendar-xmark"></i> Only Include will not apply to Countdown Schedules</p>
+	<p id="cdscheduledisclaimer" style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:30px; display:none; background:linear-gradient(to bottom right, #ff53535f, #00000000); border:#ff5353 2px dashed; border-radius:100px; padding:5px 10px 5px 10px; width:fit-content;"><i class="fa-regular fa-calendar-xmark"></i> Only Include will not apply to Countdown Schedules</p>
         <Br>
         <br>
         <br>
