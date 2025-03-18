@@ -319,12 +319,12 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 }
 
 .localshortcutinput {
-    color: var(--mainforegroundcolor);
+    color: black;
     border-radius: 20px;
     padding: 20px;
     font-size: 20px;
     font-weight: 100;
-    outline: 1px solid var(--mainforegroundcolor);
+    outline: 1px solid black;
     background: transparent;
     font-family: 'Fredoka One';
     border: 0px transparent;
