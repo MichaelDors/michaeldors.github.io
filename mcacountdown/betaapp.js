@@ -1106,10 +1106,10 @@ class ConfettiManager {
           }
 
           if(document.getElementById("progressdatepicker").value && document.getElementById("progressdatepicker").value !== "null"){
+            document.getElementById("progress-bar").style.display = "";
             if(!document.getElementById("animatedbackground").classList.contains("hidden")){
                 document.getElementById('progress').classList.remove("progresscolored");
                 document.getElementById('progress').classList.add("progressblur");
-                document.getElementById('progress').style.background = "#141414e5";
             }
             else{
                 document.getElementById('progress').style.background = window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color");
@@ -1118,7 +1118,7 @@ class ConfettiManager {
             }
           }
           else{
-            document.getElementById('progress-bar').style.display = "none";
+            document.getElementById("progress-bar").style.display = "none";
           }
   
           SetCountDowngeneral();
@@ -1432,6 +1432,7 @@ if(parameter('progress')){ //if the user has their progress bar enabled
     
     // Update progress bar width
     document.getElementById('progress').style.width = `${progressBarValue}%`;
+    document.getElementById("progress-bar").style.display = "";
 }
   
           if(distance == 1000){ //when countdown is one second from ending, to give time to load
