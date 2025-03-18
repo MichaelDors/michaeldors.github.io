@@ -1199,7 +1199,6 @@ class ConfettiManager {
           else {
               document.getElementById("clock").classList.add("clock"); //add back colored clock
               document.getElementById("clock").classList.remove("staticclock"); //remove white only clock
-              document.getElementById("animatedbackground").classList.add("hidden"); //remove background
               if (document.getElementById("clock") && document.getElementById("clock").style.display !== "none") { //if the clock exists and settings is not opened
                   document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
               }
@@ -2323,55 +2322,85 @@ function lightmode(){ //increase contrast set or remove cookie
       }
   
       function setbg(bgint, method) {
-          if ((method != "auto") && (parameter("atc") == bgint)) {
-              //the selected background is already the set background - turn off background
-              enablecolor();
-          showToast("You've enabled foreground colors again, disabling the background", 'info');
-              document.getElementById("animatedbackground").style.opacity = "0"; //fade out the animated background (as it has a transition property for opacity)
-              setTimeout(() => {
-                  document.getElementById("animatedbackground").style.display = "none"; //in one second when the fade is done, hide the background
-              }, 1000);
-              bgstring = "none";
-  
-              bggotdisabled = "true";
-          }
-          else if ((parameter("atc") == "none") && bgint != "none") {
-              //param is none, but the selected background is not - turn on and set background
-              disablecolor();
-          showToast('Enabling a background disables the foreground colors', 'info');
-              //grey out color pickers and theme color for background
-              document.getElementById("animatedbackground").classList.remove("hidden"); //unhide background
-              document.getElementById("animatedbackground").style.zIndex = "-3"; //set the bg to be behind all other elements
-              document.getElementById("animatedbackground").style.position = "fixed"; //fixed position so it stays even when scrolled
-              document.getElementById("bg1").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
-              document.getElementById("bg2").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
-              bgstring = bgint;
-              document.getElementById("animatedbackground").style.display = "";
-              document.getElementById("animatedbackground").style.opacity = "1"; //fade out the animated background (as it has a transition property for opacity)
-  
-              bggotdisabled = "false";
-          }
-          else if ((parameter("atc") != "none") && (document.getElementById("bg1").src != "Backgrounds/enhancedbackground_" + bgint + ".png")) {
-              //parameter is not none, but the selected and set backgrounds are different - change the bg w/o turning on or off
-              document.getElementById("bg1").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
-              document.getElementById("bg2").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
-              bgstring = bgint;
-  
-              bggotdisabled = "false";
-          }
-          else {
-              //catchall for errors too but primarily for and should only be pinged when not using atc
-              enablecolor();
-              document.getElementById("animatedbackground").style.opacity = "0"; //fade out the animated background (as it has a transition property for opacity)
-              setTimeout(() => {
-                  document.getElementById("animatedbackground").style.display = ""; //in one second when the fade is done, hide delete the background
-              }, 1000);
-              
-              bgstring = "none";
-              bggotdisabled = "true";
-          }
-  
-          //for loop that adds selected and normal bgbutton classes
+        // Clear any pending timeouts to prevent race conditions
+        if (window.bgTimeoutId) {
+            clearTimeout(window.bgTimeoutId);
+            window.bgTimeoutId = null;
+        }
+
+        if ((method != "auto") && (parameter("atc") == bgint)) {
+            //the selected background is already the set background - turn off background
+            enablecolor();
+            showToast("Enabling foreground colors disables the background", 'info');
+            
+            // First set opacity to 0 to trigger the transition
+            document.getElementById("animatedbackground").style.opacity = "0";
+            
+            // Store the current state to avoid race conditions
+            bggotdisabled = "true";
+            bgstring = "none";
+            
+            // Wait for the transition to complete before hiding the element
+            window.bgTimeoutId = setTimeout(() => {
+                // Only hide if background is still supposed to be off
+                if (bggotdisabled === "true") {
+                    document.getElementById("animatedbackground").style.display = "none";
+                }
+            }, 1000); // Match this to your transition duration
+        }
+        else if ((parameter("atc") == "none") && bgint != "none") {
+            //param is none, but the selected background is not - turn on and set background
+            disablecolor();
+            showToast('Enabling a background disables the foreground colors', 'info');
+            
+            // Make sure the element is visible but with opacity 0
+            document.getElementById("animatedbackground").style.display = "";
+            document.getElementById("animatedbackground").classList.remove("hidden");
+            document.getElementById("animatedbackground").style.zIndex = "-3";
+            document.getElementById("animatedbackground").style.position = "fixed";
+            document.getElementById("animatedbackground").style.opacity = "0"; // Start with opacity 0
+            
+            // Set the background images
+            document.getElementById("bg1").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
+            document.getElementById("bg2").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
+            
+            // Force a reflow to ensure the browser registers the display change before opacity
+            void document.getElementById("animatedbackground").offsetWidth;
+            
+            // Now set opacity to 1 to trigger the transition
+            document.getElementById("animatedbackground").style.opacity = "1";
+            
+            bgstring = bgint;
+            bggotdisabled = "false";
+        }
+        else if ((parameter("atc") != "none") && (document.getElementById("bg1").src != "Backgrounds/enhancedbackground_" + bgint + ".png")) {
+            //parameter is not none, but the selected and set backgrounds are different - change the bg w/o turning on or off
+            document.getElementById("bg1").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
+            document.getElementById("bg2").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
+            bgstring = bgint;
+            bggotdisabled = "false";
+        }
+        else {
+            //catchall for errors too but primarily for and should only be pinged when not using atc
+            enablecolor();
+            
+            // First set opacity to 0 to trigger the transition
+            document.getElementById("animatedbackground").style.opacity = "0";
+            
+            // Store the current state
+            bgstring = "none";
+            bggotdisabled = "true";
+            
+            // Wait for the transition to complete before hiding
+            window.bgTimeoutId = setTimeout(() => {
+                alert("test");
+                if (bggotdisabled === "true") {
+                    document.getElementById("animatedbackground").style.display = "none";
+                }
+            }, 1000);
+        }
+
+        // For loop that adds selected and normal bgbutton classes
   
           const buttons = document.querySelectorAll('.bgbtnn');
   
