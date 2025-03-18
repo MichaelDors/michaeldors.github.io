@@ -1101,7 +1101,7 @@ class ConfettiManager {
               document.getElementById("body").style.overflowY = 'hidden'; //don't allow scrolling
               document.body.scrollTop = document.documentElement.scrollTop = 0; //once again scroll to top for good measure
           if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
-          showToast('Some changes have not been saved to Dashboard yet', 'save');	
+          showToast('Some changes have not been saved to Dashboard', 'save');	
           }
           }
 
