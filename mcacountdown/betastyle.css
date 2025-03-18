@@ -27,6 +27,8 @@
     /*rgba(239, 239, 239, 0.73)*/
     --schedulebgbottomblur:#14141491;
     /*#ffffff*/
+    --progressbarblur:#141414e5;
+    /*#ffffffe5*/
 }
 
 #body{
@@ -2261,7 +2263,7 @@ font-size:20px;
         -webkit-backdrop-filter: blur(0px);
     }
     .progressblur{
-        background: #141414e5;
+        background: var(--progressbarblur);
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         backdrop-filter: blur(75px);
         -webkit-backdrop-filter: blur(75px);
