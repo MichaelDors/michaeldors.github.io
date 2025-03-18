@@ -2367,14 +2367,14 @@ border-bottom-left-radius: 12px;
 .toast-content {
 flex-grow: 1;
 font-size: 14px;
-color: #ffffff;
+color: var(--mainforegroundcolor);
 margin:16px
 }
 
 .toast-close {
 background: none;
 border: none;
-color: #ffffff;
+color: var(--mainforegroundcolor);
 cursor: pointer;
 padding: 0 8px;
 margin-left:10px;
