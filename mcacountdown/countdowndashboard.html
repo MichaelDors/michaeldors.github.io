@@ -808,6 +808,8 @@ document.addEventListener('drop', (event) => {
             document.documentElement.style.setProperty('--mainforegroundcolor', '#000000');
             document.documentElement.style.setProperty('--blurbackground', 'rgba(239, 239, 239, 0.73)');
             document.documentElement.style.setProperty('--blurbackgroundshadow', '0 8px 16px rgba(255, 255, 255, 0.1)');
+            document.documentElement.style.setProperty('--placeholderbg', 'rgba(20, 20, 20, 0.23)');
+	    document.documentElement.style.setProperty('--placeholderbordercolor', '#bababa');
         }
         
         function setDarkMode() {
@@ -815,6 +817,8 @@ document.addEventListener('drop', (event) => {
             document.documentElement.style.setProperty('--mainforegroundcolor', '#ffffff');
             document.documentElement.style.setProperty('--blurbackground', 'rgba(40, 40, 40, 0.5)');
             document.documentElement.style.setProperty('--blurbackgroundshadow', '0 8px 16px rgba(0, 0, 0, 0.45)');
+	    document.documentElement.style.setProperty('--placeholderbg', 'rgba(220, 220, 220, 0.23)');
+	    document.documentElement.style.setProperty('--placeholderbordercolor', '#666');
         }
 
 
@@ -831,6 +835,10 @@ loadLinks();
     /*rgba(239, 239, 239, 0.73);*/
     --blurbackgroundshadow: 0 8px 16px rgba(0, 0, 0, 0.45);
     /*rgba(255, 255, 255, 0.1)*/
+	--placeholderbg: rgba(20, 20, 20, 0.23);
+	/*rgba(220, 220, 220, 0.23)*/
+	--placeholderbordercolor: #666;
+	/*#bababa*/
 }
 *{
     user-select: none;
@@ -996,8 +1004,8 @@ iframe {
 }
 
 .placeholder {
-    border: 2px dashed #666;
-    background: rgba(20, 20, 20, 0.23);
+    border: 2px dashed var(--placeholderbordercolor);
+    background: var(--placeholderbg);
     backdrop-filter: blur(75px);
     -webkit-backdrop-filter: blur(75px);
     box-shadow: none;
