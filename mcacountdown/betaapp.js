@@ -3693,6 +3693,7 @@ function lightmode(){ //increase contrast set or remove cookie
             document.documentElement.style.setProperty('--sidebarcolor', '#ffffff');
             document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(239, 239, 239, 0.73)');
             document.documentElement.style.setProperty('--schedulebgbottomblur', '#ffffff');
+            document.documentElement.style.setProperty('--progressbarblur', '#ffffffe5');
         }
         
         function setDarkMode() {
@@ -3707,5 +3708,6 @@ function lightmode(){ //increase contrast set or remove cookie
             document.documentElement.style.setProperty('--sidebarcolor', '#000000');
             document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(20, 20, 20, 0.83)');
             document.documentElement.style.setProperty('--schedulebgbottomblur', '#14141491');
+            document.documentElement.style.setProperty('--progressbarblur', '#141414e5');
         }
         
