@@ -86,6 +86,13 @@ let dynamicStyle = document.createElement('style');
 dynamicStyle.id = 'dynamic-style';
 document.head.appendChild(dynamicStyle);
 
+        if(getCookie('preferlightscheme')){
+            setLightMode();
+        }
+        else{
+            setDarkMode();
+        }
+
 // Function to update styles dynamically
 function updateStyles() {
     if (isWebKit) {
@@ -796,11 +803,35 @@ document.addEventListener('drop', (event) => {
           }, 300);
         }
 
+        function setLightMode() {
+            document.documentElement.style.setProperty('--mainbgcolor', '#ffffff');
+            document.documentElement.style.setProperty('--mainforegroundcolor', '#000000');
+            document.documentElement.style.setProperty('--blurbackground', 'rgba(239, 239, 239, 0.73)');
+            document.documentElement.style.setProperty('--blurbackgroundshadow', '0 8px 16px rgba(255, 255, 255, 0.1)');
+        }
+        
+        function setDarkMode() {
+            document.documentElement.style.setProperty('--mainbgcolor', '#141414');
+            document.documentElement.style.setProperty('--mainforegroundcolor', '#ffffff');
+            document.documentElement.style.setProperty('--blurbackground', 'rgba(40, 40, 40, 0.5)');
+            document.documentElement.style.setProperty('--blurbackgroundshadow', '0 8px 16px rgba(0, 0, 0, 0.45)');
+        }
+
 
 loadLinks();
     </script>
 </body>
 <style>
+:root{
+    --mainbgcolor: #141414;
+    /*#ffffff*/
+    --mainforegroundcolor:#ffffff;
+    /*#000000*/
+    --blurbackground: rgba(40, 40, 40, 0.5);
+    /*rgba(239, 239, 239, 0.73);*/
+    --blurbackgroundshadow: 0 8px 16px rgba(0, 0, 0, 0.45);
+    /*rgba(255, 255, 255, 0.1)*/
+}
 *{
     user-select: none;
     -webkit-user-select: none;
@@ -810,7 +841,7 @@ body {
     font-family: 'Dosis' , sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #141414;
+    background-color: var(--mainbgcolor);
 
     /*background-image: url("Backgrounds/dashboardbg.png") !important;*/
     background-size: cover; /* Ensure the image covers the entire background */
@@ -876,13 +907,13 @@ button:hover {
 }
 
 .card {
-    background: rgba(40, 40, 40, 0.5);
+    background: var(--blurbackground);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
-    color:white;
+    color:var(--mainforegroundcolor);
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--blurbackgroundshadow);
     cursor: pointer;
     position: relative;
     display: flex;
