@@ -1876,6 +1876,52 @@ a:hover:active {
         stroke-linejoin: round;
     }
 
+#autopilotpopup{
+    margin:0;
+    padding:0;
+    position:absolute;
+    top:80%;
+    left:0px;
+    width:100%;
+    height:20%;
+    border-top:solid 3px white;
+    opacity:1;
+    transition:0.5s opacity;
+    color:white;
+}
+
+#autopilotpopupmobile{
+    margin:0;
+    padding:0;
+    position:absolute;
+    top:60%;
+    left:0px;
+    width:100%;
+    height:40%;
+    opacity:1;
+    transition:0.5s opacity;
+    color:white;
+}
+
+.autopilotpopupor{
+    position: absolute;
+    top: 15%;
+    left: calc(50vw - 21px);
+    paint-order: stroke fill;
+    -webkit-text-stroke-width: 10px;
+    -webkit-text-stroke-color: #141414;
+}
+.autopilotpopupormobile{
+    position: absolute;
+    top: 33%;
+    text-align: center;
+    width:100%;
+    color: white;
+    paint-order: stroke fill;
+    -webkit-text-stroke-width: 10px;
+    -webkit-text-stroke-color: #141414;
+}
+
     input[type="input"]{
         width:90%;
         margin:5%;
