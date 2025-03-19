@@ -1168,11 +1168,11 @@ class ConfettiManager {
             document.documentElement.style.filter = 'contrast(100%)';
         }
 
-        if(getCookie('preferlightscheme')){
-            setLightMode();
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setDarkMode();
         }
         else{
-            setDarkMode();
+            setLightMode();
         }
   
           if (getCookie("speed1")) { //if speed one has been chosen in the past and still has a cookie representing it
@@ -1522,14 +1522,6 @@ function stopConfettiManagerAnimation(){
               document.getElementById("contrast").classList.remove("enabled");
               document.getElementById("contrast").classList.add("disabled");
           }
-          if (getCookie("preferlightscheme")) {
-            document.getElementById("lightmode").classList.add("enabled");
-            document.getElementById("lightmode").classList.remove("disabled");
-        }
-        else {
-            document.getElementById("lightmode").classList.remove("enabled");
-            document.getElementById("lightmode").classList.add("disabled");
-        }
           if (getCookie("coce")) { //disable confetti
               document.getElementById("coce").classList.add("enabled");
               document.getElementById("coce").classList.remove("disabled");
@@ -1641,15 +1633,6 @@ function contrast(){ //increase contrast set or remove cookie
     }
     else{
         setCookie('increasecontrast', 'true', '70');
-    }
-}
-
-function lightmode(){ //increase contrast set or remove cookie
-    if(getCookie('preferlightscheme')){
-        eraseCookie('preferlightscheme');
-    }
-    else{
-        setCookie('preferlightscheme', 'true', '70');
     }
 }
   
@@ -3741,3 +3724,10 @@ function lightmode(){ //increase contrast set or remove cookie
             document.documentElement.style.setProperty('--progressbarblur', '#141414e5');
         }
         
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+    if (event.matches) {
+        setDarkMode();
+    } else {
+        setLightMode();
+    }
+});
