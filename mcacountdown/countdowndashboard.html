@@ -86,11 +86,11 @@ let dynamicStyle = document.createElement('style');
 dynamicStyle.id = 'dynamic-style';
 document.head.appendChild(dynamicStyle);
 
-        if(getCookie('preferlightscheme')){
-            setLightMode();
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setDarkMode();
         }
         else{
-            setDarkMode();
+            setLightMode();
         }
 
 // Function to update styles dynamically
@@ -820,6 +820,14 @@ document.addEventListener('drop', (event) => {
 	    document.documentElement.style.setProperty('--placeholderbg', 'rgba(20, 20, 20, 0.23)');
 	    document.documentElement.style.setProperty('--placeholderbordercolor', '#666');
         }
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+    if (event.matches) {
+        setDarkMode();
+    } else {
+        setLightMode();
+    }
+});
 
 
 loadLinks();
