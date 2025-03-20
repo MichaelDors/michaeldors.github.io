@@ -2376,7 +2376,6 @@ function contrast(){ //increase contrast set or remove cookie
             
             // Wait for the transition to complete before hiding
             window.bgTimeoutId = setTimeout(() => {
-                alert("test");
                 if (bggotdisabled === "true") {
                     document.getElementById("animatedbackground").style.display = "none";
                 }
@@ -2884,9 +2883,21 @@ function contrast(){ //increase contrast set or remove cookie
                   schedule_updateURL();
                   schedule_updateScheduleViewer();
               }
+              const collapsibles = document.querySelectorAll('.schedule-collapsible');
+            collapsibles.forEach(collapsible => {
+                if (collapsible.classList.contains('active')) {
+                schedule_toggleCollapsible(collapsible);
+                }
+            });
           }
   
           function schedule_editEvent(event, isException = false, day = null) {
+            if(isException == true){
+                setTimeout(function() {
+                    schedule_addOrUpdateEvent();
+                }, 100);
+            }
+          
               schedule_editingEvent = event;
               schedule_editingExceptionDay = isException ? day : null;
               document.getElementById('schedule-eventTitle').value = event.title;
@@ -2894,6 +2905,17 @@ function contrast(){ //increase contrast set or remove cookie
               document.getElementById('schedule-endTime').value = event.endTime;
               document.getElementById('schedule-addOrUpdateEventBtn').innerHTML = '<i class="fa-solid fa-check-circle"></i> Update Event';
           document.getElementById("schedule-eventTitle").scrollIntoView();
+          }
+
+          function selectexceptiontoaddevent(){
+            document.getElementById("exceptiondaycontainer").scrollIntoView();
+// Find all collapsible elements and trigger click to open them
+const collapsibles = document.querySelectorAll('.schedule-collapsible');
+collapsibles.forEach(collapsible => {
+  if (!collapsible.classList.contains('active')) {
+schedule_toggleCollapsible(collapsible);
+  }
+});
           }
   
           function schedule_removeEvent(index, isException = false, day = null) {
@@ -2958,7 +2980,7 @@ function contrast(){ //increase contrast set or remove cookie
                       <button class="schedule-collapsible" style="font-family: Dosis; font-size: 20px;" onclick="schedule_toggleCollapsible(this)">${dayName}</button>
                       <div class="schedule-content">
                       <h1>${dayName} Exception</h1>
-                        <a onclick="schedule_editEvent(null, true, '${day}')"><i class="fa-solid fa-plus-circle"></i> Add Event</a>
+                        <a onclick="schedule_editEvent(null, true, '${day}');"><i class="fa-solid fa-plus-circle"></i> Add Event to ${dayName}</a>
                         <a class="warning" onclick="schedule_removeExceptionDay('${day}')"><i class="fa-solid fa-trash"></i> Remove Exception Day</a>
                           <br>
                           <br>
@@ -2985,7 +3007,7 @@ function contrast(){ //increase contrast set or remove cookie
               document.getElementById('schedule-eventTitle').value = '';
               document.getElementById('schedule-startTime').value = '';
               document.getElementById('schedule-endTime').value = '';
-              document.getElementById('schedule-addOrUpdateEventBtn').innerHTML = '<i class="fa-solid fa-plus-circle"></i> Add Event';
+              document.getElementById('schedule-addOrUpdateEventBtn').innerHTML = '<i class="fa-solid fa-plus-circle"></i> Add to Regular Schedule';
               schedule_editingEvent = null;
               schedule_editingExceptionDay = null;
           }
@@ -3187,8 +3209,8 @@ function contrast(){ //increase contrast set or remove cookie
   function playYouTube(link) {
       const videoId = extractYouTubeId(link);
       if (!videoId) {
-          alert('Invalid YouTube URL');
-          return;
+        showToast('Invalid YouTube URL', 'error');
+        return;
       }
   
       const iframe = document.createElement('iframe');
