@@ -1109,7 +1109,7 @@ a:hover:active {
     font-size: 1.2rem;
     text-align: center;
     line-height: 75px;
-    color: white;
+    color: var(--mainforegroundcolor);
     /*background: #141414;*/
     border-radius: 50%;
 }
@@ -1896,7 +1896,7 @@ a:hover:active {
         font-family: "Dosis";
         font-size:15px;
     }
-
+ 
     input[type="input"] + button {
         position: absolute;
         right: 6.5%;
