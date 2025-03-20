@@ -3731,3 +3731,103 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
         setLightMode();
     }
 });
+
+function searchsettings(){
+    const searchedphrase = document.getElementById('searchbarinput').value.toLowerCase();
+
+    if(searchedphrase == "general"){
+        document.getElementById("dashboardbuttonoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "customization"){
+        document.getElementById("customizationoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "schedules"){
+        document.getElementById("scheduleoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "ending options" || searchedphrase == "ending"){
+        document.getElementById("endingoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "progress"){
+        document.getElementById("progressoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "appearance"){
+        document.getElementById("appearanceoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "ease of use"){
+        document.getElementById("eouoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "only include"){
+        document.getElementById("inclusionoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "danger zone (reset)" || searchedphrase == "danger zone" || searchedphrase == "reset"){
+        document.getElementById("dangerzone").scrollIntoView();
+    }
+    else if(searchedphrase == "date + time" || searchedphrase == "date and time" || searchedphrase == "date"){
+        document.getElementById("optionsdatecontainer").scrollIntoView();
+    }
+    else if(searchedphrase == "title"){
+        document.getElementById("cdtitlesettings").scrollIntoView();
+    }
+    else if(searchedphrase == "link"){
+        document.getElementById("linkinput").scrollIntoView();
+    }
+    else if(searchedphrase == "qr code"){
+        document.getElementById("qrcodecontainerdiv").scrollIntoView();
+    }
+    else if(searchedphrase == "local shortcut"){
+        document.getElementById("localshortcutcontainerdiv").scrollIntoView();
+    }
+    else if(searchedphrase == "foreground colors"){
+        document.getElementById("colorPickersContainer").scrollIntoView();
+    }
+    else if(searchedphrase == "background"){
+        document.getElementById("backgroundpickercontainer").scrollIntoView();
+    }
+    else if(searchedphrase == "typeface (font)"){
+        document.getElementById("fredoka").scrollIntoView();
+    }
+    else if(searchedphrase == "confetti options"){
+        document.getElementById("defaultconfetti").scrollIntoView();
+    }
+    else if(searchedphrase == "ending sound (soundcloud, youtube, audio file)"){
+        document.getElementById("audioLink").scrollIntoView();
+    }
+    else if(searchedphrase == "animation speed"){
+        document.getElementById("appearanceoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "disable confetti"){
+        document.getElementById("appearanceoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "increase contrast"){
+        document.getElementById("eouoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "disable ending sounds"){
+        document.getElementById("eouoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "label time units"){
+        document.getElementById("appearanceoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "memory saver"){
+        document.getElementById("eouoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "only include weeks"){
+        document.getElementById("inclusionoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "only include days"){
+        document.getElementById("inclusionoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "only include hours"){
+        document.getElementById("inclusionoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "only include minutes"){
+        document.getElementById("inclusionoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "only include seconds"){
+        document.getElementById("inclusionoptions").scrollIntoView();
+    }
+    else if(searchedphrase == "only include milliseconds"){
+        document.getElementById("inclusionoptions").scrollIntoView();
+    }
+
+    document.getElementById('searchbarinput').value = "";
+}

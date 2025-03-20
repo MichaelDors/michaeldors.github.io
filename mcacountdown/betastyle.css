@@ -1883,29 +1883,31 @@ a:hover:active {
         width:90%;
         margin:5%;
         margin-top:0;
-        background: rgba(47, 47, 47, 0.5);
+        background: var(--blurbackground);
         border-radius: 30px;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 30px var(--blurbackgroundshadowcolor);
         backdrop-filter: blur(9.5px);
         -webkit-backdrop-filter: blur(9.5px);
-        border: 1px solid rgba(47, 47, 47, 0.3);
-        color:white;
+        border: 1px solid var(--schedulebgbottomblur);
+        color:var(--mainforegroundcolor);
         padding:10px;
+        padding-left: 20px;
         height:50px;
+        font-family: "Dosis";
+        font-size:15px;
     }
 
     input[type="input"] + button {
         position: absolute;
-        right: 9%;
-        top: 10;
-        height: 30;
-        background: rgba(132, 38, 255, 0.12);
-        border-radius: 16px;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-        backdrop-filter: blur(11.9px);
-        -webkit-backdrop-filter: blur(11.9px);
-        border: 1px solid #8426FF;
+        right: 6.5%;
+        top: 5px;
+        height: 40;
+        width:40;
+        background: #8426FF;
+        border-radius: 100px;
         color:white;
+        border:none;
+        font-size: 15px;
     }
     
     /*countdown schedule*/

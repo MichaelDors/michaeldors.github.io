@@ -141,32 +141,39 @@
     <div class="hidden" id="settings">
         <div id="settingssidebar">
             <div style="position: relative;">
-                <input type="input" list="settingsheaders" placeholder="Search for an option">
-                <button type="button">Go</button>
+                <input id="searchbarinput" type="input" list="settingsheaders" placeholder="Search for an option">
+                <button style="cursor:pointer" onclick="searchsettings()" type="button"><i class="fa-solid fa-magnifying-glass-arrow-right"></i></button>
             </div>
             <datalist id="settingsheaders">
                 <option value="General"></option>
                 <option value="Customization"></option>
+                <option value="Ending"></option>
                 <option value="Schedules"></option>
                 <option value="Progress"></option>
-                <option value="Appearance"></option>
 
+                <option value="Appearance"></option>
                 <option value="Ease of Use"></option>
                 <option value="Only Include"></option>
+                <option value="Danger Zone (Reset)"></option>
 
                 <!--<option value="Presets/Themes"></option>-->
                 <option value="Date + Time"></option>
                 <option value="Title"></option>
                 <option value="Link"></option>
-                <option value="Only Include"></option>
+                <option value="QR Code"></option>
+                <option value="Local Shortcut"></option>
                 <option value="Foreground Colors"></option>
                 <option value="Background"></option>
                 <option value="Typeface (Font)"></option>
-
+                <option value="Confetti Options"></option>
+                <option value="Ending Sound (SoundCloud, YouTube, Audio file)"></option>
+                <option value="Disable Ending Sounds"></option>
                 <option value="Animation Speed"></option>
                 <option value="Disable Confetti"></option>
+                <option value="Increase Contrast"></option>
+                <option value="Label Time Units"></option>
                 <option value="Memory Saver"></option>
-                <option value="Label Countdown Units"></option>
+                <option value="Only Include"></option>
                 <option value="Only Include Weeks"></option>
                 <option value="Only Include Days"></option>
                 <option value="Only Include Hours"></option>
