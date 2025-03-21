@@ -154,7 +154,6 @@
                 <option value="Only Include"></option>
                 <option value="Danger Zone (Reset)"></option>
 
-                <!--<option value="Presets/Themes"></option>-->
                 <option value="Date + Time"></option>
                 <option value="Title"></option>
                 <option value="Link"></option>
@@ -238,8 +237,6 @@
 		<a href="http://michaeldors.github.io/mcacountdown/Information/testing.countdown">Download Testing Dashboard Save</a>
 
 		</div>
-
-
                 <div style="width:100%; margin:0px; padding:0px; border-top: #39B8FB70 2px solid; border-bottom: #39B8FB70 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
                     <h1><i style="color: #39B8FB" class="fa-solid fa-paper-plane"></i> Shareable Options</h1>
                     <p style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:30px;">Options that are specifically for this Countdown and everyone who visits it</p>
@@ -251,25 +248,6 @@
                 <br>
                 <br>
                 <br>
-                <!--<h2 class="textelement" style="font-family: 'Dosis';">
-                    Presets <span class="betatag">BETA</span>
-                </h2>
-                <div class="presetswrapper">
-                    <div class="presetsicon"><i id="presetsleft" class="fa-solid fa-angle-left"></i></div>
-                    <ul class="presetstabs-box" id="presetstabs-box">
-                        <li id="endtab" class="imgtab" onclick="MESPreset();"><img src="Backgrounds/Presets/Covers/1.png"></li>
-                        <li id="nydtab" class="imgtab" onclick="NYDPreset();"><img src="Backgrounds/Presets/Covers/2.png"</li>
-                        <li id="vdtab" class="imgtab" onclick="VDPreset();"><img src="Backgrounds/Presets/Covers/3.png" y</li>
-                        <li id="eastab" class="imgtab" onclick="EASTERPreset();"><img src="Backgrounds/Presets/Covers/4.png"</li>
-                        <li id="idtab" class="imgtab" onclick="IDPreset();"><img src="Backgrounds/Presets/Covers/5.png"</li>
-                        <li id="htab" class="imgtab" onclick="HPreset();"><img src="Backgrounds/Presets/Covers/6.png"</li>
-                        <li id="ttab" class="imgtab" onclick="TPreset();"><img src="Backgrounds/Presets/Covers/7.png"</li>
-                        <li id="ctab" class="imgtab" onclick="CPreset();"><img src="Backgrounds/Presets/Covers/8.png"</li>
-                    </ul>
-                    <div class="presetsicon"><i id="presetsright" class="fa-solid fa-angle-right"></i></div>
-                </div>
-                <br />
-                <br />-->
 		<div id="optionsdatecontainer">
                 <h2 class="textelement" style="font-family: 'Dosis';">
                     Date
@@ -279,7 +257,6 @@
                 <div class="wrapper">
                     <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
                     <ul class="tabs-box" id="tabs-box">
-                        <!--<li id="customtab" class="tab active">Custom</li>-->
 			<li class="debugtab" id="onemintab" style="display:none" onclick="const datepicker = document.querySelector('.datepicker'); const now = new Date(); now.setMinutes(now.getMinutes() + 1); const offset = now.getTimezoneOffset(); now.setMinutes(now.getMinutes() - offset); const localISOTime = now.toISOString().slice(0, 16); datepicker.value = localISOTime; setCountDowngeneral();">One Minute</li>
                         <li title="Timekeeper will automatically pick the next upcoming holiday" id="autopilottab" class="autopilottab" onclick="autopilottab(); autopilotsparkle(event); SetCountDowngeneral();"><i class="fa-solid fa-business-time"></i> Second Sense</li>
                         <li id="endtab" class="mcatab" onclick="MES(); SetCountDowngeneral();">MCA</li>

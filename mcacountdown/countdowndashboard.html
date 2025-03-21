@@ -49,6 +49,26 @@
         <div id="linksContainer" class="links-container">
         </div>
 
+        <!--<div id="curated">
+            <h2 class="textelement" style="font-family: 'Dosis';">
+                Curated Countdowns <span class="betatag">BETA</span>
+            </h2>
+            <div class="presetswrapper">
+                <div class="presetsicon"><i id="presetsleft" class="fa-solid fa-angle-left"></i></div>
+                <ul class="presetstabs-box" id="presetstabs-box">
+                    <li id="endtab" class="imgtab" onclick="MESPreset();"><img src="Backgrounds/Presets/Covers/1.png"></li>
+                    <li id="nydtab" class="imgtab" onclick="NYDPreset();"><img src="Backgrounds/Presets/Covers/2.png"</li>
+                    <li id="vdtab" class="imgtab" onclick="VDPreset();"><img src="Backgrounds/Presets/Covers/3.png" y</li>
+                    <li id="eastab" class="imgtab" onclick="EASTERPreset();"><img src="Backgrounds/Presets/Covers/4.png"</li>
+                    <li id="idtab" class="imgtab" onclick="IDPreset();"><img src="Backgrounds/Presets/Covers/5.png"</li>
+                    <li id="htab" class="imgtab" onclick="HPreset();"><img src="Backgrounds/Presets/Covers/6.png"</li>
+                    <li id="ttab" class="imgtab" onclick="TPreset();"><img src="Backgrounds/Presets/Covers/7.png"</li>
+                    <li id="ctab" class="imgtab" onclick="CPreset();"><img src="Backgrounds/Presets/Covers/8.png"</li>
+                </ul>
+                <div class="presetsicon"><i id="presetsright" class="fa-solid fa-angle-right"></i></div>
+            </div>
+        </div>-->
+
 
         <div class="input-container">
             <a title="Create a new Countdown" href="https://michaeldors.com/mcacountdown/betatimer?createnew=1" id="newcountdownbutton"><i class="fa-solid fa-circle-plus"></i></a>
@@ -829,6 +849,53 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
     }
 });
 
+      //presets tabbox
+      const PresetstabsBox = document.querySelector(".presetstabs-box"),
+          PresetsallTabs = tabsBox.querySelectorAll(".tab"),
+          PresetsarrowIcons = document.querySelectorAll(".presetsicon i");
+      let PresetsisDragging = false;
+      const PresetshandleIcons = (scrollVal) => {
+          let maxScrollableWidth = PresetstabsBox.scrollWidth - PresetstabsBox.clientWidth;
+          PresetsarrowIcons[0].parentElement.style.display = scrollVal <= 0 ? "none" : "flex";
+          PresetsarrowIcons[1].parentElement.style.display = maxScrollableWidth - scrollVal <= 1 ? "none" : "flex";
+      }
+      PresetsarrowIcons.forEach(icon => {
+          icon.addEventListener("click", () => {
+              // if clicked icon is left, reduce from tabsBox scrollLeft else add
+              let scrollWidth = PresetstabsBox.scrollLeft += icon.id === "presetsleft" ? -300 : 300;
+              PresetshandleIcons(scrollWidth);
+          });
+      });
+  
+      const Presetsdragging = (e) => {
+          if (!PresetsisDragging) return;
+          PresetstabsBox.classList.add("dragging");
+          PresetstabsBox.scrollLeft -= e.movementX;
+          PresetshandleIcons(tabsBox.scrollLeft)
+      }
+      const PresetsdragStop = () => {
+          PresetsisDragging = false;
+          PresetstabsBox.classList.remove("dragging");
+      }
+      PresetstabsBox.addEventListener("mousedown", () => isDragging = true);
+      PresetstabsBox.addEventListener("mousemove", dragging);
+      document.addEventListener("mouseup", dragStop);
+
+
+        //Scrolling controls presets tabs box too
+          const presetscontainer = document.getElementById("presetstabs-box");
+      presetscontainer.addEventListener("wheel", function (e) {
+  
+          if (e.deltaY > 0) {
+              presetscontainer.scrollLeft += 200;
+              e.preventDefault();
+          }
+          else {
+              presetscontainer.scrollLeft -= 200;
+              e.preventDefault();
+      }
+     });
+      
 
 loadLinks();
     </script>
@@ -1317,5 +1384,211 @@ filter: blur(60px);
   transform: translateX(50%);
 }
 }
+
+.presetswrapper {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    padding: 0 10px;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    padding: 35px;
+    position: relative;
+    overflow-x: hidden;
+    max-width: 1000px;
+    border-radius: 35px;
+}
+
+.presetswrapper .presetsicon {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        width: 120px;
+        display: flex;
+        align-items: center;
+        text-align: center;
+    }
+
+.presetsicon:first-child {
+    left: 0;
+    display: none;
+    background: linear-gradient(90deg, var(--mainbgcolor), transparent);
+}
+
+.presetsicon:last-child {
+    right: 0;
+    justify-content: flex-end;
+    background: linear-gradient(-90deg, var(--mainbgcolor), transparent);
+}
+
+.presetsicon i {
+    width: 45px;
+    height: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    text-align: center;
+    line-height: 75px;
+    color: white;
+    background: var(--mainbgcolor);
+    border-radius: 50%;
+}
+
+.presetswrapper .presetstabs-box {
+        display: flex;
+        gap: 12px;
+        list-style: none;
+        overflow-x: hidden;
+        overflow-y: hidden;
+        scroll-behavior: smooth;
+        max-width: 90%;
+    }
+
+.presetstabs-box.dragging {
+    scroll-behavior: auto;
+    cursor: grab;
+}
+
+.presetstabs-box .tab {
+    margin: 0px;
+    cursor: pointer;
+    font-size: 1.18rem;
+    white-space: nowrap;
+    background: linear-gradient(to left, rgba(94, 0, 225, 0.8), #14141400);
+    border: #8426FF 1px solid;
+    padding: 13px 20px;
+    border-radius: 30px;
+    transition: 0.5s all;
+    color: white;
+    font-family: 'Fredoka One';
+}
+
+.presetstabs-box .mcatab {
+    margin: 0px;
+    cursor: pointer;
+    font-size: 1.18rem;
+    white-space: nowrap;
+    background: linear-gradient(to left, rgba(31,179,255,0.5), #14141400);
+    border: #26b3ff 1px solid;
+    padding: 13px 20px;
+    border-radius: 30px;
+    transition: 0.5s all;
+    color: white;
+    font-family: 'Fredoka One';
+}
+
+
+
+.presetstabs-box.dragging .tab {
+    user-select: none;
+    pointer-events: none;
+    filter: brightness(0.8);
+}
+
+.presetstabs-box .tab.active {
+    color: #fff;
+    background: #8426ff;
+    border-color: transparent;
+}
+
+.presetstabs-box .tab:hover {
+    color: #fff;
+    background: #8426ff;
+    border-color: transparent;
+    border: #141414 1px solid;
+    transform: scale(0.9);
+    animation: jiggle 0.6s infinite;
+    overflow-y: visible;
+}
+.presetstabs-box .imgtab{
+    transition: 0.5s all;
+    margin: 0px;
+    cursor: pointer;
+    white-space: nowrap;
+    padding: 13px 10px;
+}
+
+.presetstabs-box.dragging .mcatab {
+    user-select: none;
+    pointer-events: none;
+    filter: brightness(0.8);
+}
+
+
+.presetstabs-box .mcatab.active {
+    color: #fff;
+    background: #26b3ff;
+    border-color: transparent;
+}
+
+.presetstabs-box.dragging .imgtab {
+    user-select: none;
+    pointer-events: none;
+    filter: brightness(0.8);
+}
+
+    .presetstabs-box .imgtab:hover{
+    transform: scale(0.9);
+    animation: jiggle 1s infinite;
+    overflow-y: visible;
+}
+
+.presetstabs-box .mcatab:hover {
+    color: #fff;
+    background: #26b3ff;
+    border-color: transparent;
+    border: var(--mainbgcolor) 1px solid;
+    transform: scale(0.9);
+    animation: jiggle 0.6s infinite;
+    overflow-y: visible;
+}
+
+@keyframes jiggle {
+    0% {
+        transform: rotate(-0.5deg);
+    }
+
+    50% {
+        transform: rotate(0.5deg);
+    }
+
+    100% {
+        transform: rotate(-0.5deg);
+    }
+}
+
+.tabs-box .imgtab{
+    transition: 0.5s all;
+    margin: 0px;
+    cursor: pointer;
+    white-space: nowrap;
+    padding: 13px 10px;
+}
+
+.imgtab img{
+    width:300px;
+    border-radius: 10px;
+}
+
+.tabs-box.dragging .imgtab {
+    user-select: none;
+    pointer-events: none;
+    filter: brightness(0.8);
+}
+
+    .tabs-box .imgtab:hover{
+    transform: scale(0.9);
+    animation: jiggle 1s infinite;
+    overflow-y: visible;
+}
+
+.presetstabs-box .imgtab{
+    transition: 0.5s all;
+    margin: 0px;
+    cursor: pointer;
+    white-space: nowrap;
+    padding: 13px 10px;
+}
+
 </style>
 </html>

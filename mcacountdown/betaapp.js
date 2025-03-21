@@ -1859,40 +1859,7 @@ function contrast(){ //increase contrast set or remove cookie
       document.addEventListener("mouseup", dragStop);
   
   
-      /*
-      //presets tabbox
-      const PresetstabsBox = document.querySelector(".presetstabs-box"),
-          PresetsallTabs = tabsBox.querySelectorAll(".tab"),
-          PresetsarrowIcons = document.querySelectorAll(".presetsicon i");
-      let PresetsisDragging = false;
-      const PresetshandleIcons = (scrollVal) => {
-          let maxScrollableWidth = PresetstabsBox.scrollWidth - PresetstabsBox.clientWidth;
-          PresetsarrowIcons[0].parentElement.style.display = scrollVal <= 0 ? "none" : "flex";
-          PresetsarrowIcons[1].parentElement.style.display = maxScrollableWidth - scrollVal <= 1 ? "none" : "flex";
-      }
-      PresetsarrowIcons.forEach(icon => {
-          icon.addEventListener("click", () => {
-              // if clicked icon is left, reduce from tabsBox scrollLeft else add
-              let scrollWidth = PresetstabsBox.scrollLeft += icon.id === "presetsleft" ? -300 : 300;
-              PresetshandleIcons(scrollWidth);
-          });
-      });
-  
-      const Presetsdragging = (e) => {
-          if (!PresetsisDragging) return;
-          PresetstabsBox.classList.add("dragging");
-          PresetstabsBox.scrollLeft -= e.movementX;
-          PresetshandleIcons(tabsBox.scrollLeft)
-      }
-      const PresetsdragStop = () => {
-          PresetsisDragging = false;
-          PresetstabsBox.classList.remove("dragging");
-      }
-      PresetstabsBox.addEventListener("mousedown", () => isDragging = true);
-      PresetstabsBox.addEventListener("mousemove", dragging);
-      document.addEventListener("mouseup", dragStop);
-      
-      */
+    
   
   
       const holidays = { // keys are formatted as month,week,day
@@ -2155,97 +2122,6 @@ function contrast(){ //increase contrast set or remove cookie
           }
   
   
-      function MESPreset(){
-          //set background
-          document.getElementById("body").style.backgroundImage="url(Backgrounds/Presets/mcaeoy.svg)";
-  
-          //set date
-          MES();
-  
-          //set title
-          document.getElementById("cdtitlesettings").value = "MCA End of School";
-          setcountdowntitle("settings");
-      }
-      function NYDPreset(){
-          //set background
-          document.getElementById("body").style.backgroundImage="url(Backgrounds/Presets/nyd.svg)";
-  
-          //set date
-          NYD();
-  
-          //set title
-          document.getElementById("cdtitlesettings").value = "New Year's Day";
-          setcountdowntitle("settings");
-      }
-      function VDPreset(){
-          //set background
-          document.getElementById("body").style.backgroundImage="url(Backgrounds/Presets/bonsai.svg)";
-  
-          //set date
-          VD();
-  
-          //set title
-          document.getElementById("cdtitlesettings").value = "Valentine's Day";
-          setcountdowntitle("settings");
-  
-          SetCountDowngeneral();
-      }
-      function EASTERPreset(){
-          //set background
-          document.getElementById("body").style.backgroundImage="url(Backgrounds/Presets/wildflowers.svg)";
-  
-          //set date
-          EASTER();
-  
-          //set title
-          document.getElementById("cdtitlesettings").value = "Easter";
-         setcountdowntitle("settings"); 
-      }
-      function IDPreset(){
-          //set background
-          document.getElementById("body").style.backgroundImage="url(Backgrounds/Presets/id.svg)";
-  
-          //set date
-          ID();
-  
-          //set title
-          document.getElementById("cdtitlesettings").value = "Independence Day";
-         setcountdowntitle("settings"); 
-      }
-      function HPreset(){
-          //set background
-          document.getElementById("body").style.backgroundImage="url(Backgrounds/Presets/halloween.svg)";
-          
-          //set date
-          H();
-  
-          //set title
-          document.getElementById("cdtitlesettings").value = "Halloween";
-         setcountdowntitle("settings"); 
-      }
-      function TPreset(){
-          //set background
-          document.getElementById("body").style.backgroundImage="url(Backgrounds/Presets/thanksgiving.svg)";
-          
-          //set date
-          T();
-  
-          //set title
-          document.getElementById("cdtitlesettings").value = "Thanksgiving";
-         setcountdowntitle("settings"); 
-      }
-      function CPreset(){
-          //set background
-          document.getElementById("body").style.backgroundImage="url(Backgrounds/Presets/christmas.svg)";
-  
-          //set date
-          C();
-          
-          //set title
-          document.getElementById("cdtitlesettings").value = "Christmas";
-         setcountdowntitle("settings"); 
-      }
-  
   
       //Link copy buttom
       function copyinputtextlink() {
@@ -2275,19 +2151,6 @@ function contrast(){ //increase contrast set or remove cookie
           }
       });
   
-          //Scrolling controls presets tabs box too
-          //const presetscontainer = document.getElementById("presetstabs-box");
-      //presetscontainer.addEventListener("wheel", function (e) {
-  
-          //if (e.deltaY > 0) {
-          //    presetscontainer.scrollLeft += 200;
-          //    e.preventDefault();
-         // }
-         // else {
-        //      presetscontainer.scrollLeft -= 200;
-        //      e.preventDefault();
-        //  }
-     // });
   
       //Function to enable color when a background is disabled
       function enablecolor() {
