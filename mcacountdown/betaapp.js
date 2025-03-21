@@ -3124,7 +3124,7 @@ schedule_toggleCollapsible(collapsible);
               const tomorrowSchedule = schedule_getScheduleForDay(tomorrow);
   
               if (tomorrowSchedule.length === 0) {
-                  document.getElementById('schedule-classTitle').innerHTML = '<i class="fa-solid fa-calendar-check"></i> Enjoy your time!<p style="font-family:Dosis;">There are no events on your schedule right now</p>';
+                  document.getElementById('schedule-classTitle').innerHTML = '<i class="fa-solid fa-calendar-check"></i> Enjoy your time!<p style="font-family:Dosis; color:white;">There are no events on your schedule right now</p>';
                   document.getElementById('schedule-timeRemaining').textContent = '';
                   document.getElementById('schedule-remainingText').textContent = '';
                   document.getElementById('schedule-progress').style.width = '0%';
