@@ -2821,6 +2821,8 @@ function contrast(){ //increase contrast set or remove cookie
       document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
       document.title = "Countdown Schedule";
       showToast('Schedule created successfully!', 'success');
+
+      document.getElementById("schedule-eventTitle").scrollIntoView();
       }
   
           function schedule_resetAll(){
