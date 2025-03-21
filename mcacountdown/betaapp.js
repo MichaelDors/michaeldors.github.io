@@ -376,8 +376,11 @@ const countdownDate = new Date(parameter('date')).getTime();
               FontDMSerif('auto');
           }
           else if (decodeURIComponent(parameter('typeface')) == "Orbitron") {
-              FontOrbitron('auto');
+              FontMichroma('auto');
           }
+          else if (decodeURIComponent(parameter('typeface')) == "Michroma") {
+            FontMichroma('auto');
+        }
       }
       else {
           css.style.setProperty('--typeface', "Fredoka One"); //if no parameter is found for the typeface, simply set it to the default (Fredoka One)
@@ -2516,8 +2519,8 @@ function contrast(){ //increase contrast set or remove cookie
           document.getElementById("poppins").classList.add("fontpicker");
           document.getElementById("dmserif").classList.remove("selectedfontpicker");
           document.getElementById("dmserif").classList.add("fontpicker");
-          document.getElementById("orbitron").classList.remove("selectedfontpicker");
-          document.getElementById("orbitron").classList.add("fontpicker");
+          document.getElementById("michroma").classList.remove("selectedfontpicker");
+          document.getElementById("michroma").classList.add("fontpicker");
   
           document.getElementById("schedule-classTitle").style.textTransform = "initial";
   
@@ -2536,8 +2539,8 @@ function contrast(){ //increase contrast set or remove cookie
           document.getElementById("poppins").classList.add("selectedfontpicker");
           document.getElementById("dmserif").classList.remove("selectedfontpicker");
           document.getElementById("dmserif").classList.add("fontpicker");
-          document.getElementById("orbitron").classList.remove("selectedfontpicker");
-          document.getElementById("orbitron").classList.add("fontpicker");
+          document.getElementById("michroma").classList.remove("selectedfontpicker");
+          document.getElementById("michroma").classList.add("fontpicker");
   
           document.getElementById("schedule-classTitle").style.textTransform = "initial";
   
@@ -2549,15 +2552,15 @@ function contrast(){ //increase contrast set or remove cookie
       //set DM Serif font, previously Yeseva
       function FontDMSerif(method) {
           document.querySelector(':root').style.setProperty('--typeface', 'DM Serif Display');
-          document.querySelector(':root').style.setProperty('--comptypeface', 'Castoro');
+          document.querySelector(':root').style.setProperty('--comptypeface', 'DM Serif Display');
   
           document.getElementById("fredoka").classList.remove("selectedfontpicker");
           document.getElementById("fredoka").classList.add("fontpicker");
           document.getElementById("poppins").classList.remove("selectedfontpicker");
           document.getElementById("poppins").classList.add("fontpicker");
           document.getElementById("dmserif").classList.add("selectedfontpicker");
-          document.getElementById("orbitron").classList.remove("selectedfontpicker");
-          document.getElementById("orbitron").classList.add("fontpicker");
+          document.getElementById("michroma").classList.remove("selectedfontpicker");
+          document.getElementById("michroma").classList.add("fontpicker");
   
           document.getElementById("schedule-classTitle").style.textTransform = "initial";
   
@@ -2566,10 +2569,10 @@ function contrast(){ //increase contrast set or remove cookie
           }
       }
   
-      //set Orbitron font
-      function FontOrbitron(method) {
-          document.querySelector(':root').style.setProperty('--typeface', 'Orbitron');
-          document.querySelector(':root').style.setProperty('--comptypeface', 'Ubuntu');
+      //set michroma font
+      function FontMichroma(method) {
+          document.querySelector(':root').style.setProperty('--typeface', 'Michroma');
+          document.querySelector(':root').style.setProperty('--comptypeface', 'Michroma');
   
           document.getElementById("fredoka").classList.remove("selectedfontpicker");
           document.getElementById("fredoka").classList.add("fontpicker");
@@ -2577,10 +2580,10 @@ function contrast(){ //increase contrast set or remove cookie
           document.getElementById("poppins").classList.add("fontpicker");
           document.getElementById("dmserif").classList.remove("selectedfontpicker");
           document.getElementById("dmserif").classList.add("fontpicker");
-          document.getElementById("orbitron").classList.add("selectedfontpicker");
-  
-          document.getElementById("schedule-classTitle").style.textTransform = "uppercase";
-  
+          document.getElementById("michroma").classList.add("selectedfontpicker");
+
+          document.getElementById("schedule-classTitle").style.textTransform = "initial";
+    
           if (method == "Manual") {
               SetCountDowngeneral();
           }
