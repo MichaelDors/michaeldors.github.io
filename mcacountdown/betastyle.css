@@ -1678,6 +1678,10 @@ a:hover:active {
         border:none !important;
         border-radius: 30px;
     }
+
+    .schedule-form-group{
+        zoom:50%;
+    }
 }
 
 @media only screen and (min-width: 1300px) {
