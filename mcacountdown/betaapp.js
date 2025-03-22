@@ -2720,11 +2720,17 @@ function contrast(){ //increase contrast set or remove cookie
                           const index = schedule_exceptions[schedule_editingExceptionDay].findIndex(e => e === schedule_editingEvent);
                           if (index !== -1) {
                               schedule_exceptions[schedule_editingExceptionDay][index] = newEvent;
+                              showToast('Event updated successfully', 'success');
+                          } else {
+                              showToast('Error updating event', 'error');
                           }
                       } else {
                           const index = schedule_events.indexOf(schedule_editingEvent);
                           if (index !== -1) {
                               schedule_events[index] = newEvent;
+                              showToast('Event updated successfully', 'success');
+                          } else {
+                              showToast('Error updating event', 'error');
                           }
                       }
                   } else {
@@ -2736,6 +2742,7 @@ function contrast(){ //increase contrast set or remove cookie
                           schedule_exceptions[schedule_editingExceptionDay].push(newEvent);
                       } else {
                           schedule_events.push(newEvent);
+                          showToast('Event added to regular schedule', 'success');
                       }
                   }
   
@@ -2751,6 +2758,9 @@ function contrast(){ //increase contrast set or remove cookie
                   schedule_updateURL();
                   schedule_updateScheduleViewer();
               }
+              else{
+                showToast('You must input a valid title, start time, and end time', 'error')
+              }
               const collapsibles = document.querySelectorAll('.schedule-collapsible');
             collapsibles.forEach(collapsible => {
                 if (collapsible.classList.contains('active')) {
@@ -2760,9 +2770,12 @@ function contrast(){ //increase contrast set or remove cookie
           }
   
           function schedule_editEvent(event, isException = false, day = null) {
-            if(isException == true){
+            if(isException == true && event == 'null'){
                 setTimeout(function() {
                     schedule_addOrUpdateEvent();
+                    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    showToast('Event successfully added to ' + dayNames[day], 'success')
+                    document.getElementById("schedule-eventTitle").scrollIntoView();
                 }, 100);
             }
           
@@ -2784,6 +2797,8 @@ collapsibles.forEach(collapsible => {
 schedule_toggleCollapsible(collapsible);
   }
 });
+
+showToast('Pick an exception day to add this event to', 'info')
           }
   
           function schedule_removeEvent(index, isException = false, day = null) {
@@ -2805,6 +2820,12 @@ schedule_toggleCollapsible(collapsible);
               const day = document.getElementById('schedule-exceptionDay').value;
               if (!schedule_exceptions[day]) {
                   schedule_exceptions[day] = [];
+                  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                  showToast(dayNames[day] + ' exception created', 'success');
+              }
+              else{
+                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                showToast('You already have an exception for ' + dayNames[day], 'error');
               }
               schedule_updateExceptionList();
               schedule_updateURL();
