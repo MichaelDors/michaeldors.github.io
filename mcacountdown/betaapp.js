@@ -2706,6 +2706,404 @@ function contrast(){ //increase contrast set or remove cookie
                   schedule_updateExceptionList();
               }
           }
+
+          function importICSFile() {
+            try {
+                console.log('Creating file input element...');
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.ics';
+                
+                // Add event listener before appending to DOM
+                fileInput.addEventListener('change', function(e) {
+                    console.log('File input changed');
+                    try {
+                        const file = e.target.files[0];
+                        if (!file) {
+                            console.log('No file selected');
+                            showToast('No file selected', 'error');
+                            return;
+                        }
+                        
+                        console.log('File selected:', file.name, 'size:', file.size);
+                        showToast('Reading file...', 'info');
+                        
+                        const reader = new FileReader();
+                        
+                        reader.onload = function(event) {
+                            try {
+                                console.log('File read successfully');
+                                const icsContent = event.target.result;
+                                processICSContent(icsContent);
+                            } catch (error) {
+                                console.error('Error processing file content:', error);
+                                showToast('Error processing file: ' + error.message, 'error');
+                            }
+                        };
+                        
+                        reader.onerror = function(event) {
+                            console.error('Error reading file:', event);
+                            showToast('Error reading file', 'error');
+                        };
+                        
+                        reader.readAsText(file);
+                    } catch (error) {
+                        console.error('Error handling selected file:', error);
+                        showToast('Error handling file: ' + error.message, 'error');
+                    }
+                });
+                
+                // Append to DOM temporarily to ensure event handling works
+                document.body.appendChild(fileInput);
+                fileInput.click();
+                
+                // Remove after click to keep DOM clean
+                setTimeout(() => {
+                    document.body.removeChild(fileInput);
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error in importICSFile:', error);
+                showToast('Error creating file input: ' + error.message, 'error');
+            }
+        }
+        
+        function processICSContent(icsContent) {
+            console.log('Processing ICS content...');
+            console.log('Clearing existing schedule...');
+            schedule_events = [];
+            schedule_exceptions = {
+                0: [], // Sunday
+                1: [], // Monday
+                2: [], // Tuesday
+                3: [], // Wednesday
+                4: [], // Thursday
+                5: [], // Friday
+                6: []  // Saturday
+            };
+            
+            console.log('Parsing ICS events...');
+            const events = parseICSEvents(icsContent);
+            console.log(`Found ${events.length} events to process for scheduling`);
+            
+            const dailyEvents = [];
+            const weeklyEvents = {};
+            let processedEventCount = 0;
+            
+            console.log('Processing events for schedule...');
+            events.forEach((event, index) => {
+                console.log(`Processing event ${index + 1}/${events.length}: "${event.summary}"`);
+                
+                if (!event.rrule) {
+                    console.log(`Event "${event.summary}" has no recurrence rule, skipping`);
+                    return;
+                }
+                
+                if (event.rrule.freq === 'DAILY') {
+                    console.log(`Adding daily event: "${event.summary}"`);
+                    dailyEvents.push({
+                        title: event.summary,
+                        startTime: formatICSTime(event.dtstart),
+                        endTime: formatICSTime(event.dtend)
+                    });
+                    processedEventCount++;
+                }
+                else if (event.rrule.freq === 'WEEKLY') {
+                    console.log(`Processing weekly event: "${event.summary}"`);
+                    const days = event.rrule.byday || [];
+                    
+                    if (days.length === 0) {
+                        console.log(`Weekly event "${event.summary}" has no specific days, skipping`);
+                        return;
+                    }
+                    
+                    const dayMap = { 'SU': 0, 'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6 };
+                    
+                    days.forEach(day => {
+                        const dayIndex = dayMap[day];
+                        if (dayIndex !== undefined) {
+                            console.log(`Adding "${event.summary}" to ${day} schedule`);
+                            if (!weeklyEvents[dayIndex]) {
+                                weeklyEvents[dayIndex] = [];
+                            }
+                            
+                            weeklyEvents[dayIndex].push({
+                                title: event.summary,
+                                startTime: formatICSTime(event.dtstart),
+                                endTime: formatICSTime(event.dtend)
+                            });
+                            processedEventCount++;
+                        }
+                    });
+                }
+            });
+            
+            console.log(`Found ${dailyEvents.length} daily events to add to regular schedule`);
+            schedule_events = [...dailyEvents];
+            
+            console.log('Processing exception days...');
+            let exceptionDaysCount = 0;
+            
+            // Reset schedule_exceptions to not have empty arrays - we'll only add days that have events
+            schedule_exceptions = {};
+            
+            // Only create exception days for days that have weekly events
+            Object.keys(weeklyEvents).forEach(dayIndex => {
+                if (weeklyEvents[dayIndex].length > 0) {
+                    exceptionDaysCount++;
+                    console.log(`Creating exception day ${dayIndex} with ${weeklyEvents[dayIndex].length} weekly events`);
+                    schedule_exceptions[dayIndex] = [
+                        ...dailyEvents,
+                        ...weeklyEvents[dayIndex]
+                    ];
+                    
+                    console.log(`Sorting exception day ${dayIndex}`);
+                    schedule_exceptions[dayIndex].sort((a, b) => a.startTime.localeCompare(b.startTime));
+                }
+            });
+            
+            console.log('Sorting regular schedule...');
+            schedule_events.sort((a, b) => a.startTime.localeCompare(b.startTime));
+            
+            console.log('Updating UI...');
+            schedule_updateEventList();
+            schedule_updateExceptionList();
+            schedule_updateURL();
+            schedule_updateScheduleViewer();
+            
+            console.log('Import complete');
+            if (processedEventCount > 0) {
+                showToast(
+                    `Successfully imported ${dailyEvents.length} daily events and created ${exceptionDaysCount} exception days!`, 
+                    'success'
+                );
+            } else {
+                showToast('No compatible recurring events found in calendar', 'info');
+            }
+        }
+        
+        function parseICSEvents(icsContent) {
+            console.log('Starting ICS parsing...');
+            const events = [];
+            let currentEvent = null;
+            
+            try {
+                // Check if the file contains iCalendar data
+                if (!icsContent.includes('BEGIN:VCALENDAR')) {
+                    console.error('Invalid ICS file: No VCALENDAR found');
+                    showToast('Invalid ICS file format', 'error');
+                    return [];
+                }
+                
+                const lines = icsContent.split(/\r\n|\n|\r/);
+                console.log(`Found ${lines.length} lines to parse`);
+                
+                const processedLines = [];
+                
+                // Handle line folding first (lines that start with space or tab are part of the previous line)
+                for (let i = 0; i < lines.length; i++) {
+                    if (i > 0 && (lines[i].startsWith(' ') || lines[i].startsWith('\t'))) {
+                        processedLines[processedLines.length - 1] += lines[i].substring(1);
+                    } else {
+                        processedLines.push(lines[i]);
+                    }
+                }
+                
+                for (let i = 0; i < processedLines.length; i++) {
+                    const line = processedLines[i];
+                    
+                    if (line === 'BEGIN:VEVENT') {
+                        console.log('Starting new event...');
+                        currentEvent = {
+                            summary: 'Untitled Event', // Default title
+                            dtstart: '',
+                            dtend: '',
+                            isRecurring: false,
+                            status: 'CONFIRMED' // Default status
+                        };
+                    }
+                    else if (line === 'END:VEVENT') {
+                        if (currentEvent) {
+                            // Check if the event has required properties
+                            if (currentEvent.summary && currentEvent.dtstart) {
+                                // Skip CANCELLED events
+                                if (currentEvent.status === 'CANCELLED') {
+                                    console.log('Skipping CANCELLED event:', currentEvent.summary);
+                                }
+                                // Only include recurring events with valid RRULE
+                                else if (currentEvent.isRecurring && currentEvent.rrule) {
+                                    // If no end time is specified, use start time + 1 hour
+                                    if (!currentEvent.dtend && currentEvent.dtstart) {
+                                        currentEvent.dtend = currentEvent.dtstart;
+                                    }
+                                    
+                                    console.log(`Checking if event "${currentEvent.summary}" is active...`);
+                                    const isActive = isEventStillActive(currentEvent);
+                                    
+                                    
+                                    if (isActive) {
+                                        console.log('Adding active recurring event:', currentEvent);
+                                        events.push(currentEvent);
+                                    } else {
+                                        console.log('Skipping inactive event:', currentEvent.summary);
+                                    }
+                                } else {
+                                    console.log('Skipping non-recurring event or event with invalid RRULE');
+                                }
+                            } else {
+                                console.log('Skipping incomplete event:', currentEvent);
+                            }
+                        }
+                        currentEvent = null;
+                    }
+                    else if (currentEvent) {
+                        const colonIndex = line.indexOf(':');
+                        if (colonIndex > 0) {
+                            const name = line.substring(0, colonIndex);
+                            const value = line.substring(colonIndex + 1);
+                            
+                            const semicolonIndex = name.indexOf(';');
+                            const propertyName = semicolonIndex > 0 ? name.substring(0, semicolonIndex) : name;
+                            
+                            console.log(`Processing property: ${propertyName} = ${value.substring(0, 30)}${value.length > 30 ? '...' : ''}`);
+                            
+                            switch (propertyName) {
+                                case 'SUMMARY':
+                                    currentEvent.summary = value || 'Untitled Event';
+                                    break;
+                                case 'DTSTART':
+                                    currentEvent.dtstart = value;
+                                    break;
+                                case 'DTEND':
+                                    currentEvent.dtend = value;
+                                    break;
+                                case 'RRULE':
+                                    currentEvent.isRecurring = true;
+                                    currentEvent.rrule = parseRRule(value);
+                                    break;
+                                case 'STATUS':
+                                    currentEvent.status = value;
+                                    break;
+                                case 'EXDATE':
+                                    if (!currentEvent.exdates) {
+                                        currentEvent.exdates = [];
+                                    }
+                                    currentEvent.exdates.push(value);
+                                    break;
+                            }
+                        }
+                    }
+                }
+                
+                console.log(`Parsing complete, found ${events.length} active recurring events`);
+                
+                if (events.length === 0) {
+                    showToast('No active recurring events found in calendar', 'info');
+                }
+                
+                return events;
+            } catch (error) {
+                console.error('Error parsing ICS file:', error);
+                showToast('Error parsing calendar file: ' + error.message, 'error');
+                return [];
+            }
+        }
+        
+        function isEventStillActive(event) {
+            try {
+                // Parse event start date
+                let startDate;
+                if (!event.dtstart) {
+                    console.log('Event has no start date');
+                    return false;
+                }
+                
+                try {
+                    startDate = parseICSDate(event.dtstart);
+                    console.log(`Event start date: ${startDate.toISOString().split('T')[0]}`);
+                } catch (e) {
+                    console.error('Error parsing start date:', e);
+                    return true; // If we can't parse the date, assume it's active
+                }
+                
+                const now = new Date();
+                
+                // If the event has no recurrence rule but a start date in the past
+                if (!event.rrule) {
+                    console.log('Event has no recurrence rule');
+                    return false;
+                }
+                
+                // If the event is recurring but has UNTIL date in the past
+                if (event.rrule.until) {
+                    try {
+                        const untilDate = parseICSDate(event.rrule.until);
+                        console.log(`Event has UNTIL date: ${untilDate.toISOString().split('T')[0]}`);
+                        
+                        if (untilDate < now) {
+                            console.log('Event UNTIL date is in the past, marking as inactive');
+                            return false;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing UNTIL date:', e);
+                        // Continue processing if date parsing fails
+                    }
+                }
+                
+                // Special handling for DAILY events - always consider them active if they have no UNTIL date
+                // or if the UNTIL date is in the future
+                if (event.rrule.freq === 'DAILY') {
+                    console.log('Event is DAILY, considering active');
+                    return true;
+                }
+                
+                // If event start date is too far in the past (more than 5 years)
+                // and there's no UNTIL date, it's probably obsolete
+                // Only apply this rule to weekly events, not daily ones
+                if (event.rrule.freq === 'WEEKLY') {
+                    const fiveYearsAgo = new Date();
+                    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+                    
+                    if (startDate < fiveYearsAgo && !event.rrule.until) {
+                        console.log('Weekly event start date more than 5 years old with no end date, assuming inactive');
+                        return false;
+                    }
+                }
+                
+                console.log('Event passes all activity checks, marking as active');
+                return true;
+            } catch (error) {
+                console.error('Error checking if event is active:', error);
+                return true; // Default to including the event if there's an error
+            }
+        }
+        
+        function parseICSDate(dateStr) {
+            if (!dateStr) return null;
+            
+            try {
+                // Handle date with time (YYYYMMDDTHHMMSSZ format)
+                if (dateStr.includes('T')) {
+                    const datePart = dateStr.split('T')[0];
+                    const year = parseInt(datePart.substring(0, 4), 10);
+                    const month = parseInt(datePart.substring(4, 6), 10) - 1; // JS months are 0-indexed
+                    const day = parseInt(datePart.substring(6, 8), 10);
+                    return new Date(year, month, day);
+                } 
+                // Handle date only (YYYYMMDD format)
+                else if (dateStr.length >= 8) {
+                    const year = parseInt(dateStr.substring(0, 4), 10);
+                    const month = parseInt(dateStr.substring(4, 6), 10) - 1;
+                    const day = parseInt(dateStr.substring(6, 8), 10);
+                    return new Date(year, month, day);
+                }
+                
+                throw new Error('Unknown date format: ' + dateStr);
+            } catch (error) {
+                console.error('Error parsing ICS date:', error);
+                throw error;
+            }
+        }
   
           function schedule_addOrUpdateEvent() {
               const title = document.getElementById('schedule-eventTitle').value;
@@ -3182,7 +3580,7 @@ showToast('Pick an exception day to add this event to', 'info')
           setTimeout(function() {
               document.getElementById("magictitle").classList.remove("magictitle-success");
           }, 500);
-      setcountdowntitle("front"); 
+     setcountdowntitle("front"); 
       }
       else{
               var now = new Date(); //getting the current date
@@ -3559,7 +3957,7 @@ showToast('Pick an exception day to add this event to', 'info')
           // Use setTimeout to ensure the banner is fully rendered
           setTimeout(() => {
               const toastHeight = toast.offsetHeight;
-              icon.style.height = `${toastHeigh}px`;
+              icon.style.height = `${toastHeight}px`;
           }, 1); // Adjust the timeout duration if necessary
           setTimeout(() => {
               const toastHeight = toast.offsetHeight;
@@ -3742,4 +4140,145 @@ function searchsettings(){
 
     document.getElementById('searchbarinput').value = "";
 }
+
+        function parseRRule(rruleStr) {
+            console.log('Parsing RRULE:', rruleStr);
+            try {
+                const rrule = {
+                    freq: null,
+                    interval: 1, // Default interval is 1
+                    byday: [],
+                    until: null,
+                    count: null
+                };
+                
+                if (!rruleStr) {
+                    console.error('Empty RRULE string');
+                    return null;
+                }
+                
+                const parts = rruleStr.split(';');
+                
+                parts.forEach(part => {
+                    const equalsIndex = part.indexOf('=');
+                    if (equalsIndex === -1) return;
+                    
+                    const name = part.substring(0, equalsIndex);
+                    const value = part.substring(equalsIndex + 1);
+                    
+                    console.log(`Processing RRULE part: ${name}=${value}`);
+                    
+                    switch (name) {
+                        case 'FREQ':
+                            rrule.freq = value;
+                            break;
+                        case 'INTERVAL':
+                            const interval = parseInt(value, 10);
+                            rrule.interval = !isNaN(interval) ? interval : 1;
+                            break;
+                        case 'BYDAY':
+                            rrule.byday = value.split(',').filter(day => 
+                                ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'].includes(day));
+                            break;
+                        case 'UNTIL':
+                            rrule.until = value;
+                            break;
+                        case 'COUNT':
+                            rrule.count = parseInt(value, 10);
+                            break;
+                        // Ignore other RRULE properties for now
+                    }
+                });
+                
+                // If it's a weekly event with no specific days, default to the original event day
+                if (rrule.freq === 'WEEKLY' && rrule.byday.length === 0) {
+                    // Since we don't have the original date available here, we'll skip validation
+                    console.log('Weekly event with no specified days');
+                }
+                
+                console.log('RRULE parsing complete:', rrule);
+                
+                // Validate the rrule
+                if (!rrule.freq) {
+                    console.error('Invalid RRULE: Missing FREQ');
+                    return null;
+                }
+                
+                // Only support DAILY and WEEKLY frequencies
+                if (rrule.freq !== 'DAILY' && rrule.freq !== 'WEEKLY') {
+                    console.log(`Unsupported frequency: ${rrule.freq}, only DAILY and WEEKLY are supported`);
+                    return null;
+                }
+                
+                // For daily events, ensure they don't have a large interval
+                if (rrule.freq === 'DAILY' && rrule.interval > 1) {
+                    console.log(`Daily event has interval > 1 (${rrule.interval}), but will still be processed`);
+                    // We still allow this for daily events, just log it
+                }
+                
+                // Skip events that recur less often than weekly (interval > 1 for weekly events)
+                if (rrule.freq === 'WEEKLY' && rrule.interval > 1) {
+                    console.log(`Skipping bi-weekly or monthly event with interval: ${rrule.interval}`);
+                    return null;
+                }
+                
+                return rrule;
+            } catch (error) {
+                console.error('Error parsing RRULE:', error);
+                return null;
+            }
+        }
+        
+        function formatICSTime(timeStr) {
+            console.log('Formatting time:', timeStr);
+            try {
+                let time = '00:00'; // Default time
+                
+                if (!timeStr) {
+                    console.log('Empty time string, using default');
+                    return time;
+                }
+                
+                // Handle various ICS time formats
+                if (timeStr.includes('T')) {
+                    // Standard format: YYYYMMDDTHHMMSSZ or similar
+                    const dateTime = timeStr.split('T')[1];
+                    
+                    // Extract hours and minutes from the time part
+                    if (dateTime.length >= 4) {
+                        const hours = dateTime.substring(0, 2);
+                        const minutes = dateTime.substring(2, 4);
+                        
+                        // Validate hours and minutes
+                        const hoursNum = parseInt(hours, 10);
+                        const minutesNum = parseInt(minutes, 10);
+                        
+                        if (!isNaN(hoursNum) && !isNaN(minutesNum) && 
+                            hoursNum >= 0 && hoursNum <= 23 && 
+                            minutesNum >= 0 && minutesNum <= 59) {
+                            time = `${hours}:${minutes}`;
+                        }
+                    }
+                } else if (timeStr.includes(':')) {
+                    // Handle HH:MM format directly
+                    const parts = timeStr.split(':');
+                    if (parts.length >= 2) {
+                        const hours = parts[0].padStart(2, '0');
+                        const minutes = parts[1].padStart(2, '0');
+                        time = `${hours}:${minutes}`;
+                    }
+                } else if (/^\d{6,}$/.test(timeStr)) {
+                    // Handle raw numeric format (e.g., 083000 for 8:30 AM)
+                    const hours = timeStr.substring(0, 2);
+                    const minutes = timeStr.substring(2, 4);
+                    time = `${hours}:${minutes}`;
+                }
+                
+                console.log('Formatted time:', time);
+                return time;
+            } catch (error) {
+                console.error('Error formatting time:', error);
+                return '00:00'; // Default in case of error
+            }
+        }
 
