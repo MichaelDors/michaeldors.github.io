@@ -9,6 +9,37 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+    .floating-toolbar i {
+        font-size: 18px;
+        color: white;
+    }
+
+    .selected-element {
+    position: relative;
+}
+
+.selected-element::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid #FF2121;
+    border-radius: 4px;
+    animation: pulse 1.5s infinite;
+    pointer-events: none;
+    z-index: 999;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 0.3; }
+    100% { opacity: 0.6; }
+}
+</style>
 </head>
     <!-- Google tag (gtag.js) -->
 <script>
@@ -44,95 +75,309 @@ document.head.appendChild(script);
         <h3 class="glowbutton" onmouseup="uploadHTML();">Upload Your HTML File</h3>
     </div>
     <div class="ce-example__content _ce-example__content--small" >
-
-        <div class="ce-example__button" id="saveButton"  style="background-color:#141414; display:none; color:white; padding:10px; padding-bottom:45px;">
-          <h3 class="glowbutton" onmouseup="saveContentAsHTML()">Save HTML File</h3>
+        <div class="ce-example__button" id="saveButton" style="background-color:#141414; display:none; color:white; padding:10px; padding-bottom:15px;">
+          <div style="display: flex; gap: 20px; align-items: center;">
+            <h3 class="glowbutton" onmouseup="saveContentAsHTML()"><i style="color:white !important" class="fa-solid fa-download"></i> Save HTML File</h3>
+            <h3 id="toggleSidebarBtn" onclick="toggleSidebar()" class="glowbutton"><i style="color:white !important" class="fa-solid fa-code"></i> Edit HTML</h3>
+          </div>
         </div>
-    
-    
-      </div>
+    </div>
     <div id="content" contenteditable="true"></div>
+    <div id="floating-toolbar" class="floating-toolbar">
+        <div class="toolbar-group">
+            <button onclick="changeTextColor()" title="Text Color">
+                <input type="color" id="textColorPicker" onchange="applyTextColor(this.value)">
+                <span style="color:white;"><i class="fa-solid fa-palette"></i></span>
+            </button>
+            <button onclick="changeBackgroundColor()" title="Background Color">
+                <input type="color" id="bgColorPicker" onchange="applyBackgroundColor(this.value)">
+                <span style="color:white;"><i class="fa-solid fa-fill-drip"></i></span>
+            </button>
+            <button onclick="replaceImage()" title="Replace Image">
+                <input type="file" id="imageUpload" accept="image/*" style="display: none" onchange="handleImageUpload(this)">
+                <span style="color:white;"><i class="fa-solid fa-image"></i></span>
+            </button>
+        </div>
+    </div>
+    <div id="code-sidebar" class="code-sidebar">
+        <div class="sidebar-header">
+            <h3 style="color: white !important;">HTML Editor</h3>
+            <button onclick="toggleSidebar()" class="close-sidebar">×</button>
+        </div>
+        <textarea id="code-editor"></textarea>
+        <button onclick="applyCodeChanges()" class="apply-changes">Apply Changes</button>
+    </div>
 
 
 
   <script>
 
     let filenametosaveas;
+let projectFiles = new Map();
+let basePath = '';
+
 function uploadHTML() {
-  // Create a hidden file input element
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
-  fileInput.accept = '.html'; // Accept only HTML files
-  fileInput.style.display = 'none'; // Hide the input element
+  fileInput.webkitdirectory = true;
+  fileInput.style.display = 'none';
+  document.body.appendChild(fileInput);
 
-  // Add a click event listener to the hidden input
-  fileInput.addEventListener('change', handleFileSelection);
-
-  // Simulate a click on the hidden input to open the file picker
+  fileInput.addEventListener('change', handleFolderSelection);
   fileInput.click();
 
-  // Function to handle file selection after the picker closes
-  function handleFileSelection(e) {
-    const file = e.target.files[0];
+  function handleFolderSelection(e) {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
-    // Check if a file is selected
-    if (!file) {
-      return; // No file selected, do nothing
-    }
-
-    // Check if the file is an HTML file
-    if (!file.type.match('text/html')) {
-      alert('Please select an HTML file');
+    // Find the HTML file in the root directory
+    const htmlFiles = files.filter(file => file.name.endsWith('.html'));
+    if (!htmlFiles.length) {
+      alert('No HTML file found in the selected folder');
       return;
     }
 
-    filenametosaveas = file.name;
+    // Store all files for later use
+    projectFiles.clear();
+    basePath = htmlFiles[0].webkitRelativePath.split('/')[0];
 
+    files.forEach(file => {
+      const relativePath = file.webkitRelativePath.replace(basePath + '/', '');
+      projectFiles.set(relativePath, file);
+    });
+
+    // Read the HTML file
+    const mainHtmlFile = htmlFiles[0];
+    filenametosaveas = mainHtmlFile.name;
     const reader = new FileReader();
+    reader.readAsText(mainHtmlFile);
 
-    // Read the file contents
-    reader.readAsText(file);
+    reader.onload = async function(e) {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(e.target.result, 'text/html');
 
-    // Define what to do when reading is complete
-    reader.onload = function(e) {
-      const content = document.getElementById('content');
-      content.innerHTML = e.target.result;
-      document.querySelector(".uploadpopup").remove();
-      document.getElementById("saveButton").style.display="";
+        // Process and update resource paths
+        await processResources(doc);
+
+        const bodyContent = doc.body ? doc.body.innerHTML : e.target.result;
+        const content = document.getElementById('content');
+        content.innerHTML = bodyContent;
+
+        const uploadPopup = document.querySelector('.uploadpopup');
+        if (uploadPopup) uploadPopup.remove();
+
+        document.getElementById('saveButton').style.display = '';
+      } catch (error) {
+        console.error('Error parsing HTML:', error);
+        alert('Error loading the HTML file. Please try again.');
+      }
     };
 
-    // Handle errors during reading
     reader.onerror = function(e) {
       console.error('Error reading file:', e);
+      alert('Error reading the file. Please try again.');
     };
+
+    document.body.removeChild(fileInput);
   }
+}
+
+async function processResources(doc) {
+  // Process images
+  const images = doc.getElementsByTagName('img');
+  for (let img of images) {
+    const src = img.getAttribute('src');
+    if (src && projectFiles.has(src)) {
+      const imageFile = projectFiles.get(src);
+      const dataUrl = await readFileAsDataURL(imageFile);
+      img.src = dataUrl;
+    }
+  }
+
+  // Process CSS files
+  const links = doc.getElementsByTagName('link');
+  for (let link of links) {
+    if (link.rel === 'stylesheet') {
+      const href = link.getAttribute('href');
+      if (href && projectFiles.has(href)) {
+        const cssFile = projectFiles.get(href);
+        const cssContent = await readFileAsText(cssFile);
+        const style = doc.createElement('style');
+        style.textContent = cssContent;
+        link.parentNode.replaceChild(style, link);
+      }
+    }
+  }
+}
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
 }
 
 
 
 function saveContentAsHTML() {
-  // Get the content element
-  const contentElement = document.getElementById("content");
+    const contentElement = document.getElementById("content");
+    const content = contentElement.innerHTML;
+    const blob = new Blob([content], { type: "text/html" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filenametosaveas;
+    link.click();
+}
 
-  // Get the content as HTML string
-  const content = contentElement.innerHTML;
+let currentElement = null;
+let hideToolbarTimeout;
 
-  // Create a Blob object with the content and HTML MIME type
-  const blob = new Blob([content], { type: "text/html" });
+document.getElementById('content').addEventListener('mouseover', function(e) {
+    const target = e.target;
+    if (target !== this) {
+        // Remove highlight from previous element
+        if (currentElement) {
+            currentElement.classList.remove('selected-element');
+        }
+        currentElement = target;
+        currentElement.classList.add('selected-element');
+        const toolbar = document.getElementById('floating-toolbar');
+        const viewportWidth = window.innerWidth;
+        
+        // Show/hide image replace button based on element type
+        const imageReplaceButton = toolbar.querySelector('button:last-child');
+        imageReplaceButton.style.display = target.tagName.toLowerCase() === 'img' ? 'block' : 'none';
+        
+        // Get toolbar dimensions
+        toolbar.style.display = 'block'; // Temporarily show to get dimensions
+        const toolbarWidth = toolbar.offsetWidth;
+        
+        // Position toolbar slightly to the right of cursor
+        let rect = target.getBoundingClientRect();
+        let left = e.clientX + 10;
+        let top = e.clientY + window.scrollY;
+        
+        // Ensure toolbar stays within viewport
+        if (left + toolbarWidth > viewportWidth) {
+            left = e.clientX - toolbarWidth - 10;
+        }
+        
+        toolbar.style.top = top + 'px';
+        toolbar.style.left = left + 'px';
+        
+        clearTimeout(hideToolbarTimeout);
+    }
+});
 
-  // Create a downloadable link
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filenametosaveas;
+document.getElementById('floating-toolbar').addEventListener('mouseover', function(e) {
+    clearTimeout(hideToolbarTimeout);
+    this.style.display = 'block';
+});
 
-  // Simulate a click on the link to trigger download
-  link.click();
+document.getElementById('floating-toolbar').addEventListener('mouseout', function(e) {
+    if (!e.relatedTarget || !this.contains(e.relatedTarget)) {
+        hideToolbarTimeout = setTimeout(() => {
+            if (!currentElement || !currentElement.matches(':hover')) {
+                this.style.display = 'none';
+            }
+        }, 300);
+    }
+});
+
+document.getElementById('content').addEventListener('mouseout', function(e) {
+    if (!e.relatedTarget || !document.getElementById('floating-toolbar').contains(e.relatedTarget)) {
+        hideToolbarTimeout = setTimeout(() => {
+            const toolbar = document.getElementById('floating-toolbar');
+            if (!toolbar.matches(':hover')) {
+                toolbar.style.display = 'none';
+            }
+        }, 300);
+    }
+});
+
+function applyTextColor(color) {
+    if (currentElement) {
+        currentElement.style.color = color;
+    }
+}
+
+function applyBackgroundColor(color) {
+    if (currentElement) {
+        currentElement.style.backgroundColor = color;
+    }
+}
+
+function replaceImage() {
+    if (currentElement && currentElement.tagName.toLowerCase() === 'img') {
+        document.getElementById('imageUpload').click();
+    }
+}
+
+function handleImageUpload(input) {
+    if (input.files && input.files[0] && currentElement && currentElement.tagName.toLowerCase() === 'img') {
+        const file = input.files[0];
+        
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size must be less than 5MB');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                // Create a temporary image to check dimensions
+                const img = new Image();
+                img.onload = function() {
+                    // Update the current image with base64 data
+                    currentElement.src = e.target.result;
+                };
+                img.src = e.target.result;
+            } catch (error) {
+                console.error('Error processing image:', error);
+                alert('Error processing image. Please try again.');
+            }
+        };
+        reader.onerror = function(error) {
+            console.error('Error reading image:', error);
+            alert('Error reading image. Please try again.');
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('code-sidebar');
+    sidebar.classList.toggle('open');
+    if (sidebar.classList.contains('open')) {
+        const content = document.getElementById('content');
+        document.getElementById('code-editor').value = content.innerHTML;
+    }
+}
+
+function applyCodeChanges() {
+    const newCode = document.getElementById('code-editor').value;
+    const content = document.getElementById('content');
+    content.innerHTML = newCode;
+    toggleSidebar();
 }
 
   </script>
 </body>
 <style>
-    *{
+    * {
         margin:0px;
         padding:0px;
         font-family: "Poppins", sans-serif;
@@ -178,6 +423,110 @@ color:white;
         background: #ff3131;
         box-shadow: 0 0 10px 5px rgba(197, 28, 28, 0.203);
         transform: scale(1.1);
+    }
+
+    .floating-toolbar {
+        display: none;
+        position: absolute;
+        background: rgba(20, 20, 20, 0.95);
+        border-radius: 12px;
+        padding: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+    }
+
+    .toolbar-group {
+        display: flex;
+        gap: 12px;
+    }
+
+    .floating-toolbar button {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        color: white;
+        padding: 8px 12px;
+        cursor: pointer;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .floating-toolbar button:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateY(-1px);
+    }
+
+    .floating-toolbar input[type="color"] {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        cursor: pointer;
+    }
+
+    .code-sidebar {
+        position: fixed;
+        right: -400px;
+        top: 0;
+        width: 400px;
+        height: 100vh;
+        background: rgba(20, 20, 20, 0.95);
+        color: white;
+        transition: right 0.3s ease;
+        z-index: 1001;
+        display: flex;
+        flex-direction: column;
+        box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .code-sidebar.open {
+        right: 0;
+    }
+
+    .sidebar-header {
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color:white !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .close-sidebar {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+    }
+
+    #code-editor {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.3);
+        color: white;
+        border: none;
+        padding: 16px;
+        font-family: monospace;
+        resize: none;
+    }
+
+    .apply-changes {
+        padding: 12px;
+        background: #FF2121;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    .apply-changes:hover {
+        background: #ff3131;
     }
 </style>
 </html>
