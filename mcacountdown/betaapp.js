@@ -3742,3 +3742,4 @@ function searchsettings(){
 
     document.getElementById('searchbarinput').value = "";
 }
+
