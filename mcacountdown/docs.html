@@ -197,20 +197,23 @@
             width: 100vw;
             height: 100vh;
             position: fixed;
-            text-align: center;
+            text-align: left;
             transform: translateX(-100%);
             transition: transform 0.3s ease-in-out;
             z-index: 100;
-        }
-        .sidebar.active {
+            padding: 40px 20px; /* Add more padding for better spacing */
+            overflow-y: auto;
+            display: block; /* Change to block instead of flex */
+            }
+            .sidebar.active {
             transform: translateX(0);
-        }
-        .content {
+            }
+            .content {
             margin-left: 0;
             padding-top: 20px;
             width: 100%;
-        }
-        #sidebar-toggle {
+            }
+            #sidebar-toggle {
             position: fixed;
             bottom: 10px;
             right: 10px;
@@ -226,24 +229,52 @@
             justify-content: center;
             cursor: pointer;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-        #search-results button {
-                max-width: 100%;
+            }
+            #search-results button {
+            max-width: 100%;
             }
             #search-results {
-                max-width: 75vw;
+            max-width: 85%;
+            width: 85%;
+            margin-left: 5px;
+            margin-right: 10px;
             }
-
+        
             input[type="text"]{
-        max-width:75vw;
-    }
-    }
-    
-    @media (min-width: 769px) {
-        #sidebar-toggle {
-            display: none;
-        }
-    }
+            max-width: 90%;
+            width: 90%;
+            margin-left: 5px;
+            }
+            
+            /* Adjust sidebar list styles */
+            .sidebar ul {
+            width: 90%;
+            margin: 10px 5px;
+            }
+            
+            .sidebar ul li button {
+            width: 100%;
+            text-align: left;
+            }
+            
+            /* Add some space at the bottom for scrolling past the last item */
+            .sidebar ul:last-child {
+            margin-bottom: 60px;
+            }
+        
+            /* Fix positioning of search container */
+            .sidebar > div {
+            position: relative;
+            width: 90%;
+            margin-left: 5px;
+            }
+            }
+            
+            @media (min-width: 769px) {
+                #sidebar-toggle {
+                    display: none;
+                }
+            }
     </style>
     <script>
         function showSection(sectionId) {
