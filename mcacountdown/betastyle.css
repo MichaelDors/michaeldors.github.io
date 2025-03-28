@@ -34,6 +34,10 @@
 #body{
     background-color:var(--mainbgcolor);
     overflow-x:hidden;
+    height: 100%;
+    min-height: 100vh;
+    margin: 0px;
+    padding:0px;
 }
 
 * {
@@ -43,7 +47,24 @@
 
 html{
     scroll-behavior: smooth;
+    height: 100%;
+    min-height: 100vh;
+    margin: 0;
 }
+
+html, body {
+    height: 100%;
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
 
 ::-moz-selection {
     color: white;
@@ -494,6 +515,7 @@ form {
     border-radius: 30px;
     color: white;
     font-size: 20px;
+    z-index:10000000;
 }
 
     #countdowntitle:-webkit-autofill,
@@ -510,7 +532,9 @@ form {
     justify-content: center;
     align-items: center;
     text-align: center;
-    min-height: 99%;
+    min-height: 100vh;
+    position: absolute;
+    top:0;
     font-family: var(--typeface);
     color: #ffffff;
     /*mix-blend-mode:difference;*/
@@ -521,7 +545,7 @@ form {
     justify-content: center;
     align-items: center;
     text-align: center;
-    min-height: 99%;
+    min-height: 100vh;
     font-family: var(--typeface);
     animation: backgroundgradient 100s infinite;
     z-index: 1000000;
@@ -537,7 +561,7 @@ form {
     justify-content: center;
     align-items: center;
     text-align: center;
-    min-height: 99%;
+    min-height: 99vh;
     font-family: var(--typeface);
     animation: backgroundgradient 200s infinite;
     z-index: 1000000;
@@ -552,7 +576,7 @@ form {
     justify-content: center;
     align-items: center;
     text-align: center;
-    min-height: 99%;
+    min-height: 99vh;
     font-family: var(--typeface);
     animation: backgroundgradient 5s infinite;
     z-index: 1000000;
@@ -632,7 +656,9 @@ a:hover {
 
     .aintext:hover {
         box-shadow: 0 0px 0 transparent;
+        top:0;
     }
+
 
 
     .dependencieslink:hover{
@@ -846,7 +872,7 @@ a:hover:active {
             box-shadow: none;
         }
 
-    #sharebuttonoptions {
+    .sharebutton {
     font-family: 'Fredoka One';
     background-color: #3AB6FF;
     text-decoration: none;
@@ -860,17 +886,17 @@ a:hover:active {
     font-weight: 100;
 }
 
-    #sharebuttonoptions:hover {
+    .sharebutton:hover {
         position: relative;
         box-shadow: 0 5px 0 #1374ad;
     }
 
-        #sharebuttonoptions:hover:active {
+        .sharebutton:hover:active {
             position: relative;
             box-shadow: none;
         }
 
-#dashboardbuttonoptions{
+.dashboardbutton{
     font-family: 'Fredoka One';
         background-color: #00df52;
     text-decoration: none;
@@ -884,12 +910,12 @@ a:hover:active {
     font-weight: 100;
 }
 
-        #dashboardbuttonoptions:hover {
+        .dashboardbutton:hover {
         position: relative;
         box-shadow: 0 5px 0 #00b041;
     }
 
-        #dashboardbuttonoptions:hover:active {
+        .dashboardbutton:hover:active {
             position: relative;
             box-shadow: none;
         }
@@ -1884,7 +1910,7 @@ a:hover:active {
     }
 
     input[type="input"]{
-        width:90%;
+        width:80%;
         margin:5%;
         margin-top:0;
         background: var(--blurbackground);
@@ -1894,19 +1920,18 @@ a:hover:active {
         -webkit-backdrop-filter: blur(9.5px);
         border: 1px solid var(--schedulebgbottomblur);
         color:var(--mainforegroundcolor);
-        padding:10px;
+        padding:15px;
         padding-left: 20px;
-        height:50px;
         font-family: "Dosis";
         font-size:15px;
     }
  
     input[type="input"] + button {
         position: absolute;
-        right: 6.5%;
+        right: 5%;
         top: 5px;
-        height: 40;
-        width:40;
+        height: 40px;
+        width:40px;
         background: #8426FF;
         border-radius: 100px;
         color:white;

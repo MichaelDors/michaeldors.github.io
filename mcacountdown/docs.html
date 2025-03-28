@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Countdown Docs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Dosis:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <style>
+        :root {
+    --one: #8426ff;
+    --two: #3ab6ff;
+    --three: #00df52;
+    --four: #ff9900;
+    --typeface: 'Fredoka One';
+    --comptypeface: 'Dosis';
+    --mainbgcolor: #141414;
+    /*#ffffff*/
+    --mainforegroundcolor:#ffffff;
+    /*#000000*/
+    --selectedgreen: #01FE5E;
+    /*#00d04c*/
+    --selectedgreengradient: linear-gradient(to bottom right, #14141400, #01fe5e34);
+    /*background: linear-gradient(to bottom right, #ffffff00, #00d04c44);*/
+    --inputbackground: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+    /*background: linear-gradient(to left, rgba(220,200,250,88), transparent);*/
+    --speeddivbackground: linear-gradient(to bottom right, #00000000, #2e0960);
+    /*linear-gradient(to bottom right, #ffffff, #9a4cff);*/
+    --blurbackground: rgba(20, 20, 20, 0.83);
+    /*rgba(239, 239, 239, 0.73);*/
+    --blurbackgroundshadowcolor: rgba(0, 0, 0, 0.1);
+    /*rgba(255, 255, 255, 0.1)*/
+    --sidebarcolor:#000000;
+    /*#ffffff*/
+    --scheduleblurbg: rgba(20, 20, 20, 0.83);
+    /*rgba(239, 239, 239, 0.73)*/
+    --schedulebgbottomblur:#14141491;
+    /*#ffffff*/
+    --progressbarblur:#141414e5;
+    /*#ffffffe5*/
+}
+
+        body {
+            background-color: var(--mainbgcolor);
+            color: var(--mainforegroundcolor);
+            font-family: 'Dosis', sans-serif;
+            margin: 0;
+            display: flex;
+            line-height: 1.5;
+        }
+        .sidebar {
+            width: 20%;
+            background-color: var(--sidebarcolor);
+            padding: 20px;
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar ul li {
+            margin-bottom: 10px;
+        }
+        .sidebar ul li button {
+            font-size:15px;
+            display: block;
+            font-family: 'Dosis';
+            font-weight:100;
+            color: var(--mainforegroundcolor);
+            text-decoration: none;
+            background-color: transparent;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: left;
+            width: 100%;
+            border: none;
+            cursor: pointer;
+        }
+        .sidebar ul li button:hover {
+            color: #8426ff;
+        }
+        .content {
+            margin-left: calc(20% + 20px);
+            padding: 20px;
+            flex-grow: 1;
+        }
+        h2 {
+            border-bottom: 2px solid #8426ff;
+            padding-bottom: 5px;
+            font-family: 'Fredoka One';
+            font-weight: 100;
+        }
+        h1{
+            font-family: 'Fredoka One';
+        }
+        .section {
+            display: none;
+            margin:20px;
+        }
+        .active {
+            display: block;
+        }
+        .warning{
+            border:#ff9900 solid 1px;
+            border-radius: 10px;
+            padding:10px;
+            margin:10px;
+            background-color: #ff990027;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                text-align: center;
+            }
+            .content {
+                margin-left: 0;
+                padding-top: 20px;
+            }
+        }
+
+        input[type="text"]{
+        width:90%;
+        margin-top:0;
+        background: var(--blurbackground);
+        border-radius: 30px;
+        box-shadow: 0 4px 30px var(--blurbackgroundshadowcolor);
+        backdrop-filter: blur(9.5px);
+        -webkit-backdrop-filter: blur(9.5px);
+        border: 1px solid var(--schedulebgbottomblur);
+        color:var(--mainforegroundcolor);
+        padding:15px;
+        padding-left: 20px;
+        font-family: "Dosis";
+        font-size:15px;
+    }
+ 
+    input[type="text"] + button {
+        position: absolute;
+        right: 0px;
+        top: 5px;
+        height: 40px;
+        width:40px;
+        background: #8426FF;
+        border-radius: 100px;
+        color:white;
+        border:none;
+        font-size: 15px;
+    }
+
+    #search-results {
+                background: var(--blurbackground);
+                border-radius: 15px;
+                box-shadow: 0 4px 30px var(--blurbackgroundshadowcolor);
+                backdrop-filter: blur(9.5px);
+                -webkit-backdrop-filter: blur(9.5px);
+                border: 1px solid var(--schedulebgbottomblur);
+                margin-top: 10px;
+                padding: 10px;
+                max-height: 300px;
+                overflow-y: auto;
+                display: none; /* Hide by default */
+            }
+            
+            #search-results button {
+                display: block;
+                width: 100%;
+                text-align: left;
+                padding: 10px;
+                margin-bottom: 5px;
+                background: transparent;
+                color: var(--mainforegroundcolor);
+                border: none;
+                border-radius: 8px;
+                font-family: 'Dosis';
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }
+            
+            #search-results button:hover {
+                background-color: rgba(132, 38, 255, 0.2);
+                color: var(--one);
+            }
+            
+            #search-results button:last-child {
+                margin-bottom: 0;
+            }
+    </style>
+    <script>
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Update URL hash when changing sections
+            window.location.hash = sectionId;
+        }
+        
+        function searchDocs() {
+            let query = document.getElementById('search').value.toLowerCase();
+            let sections = document.querySelectorAll('.section');
+            let results = document.getElementById('search-results');
+            results.innerHTML = '';
+            
+            // Hide results container if query is empty
+            if (query.trim() === '') {
+                results.style.display = 'none';
+                return;
+            }
+
+            let foundResults = false;
+            
+            sections.forEach(section => {
+                let title = section.querySelector('h1').textContent.toLowerCase();
+                let content = section.textContent.toLowerCase();
+                if (title.includes(query) || content.includes(query)) {
+                    let button = document.createElement('button');
+                    button.textContent = section.querySelector('h1').textContent;
+                    button.onclick = () => {
+                        showSection(section.id);
+                        document.getElementById('search').value = ''; // Clear search after selection
+                        results.style.display = 'none'; // Hide results after selection
+                    };
+                    results.appendChild(button);
+                    foundResults = true;
+                }
+            });
+            
+            // Show/hide the results container based on whether results were found
+            results.style.display = foundResults ? 'block' : 'none';
+        }
+        
+        // Generate sidebar buttons automatically
+        function generateSidebarButtons() {
+            const sidebarList = document.getElementById('sidebar-links');
+            const sections = document.querySelectorAll('.section');
+            
+            sections.forEach(section => {
+                const title = section.querySelector('h1').textContent;
+                const sectionId = section.id;
+                
+                const listItem = document.createElement('li');
+                const button = document.createElement('button');
+                
+                button.textContent = title;
+                button.onclick = () => showSection(sectionId);
+                
+                listItem.appendChild(button);
+                sidebarList.appendChild(listItem);
+            });
+        }
+        
+        // Check for hash in URL on page load
+        window.onload = function() {
+            // Generate sidebar buttons
+            generateSidebarButtons();
+            
+            // Check for hash in URL
+            const hash = window.location.hash.substring(1);
+            if (hash && document.getElementById(hash)) {
+                showSection(hash);
+            }
+        };
+
+        function setLightMode() {
+            document.documentElement.style.setProperty('--mainbgcolor', '#f3f3f3');
+            document.documentElement.style.setProperty('--mainforegroundcolor', '#000000');
+            document.documentElement.style.setProperty('--selectedgreen', '#00d04c');
+            document.documentElement.style.setProperty('--selectedgreengradient', 'linear-gradient(to bottom right, #ffffff00, #00d04c44)');
+            document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left, rgba(220,200,250,88), transparent)');
+            document.documentElement.style.setProperty('--speeddivbackground', 'linear-gradient(to bottom right, #ffffff, #9a4cff)');
+            document.documentElement.style.setProperty('--blurbackground', 'rgba(239, 239, 239, 0.73)');
+            document.documentElement.style.setProperty('--blurbackgroundshadowcolor', 'rgba(255, 255, 255, 0.1)');
+            document.documentElement.style.setProperty('--sidebarcolor', '#ffffff');
+            document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(239, 239, 239, 0.73)');
+            document.documentElement.style.setProperty('--schedulebgbottomblur', '#ffffff');
+            document.documentElement.style.setProperty('--progressbarblur', '#ffffffe5');
+        }
+        
+        function setDarkMode() {
+            document.documentElement.style.setProperty('--mainbgcolor', '#141414');
+            document.documentElement.style.setProperty('--mainforegroundcolor', '#ffffff');
+            document.documentElement.style.setProperty('--selectedgreen', '#01FE5E');
+            document.documentElement.style.setProperty('--selectedgreengradient', 'linear-gradient(to bottom right, #14141400, #01fe5e34)');
+            document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left, rgba(40,23,64,88), #14141400)');
+            document.documentElement.style.setProperty('--speeddivbackground', 'linear-gradient(to bottom right, #00000000, #2e0960)');
+            document.documentElement.style.setProperty('--blurbackground', 'rgba(20, 20, 20, 0.83)');
+            document.documentElement.style.setProperty('--blurbackgroundshadowcolor', 'rgba(0, 0, 0, 0.1)');
+            document.documentElement.style.setProperty('--sidebarcolor', '#000000');
+            document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(20, 20, 20, 0.83)');
+            document.documentElement.style.setProperty('--schedulebgbottomblur', '#14141491');
+            document.documentElement.style.setProperty('--progressbarblur', '#141414e5');
+        }
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+    if (event.matches) {
+        setDarkMode();
+    } else {
+        setLightMode();
+    }
+});
+
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setDarkMode();
+        }
+        else{
+            setLightMode();
+        }
+    </script>
+</head>
+<body>
+    <div class="sidebar">
+        <div style="position: relative;">
+            <input type="text" id="search" class="search-bar" list="settingsheaders" placeholder="Search for an option" onkeyup="searchDocs();">
+        </div>
+        <ul id="search-results"></ul>
+        <ul id="sidebar-links">
+            <!-- Buttons will be generated automatically by JavaScript -->
+        </ul>
+    </div>
+    <div class="content">
+        <!-- Your sections remain unchanged -->
+        <div id="export-cal-to-schedule" class="section active">
+            <h1>Export Calendars to Schedule</h1>
+            <p>Learn how to export calendars from multiple services to Countdown. We will be covering Google Calendar, iCloud/MacOS Calendar, and Outlook Calendar</p>
+            <h2>Google Calendar</h2>
+            <p class="warning"><i class="fa-solid fa-triangle-exclamation"></i> You cannot, as of now, export calendars from the Google Calendar app. You must use the desktop website.</p>
+            <p>To export from Google Calendar, follow these steps:</p>
+            <ol>
+                <li>In the top right, click <i class="fa-solid fa-gear"></i></li>
+                <li>Select Settings</li>
+                <li>Choose the calendar you want to export from the menu, under "Settings for my calendars"</li>
+                <li>Under that calendar's options, pick "Export calendar"</li>
+                <li>You should now have a .ics file that Countdown can use to make your schedule!</li>
+            </ol>
+            <h2>iCloud/MacOS Calendar</h3>
+            <p>To export from iCloud/MacOS Calendar, follow these steps:</p>
+            <ol>
+                <li>Open the Calendar <img src="https://help.apple.com/assets/65D689DF13D1B1E17703916F/65D689E0D302CF88600FDD25/en_US/2162f7d3de310d2b3503c0bbebdc3d56.png" alt="" height="15" width="15" originalimagename="SharedGlobalArt/AppIconTopic_Calendar.png"> app on your Mac</li>
+                <li>Select the calendar from the calendar list</li>
+                <p class="warning"><i class="fa-solid fa-triangle-exclamation"></i> If your calendar list is hidden, go to View > Show Calendar List</p>
+                <li>Select your save location, and click Export</li>
+                <li>Your .ics file should now be saved to your selected save location, ready for Countdown to make your schedule with</li>
+            </ol>
+            <h2>Outlook Calendar</h3>
+                <p>To export from Outlook Calendar, follow these steps:</p>
+                <ol>
+                    <li>In Outlook, select the calendar you want to export</li>
+                    <li>Click File, and Save Calendar</li>
+                    <li>You will be given options regarding name and date range, select as you see fit</li>
+                    <li>Click OK, and Save</li>
+                    <li>Your .ics file should now be saved, ready for Countdown to make a schedule with</li>
+                </ol>
+        </div>
+        <div id="timekeeper" class="section">
+            <h1>What Is Timekeeper?</h1>
+            <p>Learn about Countdown's intelligent features and how you can use them to save precious time</p>
+            <h2>What features make up Timekeeper?</h3>
+            <p>Timekeeper features can be found across Countdown, mainly making it easy to set up your countdown</p>
+            <ol>
+                <li>When creating a Countdown, you'll see the <i class="fa-solid fa-compass"></i> Timekeeper bar at the bottom of the screen, suggesting the next upcoming event or guiding you to pick your own date</li>
+                <li>Similarly, in the Options menu, you can use the <i class="fa-solid fa-business-time"></i> Second Sense date preset to find the next upcoming holiday or event</li>
+                <li>The <i class="fa-solid fa-wand-magic-sparkles"></i> Magic Title button will automatically name your Countdown if it detects a related date</li>
+            </ol>
+            <p>Although Timekeeper aims to be smart, these features do not use generative AI models. They're just smart features that you can rely on.</p>
+        </div>
+        <div id="dashboard" class="section">
+            <h1>How Dashboard Works</h1>
+            <p>Although there are multiple methods of saving or sharing Countdowns, they can be simplified down to sharing a copy, or saving locally</p>
+            <p>Countdown Dashboard saves your Countdowns locally, on your device, and allows you to save any changes you make</p>
+            <h2>How Do I Save To Dashboard?</h2>
+            <p>Saving your countdown to Dashboard is simple. From the options menu, click the <i class="fa-solid fa-star"></i> Save button. You should see a toast in the top right telling you it successfully saved. If you've already saved the Countdown, the button may say Saved or Update.</p>
+            <h2>How to Update Countdowns</h2>
+            <p>If you've saved a Countdown to your Dashboard, but have made changes since, it's easy to save the new changes to your Dashboard. Simply open Options, and click the same button as you did when initially saving it. If there have been changes made compared to the version in Dashboard, it should say Update. If you change the Title of the Countdown, it is no longer the same Countdown and needs to be resaved.</p>
+            <h2>What is a Local Shortcut?</h2>
+            <p>When you copy a link to a Countdown, it will always point to the version you linked. Any changes you make later won't be reflected in that link.</p>
+            <p>Local Shortcuts, on the other hand, let you link to a Countdown in your dashboard. Instead of linking to a specific version, they always point to the most up-to-date version in your Dashboard.</p>
+            <p>You can use this by creating a bookmark to your Local Shortcut in your browser. This way, you won't have to change out your bookmark with the new Countdown link every time you make changes, as the Local Shortcut will always reflect the latest version in your Dashboard.</p>
+            <h2>I Don't See My Local Shortcut, Where Is It?</h2>
+            <p>Local Shortcuts appear in the General section of Options. They only show up once you have saved your countdown to Dashbaord.</p>
+        </div>
+        <div id="sharing" class="section">
+            <h1>How to Share Countdowns</h1>
+            <p>Although there are multiple methods of saving or sharing Countdowns, they can be simplified down to sharing a copy, or saving locally</p>
+            <p>This will inform you on how to share a copy of your Countdown.</p>
+            <h2>What Gets Shared?</h2>
+            <p>Countdown's options are divided into two distinct categories- Shareable Options and Personal Options.</p>
+            <p>Shareable options are just how they sound, they get shared in the link. They include the date, title, colors or background, typeface, confetti options, ending sound and progress bar of the Countdown. Additionally, if it's a Countdown Schedule, your entire Schedule will be stored in the link.</p>
+            <p>Personal options store options that are only for you. You can read more about them on the 'The Difference Between Shareable and Personal Options' support doc. These options will not be shared in the link.</p>
+            <p class="warning"><i class="fa-solid fa-triangle-exclamation"></i> Always be cautious when sharing personal information. If you put personal information in your Countdown, the link will still contain that information.</p>
+            <h2>Sharing a Link</h2>
+            <p>You can send anyone a link to your countdown, which can be found in your General Options. There is a Copy Link button to the right of the link, allowing you to simply copy the link to your clipboard.</p>
+            <p>When you copy a link to a Countdown, it will always point to the version you linked. Any changes you make later won't be reflected in that link, unlike in Local Shortcuts (a feature of Countdown Dashboard).</p>
+            <h2>Sharing a QR Code</h2>
+            <p>Countdown will automatically generate a QR Code for your Countdown. You can find this below the link for your Countdown, in the General Options.</p>
+            <p>There is also a download button, allowing you to share or save this QR Code elsewhere.</p>
+            <p>The QR Code goes to the same destination as the link above.</p>
+        </div>
+        <div id="personalvshareable" class="section">
+            <h1>The Difference Between Shareable and Personal Options</h1>
+            <p>Countdown's options are divided into two distinct categories- Shareable Options and Personal Options.</p>
+            <h2>What are Shareable Options?</h2>
+            <p>Shareable options are just how they sound, they get shared in the link. They include the date, title, colors or background, typeface, confetti options, ending sound and progress bar of the Countdown. Additionally, if it's a Countdown Schedule, your entire Schedule will be stored in the link.</p>
+            <h2>What are Personal Options?</h2>
+            <p>Personal options store options that are only for you. They include accessibility and ease of use options that allow users to make Countdowns to work better for them.</p>
+            <p>For that reason, Personal options cannot be shared in a link, as they are designed to accomidate a user, not a Countdown. Instead, they're stored as cookies in the browser. This way, they're applied across all Countdowns.</p>
+            <p>Personal options include animation speed, labeling time units, disbling confetti, disabling ending sounds, saving memory when inactive, increasing contrast, and only including certani time units.</p>
+        </div>
+    </div>
+</body>
+</html>
