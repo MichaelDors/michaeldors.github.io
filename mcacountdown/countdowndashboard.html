@@ -841,54 +841,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
     }
 });
 
-      //presets tabbox
-      const PresetstabsBox = document.querySelector(".presetstabs-box"),
-          PresetsallTabs = tabsBox.querySelectorAll(".tab"),
-          PresetsarrowIcons = document.querySelectorAll(".presetsicon i");
-      let PresetsisDragging = false;
-      const PresetshandleIcons = (scrollVal) => {
-          let maxScrollableWidth = PresetstabsBox.scrollWidth - PresetstabsBox.clientWidth;
-          PresetsarrowIcons[0].parentElement.style.display = scrollVal <= 0 ? "none" : "flex";
-          PresetsarrowIcons[1].parentElement.style.display = maxScrollableWidth - scrollVal <= 1 ? "none" : "flex";
-      }
-      PresetsarrowIcons.forEach(icon => {
-          icon.addEventListener("click", () => {
-              // if clicked icon is left, reduce from tabsBox scrollLeft else add
-              let scrollWidth = PresetstabsBox.scrollLeft += icon.id === "presetsleft" ? -300 : 300;
-              PresetshandleIcons(scrollWidth);
-          });
-      });
-  
-      const Presetsdragging = (e) => {
-          if (!PresetsisDragging) return;
-          PresetstabsBox.classList.add("dragging");
-          PresetstabsBox.scrollLeft -= e.movementX;
-          PresetshandleIcons(tabsBox.scrollLeft)
-      }
-      const PresetsdragStop = () => {
-          PresetsisDragging = false;
-          PresetstabsBox.classList.remove("dragging");
-      }
-      PresetstabsBox.addEventListener("mousedown", () => isDragging = true);
-      PresetstabsBox.addEventListener("mousemove", dragging);
-      document.addEventListener("mouseup", dragStop);
-
-
-        //Scrolling controls presets tabs box too
-          const presetscontainer = document.getElementById("presetstabs-box");
-      presetscontainer.addEventListener("wheel", function (e) {
-  
-          if (e.deltaY > 0) {
-              presetscontainer.scrollLeft += 200;
-              e.preventDefault();
-          }
-          else {
-              presetscontainer.scrollLeft -= 200;
-              e.preventDefault();
-      }
-     });
-      
-
 loadLinks();
     </script>
 </body>
