@@ -191,6 +191,59 @@
             #search-results button:last-child {
                 margin-bottom: 0;
             }
+
+            @media (max-width: 768px) {
+        .sidebar {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            text-align: center;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 100;
+        }
+        .sidebar.active {
+            transform: translateX(0);
+        }
+        .content {
+            margin-left: 0;
+            padding-top: 20px;
+            width: 100%;
+        }
+        #sidebar-toggle {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            z-index: 101;
+            background: var(--one);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        #search-results button {
+                max-width: 100%;
+            }
+            #search-results {
+                max-width: 90vw;
+            }
+
+            input[type="text"]{
+        max-width:90vw;
+    }
+    }
+    
+    @media (min-width: 769px) {
+        #sidebar-toggle {
+            display: none;
+        }
+    }
     </style>
     <script>
         function showSection(sectionId) {
@@ -313,9 +366,40 @@ if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').match
         else{
             setLightMode();
         }
+
+
+        function toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        sidebar.classList.toggle('active');
+    }
+    
+    // Check for hash in URL on page load
+    window.onload = function() {
+        // Generate sidebar buttons
+        generateSidebarButtons();
+        
+        // Check for hash in URL
+        const hash = window.location.hash.substring(1);
+        if (hash && document.getElementById(hash)) {
+            showSection(hash);
+        }
+        
+        // Close sidebar when a section is selected on mobile
+        if (window.innerWidth <= 768) {
+            const sidebarButtons = document.querySelectorAll('#sidebar-links button, #search-results button');
+            sidebarButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    document.querySelector('.sidebar').classList.remove('active');
+                });
+            });
+        }
+    };
     </script>
 </head>
 <body>
+    <button id="sidebar-toggle" onclick="toggleSidebar()">
+        <i class="fa-solid fa-bars"></i>
+    </button>
     <div class="sidebar">
         <div style="position: relative;">
             <input type="text" id="search" class="search-bar" list="settingsheaders" placeholder="Search through the documentation" onkeyup="searchDocs();">
@@ -326,7 +410,6 @@ if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').match
         </ul>
     </div>
     <div class="content">
-        <!-- Your sections remain unchanged -->
         <div id="export-cal-to-schedule" class="section active">
             <h1>Export Calendars to Schedule</h1>
             <p>Learn how to export calendars from multiple services to Countdown. We will be covering Google Calendar, iCloud/MacOS Calendar, and Outlook Calendar</p>
