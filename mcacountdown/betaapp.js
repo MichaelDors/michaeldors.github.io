@@ -592,6 +592,15 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
       if(parameter("schedule") !== "null" && parameter("schedule")){
           document.querySelector(".datepicker").value = '9999-12-30T00:00';
       }
+
+      if ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || parameter("atc") !== "none") {
+        document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+        document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
+    }
+    else{
+        document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+        document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
+    } 
   
       //autopilot onclick animation
       function autopilotsparkle(event) {
@@ -664,7 +673,9 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
           bgstring = 'none';
           enablecolor(); //make the color pickers in settings not greyed out anymore
           document.getElementById("animatedbackground").style.display = "none"; //remove the rotating blurred images that would hold the bgs
+          void document.getElementById("clock").offsetWidth; // Force reflow
           document.getElementById("clock").classList.add("clock"); //make the clock normal
+          updateColorAnimations();
           document.getElementById("clock").classList.remove("staticclock"); //not just white clock
       }
   
@@ -1106,11 +1117,19 @@ class ConfettiManager {
           if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
           showToast('Some changes have not been saved to Dashboard', 'save');	
           }
+          if ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || parameter("atc") !== "none") {
+            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+            document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
+        }
+        else{
+            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+            document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
+        } 
           }
 
           if(document.getElementById("progressdatepicker").value && document.getElementById("progressdatepicker").value !== "null"){
             document.getElementById("progress-bar").style.display = "";
-            if(!document.getElementById("animatedbackground").classList.contains("hidden")){
+            if(parameter("atc") !== "none"){
                 document.getElementById('progress').classList.remove("progresscolored");
                 document.getElementById('progress').classList.add("progressblur");
             }
@@ -1160,7 +1179,11 @@ class ConfettiManager {
   
           if (document.getElementById("settings").classList.contains("hidden")) {
               document.body.scrollTop = document.documentElement.scrollTop = 0;
+              document.documentElement.style.overflowY = "hidden";
           } //if settings is closed we perpetually scroll to the top of the tab 
+          else{
+            document.documentElement.style.overflowY = "";
+          }
   
           updateoptions();
 
@@ -1200,7 +1223,9 @@ class ConfettiManager {
               }
           }
           else {
+            void document.getElementById("clock").offsetWidth; // Force reflow
               document.getElementById("clock").classList.add("clock"); //add back colored clock
+              updateColorAnimations();
               document.getElementById("clock").classList.remove("staticclock"); //remove white only clock
               if (document.getElementById("clock") && document.getElementById("clock").style.display !== "none") { //if the clock exists and settings is not opened
                   document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
@@ -1218,12 +1243,11 @@ class ConfettiManager {
           document.getElementById("preloader").classList.add("hidden"); //hide loading screen
 
           if(document.getElementById("progressdatepicker").value && document.getElementById("progressdatepicker").value !== "null"){
-            if(!document.getElementById("animatedbackground").classList.contains("hidden")){
+            if(parameter("atc") !== "none"){
                 document.getElementById('progress').classList.remove("progresscolored");
                 document.getElementById('progress').classList.add("progressblur");
             }
             else{
-                console.log("a");
                 document.getElementById('progress').style.background = window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color");
                 document.getElementById('progress').classList.add("progresscolored");
                 document.getElementById('progress').classList.remove("progressblur");
@@ -2476,11 +2500,15 @@ function contrast(){ //increase contrast set or remove cookie
           const opacity = Math.max(0, 1 - distance / 300) / 3;
   
           // Set element opacity
-          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          if ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || parameter("atc") !== "none") {
             document.getElementById("countdowntitle").style.border = `1px solid rgba(255, 255, 255, ${opacity})`;
+            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+            document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
         }
         else{
             document.getElementById("countdowntitle").style.border = `1px solid rgba(0, 0, 0, ${opacity})`;
+            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+            document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
         } 
       });
   

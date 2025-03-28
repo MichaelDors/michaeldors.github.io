@@ -36,8 +36,8 @@
 #body{
     background-color:var(--mainbgcolor);
     overflow-x:hidden;
-    height: 100%;
-    min-height: 100vh;
+    height: 100% !important; 
+    min-height: 100vh !important;
     margin: 0px;
     padding:0px;
 }
@@ -49,8 +49,8 @@
 
 html{
     scroll-behavior: smooth;
-    height: 100%;
-    min-height: 100vh;
+    height: 100% !important;
+    min-height: 100vh !important;
     margin: 0;
 }
 
@@ -498,7 +498,7 @@ form {
 }
 
 #countdowntitle:focus {
-    border: 1px solid var(--mainforegroundcolor) !important;
+    border: 1px solid var(--titleforegroundcolor) !important;
     outline: none;
 }
 
@@ -515,7 +515,7 @@ form {
     border: 1px solid var(--titlergba);
     padding: 13px 20px;
     border-radius: 30px;
-    color: var(--mainforegroundcolor);
+    color: var(--titleforegroundcolor);
     font-size: 20px;
     z-index:10000000;
 }
@@ -526,7 +526,7 @@ form {
     #countdowntitle:-webkit-autofill:active {
         -webkit-box-shadow: 0 0 0 30px var(--mainbgcolor) inset !important;
         -webkit-background-clip: text;
-        -webkit-text-fill-color: var(--mainforegroundcolor);
+        -webkit-text-fill-color: var(--titleforegroundcolor);
     }
 
 .staticclock {
@@ -535,8 +535,6 @@ form {
     align-items: center;
     text-align: center;
     min-height: 100vh;
-    position: absolute;
-    top:0;
     font-family: var(--typeface);
     color: #ffffff;
     /*mix-blend-mode:difference;*/
@@ -563,7 +561,7 @@ form {
     justify-content: center;
     align-items: center;
     text-align: center;
-    min-height: 99vh;
+    min-height: 100vh;
     font-family: var(--typeface);
     animation: backgroundgradient 200s infinite;
     z-index: 1000000;
@@ -578,7 +576,7 @@ form {
     justify-content: center;
     align-items: center;
     text-align: center;
-    min-height: 99vh;
+    min-height: 100vh;
     font-family: var(--typeface);
     animation: backgroundgradient 5s infinite;
     z-index: 1000000;
@@ -1774,7 +1772,7 @@ a:hover:active {
     padding: 0px;
     width: 100vw;
     height: 100vh;
-    overflow: hidden;
+    overflow: hidden !important;
     z-index: -14;
     position: inherit;
 }
@@ -2297,7 +2295,7 @@ font-size:20px;
         -webkit-backdrop-filter: blur(0px);
     }
     .progressblur{
-        background: var(--progressbarblur);
+        background: var(--progressbarblur) !important;
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         backdrop-filter: blur(75px);
         -webkit-backdrop-filter: blur(75px);
