@@ -2476,8 +2476,12 @@ function contrast(){ //increase contrast set or remove cookie
           const opacity = Math.max(0, 1 - distance / 300) / 3;
   
           // Set element opacity
-          document.getElementById("countdowntitle").style.border = `1px solid rgba(255, 255, 255, ${opacity})`;
-          
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.getElementById("countdowntitle").style.border = `1px solid rgba(255, 255, 255, ${opacity})`;
+        }
+        else{
+            document.getElementById("countdowntitle").style.border = `1px solid rgba(0, 0, 0, ${opacity})`;
+        } 
       });
   
       const superchargeyourschedulecard = document.getElementById("presetupScheduleContent");
@@ -4016,6 +4020,7 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(239, 239, 239, 0.73)');
             document.documentElement.style.setProperty('--schedulebgbottomblur', '#ffffff');
             document.documentElement.style.setProperty('--progressbarblur', '#ffffffe5');
+            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
         }
         
         function setDarkMode() {
@@ -4031,6 +4036,7 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(20, 20, 20, 0.83)');
             document.documentElement.style.setProperty('--schedulebgbottomblur', '#14141491');
             document.documentElement.style.setProperty('--progressbarblur', '#141414e5');
+            document.documentElement.style.setProperty('--titlergba', 'rgba(255,255,255,0)');
         }
         
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {

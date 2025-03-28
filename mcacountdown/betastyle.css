@@ -29,6 +29,8 @@
     /*#ffffff*/
     --progressbarblur:#141414e5;
     /*#ffffffe5*/
+    --titlergba: rgba(255,255,255,0);
+    /*rgba(0,0,0,0)*/
 }
 
 #body{
@@ -496,7 +498,7 @@ form {
 }
 
 #countdowntitle:focus {
-    border: 1px solid rgba(255,255,255,1) !important;
+    border: 1px solid var(--mainforegroundcolor) !important;
     outline: none;
 }
 
@@ -510,10 +512,10 @@ form {
     transform: translateX(-50%);
     top: calc(40% - 43px);
     background: none !important;
-    border: 1px solid rgba(255,255,255,0);
+    border: 1px solid var(--titlergba);
     padding: 13px 20px;
     border-radius: 30px;
-    color: white;
+    color: var(--mainforegroundcolor);
     font-size: 20px;
     z-index:10000000;
 }
@@ -522,9 +524,9 @@ form {
     #countdowntitle:-webkit-autofill:hover,
     #countdowntitle:-webkit-autofill:focus,
     #countdowntitle:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 30px #141414 inset !important;
+        -webkit-box-shadow: 0 0 0 30px var(--mainbgcolor) inset !important;
         -webkit-background-clip: text;
-        -webkit-text-fill-color: #ffffff;
+        -webkit-text-fill-color: var(--mainforegroundcolor);
     }
 
 .staticclock {
