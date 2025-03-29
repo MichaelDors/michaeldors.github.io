@@ -320,6 +320,11 @@
                         showSection(section.id);
                         document.getElementById('search').value = ''; // Clear search after selection
                         results.style.display = 'none'; // Hide results after selection
+                        
+                        // Close sidebar on mobile when a search result is selected
+                        if (window.innerWidth <= 768) {
+                            document.querySelector('.sidebar').classList.remove('active');
+                        }
                     };
                     results.appendChild(button);
                     foundResults = true;
@@ -343,7 +348,14 @@
                 const button = document.createElement('button');
                 
                 button.textContent = title;
-                button.onclick = () => showSection(sectionId);
+                button.onclick = () => {
+                    showSection(sectionId);
+                    
+                    // Close sidebar on mobile when a sidebar button is selected
+                    if (window.innerWidth <= 768) {
+                        document.querySelector('.sidebar').classList.remove('active');
+                    }
+                };
                 
                 listItem.appendChild(button);
                 sidebarList.appendChild(listItem);
