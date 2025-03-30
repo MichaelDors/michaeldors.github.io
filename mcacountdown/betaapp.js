@@ -4070,12 +4070,8 @@ showToast('Pick an exception day to add this event to', 'info')
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
     if (event.matches) {
         setDarkMode();
-        document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
-        document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
     } else {
         setLightMode();
-        document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
-        document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
     }
 });
 
@@ -4319,4 +4315,3 @@ function searchsettings(){
                 return '00:00'; // Default in case of error
             }
         }
-
