@@ -4049,8 +4049,6 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--schedulebgbottomblur', '#ffffff');
             document.documentElement.style.setProperty('--progressbarblur', '#ffffffe5');
             document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
-            document.getElementById("countdowntitle").style.border = `1px solid rgba(0, 0, 0, ${opacity})`;
-            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
             document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
         }
         
@@ -4068,8 +4066,6 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--schedulebgbottomblur', '#14141491');
             document.documentElement.style.setProperty('--progressbarblur', '#141414e5');
             document.documentElement.style.setProperty('--titlergba', 'rgba(255,255,255,0)');
-            document.getElementById("countdowntitle").style.border = `1px solid rgba(255, 255, 255, ${opacity})`;
-            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
             document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
         }
         
