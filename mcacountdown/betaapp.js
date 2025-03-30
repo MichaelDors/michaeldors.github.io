@@ -4049,7 +4049,6 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--schedulebgbottomblur', '#ffffff');
             document.documentElement.style.setProperty('--progressbarblur', '#ffffffe5');
             document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
-            document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
         }
         
         function setDarkMode() {
@@ -4066,7 +4065,6 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--schedulebgbottomblur', '#14141491');
             document.documentElement.style.setProperty('--progressbarblur', '#141414e5');
             document.documentElement.style.setProperty('--titlergba', 'rgba(255,255,255,0)');
-            document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
         }
         
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
