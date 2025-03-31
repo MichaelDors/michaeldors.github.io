@@ -69,6 +69,7 @@
                 <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i></a>
 		<a class="warning" onclick="importICS();"><i class="fa-solid fa-file-upload"></i></a>
             <input type="file" id="hiddenFileInput" accept=".countdown" style="display: none;">
+		<input type="file" id="hiddenICSFileInput" accept=".ics" style="display: none;">
             </div>
 
 <img id="threedtrash" alt="Trash Can" src="3d/backoftrashcanexport.png">
@@ -846,10 +847,10 @@ loadLinks();
 
 // Function to handle the import of ICS files and save non-recurring events
 function importICS() {
-    const hiddenFileInput = document.getElementById('hiddenFileInput');
-    hiddenFileInput.click(); // Trigger the hidden file input
+    const hiddenICSFileInput = document.getElementById('hiddenICSFileInput');
+    hiddenICSFileInput.click(); // Trigger the hidden file input
 
-    hiddenFileInput.addEventListener('change', (event) => {
+    hiddenICSFileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (file && file.name.endsWith('.ics')) {
             const reader = new FileReader();
