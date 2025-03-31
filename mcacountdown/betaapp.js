@@ -3585,10 +3585,10 @@ showToast('Pick an exception day to add this event to', 'info')
       });
   
       // If this is a new countdown and we already have 8 saved
-      if (existingIndex === -1 && links.length >= 8) {
-          showToast('Your Dashboard is full, remove a Countdown to save this', 'error');
-          return;
-      }
+      //if (existingIndex === -1 && links.length >= 8) {
+      //    showToast('Your Dashboard is full, remove a Countdown to save this', 'error');
+      //    return;
+      //}
   
       // If found, update the existing countdown, otherwise add a new one
       if (existingIndex !== -1) {
