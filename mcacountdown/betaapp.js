@@ -4075,6 +4075,18 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
     } else {
         setLightMode();
     }
+const countdownTitle = document.getElementById("countdowntitle");
+if (countdownTitle) {
+    if ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || parameter("atc") !== "none") {
+        countdownTitle.style.border = `1px solid rgba(255, 255, 255, 0)`;
+        document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+        document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
+    } else {
+        countdownTitle.style.border = `1px solid rgba(0, 0, 0, 0)`;
+        document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+        document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
+    }
+}
 });
 
 function searchsettings(){
