@@ -67,9 +67,7 @@
                 <a title="Import a .countdown file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i></a>
                 <a title="Export as a .countdown file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i></a>
                 <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i></a>
-		<a class="warning" onclick="importICS();"><i class="fa-solid fa-file-upload"></i></a>
             <input type="file" id="hiddenFileInput" accept=".countdown" style="display: none;">
-		<input type="file" id="hiddenICSFileInput" accept=".ics" style="display: none;">
             </div>
 
 <img id="threedtrash" alt="Trash Can" src="3d/backoftrashcanexport.png">
@@ -844,76 +842,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
 });
 
 loadLinks();
-
-// Function to handle the import of ICS files and save non-recurring events
-function importICS() {
-    const hiddenICSFileInput = document.getElementById('hiddenICSFileInput');
-    hiddenICSFileInput.click(); // Trigger the hidden file input
-
-    hiddenICSFileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (file && file.name.endsWith('.ics')) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = e.target.result;
-                    const parsedEvents = parseICS(data);
-                    saveNonRecurringEvents(parsedEvents);
-                } catch (error) {
-                    alert('Invalid ICS file');
-                    console.error(error);
-                }
-            };
-            reader.readAsText(file);
-        } else {
-            alert("Please upload a valid .ics file.");
-        }
-    });
-}
-
-// Function to parse ICS file and return events
-function parseICS(data) {
-    const events = [];
-    const lines = data.split('\n');
-    let event = null;
-
-    lines.forEach(line => {
-        line = line.trim();
-        if (line.startsWith('BEGIN:VEVENT')) {
-            event = {};
-        } else if (line.startsWith('END:VEVENT')) {
-            if (event) {
-                events.push(event);
-                event = null;
-            }
-        } else if (event) {
-            const [key, value] = line.split(':');
-            if (key && value) {
-                event[key.trim()] = value.trim();
-            }
-        }
-    });
-
-    return events;
-}
-
-// Function to save non-recurring events to the Dashboard
-function saveNonRecurringEvents(events) {
-    const nonRecurringEvents = events.filter(event => !event['RRULE']);
-    const links = nonRecurringEvents.map(event => {
-        const title = event['SUMMARY'] || 'Untitled Event';
-        const url = `https://michaeldors.com/mcacountdown/betatimer?title=${encodeURIComponent(title)}&date=${new Date().toISOString().split('T')[0]}T12:00``;
-        return { url, title };
-    });
-
-    const savedLinks = localStorage.getItem('dashboardsaved');
-    let existingLinks = savedLinks ? JSON.parse(savedLinks) : [];
-    existingLinks = existingLinks.concat(links);
-
-    localStorage.setItem('dashboardsaved', JSON.stringify(existingLinks));
-    showToast('Non-recurring events have been saved to the Dashboard', 'success');
-    renderLinks();
-}
     </script>
 </body>
 <style>
