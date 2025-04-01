@@ -2436,7 +2436,7 @@ filter: blur(0px);
 }
 to {
 transform: translateX(100%);
-filter: blur(60px);
+filter: blur(40px);
   opacity: 0;
 }
 }
