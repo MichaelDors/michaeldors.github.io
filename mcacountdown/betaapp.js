@@ -4588,3 +4588,86 @@ function searchsettings(){
                 return '00:00'; // Default in case of error
             }
         }
+
+        function reorderHolidayTabs() {
+            // Get current date for comparison
+            const now = new Date();
+            
+            // Get the tabs container
+            const tabsBox = document.getElementById("tabs-box");
+            if (!tabsBox) return; // Exit if tabs container doesn't exist
+            
+            // Always keep Autopilot and MCA as first and second
+            const autopilotTab = document.getElementById("autopilottab");
+            const mcaTab = document.getElementById("endtab");
+            
+            // Create a copy of all tabs to work with
+            const allTabs = Array.from(tabsBox.children);
+            
+            // Remove all tabs from the container
+            while (tabsBox.firstChild) {
+                tabsBox.removeChild(tabsBox.firstChild);
+            }
+            
+            // First insert Autopilot and MCA tabs if they exist
+            if (autopilotTab) tabsBox.appendChild(autopilotTab);
+            if (mcaTab) tabsBox.appendChild(mcaTab);
+            
+            // Create a mapping of tab IDs to holiday dates
+            const holidayMapping = [
+                { id: "nydtab", date: newyearsday, name: "newyear" },
+                { id: "mlktab", date: mlkday, name: "mlk" },
+                { id: "groundhogtab", date: groundhogday, name: "groundhog" },
+                { id: "vdtab", date: valentinessday, name: "valentines" },
+                { id: "stpatrickstab", date: stpatricksday, name: "stpatricks" },
+                { id: "eastertab", date: easterday, name: "easter" },
+                { id: "cincotab", date: cincodemayo, name: "cinco" },
+                { id: "idtab", date: independenceday, name: "independence" },
+                { id: "htab", date: halloweenday, name: "halloween" },
+                { id: "ttab", date: thanksgivingday, name: "thanksgiving" },
+                { id: "ctab", date: christmasday, name: "christmas" }
+            ];
+            
+            // Filter out tabs that don't exist and sort by upcoming date
+            const sortedHolidayTabs = holidayMapping
+                .filter(mapping => {
+                    const tab = document.getElementById(mapping.id);
+                    return tab && tab !== autopilotTab && tab !== mcaTab;
+                })
+                .sort((a, b) => {
+                    const timeA = a.date.getTime() - now.getTime();
+                    const timeB = b.date.getTime() - now.getTime();
+                    
+                    // If both are in the past, sort by which comes sooner next year
+                    if (timeA < 0 && timeB < 0) {
+                        // Compare month and day only
+                        const aMonth = a.date.getMonth();
+                        const aDay = a.date.getDate();
+                        const bMonth = b.date.getMonth();
+                        const bDay = b.date.getDate();
+                        
+                        if (aMonth !== bMonth) return aMonth - bMonth;
+                        return aDay - bDay;
+                    }
+                    
+                    // If one is in the past and one is in the future, the future one comes first
+                    if (timeA < 0) return 1;
+                    if (timeB < 0) return -1;
+                    
+                    // If both are in the future, the sooner one comes first
+                    return timeA - timeB;
+                });
+            
+            // Add the sorted holiday tabs
+            sortedHolidayTabs.forEach(mapping => {
+                const tab = document.getElementById(mapping.id);
+                if (tab) tabsBox.appendChild(tab);
+            });
+            
+            // Add any remaining tabs that weren't in our mapping
+            allTabs.forEach(tab => {
+                if (tab !== autopilotTab && tab !== mcaTab && !tabsBox.contains(tab)) {
+                    tabsBox.appendChild(tab);
+                }
+            });
+        }
