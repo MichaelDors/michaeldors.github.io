@@ -4588,7 +4588,6 @@ function searchsettings(){
                 return '00:00'; // Default in case of error
             }
         }
-
         function reorderHolidayTabs() {
             // Get current date for comparison
             const now = new Date();
@@ -4597,21 +4596,12 @@ function searchsettings(){
             const tabsBox = document.getElementById("tabs-box");
             if (!tabsBox) return; // Exit if tabs container doesn't exist
             
-            // Always keep Autopilot and MCA as first and second
-            const autopilotTab = document.getElementById("autopilottab");
-            const mcaTab = document.getElementById("endtab");
-            
-            // Create a copy of all tabs to work with
+            // Store all tabs in an array
             const allTabs = Array.from(tabsBox.children);
             
-            // Remove all tabs from the container
-            while (tabsBox.firstChild) {
-                tabsBox.removeChild(tabsBox.firstChild);
-            }
-            
-            // First insert Autopilot and MCA tabs if they exist
-            if (autopilotTab) tabsBox.appendChild(autopilotTab);
-            if (mcaTab) tabsBox.appendChild(mcaTab);
+            // Find the autopilot and MCA tabs
+            const autopilotTab = document.getElementById("autopilottab");
+            const mcaTab = document.getElementById("endtab");
             
             // Create a mapping of tab IDs to holiday dates
             const holidayMapping = [
@@ -4628,11 +4618,18 @@ function searchsettings(){
                 { id: "ctab", date: christmasday, name: "christmas" }
             ];
             
-            // Filter out tabs that don't exist and sort by upcoming date
+            // Create a new array to hold tabs in the desired order
+            const newOrder = [];
+            
+            // First add autopilot and MCA tabs if they exist
+            if (autopilotTab) newOrder.push(autopilotTab);
+            if (mcaTab) newOrder.push(mcaTab);
+            
+            // Sort holiday tabs by upcoming date
             const sortedHolidayTabs = holidayMapping
                 .filter(mapping => {
                     const tab = document.getElementById(mapping.id);
-                    return tab && tab !== autopilotTab && tab !== mcaTab;
+                    return tab !== null;
                 })
                 .sort((a, b) => {
                     const timeA = a.date.getTime() - now.getTime();
@@ -4658,16 +4655,50 @@ function searchsettings(){
                     return timeA - timeB;
                 });
             
-            // Add the sorted holiday tabs
+            // Add the sorted holiday tabs to our new order
             sortedHolidayTabs.forEach(mapping => {
                 const tab = document.getElementById(mapping.id);
-                if (tab) tabsBox.appendChild(tab);
+                if (tab && tab !== autopilotTab && tab !== mcaTab) {
+                    newOrder.push(tab);
+                }
             });
             
             // Add any remaining tabs that weren't in our mapping
             allTabs.forEach(tab => {
-                if (tab !== autopilotTab && tab !== mcaTab && !tabsBox.contains(tab)) {
-                    tabsBox.appendChild(tab);
+                if (!newOrder.includes(tab)) {
+                    newOrder.push(tab);
                 }
             });
+            
+            // Clear the tabs container
+            while (tabsBox.firstChild) {
+                tabsBox.removeChild(tabsBox.firstChild);
+            }
+            
+            // Add tabs back in the new order
+            newOrder.forEach(tab => {
+                tabsBox.appendChild(tab);
+            });
+            
+            // Initialize the tabs scrolling functionality
+            initTabsScroll();
+        }
+        
+        // Helper function to reinitialize tabs scrolling after reordering
+        function initTabsScroll() {
+            const tabsBox = document.getElementById("tabs-box");
+            const leftArrow = document.getElementById("left");
+            const rightArrow = document.getElementById("right");
+            
+            if (leftArrow && rightArrow && tabsBox) {
+                // Reset scroll position
+                tabsBox.scrollLeft = 0;
+                
+                // Check if scrolling is needed
+                const isScrollable = tabsBox.scrollWidth > tabsBox.clientWidth;
+                
+                // Show/hide arrows based on scrollability
+                leftArrow.style.display = isScrollable ? "block" : "none";
+                rightArrow.style.display = isScrollable ? "block" : "none";
+            }
         }
