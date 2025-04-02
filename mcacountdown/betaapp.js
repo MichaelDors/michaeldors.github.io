@@ -498,39 +498,88 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
               } else {
                   christmasday = new Date(thisyear + '-12-25T00:00');
               }
+
+              //groundhog day
+var groundhogthisyear = new Date(thisyear + "-02-02T00:00"); //setting up this year's date
+if (groundhogthisyear - now < 0) { //if it's already passed
+    groundhogday = new Date(nextyear + '-02-02T00:00'); //then set to next year
+} else { //otherwise, if it's not passed yet
+    groundhogday = new Date(thisyear + '-02-02T00:00'); //set to this year
+}
+
+
+//st patricks day
+var stpatricksthisyear = new Date(thisyear + "-03-17T00:00");
+if (stpatricksthisyear - now < 0) {
+    stpatricksday = new Date(nextyear + '-03-17T00:00');
+} else {
+    stpatricksday = new Date(thisyear + '-03-17T00:00');
+}
+
+//cinco de mayo
+var cincothisyear = new Date(thisyear + "-05-05T00:00");
+if (cincothisyear - now < 0) {
+    cincodemayo = new Date(nextyear + '-05-05T00:00');
+} else {
+    cincodemayo = new Date(thisyear + '-05-05T00:00');
+}
+
+//mlk jr day (third Monday in January)
+var mlkthisyear = new Date(formatDate(getDateString(thisyear, 0, 2, 1))); //0th month (Jan), 2nd week, 1st day (Monday)
+if (mlkthisyear - now < 0) {
+    mlkday = new Date(formatDate(getDateString(nextyear, 0, 2, 1)));
+} else {
+    mlkday = new Date(formatDate(getDateString(thisyear, 0, 2, 1)));
+}
   
   
               // List of holiday dates
               const holidays = [
-                  {
-                      name: 'newyear',
-                      date: newyearsday
-                  },
-                  {
-                      name: 'valentines',
-                      date: valentinessday
-                  },
-                  {
-                      name: 'easter',
-                      date: easterday
-                  },
-                  {
-                      name: 'independence',
-                      date: independenceday
-                  },
-                  {
-                      name: 'halloween',
-                      date: halloweenday
-                  },
-                  {
-                      name: 'thanksgiving',
-                      date: thanksgivingday
-                  },
-                  {
-                      name: 'christmas',
-                      date: christmasday
-                  }
-              ];
+                {
+                    name: 'newyear',
+                    date: newyearsday
+                },
+                {
+                    name: 'mlk',
+                    date: mlkday
+                },
+                {
+                    name: 'groundhog',
+                    date: groundhogday
+                },
+                {
+                    name: 'valentines',
+                    date: valentinessday
+                },
+                {
+                    name: 'stpatricks',
+                    date: stpatricksday
+                },
+                {
+                    name: 'easter',
+                    date: easterday
+                },
+                {
+                    name: 'cinco',
+                    date: cincodemayo
+                },
+                {
+                    name: 'independence',
+                    date: independenceday
+                },
+                {
+                    name: 'halloween',
+                    date: halloweenday
+                },
+                {
+                    name: 'thanksgiving',
+                    date: thanksgivingday
+                },
+                {
+                    name: 'christmas',
+                    date: christmasday
+                }
+            ];
   
               // Now that all the holidays are in a list and we've calculated when they occur next, it'll find which is coming up the soonest
               var nextHoliday = holidays.reduce(function (closest, holiday) {
@@ -546,17 +595,41 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
   
                       NYD(); //and run the NYD function to actually set the date and such to NYD
                       break;
+                 case 'mlk':
+                      document.getElementById("autopilotprediction").innerHTML = "MLK Jr Day";
+                      document.getElementById("autopilotpredictionmobile").innerHTML = "MLK Jr Day";
+
+                      MLK();
+                      break;
+                  case 'groundhog': //see NYD for docs
+                      document.getElementById("autopilotprediction").innerHTML = "Groundhog Day";
+                      document.getElementById("autopilotpredictionmobile").innerHTML = "Groundhog Day";
+
+                      GROUNDHOG();
+                      break;
                   case 'valentines': //see NYD for docs
                       document.getElementById("autopilotprediction").innerHTML = "Valentine's Day";
                       document.getElementById("autopilotpredictionmobile").innerHTML = "Valentine's Day";
   
                       VD();
                       break;
+                case 'stpatricks': //see NYD for docs
+                      document.getElementById("autopilotprediction").innerHTML = "St. Patrick's Day";
+                      document.getElementById("autopilotpredictionmobile").innerHTML = "St. Patrick's Day";
+
+                      SDP();
+                      break;
                   case 'easter': //see NYD for docs
                       document.getElementById("autopilotprediction").innerHTML = "Easter";
                       document.getElementById("autopilotpredictionmobile").innerHTML = "Easter";
   
                       EASTER();
+                      break;
+                case 'cincodemayo': //see NYD for docs
+                      document.getElementById("autopilotprediction").innerHTML = "Cinco de Mayo";
+                      document.getElementById("autopilotpredictionmobile").innerHTML = "Cinco de Mayo";
+
+                      CINCO();
                       break;
                   case 'independence': //see NYD for docs
                       document.getElementById("autopilotprediction").innerHTML = "Independence Day";
@@ -2010,6 +2083,46 @@ function contrast(){ //increase contrast set or remove cookie
           }
           SetCountDowngeneral();
       }
+
+      function MLK() { //Martin Luther King Jr. Day
+        var mlkthisyear = new Date(formatDate(getDateString(thisyear, 0, 2, 1))); //0th month (Jan), 2nd week, 1st day (Monday)
+        if (mlkthisyear - now < 0) {
+            document.querySelector(".datepicker").value = formatDate(getDateString(nextyear, 0, 2, 1));
+        } else {
+            document.querySelector(".datepicker").value = formatDate(getDateString(thisyear, 0, 2, 1));
+        }
+        SetCountDowngeneral();
+    }
+    
+    function GROUNDHOG() { //Groundhog Day
+        var groundhogthisyear = new Date(thisyear + "-02-02T00:00");
+        if (groundhogthisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-02-02T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-02-02T00:00';
+        }
+        SetCountDowngeneral();
+    }
+    
+    function SDP() { //St. Patrick's Day
+        var stpatricksthisyear = new Date(thisyear + "-03-17T00:00");
+        if (stpatricksthisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-03-17T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-03-17T00:00';
+        }
+        SetCountDowngeneral();
+    }
+    
+    function CINCO() { //Cinco de Mayo
+        var cincothisyear = new Date(thisyear + "-05-05T00:00");
+        if (cincothisyear - now < 0) {
+            document.querySelector(".datepicker").value = nextyear + '-05-05T00:00';
+        } else {
+            document.querySelector(".datepicker").value = thisyear + '-05-05T00:00';
+        }
+        SetCountDowngeneral();
+    }
   
           function autopilottab(){
               showToast('Autopilot found the next holiday!', 'success');
@@ -2077,38 +2190,87 @@ function contrast(){ //increase contrast set or remove cookie
                   christmasday = new Date(thisyear + '-12-25T00:00');
               }
   
+//groundhog day
+var groundhogthisyear = new Date(thisyear + "-02-02T00:00"); //setting up this year's date
+if (groundhogthisyear - now < 0) { //if it's already passed
+    groundhogday = new Date(nextyear + '-02-02T00:00'); //then set to next year
+} else { //otherwise, if it's not passed yet
+    groundhogday = new Date(thisyear + '-02-02T00:00'); //set to this year
+}
+
+
+//st patricks day
+var stpatricksthisyear = new Date(thisyear + "-03-17T00:00");
+if (stpatricksthisyear - now < 0) {
+    stpatricksday = new Date(nextyear + '-03-17T00:00');
+} else {
+    stpatricksday = new Date(thisyear + '-03-17T00:00');
+}
+
+//cinco de mayo
+var cincothisyear = new Date(thisyear + "-05-05T00:00");
+if (cincothisyear - now < 0) {
+    cincodemayo = new Date(nextyear + '-05-05T00:00');
+} else {
+    cincodemayo = new Date(thisyear + '-05-05T00:00');
+}
+
+//mlk jr day (third Monday in January)
+var mlkthisyear = new Date(formatDate(getDateString(thisyear, 0, 2, 1))); //0th month (Jan), 2nd week, 1st day (Monday)
+if (mlkthisyear - now < 0) {
+    mlkday = new Date(formatDate(getDateString(nextyear, 0, 2, 1)));
+} else {
+    mlkday = new Date(formatDate(getDateString(thisyear, 0, 2, 1)));
+}
+  
   
               // List of holiday dates
               const holidays = [
-                  {
-                      name: 'newyear',
-                      date: newyearsday
-                  },
-                  {
-                      name: 'valentines',
-                      date: valentinessday
-                  },
-                  {
-                      name: 'easter',
-                      date: easterday
-                  },
-                  {
-                      name: 'independence',
-                      date: independenceday
-                  },
-                  {
-                      name: 'halloween',
-                      date: halloweenday
-                  },
-                  {
-                      name: 'thanksgiving',
-                      date: thanksgivingday
-                  },
-                  {
-                      name: 'christmas',
-                      date: christmasday
-                  }
-              ];
+                {
+                    name: 'newyear',
+                    date: newyearsday
+                },
+                {
+                    name: 'mlk',
+                    date: mlkday
+                },
+                {
+                    name: 'groundhog',
+                    date: groundhogday
+                },
+                {
+                    name: 'valentines',
+                    date: valentinessday
+                },
+                {
+                    name: 'stpatricks',
+                    date: stpatricksday
+                },
+                {
+                    name: 'easter',
+                    date: easterday
+                },
+                {
+                    name: 'cinco',
+                    date: cincodemayo
+                },
+                {
+                    name: 'independence',
+                    date: independenceday
+                },
+                {
+                    name: 'halloween',
+                    date: halloweenday
+                },
+                {
+                    name: 'thanksgiving',
+                    date: thanksgivingday
+                },
+                {
+                    name: 'christmas',
+                    date: christmasday
+                }
+            ];
   
               // Now that all the holidays are in a list and we've calculated when they occur next, it'll find which is coming up the soonest
               var nextHoliday = holidays.reduce(function (closest, holiday) {
@@ -2121,12 +2283,24 @@ function contrast(){ //increase contrast set or remove cookie
                   case 'newyear':
                       NYD(); //run the NYD function to actually set the date and such to NYD
                       break;
+                case 'mlk':
+                    MLK();
+                    break;
+                  case 'groundhog':
+                  GROUNDHOG();
+                      break;
                   case 'valentines': //see NYD for docs
                       VD();
                       break;
+                case 'stpatricks':
+                    SDP();
+                    break;
                   case 'easter': //see NYD for docs
                       EASTER();
                       break;
+                    case'cinco':
+                        CINCO();
+                        break;
                   case 'independence': //see NYD for docs
                       ID();
                       break;
@@ -3678,39 +3852,88 @@ showToast('Pick an exception day to add this event to', 'info')
               } else {
                   christmasday = new Date(thisyear + '-12-25T00:00');
               }
+ //groundhog day
+ var groundhogthisyear = new Date(thisyear + "-02-02T00:00"); //setting up this year's date
+ if (groundhogthisyear - now < 0) { //if it's already passed
+     groundhogday = new Date(nextyear + '-02-02T00:00'); //then set to next year
+ } else { //otherwise, if it's not passed yet
+     groundhogday = new Date(thisyear + '-02-02T00:00'); //set to this year
+ }
+ 
+ 
+ //st patricks day
+ var stpatricksthisyear = new Date(thisyear + "-03-17T00:00");
+ if (stpatricksthisyear - now < 0) {
+     stpatricksday = new Date(nextyear + '-03-17T00:00');
+ } else {
+     stpatricksday = new Date(thisyear + '-03-17T00:00');
+ }
+ 
+ //cinco de mayo
+ var cincothisyear = new Date(thisyear + "-05-05T00:00");
+ if (cincothisyear - now < 0) {
+     cincodemayo = new Date(nextyear + '-05-05T00:00');
+ } else {
+     cincodemayo = new Date(thisyear + '-05-05T00:00');
+ }
+ 
+ //mlk jr day (third Monday in January)
+ var mlkthisyear = new Date(formatDate(getDateString(thisyear, 0, 2, 1))); //0th month (Jan), 2nd week, 1st day (Monday)
+ if (mlkthisyear - now < 0) {
+     mlkday = new Date(formatDate(getDateString(nextyear, 0, 2, 1)));
+ } else {
+     mlkday = new Date(formatDate(getDateString(thisyear, 0, 2, 1)));
+ }
+              
   
   
               // List of holiday dates
               const holidays = [
-                  {
-                      name: 'newyear',
-                      date: newyearsday
-                  },
-                  {
-                      name: 'valentines',
-                      date: valentinessday
-                  },
-                  {
-                      name: 'easter',
-                      date: easterday
-                  },
-                  {
-                      name: 'independence',
-                      date: independenceday
-                  },
-                  {
-                      name: 'halloween',
-                      date: halloweenday
-                  },
-                  {
-                      name: 'thanksgiving',
-                      date: thanksgivingday
-                  },
-                  {
-                      name: 'christmas',
-                      date: christmasday
-                  }
-              ];
+                {
+                    name: 'newyear',
+                    date: newyearsday
+                },
+                {
+                    name: 'mlk',
+                    date: mlkday
+                },
+                {
+                    name: 'groundhog',
+                    date: groundhogday
+                },
+                {
+                    name: 'valentines',
+                    date: valentinessday
+                },
+                {
+                    name: 'stpatricks',
+                    date: stpatricksday
+                },
+                {
+                    name: 'easter',
+                    date: easterday
+                },
+                {
+                    name: 'cinco',
+                    date: cincodemayo
+                },
+                {
+                    name: 'independence',
+                    date: independenceday
+                },
+                {
+                    name: 'halloween',
+                    date: halloweenday
+                },
+                {
+                    name: 'thanksgiving',
+                    date: thanksgivingday
+                },
+                {
+                    name: 'christmas',
+                    date: christmasday
+                }
+            ];
   
               // Now that all the holidays are in a list, we'll find the holiday that matches the current datepicker input value
               var selectedDate = new Date(document.querySelector(".datepicker").value);
@@ -3720,79 +3943,115 @@ showToast('Pick an exception day to add this event to', 'info')
   
   
               switch (matchingHoliday.name) {
-                  case 'newyear':
-                  document.getElementById("countdowntitle").value = "New Year's Day";
-                  document.getElementById("magictitle").classList.add("magictitle-success");
-                      showToast('Autopilot found a matching event!', 'success');
-                      setTimeout(function() {
-                          document.getElementById("magictitle").classList.remove("magictitle-success");
-                      }, 500);
-                    
-                  setcountdowntitle("front"); 
-                      break;
-                  case 'valentines': //see NYD for docs
-                  document.getElementById("countdowntitle").value = "Valentine's Day";
-                  document.getElementById("magictitle").classList.add("magictitle-success");
-                      showToast('Autopilot found a matching event!', 'success');
-                      setTimeout(function() {
-                          document.getElementById("magictitle").classList.remove("magictitle-success");
-                      }, 500);
-                  setcountdowntitle("front"); 
-                      break;
-                  case 'easter': //see NYD for docs
-                  document.getElementById("countdowntitle").value = "Easter";
-                  document.getElementById("magictitle").classList.add("magictitle-success");
-                      showToast('Autopilot found a matching event!', 'success');
-                      setTimeout(function() {
-                          document.getElementById("magictitle").classList.remove("magictitle-success");
-                      }, 500);
-                  setcountdowntitle("front"); 
-                      break;
-                  case 'independence': //see NYD for docs
-                  document.getElementById("countdowntitle").value = "Independence Day";
-                  document.getElementById("magictitle").classList.add("magictitle-success");
-                      showToast('Autopilot found a matching event!', 'success');
-                      setTimeout(function() {
-                          document.getElementById("magictitle").classList.remove("magictitle-success");
-                      }, 500);
-                  setcountdowntitle("front"); 
-                      break;
-                  case 'halloween': //see NYD for docs
-                  document.getElementById("countdowntitle").value = "Halloween";
-                  document.getElementById("magictitle").classList.add("magictitle-success");
-                      showToast('Autopilot found a matching event!', 'success');
-                      setTimeout(function() {
-                          document.getElementById("magictitle").classList.remove("magictitle-success");
-                      }, 500);
-                  setcountdowntitle("front"); 
-                      break;
-                  case 'thanksgiving': //see NYD for docs
-                  document.getElementById("countdowntitle").value = "Thanksgiving";
-                  document.getElementById("magictitle").classList.add("magictitle-success");
-                      showToast('Autopilot found a matching event!', 'success');
-                      setTimeout(function() {
-                          document.getElementById("magictitle").classList.remove("magictitle-success");
-                      }, 500);
-                  setcountdowntitle("front"); 
-                      break;
-                  case 'christmas': //see NYD for docs
-                  document.getElementById("countdowntitle").value = "Christmas";
-                  document.getElementById("magictitle").classList.add("magictitle-success");
+                case 'newyear':
+                document.getElementById("countdowntitle").value = "New Year's Day";
+                document.getElementById("magictitle").classList.add("magictitle-success");
                     showToast('Autopilot found a matching event!', 'success');
-                      setTimeout(function() {
-                          document.getElementById("magictitle").classList.remove("magictitle-success");
-                      }, 500);
-                  setcountdowntitle("front");
-                      break;
-                  default:
-                      // handle cases where nextHoliday.name doesn't match any of the above
-                      console.error('Magic Title did not find a matching holiday.');
-                      showToast('Autopilot did not find an event matching that date', 'error');
-                      document.getElementById("magictitle").classList.add("magictitle-failed");
-                      setTimeout(function() {
-                          document.getElementById("magictitle").classList.remove("magictitle-failed");
-                      }, 500);
-              }
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                  
+                setcountdowntitle("front"); 
+                    break;
+                case 'mlk': // MLK Jr. Day
+                document.getElementById("countdowntitle").value = "Martin Luther King Jr. Day";
+                document.getElementById("magictitle").classList.add("magictitle-success");
+                    showToast('Autopilot found a matching event!', 'success');
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                setcountdowntitle("front"); 
+                    break;
+                case 'groundhog': // Groundhog Day
+                document.getElementById("countdowntitle").value = "Groundhog Day";
+                document.getElementById("magictitle").classList.add("magictitle-success");
+                    showToast('Autopilot found a matching event!', 'success');
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                setcountdowntitle("front"); 
+                    break;
+                case 'valentines': //see NYD for docs
+                document.getElementById("countdowntitle").value = "Valentine's Day";
+                document.getElementById("magictitle").classList.add("magictitle-success");
+                    showToast('Autopilot found a matching event!', 'success');
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                setcountdowntitle("front"); 
+                    break;
+                case 'stpatricks': // St. Patrick's Day
+                document.getElementById("countdowntitle").value = "St. Patrick's Day";
+                document.getElementById("magictitle").classList.add("magictitle-success");
+                    showToast('Autopilot found a matching event!', 'success');
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                setcountdowntitle("front"); 
+                    break;
+                case 'easter': //see NYD for docs
+                document.getElementById("countdowntitle").value = "Easter";
+                document.getElementById("magictitle").classList.add("magictitle-success");
+                    showToast('Autopilot found a matching event!', 'success');
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                setcountdowntitle("front"); 
+                    break;
+                case 'cinco': // Cinco de Mayo
+                document.getElementById("countdowntitle").value = "Cinco de Mayo";
+                document.getElementById("magictitle").classList.add("magictitle-success");
+                    showToast('Autopilot found a matching event!', 'success');
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                setcountdowntitle("front"); 
+                    break;
+                case 'independence': //see NYD for docs
+                document.getElementById("countdowntitle").value = "Independence Day";
+                document.getElementById("magictitle").classList.add("magictitle-success");
+                    showToast('Autopilot found a matching event!', 'success');
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                setcountdowntitle("front"); 
+                    break;
+                case 'halloween': //see NYD for docs
+                document.getElementById("countdowntitle").value = "Halloween";
+                document.getElementById("magictitle").classList.add("magictitle-success");
+                    showToast('Autopilot found a matching event!', 'success');
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                setcountdowntitle("front"); 
+                    break;
+                case 'thanksgiving': //see NYD for docs
+                document.getElementById("countdowntitle").value = "Thanksgiving";
+                document.getElementById("magictitle").classList.add("magictitle-success");
+                    showToast('Autopilot found a matching event!', 'success');
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                setcountdowntitle("front"); 
+                    break;
+                case 'christmas': //see NYD for docs
+                document.getElementById("countdowntitle").value = "Christmas";
+                document.getElementById("magictitle").classList.add("magictitle-success");
+                  showToast('Autopilot found a matching event!', 'success');
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-success");
+                    }, 500);
+                setcountdowntitle("front");
+                    break;
+                default:
+                    // handle cases where nextHoliday.name doesn't match any of the above
+                    console.error('Magic Title did not find a matching holiday.');
+                    showToast('Autopilot did not find an event matching that date', 'error');
+                    document.getElementById("magictitle").classList.add("magictitle-failed");
+                    setTimeout(function() {
+                        document.getElementById("magictitle").classList.remove("magictitle-failed");
+                    }, 500);
+            }
           }
       
       }
