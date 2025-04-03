@@ -336,31 +336,35 @@
         }
         
         // Generate sidebar buttons automatically
-        function generateSidebarButtons() {
-            const sidebarList = document.getElementById('sidebar-links');
-            const sections = document.querySelectorAll('.section');
-            
-            sections.forEach(section => {
-                const title = section.querySelector('h1').textContent;
-                const sectionId = section.id;
-                
-                const listItem = document.createElement('li');
-                const button = document.createElement('button');
-                
-                button.textContent = title;
-                button.onclick = () => {
-                    showSection(sectionId);
-                    
-                    // Close sidebar on mobile when a sidebar button is selected
-                    if (window.innerWidth <= 768) {
-                        document.querySelector('.sidebar').classList.remove('active');
-                    }
-                };
-                
-                listItem.appendChild(button);
-                sidebarList.appendChild(listItem);
-            });
+function generateSidebarButtons() {
+    const sidebarList = document.getElementById('sidebar-links');
+    const sections = document.querySelectorAll('.section');
+    
+    sections.forEach(section => {
+        const title = section.querySelector('h1').textContent;
+        const sectionId = section.id;
+        
+        if (sectionId === "home") {
+            return; // Skip creating a button for the "home" section
         }
+
+        const listItem = document.createElement('li');
+        const button = document.createElement('button');
+        
+        button.textContent = title;
+        button.onclick = () => {
+            showSection(sectionId);
+            
+            // Close sidebar on mobile when a sidebar button is selected
+            if (window.innerWidth <= 768) {
+                document.querySelector('.sidebar').classList.remove('active');
+            }
+        };
+        
+        listItem.appendChild(button);
+        sidebarList.appendChild(listItem);
+    });
+}
         
         // Check for hash in URL on page load
         window.onload = function() {
@@ -462,7 +466,11 @@ if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').match
         </ul>
     </div>
     <div class="content">
-        <div id="export-cal-to-schedule" class="section active">
+        <div id="home" class="section active">
+            <h1>Welcome to Countdown Docs</h1>
+            <p>We strive to create things that are easy to use, but also robust. This website was created to help elaborate on our more complex features, and help you to understand how Countdown works.</p>
+        </div>
+        <div id="export-cal-to-schedule" class="section">
             <h1>Export Calendars to Schedule</h1>
             <p>Learn how to export calendars from multiple services to Countdown. We will be covering Google Calendar, iCloud/MacOS Calendar, and Outlook Calendar</p>
             <h2>Google Calendar</h2>
