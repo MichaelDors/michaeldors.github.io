@@ -1,18 +1,4 @@
-//So pretty much there was a weird bug where CSS zoom works differently from Chrome VS Safari, so I needed to target each one seperately. Safari would scale each item to 75% as if someone used the browser zoom buttons. Chrome would scale the whole page, only using 75% of the space, leaving a border.
 
-if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
-    // If user is using Safari
-    const style = document.createElement('style');
-    style.innerHTML = `
-      @media only screen and (max-width: 1290px) and (orientation:portrait) {
-         body {
-            zoom: 75%;
-         }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-  
   function handleTitleNavigation() {
       const fullUrl = window.location.href;
       const urlParts = fullUrl.split('#');
