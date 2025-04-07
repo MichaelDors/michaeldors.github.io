@@ -956,18 +956,18 @@ button:hover {
     will-change: transform, opacity;
     z-index: 2000;
     box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+    0 2px 4px rgba(0, 0, 0, 0.15), /* bottom soft shadow */
+    inset 0 1.3px 0 rgba(255, 255, 255, 0.4), /* top light edge*/
+    inset 0 -1.3px 0 rgba(0, 0, 0, 0.1); /* bottom inner shadow */
+  border: 1px solid rgba(0, 0, 0, 0.05); /* subtle outline */
 }
 
 .card::before {
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 8px;
-  background: linear-gradient(to bottom right, rgba(255,255,255,0.2), transparent);
+  border-radius: 20px;
+  background: linear-gradient(to bottom right, rgba(255,255,255,0.1), transparent);
   pointer-events: none;
   mix-blend-mode: screen;
 }
