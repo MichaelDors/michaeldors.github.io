@@ -822,8 +822,8 @@ document.addEventListener('drop', (event) => {
             document.documentElement.style.setProperty('--blurbackgroundshadow', '0 8px 16px rgba(255, 255, 255, 0.1)');
             document.documentElement.style.setProperty('--placeholderbg', 'rgba(235, 235, 235, 0.43)');
 	    document.documentElement.style.setProperty('--placeholderbordercolor', '#bababa');
-        document.documentElement.style.setProperty('--cardbeforeglow', 'inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 0 18px rgba(255, 255, 255, 0.3);');
-        document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(0, 0, 0, 0.1);');
+        document.documentElement.style.setProperty('--cardbeforeglow', 'inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 0 18px rgba(255, 255, 255, 0.3)');
+        document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(0, 0, 0, 0.1)');
         }
         
         function setDarkMode() {
@@ -833,8 +833,8 @@ document.addEventListener('drop', (event) => {
             document.documentElement.style.setProperty('--blurbackgroundshadow', '0 8px 16px rgba(0, 0, 0, 0.45)');
 	    document.documentElement.style.setProperty('--placeholderbg', 'rgba(20, 20, 20, 0.23)');
 	    document.documentElement.style.setProperty('--placeholderbordercolor', '#666');
-        document.documentElement.style.setProperty('--cardbeforeglow', 'inset 0 0px 0 rgba(255, 255, 255, 0);');
-        document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(255, 255, 255, 0.1);');
+        document.documentElement.style.setProperty('--cardbeforeglow', 'inset 0 0px 0 rgba(255, 255, 255, 0)');
+        document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(255, 255, 255, 0.1), inset 0 0 0px rgba(255, 255, 255, 0)');
         }
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
@@ -864,7 +864,7 @@ loadLinks();
 	/*#bababa*/
     --cardbeforeglow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     /*inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 0 18px rgba(255, 255, 255, 0.3);*/
-    --cardborder:1.54px solid rgba(255, 255, 255, 0.1);
+    --cardborder:1.54px solid rgba(255, 255, 255, 0.1), inset 0 0 0px rgba(255, 255, 255, 0);
     /*1.54px solid rgba(0, 0, 0, 0.1);*/
 }
 *{
@@ -973,7 +973,7 @@ button:hover {
   position: absolute;
   inset: 0;
   border-radius: 15px;
-  /*background: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent);*/
+  background: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent);
   pointer-events: none;
   mix-blend-mode: screen;
   z-index:10000000;
