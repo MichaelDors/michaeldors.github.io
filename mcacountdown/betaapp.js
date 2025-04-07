@@ -3363,6 +3363,7 @@ if (mlkthisyear - now < 0) {
             if(isException == true && event == 'null'){
                 setTimeout(function() {
                     schedule_addOrUpdateEvent();
+                  document.getElementById("addeventtoexceptionday").classList.add("disabled");
                     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                     showToast('Event successfully added to ' + dayNames[day], 'success')
                     document.getElementById("schedule-eventTitle").scrollIntoView();
@@ -3380,6 +3381,7 @@ if (mlkthisyear - now < 0) {
 
           function selectexceptiontoaddevent(){
             document.getElementById("exceptiondaycontainer").scrollIntoView();
+            document.getElementById("addeventtoexceptionday").classList.remove("disabled");
 // Find all collapsible elements and trigger click to open them
 const collapsibles = document.querySelectorAll('.schedule-collapsible');
 collapsibles.forEach(collapsible => {
@@ -3459,7 +3461,7 @@ showToast('Pick an exception day to add this event to', 'info')
                       <button class="schedule-collapsible" style="font-family: Dosis; font-size: 20px;" onclick="schedule_toggleCollapsible(this)">${dayName}</button>
                       <div class="schedule-content">
                       <h1>${dayName} Exception</h1>
-                        <a onclick="schedule_editEvent(null, true, '${day}');"><i class="fa-solid fa-plus-circle"></i> Add Event to ${dayName}</a>
+                        <a class="addeventtoexceptionday disabled" onclick="schedule_editEvent(null, true, '${day}');"><i class="fa-solid fa-plus-circle"></i> Add Event to ${dayName}</a>
                         <a class="warning" onclick="schedule_removeExceptionDay('${day}')"><i class="fa-solid fa-trash"></i> Remove Exception Day</a>
                           <br>
                           <br>
