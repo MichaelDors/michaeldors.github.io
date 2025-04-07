@@ -3363,9 +3363,9 @@ if (mlkthisyear - now < 0) {
             if(isException == true && event == 'null'){
                 setTimeout(function() {
                     schedule_addOrUpdateEvent();
-                  const exceptiondaybuttonstochange = document.querySelectorAll('addeventtoexceptionday');
+                  const exceptiondaybuttonstochange = document.querySelectorAll('.addeventtoexceptionday');
                   exceptiondaybuttonstochange.forEach(element => {
-                    exceptiondaybuttonstochange.classList.add('disabled');
+                    element.classList.add('disabled');
                   });
                     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                     showToast('Event successfully added to ' + dayNames[day], 'success')
@@ -3384,9 +3384,9 @@ if (mlkthisyear - now < 0) {
 
           function selectexceptiontoaddevent(){
             document.getElementById("exceptiondaycontainer").scrollIntoView();
-                             const exceptiondaybuttonstochange = document.querySelectorAll('addeventtoexceptionday');
+                             const exceptiondaybuttonstochange = document.querySelectorAll('.addeventtoexceptionday');
                   exceptiondaybuttonstochange.forEach(element => {
-                    exceptiondaybuttonstochange.classList.remove('disabled');
+                    element.classList.remove('disabled');
                   });
 // Find all collapsible elements and trigger click to open them
 const collapsibles = document.querySelectorAll('.schedule-collapsible');
