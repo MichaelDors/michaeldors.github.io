@@ -327,9 +327,9 @@ const countdownDate = new Date(parameter('date')).getTime();
           document.getElementById("countdowntitle").style.display = "none"; //hide title
       document.getElementById("optionsdatecontainer").style.display = "none"; //hide end date area of options
       document.getElementById("optionsendingcontainer").style.display = "none"; //hide ending options area of options	
-      document.getElementById("optionsendinganchor").style.opacity = "0.5"; //grey out ending options anchor 	
+      document.getElementById("optionsendinganchor").style.opacity = "0.3"; //grey out ending options anchor 	
       document.getElementById("optionsprogresscontainer").style.display = "none"; //hide ending options area of options
-      document.getElementById("optionsprogressanchor").style.opacity = "0.5"; //grey out progress options anchor	
+      document.getElementById("optionsprogressanchor").style.opacity = "0.3"; //grey out progress options anchor	
       document.getElementById("cdscheduledisclaimer").style.display = ""; //show personal options schedule disclaimer
           document.getElementById("schedule").style.display = ""; //show schedule
       document.querySelector(".schedule-editor").style.display = ""; //show editor
@@ -2870,9 +2870,9 @@ if (mlkthisyear - now < 0) {
           document.getElementById("countdowntitle").style.display = "none"; //hide title
       document.getElementById("optionsdatecontainer").style.display = "none"; //hide end date area of options
       document.getElementById("optionsendingcontainer").style.display = "none"; //hide ending options area of options	
-      document.getElementById("optionsendinganchor").style.opacity = "0.5"; //grey out ending options anchor 	
+      document.getElementById("optionsendinganchor").style.opacity = "0.3"; //grey out ending options anchor 	
       document.getElementById("optionsprogresscontainer").style.display = "none"; //hide ending options area of options
-      document.getElementById("optionsprogressanchor").style.opacity = "0.5"; //grey out progress options anchor	
+      document.getElementById("optionsprogressanchor").style.opacity = "0.3"; //grey out progress options anchor	
       document.getElementById("cdscheduledisclaimer").style.display = ""; //show personal options schedule disclaimer
   
       document.querySelector(".schedule-editor").style.display = ""; //show the schedule editor
