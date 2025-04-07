@@ -957,7 +957,7 @@ button:hover {
     z-index: 2000;
     box-shadow: 
     0 2px 4px rgba(0, 0, 0, 0.15), /* bottom soft shadow */
-    inset 0 1.3px 0 rgba(255, 255, 255, 0.4), /* top light edge*/
+    inset 0 1.3px 0 rgba(255, 255, 255, 0.2), /* top light edge*/
     inset 0 -1.3px 0 rgba(0, 0, 0, 0.1); /* bottom inner shadow */
   border: 1px solid rgba(0, 0, 0, 0.05); /* subtle outline */
 }
@@ -970,6 +970,7 @@ button:hover {
   background: linear-gradient(to bottom right, rgba(255,255,255,0.1), transparent);
   pointer-events: none;
   mix-blend-mode: screen;
+  z-index:1000000;
 }
 
 .card.currentlybeingdeleted{
@@ -1030,6 +1031,9 @@ iframe {
     height: 150px;
     border: none;
     pointer-events: none;
+    border-top-left-radius:15px;
+    border-top-right-radius: 15px;
+    z-index:10000;
 }
 
 /* Add a visual cue for dragging */
