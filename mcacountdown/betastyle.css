@@ -2310,8 +2310,6 @@ height: 45px;
 width: 260px;
 position: fixed;
 bottom: 0;
-border-bottom:1px solid black;
-margin-bottom:-1px;
 left: 0;
 transform: translateX(-27%);
 font-size: 0; /* Removes any potential whitespace gaps */
