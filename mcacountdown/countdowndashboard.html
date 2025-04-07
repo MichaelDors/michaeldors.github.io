@@ -833,8 +833,8 @@ document.addEventListener('drop', (event) => {
             document.documentElement.style.setProperty('--blurbackgroundshadow', '0 8px 16px rgba(0, 0, 0, 0.45)');
 	    document.documentElement.style.setProperty('--placeholderbg', 'rgba(20, 20, 20, 0.23)');
 	    document.documentElement.style.setProperty('--placeholderbordercolor', '#666');
-        document.documentElement.style.setProperty('--cardbeforeglow', 'inset 0 0px 0 rgba(255, 255, 255, 0)');
-        document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(255, 255, 255, 0.1), inset 0 0 0px rgba(255, 255, 255, 0)');
+        document.documentElement.style.setProperty('--cardbeforeglow', 'inset 0 0px 0 rgba(255, 255, 255, 0), inset 0 0 0px rgba(255, 255, 255, 0)');
+        document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(255, 255, 255, 0.1)');
         }
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
