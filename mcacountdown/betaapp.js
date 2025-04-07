@@ -3361,12 +3361,16 @@ if (mlkthisyear - now < 0) {
   
           function schedule_editEvent(event, isException = false, day = null) {
             if(isException == true && event == 'null'){
+              alert("Test");
                 setTimeout(function() {
                     schedule_addOrUpdateEvent();
+                  alert("Test2");
                   const exceptiondaybuttonstochange = document.querySelectorAll('.addeventtoexceptionday');
                   exceptiondaybuttonstochange.forEach(element => {
+                    alert("Testinnnngn");
                     element.classList.add('disabled');
                   });
+                  alert("Test3")
                     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                     showToast('Event successfully added to ' + dayNames[day], 'success')
                     document.getElementById("schedule-eventTitle").scrollIntoView();
