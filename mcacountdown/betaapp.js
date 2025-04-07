@@ -3330,6 +3330,8 @@ if (mlkthisyear - now < 0) {
                               schedule_exceptions[schedule_editingExceptionDay] = [];
                           }
                           schedule_exceptions[schedule_editingExceptionDay].push(newEvent);
+                          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                          showToast('Event successfully added to ' + dayNames[schedule_editingExceptionDay], 'success')
                       } else {
                           schedule_events.push(newEvent);
                           showToast('Event added to regular schedule', 'success');
@@ -3360,11 +3362,9 @@ if (mlkthisyear - now < 0) {
           }
   
           function schedule_editEvent(event, isException = false, day = null) {
-            if(isException == true && event == 'null'){
+            if(!event && isException){
                 setTimeout(function() {
                     schedule_addOrUpdateEvent();
-                    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                    showToast('Event successfully added to ' + dayNames[day], 'success')
                     document.getElementById("schedule-eventTitle").scrollIntoView();
                     const exceptiondaybuttonstochange = document.querySelectorAll('.addeventtoexceptionday');
                   exceptiondaybuttonstochange.forEach(element => {
@@ -3372,7 +3372,6 @@ if (mlkthisyear - now < 0) {
                   });
                 }, 100);
             }
-          
               schedule_editingEvent = event;
               schedule_editingExceptionDay = isException ? day : null;
               document.getElementById('schedule-eventTitle').value = event.title;
@@ -3412,6 +3411,8 @@ showToast('Pick an exception day to add this event to', 'info')
               schedule_updateExceptionList();
               schedule_updateURL();
               schedule_updateScheduleViewer();
+              document.getElementById("schedule-eventTitle").scrollIntoView();
+
           }
   
           function schedule_addExceptionDay() {
