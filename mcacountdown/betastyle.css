@@ -13,7 +13,7 @@
     /*#00d04c*/
     --selectedgreengradient: linear-gradient(to bottom right, #14141400, #01fe5e34);
     /*background: linear-gradient(to bottom right, #ffffff00, #00d04c44);*/
-    --inputbackground: linear-gradient(to left, rgba(40,23,64,88), #14141400);
+    --inputbackground: linear-gradient(to left, rgba(129, 70, 255, 0.42), transparent);
     /*background: linear-gradient(to left, rgba(220,200,250,88), transparent);*/
     --speeddivbackground: linear-gradient(to bottom right, #00000000, #2e0960);
     /*linear-gradient(to bottom right, #ffffff, #9a4cff);*/
@@ -1124,6 +1124,7 @@ a:hover:active {
     transition:all 0.3s ease;
 }
 
+
 .icon:last-child {
     right: 0;
     justify-content: flex-end;
@@ -1246,7 +1247,7 @@ a:hover:active {
 }
 
 .wrapper {
-    max-width: 70%;
+    max-width: 70%;    
 }
 
     .wrapper .tabs-box {
@@ -1272,42 +1273,118 @@ a:hover:active {
     cursor: pointer;
     font-size: 1.18rem;
     white-space: nowrap;
-    background: linear-gradient(to left, rgba(94, 0, 225, 0.8), transparent);
-    border: #8426FF 1px solid;
+    border:1px solid transparent;
+    background: linear-gradient(to left, rgba(110, 14, 244, 0.898), rgba(121, 25, 255, 0.737));
     padding: 13px 20px;
     border-radius: 30px;
     transition: 0.5s all;
-    color: var(--mainforegroundcolor);
+    color: white;
     font-family: 'Fredoka One';
-}
+        position:relative;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08), /* bottom soft shadow */
+        inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
+    }
+    
+    .tabs-box .tab::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 30px;
+      background: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent);
+      pointer-events: none;
+      mix-blend-mode: screen;
+      z-index:10000000;
+    }
+    
+    .tabs-box .tab::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 30px;
+      pointer-events: none;
+      z-index: 1000000;
+      box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 0 18px rgba(255, 255, 255, 0.3);
+      border: var(--cardborder);
+    }
+
 
 .tabs-box .mcatab {
     margin: 0px;
     cursor: pointer;
     font-size: 1.18rem;
     white-space: nowrap;
-    background: linear-gradient(to left, rgba(31,179,255,0.5), transparent);
-    border: #26b3ff 1px solid;
+    background: linear-gradient(to left, rgba(31, 180, 255, 0.929), rgba(31, 180, 255, 0.728));
     padding: 13px 20px;
     border-radius: 30px;
+    border:1px solid transparent;
     transition: 0.5s all;
-    color: var(--mainforegroundcolor);
+    color: white;
     font-family: 'Fredoka One';
+    position:relative;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08), /* bottom soft shadow */
+    inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
 }
+
+.tabs-box .mcatab::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 30px;
+    background: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent);
+    pointer-events: none;
+    mix-blend-mode: screen;
+    z-index:10000000;
+  }
+  
+  .tabs-box .mcatab::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 30px;
+    pointer-events: none;
+    z-index: 1000000;
+    box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 0 18px rgba(255, 255, 255, 0.3);
+    border: var(--cardborder);
+  }
 
 .tabs-box .autopilottab {
     margin: 0px;
     cursor: pointer;
     font-size: 1.18rem;
     white-space: nowrap;
-    background: linear-gradient(to left, #00df5290, transparent);
-    border: #00df52 1px solid;
+    background: linear-gradient(to right, #00df52ac, #00df52cd);
     padding: 13px 20px;
     border-radius: 30px;
     transition: 0.5s all;
-    color: var(--mainforegroundcolor);
+    border:1px solid transparent;
+    color: white;
     font-family: 'Fredoka One';
+    position:relative;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08), /* bottom soft shadow */
+    inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
 }
+
+.tabs-box .autopilottab::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 30px;
+    background: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent);
+    pointer-events: none;
+    mix-blend-mode: screen;
+    z-index:10000000;
+  }
+  
+  .tabs-box .autopilottab::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 30px;
+    pointer-events: none;
+    z-index: 1000000;
+    box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 0 18px rgba(255, 255, 255, 0.3);
+    border: var(--cardborder);
+  }
 
 .tabs-box .debugtab {
     margin: 0px;
@@ -1326,7 +1403,7 @@ a:hover:active {
 .tabs-box.dragging .tab {
     user-select: none;
     pointer-events: none;
-    filter: brightness(0.8);
+    filter: brightness(0.7);
 }
 
 .tabs-box .tab.active {
@@ -1339,7 +1416,7 @@ a:hover:active {
     color: #fff;
     background: #8426ff;
     border-color: transparent;
-    border: var(--mainbgcolor) 1px solid;
+    border:1px solid transparent;
     transform: scale(0.9);
     animation: jiggle 0.6s infinite;
     overflow-y: visible;
@@ -1411,6 +1488,7 @@ a:hover:active {
     background: #8426ff;
     border-color: transparent;
     border: #141414 1px solid;
+    border:1px solid transparent;
     transform: scale(0.9);
     animation: jiggle 0.6s infinite;
     overflow-y: visible;
@@ -1423,19 +1501,19 @@ a:hover:active {
 .tabs-box.dragging .mcatab {
     user-select: none;
     pointer-events: none;
-    filter: brightness(0.8);
+    filter: brightness(0.7);
 }
 
 .tabs-box.dragging .autopilottab {
     user-select: none;
     pointer-events: none;
-    filter: brightness(0.8);
+    filter: brightness(0.7);
 }
 
 .tabs-box.dragging .debugtab {
     user-select: none;
     pointer-events: none;
-    filter: brightness(0.8);
+    filter: brightness(0.7);
 }
 
 .tabs-box .mcatab.active {
@@ -1506,7 +1584,7 @@ a:hover:active {
     color: #fff;
     background: #26b3ff;
     border-color: transparent;
-    border: var(--mainbgcolor) 1px solid;
+    border:1px solid transparent;
     transform: scale(0.9);
     animation: jiggle 0.6s infinite;
     overflow-y: visible;
@@ -1516,7 +1594,7 @@ a:hover:active {
     color: #fff;
     background: #00df52;
     border-color: transparent;
-    border: var(--mainbgcolor) 1px solid;
+    border:1px solid transparent;
     transform: scale(0.9);
     animation: jiggle 0.6s infinite;
     overflow-y: visible;
@@ -1526,7 +1604,7 @@ a:hover:active {
     color: #fff;
     background: #ff5353;
     border-color: transparent;
-    border: var(--mainbgcolor) 1px solid;
+    border:1px solid transparent;
     transform: scale(0.9);
     animation: jiggle 0.6s infinite;
     overflow-y: visible;
@@ -1927,7 +2005,7 @@ a:hover:active {
         padding-left: 20px;
         font-family: "Dosis";
         font-size:15px;
-        box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+        box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.15);
     }
  
     input[type="input"] + button {

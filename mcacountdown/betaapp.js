@@ -2319,6 +2319,8 @@ if (mlkthisyear - now < 0) {
           navigator.clipboard.writeText(locallinkinputfield.value); //Save that value to clipboard
       }
   
+      document.querySelector(".tabs-box").style.maskImage = "linear-gradient(to right, black 0%, black 85%, rgba(0, 0, 0, 0))";
+      document.querySelector(".tabs-box").style.webkitMaskImage = "linear-gradient(to right, black 0%, black 85%, rgba(0, 0, 0, 0))";
       //Scrolling controls tabs box too
       const container = document.getElementById("tabs-box");
       container.addEventListener("wheel", function (e) {
@@ -4294,7 +4296,7 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--mainforegroundcolor', '#000000');
             document.documentElement.style.setProperty('--selectedgreen', '#00d04c');
             document.documentElement.style.setProperty('--selectedgreengradient', 'linear-gradient(to bottom right, #ffffff00, #00d04c44)');
-            document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left, rgba(220,200,250,88), transparent)');
+            document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left,rgba(129, 70, 255, 0.42), transparent)');
             document.documentElement.style.setProperty('--speeddivbackground', 'linear-gradient(to bottom right, #ffffff, #9a4cff)');
             document.documentElement.style.setProperty('--blurbackground', 'rgba(239, 239, 239, 0.73)');
             document.documentElement.style.setProperty('--blurbackgroundshadowcolor', 'rgba(255, 255, 255, 0.1)');
@@ -4314,7 +4316,7 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--mainforegroundcolor', '#ffffff');
             document.documentElement.style.setProperty('--selectedgreen', '#01FE5E');
             document.documentElement.style.setProperty('--selectedgreengradient', 'linear-gradient(to bottom right, #14141400, #01fe5e34)');
-            document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left, rgba(40,23,64,88), #14141400)');
+            document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left, rgba(129, 70, 255, 0.42), transparent)');
             document.documentElement.style.setProperty('--speeddivbackground', 'linear-gradient(to bottom right, #00000000, #2e0960)');
             document.documentElement.style.setProperty('--blurbackground', 'rgba(20, 20, 20, 0.83)');
             document.documentElement.style.setProperty('--blurbackgroundshadowcolor', 'rgba(0, 0, 0, 0.1)');
