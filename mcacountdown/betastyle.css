@@ -1942,6 +1942,7 @@ a:hover:active {
     }
 
 .localshortcutcontainerdiv{
+    position:relative;
     box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08), /* bottom soft shadow */
     inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
 }
