@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="icon" type="image/x-icon" href="icon.ico">
     <meta name="theme-color" content="#8426ff" />
 
@@ -387,7 +387,7 @@
                 <a title="Disable confetti on this Countdown (you can disable confetti on all Countdowns in your Personal Options)" class="aintext fontpicker" id="noconfetti" onmouseup="ConfettiModeNone(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-regular fa-circle-xmark"></i></a>
                 <br>
                 <br>
-                <a class="aintext" href="#appearanceoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; text-decoration: underline; color:white;">You can disable confetti for all countdowns in your Personal Options.</a>
+                <a class="aintext" href="#appearanceoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; text-decoration: underline;">You can disable confetti for all countdowns in your Personal Options.</a>
                 <br>
                 <br>
                 <br>
@@ -403,7 +403,7 @@
                     <br />
                     Any ADs that may be placed by the service will remain.
                 </p>
-                <a class="aintext" style="color:white" href="#eouoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; text-decoration: underline;">You can disable ending sounds for all countdowns in your Personal Options.</a>
+                <a class="aintext" href="#eouoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; text-decoration: underline;">You can disable ending sounds for all countdowns in your Personal Options.</a>
                 <div id="playerContainer" style="display: none;"></div>
                 <br>
                 <br>
@@ -432,10 +432,12 @@
                 <div class="schedule-editor">
                     <div class="schedule-container">
                         <div id="scheduleimportcontainer" style="border-radius: 20px; background: #001e30; margin-bottom:75px; color: white !important; padding:20px; min-width:fit-content; max-width: 75%;">
-                            <h1 style="color: white;">Import your schedule</h1>
-                            <p style="color: white;">Import an exported calendar from any major calendar service</p>
+                            <p style="color: white; font-size: 27px;"><i class="fa-solid fa-table-cells-row-unlock"></i> Import your schedule</p>
+                            <p style="color: white; font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:20px;">Import an exported calendar from any major calendar service,<br>or create one in seconds with our Custom GPT.</p>
                             <a class="sharebutton" onclick="importICSFile();"><i class="fa-solid fa-calendar-week"></i> Import Calendar</a>
-                            <a class="sharebutton" href="docs#export-cal-to-schedule" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-circle-question"></i> How To Export</a>
+                            <a class="sharebutton"><i class="fa-solid fa-comment"></i> Countdown Schedule GPT</a>
+                            <br>
+                            <a style="color: white; font-family:'Dosis'; margin-top:10px; margin-bottom:10px;" href="docs#export-cal-to-schedule" target="_blank" rel="noopener noreferrer" class="aintext"><i class="fa-solid fa-circle-info"></i> How To Export</a>
                         </div>
                         <!--<div id="scheduleimportcontainer" style="border-radius: 20px; background: #3ab6ff; margin-bottom:125px; color: black; padding:20px; min-width:fit-content; max-width: 75%;">
                             <a class="betabutton"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Schedule with Gemini</a>

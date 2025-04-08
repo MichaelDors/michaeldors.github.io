@@ -3438,6 +3438,9 @@ showToast('Pick an exception day to add this event to', 'info')
               schedule_updateExceptionList();
               schedule_updateURL();
               schedule_updateScheduleViewer();
+
+              const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                showToast(dayNames[day] + ' exception deleted', 'success');
           }
   
           function schedule_updateEventList() {
