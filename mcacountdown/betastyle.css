@@ -624,7 +624,7 @@ a {
     background-color: #8426ff;
     text-decoration: none;
     color: white;
-    box-shadow: 0 7px 0 #4d00b2, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+    box-shadow: 0 7px 0 #4d00b2, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -637,7 +637,7 @@ a {
 a:hover {
     position: relative;
     top: 4px;
-    box-shadow: 0 5px 0 #4d00b2, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+    box-shadow: 0 5px 0 #4d00b2, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     display: inline-block;
 }
 
@@ -715,7 +715,7 @@ margin-bottom:10px;
 a:hover:active {
     position: relative;
     top: 9px;
-    box-shadow:inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+    box-shadow:inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     display: inline-block;
 }
 
@@ -731,7 +731,7 @@ a:hover:active {
     background-color: #00df52;
     text-decoration: none;
     color: black;
-    box-shadow: 0 7px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+    box-shadow: 0 7px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -742,12 +742,12 @@ a:hover:active {
 
     .enabled:hover {
         position: relative;
-        box-shadow: 0 5px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+        box-shadow: 0 5px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     }
 
         .enabled:hover:active {
             position: relative;
-            box-shadow: none;
+            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         }
 
 .disabled {
@@ -755,7 +755,7 @@ a:hover:active {
     background-color: #595959;
     text-decoration: none;
     color: white;
-    box-shadow: 0 7px 0 #282828, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+    box-shadow: 0 7px 0 #282828, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -766,12 +766,12 @@ a:hover:active {
 
     .disabled:hover {
         position: relative;
-        box-shadow: 0 5px 0 #282828, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+        box-shadow: 0 5px 0 #282828, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     }
 
         .disabled:hover:active {
             position: relative;
-            box-shadow: none;
+            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         }
 
 .whitebutton {
@@ -779,7 +779,7 @@ a:hover:active {
     background-color: white;
     text-decoration: none;
     color: black;
-    box-shadow: 0 7px 0 #9a9a9a;
+    box-shadow: 0 7px 0 #9a9a9a, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     border-radius: 20px;
     padding: 20px;
     padding-left: 30%;
@@ -794,11 +794,11 @@ a:hover:active {
 }
 
     .whitebutton:hover {
-        box-shadow: 0 5px 0 #777777;
+        box-shadow: 0 5px 0 #777777, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     }
 
         .whitebutton:hover:active {
-            box-shadow: none;
+            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         }
 
     .whitebutton::before {
@@ -829,7 +829,7 @@ a:hover:active {
     background-color: #ff5353;
     text-decoration: none;
     color: #ffffff;
-    box-shadow: 0 7px 0 #e61717;
+    box-shadow: 0 7px 0 #e61717, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -840,12 +840,12 @@ a:hover:active {
 
     .warning:hover {
         position: relative;
-        box-shadow: 0 5px 0 #e61717;
+        box-shadow: 0 5px 0 #e61717, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     }
 
         .warning:hover:active {
             position: relative;
-            box-shadow: none;
+            box-shadow: none, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         }
         
 .savedash {
@@ -853,7 +853,7 @@ a:hover:active {
     background-color: #FF9900;
     text-decoration: none;
     color: #ffffff;
-    box-shadow: 0 7px 0 #bf7200, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+    box-shadow: 0 7px 0 #bf7200, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -864,12 +864,12 @@ a:hover:active {
 
     .savedash:hover {
         position: relative;
-        box-shadow: 0 5px 0 #bf7200, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+        box-shadow: 0 5px 0 #bf7200, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     }
 
         .savedash:hover:active {
             position: relative;
-            box-shadow: none;
+            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         }
 
     .sharebutton {
@@ -877,7 +877,7 @@ a:hover:active {
     background-color: #3AB6FF;
     text-decoration: none;
     color: #ffffff;
-    box-shadow: 0 7px 0 #1374ad, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+    box-shadow: 0 7px 0 #1374ad, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -888,12 +888,12 @@ a:hover:active {
 
     .sharebutton:hover {
         position: relative;
-        box-shadow: 0 5px 0 #1374ad, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+        box-shadow: 0 5px 0 #1374ad, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     }
 
         .sharebutton:hover:active {
             position: relative;
-            box-shadow: none;
+            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         }
 
 .dashboardbutton{
@@ -901,7 +901,7 @@ a:hover:active {
         background-color: #00df52;
     text-decoration: none;
     color: #ffffff;
-    box-shadow: 0 7px 0 #008e34, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+    box-shadow: 0 7px 0 #008e34, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -912,12 +912,12 @@ a:hover:active {
 
         .dashboardbutton:hover {
         position: relative;
-        box-shadow: 0 5px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+        box-shadow: 0 5px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     }
 
         .dashboardbutton:hover:active {
             position: relative;
-            box-shadow: none;
+            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         }
 
 
@@ -926,7 +926,7 @@ a:hover:active {
     background: linear-gradient(#8c52ff, #ff914d);
     text-decoration: none;
     color: white;
-    box-shadow: 0 7px 0 #c67700, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+    box-shadow: 0 7px 0 #c67700, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -937,12 +937,12 @@ a:hover:active {
 
     .betabutton:hover {
         position: relative;
-        box-shadow: 0 5px 0 #c67700, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+        box-shadow: 0 5px 0 #c67700, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
     }
 
         .betabutton:hover:active {
             position: relative;
-            box-shadow: none;
+            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         }
 
 .settings {
