@@ -1924,6 +1924,7 @@ a:hover:active {
         padding-left: 20px;
         font-family: "Dosis";
         font-size:15px;
+        box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     }
  
     input[type="input"] + button {
