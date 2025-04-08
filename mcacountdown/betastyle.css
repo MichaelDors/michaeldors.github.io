@@ -624,7 +624,7 @@ a {
     background-color: #8426ff;
     text-decoration: none;
     color: white;
-    box-shadow: 0 7px 0 #4d00b2;
+    box-shadow: 0 7px 0 #4d00b2, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -637,7 +637,7 @@ a {
 a:hover {
     position: relative;
     top: 4px;
-    box-shadow: 0 5px 0 #4d00b2;
+    box-shadow: 0 5px 0 #4d00b2, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     display: inline-block;
 }
 
@@ -715,7 +715,7 @@ margin-bottom:10px;
 a:hover:active {
     position: relative;
     top: 9px;
-    box-shadow: none;
+    box-shadow:inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     display: inline-block;
 }
 
@@ -2015,7 +2015,7 @@ a:hover:active {
         margin-bottom:3%;
         margin-left:20px;
         font-size: 5em;
-        font-family: var(--typeface);;
+        font-family: var(--typeface);
     }
     .schedule-time-remaining {
         text-align: right;
