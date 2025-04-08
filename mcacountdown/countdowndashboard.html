@@ -1071,6 +1071,30 @@ iframe {
 z-index: 0;
 }
 
+.placeholder::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 15px;
+  background: none;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  z-index:10000000;
+}
+
+.placeholder::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 15px;
+  pointer-events: none;
+  z-index: 1000000;
+
+  box-shadow: none;
+
+  border: none;
+}
+
 .betatag {
         background: linear-gradient(#8c52ff, #ff914d);
         border-radius:20px;
