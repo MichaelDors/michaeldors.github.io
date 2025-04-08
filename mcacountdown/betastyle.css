@@ -1941,12 +1941,12 @@ a:hover:active {
         box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     }
 
-#localshortcutcontainerdiv{
+.localshortcutcontainerdiv{
     box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08), /* bottom soft shadow */
     inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
 }
 
-#localshortcutcontainerdiv::after {
+.localshortcutcontainerdiv::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -1957,7 +1957,7 @@ a:hover:active {
   z-index:10000000;
 }
 
-#localshortcutcontainerdiv::before {
+.localshortcutcontainerdiv::before {
   content: "";
   position: absolute;
   inset: 0;
