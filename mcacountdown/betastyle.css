@@ -1945,7 +1945,7 @@ input[type="input"] + button::after {
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 15px;
+  border-radius: 100px;
   background: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent);
   pointer-events: none;
   mix-blend-mode: screen;
@@ -1956,7 +1956,7 @@ input[type="input"] + button::before {
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 15px;
+  border-radius: 100px;
   pointer-events: none;
   z-index: 1000000;
 
