@@ -731,7 +731,7 @@ a:hover:active {
     background-color: #00df52;
     text-decoration: none;
     color: black;
-    box-shadow: 0 7px 0 #00b041;
+    box-shadow: 0 7px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -742,7 +742,7 @@ a:hover:active {
 
     .enabled:hover {
         position: relative;
-        box-shadow: 0 5px 0 #00b041;
+        box-shadow: 0 5px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     }
 
         .enabled:hover:active {
@@ -755,7 +755,7 @@ a:hover:active {
     background-color: #595959;
     text-decoration: none;
     color: white;
-    box-shadow: 0 7px 0 #282828;
+    box-shadow: 0 7px 0 #282828, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -766,7 +766,7 @@ a:hover:active {
 
     .disabled:hover {
         position: relative;
-        box-shadow: 0 5px 0 #282828;
+        box-shadow: 0 5px 0 #282828, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     }
 
         .disabled:hover:active {
@@ -853,7 +853,7 @@ a:hover:active {
     background-color: #FF9900;
     text-decoration: none;
     color: #ffffff;
-    box-shadow: 0 7px 0 #bf7200;
+    box-shadow: 0 7px 0 #bf7200, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -864,7 +864,7 @@ a:hover:active {
 
     .savedash:hover {
         position: relative;
-        box-shadow: 0 5px 0 #bf7200;
+        box-shadow: 0 5px 0 #bf7200, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     }
 
         .savedash:hover:active {
@@ -877,7 +877,7 @@ a:hover:active {
     background-color: #3AB6FF;
     text-decoration: none;
     color: #ffffff;
-    box-shadow: 0 7px 0 #1374ad;
+    box-shadow: 0 7px 0 #1374ad, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -888,7 +888,7 @@ a:hover:active {
 
     .sharebutton:hover {
         position: relative;
-        box-shadow: 0 5px 0 #1374ad;
+        box-shadow: 0 5px 0 #1374ad, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     }
 
         .sharebutton:hover:active {
@@ -901,7 +901,7 @@ a:hover:active {
         background-color: #00df52;
     text-decoration: none;
     color: #ffffff;
-    box-shadow: 0 7px 0 #008e34;
+    box-shadow: 0 7px 0 #008e34, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -912,7 +912,7 @@ a:hover:active {
 
         .dashboardbutton:hover {
         position: relative;
-        box-shadow: 0 5px 0 #00b041;
+        box-shadow: 0 5px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     }
 
         .dashboardbutton:hover:active {
@@ -926,7 +926,7 @@ a:hover:active {
     background: linear-gradient(#8c52ff, #ff914d);
     text-decoration: none;
     color: white;
-    box-shadow: 0 7px 0 #c67700;
+    box-shadow: 0 7px 0 #c67700, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     border-radius: 20px;
     padding: 20px;
     user-select: none;
@@ -937,7 +937,7 @@ a:hover:active {
 
     .betabutton:hover {
         position: relative;
-        box-shadow: 0 5px 0 #c67700;
+        box-shadow: 0 5px 0 #c67700, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
     }
 
         .betabutton:hover:active {
