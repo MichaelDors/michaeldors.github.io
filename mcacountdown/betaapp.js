@@ -417,7 +417,7 @@ if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 
     }
 
     if (!hasMatchingCountdown) {
-        window.location.href = "https://michaeldors.com/mcacountdown/countdowndashboard"; //take the user to their dashboard
+        window.location.href = "countdowndashboard"; //take the user to their dashboard
     }
 }
           else{ //no countdowns have been saved; new user experience with Autopilot
@@ -759,9 +759,9 @@ if (mlkthisyear - now < 0) {
       }
   
   if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && new Date(document.querySelector(".datepicker").value).getDate() === 25) { // December is month 11 (0-based)
-      document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/christmasshare.jpg');
+      document.querySelector('meta[property="og:image"]').setAttribute('content', 'sharepanels/christmasshare.jpg');
   }else{
-      document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/defaultshare.jpg');
+      document.querySelector('meta[property="og:image"]').setAttribute('content', 'sharepanels/defaultshare.jpg');
   }
 //confetti groundwork for snowflakes and emoji
 class ConfettiManager {
@@ -1056,9 +1056,9 @@ class ConfettiManager {
           
   
           if(countDownDate.getMonth() === 11 && countDownDate.getDate() === 25) { // December is month 11 (0-based)
-              document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/christmasshare.jpg');
+              document.querySelector('meta[property="og:image"]').setAttribute('content', 'sharepanels/christmasshare.jpg');
           }else{
-          document.querySelector('meta[property="og:image"]').setAttribute('content', 'https://michaeldors.com/mcacountdown/sharepanels/defaultshare.jpg');
+          document.querySelector('meta[property="og:image"]').setAttribute('content', 'sharepanels/defaultshare.jpg');
       }
   
           if(!confettiType){
