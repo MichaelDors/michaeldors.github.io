@@ -293,12 +293,12 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 }
 
 .pulsing{
-    animation: pulse 2s infinite;
+    animation: pulse 4s infinite;
 }
 
 @keyframes pulse{
     1%{
-        opacity:0;
+        opacity:0.3;
     }
     25%{
         opacity:1;
@@ -307,7 +307,7 @@ border: 1px solid rgba(255, 0, 0, 0.64);
         opacity:1;
     }
     100%{
-        opacity:0;
+        opacity:0.3;
     }
 }
 
