@@ -3561,10 +3561,10 @@ showToast('Pick an exception day to add this event to', 'info')
                       }
                       document.getElementById('schedule-remainingText').textContent = 'starting';
                       document.getElementById('schedule-progress').style.width = '0%';
-                      document.getElementById('schedule-classTitle').classList.add("pulsing");
+                      document.getElementById('schedule-remainingText').classList.add("pulsing");
                       document.title = "Event Starting Soon";
                   } else {
-                    document.getElementById('schedule-classTitle').classList.remove("pulsing");
+                    document.getElementById('schedule-remainingText').classList.remove("pulsing");
                       const remainingTime = currentEvent.endTime - now;
                       const totalDuration = currentEvent.endTime - currentEvent.startTime;
                       const progress = 100 - (remainingTime / totalDuration * 100);
