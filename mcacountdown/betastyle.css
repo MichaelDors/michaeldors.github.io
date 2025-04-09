@@ -292,6 +292,24 @@ border: 1px solid rgba(255, 0, 0, 0.64);
     }
 }
 
+.pulsing{
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse{
+    1%{
+        opacity:0;
+    }
+    25%{
+        opacity:1;
+    }
+    75%{
+        opacity:1;
+    }
+    100%{
+        opacity:0;
+    }
+}
 
 
 .colorpicker::-webkit-color-swatch {
