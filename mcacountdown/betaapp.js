@@ -130,14 +130,25 @@ function cardmodemanager(){
       document.getElementById("gear").style.display = 'none';
       document.getElementById("toolbar-notch").style.display = 'none';
       document.getElementById("countdowntitle").style.display = 'none';
-      if (getCookie("lcdu")) {
-          document.getElementById("clock").style.fontSize = '20px';
-      }else{
-          document.getElementById("clock").style.fontSize = '30px';
+      if(decodeURIComponent(parameter('typeface')) == "Michroma"){
+        if (getCookie("lcdu")) {
+            document.getElementById("clock").style.fontSize = '15px';
+        }else{
+            document.getElementById("clock").style.fontSize = '25px';
+        }
+        document.getElementById("schedule-classTitle").style.fontSize = '15px';
+        document.getElementById("schedule-timeRemaining").style.fontSize = '15px';
+      }
+      else{
+        if (getCookie("lcdu")) {
+            document.getElementById("clock").style.fontSize = '30px';
+        }else{
+            document.getElementById("clock").style.fontSize = '40px';
+        }
+        document.getElementById("schedule-classTitle").style.fontSize = '20px';
+        document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
       }
       document.getElementById("schedule-upcomingClasses").style.display = 'none';
-      document.getElementById("schedule-classTitle").style.fontSize = '20px';
-      document.getElementById("schedule-timeRemaining").style.fontSize = '20px';
       document.getElementById("schedule-remainingText").style.display = 'none';
 }
   
