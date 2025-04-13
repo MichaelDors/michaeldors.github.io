@@ -717,12 +717,6 @@ margin-bottom:10px;
     color: white;
     border: #8426ff solid 1px;
     box-shadow: 0 7px 0 #4d00b2;
-    border-radius: 20px;
-    padding: 20px;
-    user-select: none;
-    cursor: pointer;
-    font-size: 20px;
-    font-weight: 100;
 }
 
 .a2:hover {
@@ -753,12 +747,7 @@ a:hover:active {
     text-decoration: none;
     color: black;
     box-shadow: 0 7px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-    border-radius: 20px;
-    padding: 20px;
-    user-select: none;
-    cursor: pointer;
-    font-size: 20px;
-    font-weight: 100;
+
 }
 
     .enabled:hover {
@@ -777,12 +766,7 @@ a:hover:active {
     text-decoration: none;
     color: white;
     box-shadow: 0 7px 0 #282828, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-    border-radius: 20px;
-    padding: 20px;
-    user-select: none;
-    cursor: pointer;
-    font-size: 20px;
-    font-weight: 100;
+
 }
 
     .disabled:hover {
@@ -807,7 +791,6 @@ a:hover:active {
     padding-right: 30%;
     user-select: none;
     cursor: pointer;
-    font-size: 20px;
     font-weight: 100;
     height: 25px;
     position: relative;
@@ -851,12 +834,7 @@ a:hover:active {
     text-decoration: none;
     color: #ffffff;
     box-shadow: 0 7px 0 #e61717, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-    border-radius: 20px;
-    padding: 20px;
-    user-select: none;
-    cursor: pointer;
-    font-size: 20px;
-    font-weight: 100;
+
 }
 
     .warning:hover {
@@ -875,12 +853,6 @@ a:hover:active {
     text-decoration: none;
     color: #ffffff;
     box-shadow: 0 7px 0 #bf7200, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-    border-radius: 20px;
-    padding: 20px;
-    user-select: none;
-    cursor: pointer;
-    font-size: 20px;
-    font-weight: 100;
 }
 
     .savedash:hover {
@@ -899,12 +871,7 @@ a:hover:active {
     text-decoration: none;
     color: #ffffff;
     box-shadow: 0 7px 0 #1374ad, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-    border-radius: 20px;
-    padding: 20px;
-    user-select: none;
-    cursor: pointer;
-    font-size: 20px;
-    font-weight: 100;
+
 }
 
     .sharebutton:hover {
@@ -923,12 +890,7 @@ a:hover:active {
     text-decoration: none;
     color: #ffffff;
     box-shadow: 0 7px 0 #008e34, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-    border-radius: 20px;
-    padding: 20px;
-    user-select: none;
-    cursor: pointer;
-    font-size: 20px;
-    font-weight: 100;
+
 }
 
         .dashboardbutton:hover {
@@ -948,12 +910,7 @@ a:hover:active {
     text-decoration: none;
     color: white;
     box-shadow: 0 7px 0 #c67700, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-    border-radius: 20px;
-    padding: 20px;
-    user-select: none;
-    cursor: pointer;
-    font-size: 20px;
-    font-weight: 100;
+
 }
 
     .betabutton:hover {
@@ -1751,6 +1708,9 @@ a:hover:active {
             display:none;
         }
 
+        a{
+            font-size: 17px;
+        }
 
     #clock {
         font-size: 90vw;
