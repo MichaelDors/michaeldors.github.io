@@ -93,7 +93,7 @@ input[type="color"] {
     font-weight: 100;
     border-radius: 20px;
     outline: 1px solid #8426ff;
-    background: var(--mainbgcolor);
+    background: transparent;
     border: none;
     cursor: pointer;
     vertical-align:top;
@@ -152,7 +152,7 @@ display: inline-block;
     font-weight: 100;
     border-radius: 20px;
     outline: 1px solid #8426ff;
-    background: var(--mainbgcolor);
+    background: transparent;
     border: none;
     transition: 0.3s all;
 }
@@ -163,12 +163,11 @@ display: inline-block;
 .selectedbackgroundpicker {
     margin: 10px !important;
     height: 0.5in;
-    width: 1in;
     font-size: 20px;
     font-weight: 100;
     border-radius: 20px;
     outline: 3px solid var(--selectedgreen);
-    background: var(--mainbgcolor);
+    background: transparent;
     border: none;
     transition: 0.3s all;
 }
@@ -181,7 +180,7 @@ display: inline-block;
     font-size: 20px;
     border-radius: 20px;
     outline: 1px solid #8426ff;
-    background: var(--mainbgcolor);
+    background: transparent;
     border: none;
     transition: 0.3s all;
     padding-top: 20px;
@@ -193,6 +192,13 @@ display: inline-block;
     border: none;
     transition: 0.3s all;
     color: var(--mainforegroundcolor) !important;
+    padding-top: 20px;
+    font-size: 20px;
+    border-radius: 20px;
+    margin: 10px !important;
+    width: 1in;
+    line-height: 100px;
+
 }
 
 .disabledcolorpicker {
@@ -235,7 +241,7 @@ display: inline-block;
     font-weight: 100;
     border-radius: 20px;
     outline: 1px solid #8426ff;
-    background: var(--mainbgcolor);
+    background: transparent;
     animation: pulseborder 2s infinite;
 }
 
@@ -385,8 +391,10 @@ form {
     text-align: center;
     position: relative;
     border-radius: 100px;
-    border: 1px solid #4d00b2;
+    border: 1px solid #8426ff;
+    background:linear-gradient(to right, rgba(0,0,0,0), rgba(182, 0, 254, 0.3));
     color: var(--mainforegroundcolor);
+    margin-bottom:40px;
 }
 
 #selectedSpeedDiv {
@@ -1732,7 +1740,7 @@ a:hover:active {
         font-weight: 100;
         border-radius: 20px;
         outline: 1px solid #8426ff;
-        background: var(--mainbgcolor);
+        background: transparent;
         border: none;
         cursor: pointer;
         vertical-align:top;
@@ -1757,7 +1765,7 @@ a:hover:active {
         font-weight: 100;
         border-radius: 20px;
         outline: 1px solid #8426ff;
-        background: var(--mainbgcolor);
+        background: transparent;
         border: none;
         transition: 0.3s all;
     }
@@ -1779,7 +1787,7 @@ a:hover:active {
         font-size: 15px;
         border-radius: 20px;
         outline: 1px solid #8426ff;
-        background: var(--mainbgcolor);
+        background: transparent;
         border: none;
         transition: 0.3s all;
         padding-top: 10px;
@@ -1792,6 +1800,14 @@ a:hover:active {
         border: none;
         transition: 0.3s all;
         color: var(--mainforegroundcolor) !important;
+        transition: 0.3s all;
+        padding-top: 10px;
+        padding-bottom:10px;
+        line-height: 50px;
+        margin: 10px !important;
+        width: 0.7in;
+        font-size: 15px;
+        border-radius: 20px;
     }
     
     .clradd{

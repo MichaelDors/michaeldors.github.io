@@ -4302,7 +4302,7 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--selectedgreen', '#00d04c');
             document.documentElement.style.setProperty('--selectedgreengradient', 'linear-gradient(to bottom right, #ffffff00, #00d04c44)');
             document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left,rgba(129, 70, 255, 0.42), transparent)');
-            document.documentElement.style.setProperty('--speeddivbackground', 'linear-gradient(to bottom right, #ffffff, #9a4cff)');
+            document.documentElement.style.setProperty('--speeddivbackground', 'linear-gradient(to bottom right,rgba(255, 255, 255, 0.61), #9a4cff)');
             document.documentElement.style.setProperty('--blurbackground', 'rgba(239, 239, 239, 0.73)');
             document.documentElement.style.setProperty('--blurbackgroundshadowcolor', 'rgba(255, 255, 255, 0.1)');
             document.documentElement.style.setProperty('--sidebarcolor', '#ffffff');
