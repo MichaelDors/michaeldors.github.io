@@ -131,9 +131,9 @@ function cardmodemanager(){
       document.getElementById("toolbar-notch").style.display = 'none';
       document.getElementById("countdowntitle").style.display = 'none';
       if (getCookie("lcdu")) {
-          document.getElementById("clock").style.fontSize = '30px';
+          document.getElementById("clock").style.fontSize = '20px';
       }else{
-          document.getElementById("clock").style.fontSize = '40px';
+          document.getElementById("clock").style.fontSize = '30px';
       }
       document.getElementById("schedule-upcomingClasses").style.display = 'none';
       document.getElementById("schedule-classTitle").style.fontSize = '20px';
