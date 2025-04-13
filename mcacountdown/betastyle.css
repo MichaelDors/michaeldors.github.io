@@ -1716,6 +1716,15 @@ a:hover:active {
         font-size: 90vw;
     }
 
+    #qrcode img {
+        max-width:20%;
+        height:auto;
+    }
+
+    #qrcode{
+        max-width:20%;
+    }
+
     #gear {
         z-index: 100000;
         top: 50%;
