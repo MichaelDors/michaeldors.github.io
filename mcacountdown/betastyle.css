@@ -104,7 +104,6 @@ input[type="color"] {
     margin-top:15px;
     width:calc(4in + 30px) !important;
     color:white;
-    font-size: 20px;
     font-weight: 100;
     cursor: pointer;
     transition:0.5s all ease;
@@ -157,6 +156,9 @@ display: inline-block;
     border: none;
     transition: 0.3s all;
 }
+.bgpickerimg{
+    width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);
+}
 
 .selectedbackgroundpicker {
     margin: 10px !important;
@@ -190,13 +192,7 @@ display: inline-block;
     background: var(--selectedgreengradient);
     border: none;
     transition: 0.3s all;
-    padding-top: 20px;
     color: var(--mainforegroundcolor) !important;
-    line-height: 100px;
-    margin: 10px !important;
-    width: 1in;
-    font-size: 20px;
-    border-radius: 20px;
 }
 
 .disabledcolorpicker {
@@ -638,6 +634,10 @@ p {
     color: var(--mainforegroundcolor);
     font-size: 20px;
     font-weight: 100;
+}
+
+.texttip{
+    font-family: 'Dosis', sans-serif; font-size:16px;
 }
 
 a {
@@ -1716,13 +1716,101 @@ a:hover:active {
         font-size: 90vw;
     }
 
+    h1 {
+        font-size: 30px;
+    }
+
+    h2 {
+        font-size: 25px;
+    }
+
+    .colorpicker {
+        margin: 10px;
+        height: 0.5in;
+        width: 0.7in;
+        font-size: 15px;
+        font-weight: 100;
+        border-radius: 20px;
+        outline: 1px solid #8426ff;
+        background: var(--mainbgcolor);
+        border: none;
+        cursor: pointer;
+        vertical-align:top;
+        display:inline-block;
+    }
+
+    #presetupScheduleContent{
+        max-width:60vw;
+    }
+    #dangerzone{
+        max-width:60vw;
+    }
+    .disabledcolorpicker{
+        width:0.7in;
+    }
+
+    .backgroundpicker {
+        margin: 10px !important;
+        height: 0.5in;
+        width: 0.7in;
+        font-size: 20px;
+        font-weight: 100;
+        border-radius: 20px;
+        outline: 1px solid #8426ff;
+        background: var(--mainbgcolor);
+        border: none;
+        transition: 0.3s all;
+    }
+    .bgpickerimg{
+        width:0.65in;
+    }
+
+    .texttip{
+        font-family: 'Dosis', sans-serif;
+        font-size:16px;
+        max-width:80vw;
+    }
+
+    .fontpicker {
+        color: var(--mainforegroundcolor) !important;
+        line-height: 50px;
+        margin: 10px !important;
+        width: 0.7in;
+        font-size: 15px;
+        border-radius: 20px;
+        outline: 1px solid #8426ff;
+        background: var(--mainbgcolor);
+        border: none;
+        transition: 0.3s all;
+        padding-top: 10px;
+        padding-bottom:10px;
+    }    
+
+    .selectedfontpicker {
+        outline: 3px solid var(--selectedgreen);
+        background: var(--selectedgreengradient);
+        border: none;
+        transition: 0.3s all;
+        color: var(--mainforegroundcolor) !important;
+    }
+    
+    .clradd{
+        margin-top:15px;
+        width:calc(2.8in + 30px) !important;
+        color:white;
+        font-weight: 100;
+        cursor: pointer;
+        transition:0.5s all ease;
+        filter: grayscale(0%) !important;
+    }
+
     #qrcode img {
-        max-width:20%;
+        max-width:30%;
         height:auto;
     }
 
     #qrcode{
-        max-width:20%;
+        max-width:30%;
     }
 
     #gear {
@@ -1774,7 +1862,7 @@ a:hover:active {
     }
 
     .schedule-form-group{
-        zoom:75%;
+        zoom:80%;
     }
 }
 

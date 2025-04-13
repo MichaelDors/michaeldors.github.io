@@ -274,19 +274,19 @@
                     <div id="qrcode" style="float: left; box-shadow: #ffffff 1px 1px 25px; padding-top: 15px; padding-left:20px; transform:scale(1.1)"></div>
                     <div style="float:left; padding-left:30px; text-align:left;">
                         <p style="color:black; font-size:27px; line-height:0.1;">QR Code</p>
-                        <p style="font-family: 'Dosis', sans-serif; color:black; font-size:16px; line-height:0.9">
+                        <p class="texttip" style="color:black; line-height:0.9">
                             Scan on most camera apps<br />to go to the countdown.
                         </p>
                         <a onmouseup="downloadQR(); showToast('Downloading QR Code', 'success');"><i class="fa-solid fa-download"></i> Download</a>
                     </div>
 
                 </div>
-		<p id="qrcodelinkcautiontext" style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:50px;">
+		<p id="qrcodelinkcautiontext" class="texttip" style="margin-bottom:50px;">
                     Be cautious of sharing personal information
                 </p>
 		<div id="localshortcutcontainerdiv" class="localshortcutcontainerdiv" style="border-radius: 20px; background: #00df52; margin-bottom:125px; color: black; padding:20px; min-width:fit-content; max-width: 75%;">
                         <p style="color:black; font-size:27px;"><i class="fa-solid fa-location-pin-lock"></i> Local Shortcut</p>
-                        <p style="font-family: 'Dosis', sans-serif; color:black; font-size:16px;">
+                        <p style="color:black;" class="texttip">
                             For a dynamic bookmark that updates with changes saved</br>to Dashboard, use your personal Local Shortcut link
                         </p>
 			<input id="locallinkinput" class="localshortcutinput" />
@@ -328,7 +328,7 @@
                 </div>
                 <a class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus-circle"></i> Add a New Color</a>
 
-                <p style="font-family: 'Dosis', sans-serif; font-size:16px;">
+                <p class="texttip">
                     The foreground elements will cycle through the chosen colors
                     <br />
                     Keep contrast in mind when choosing colors
@@ -341,20 +341,20 @@
                     Background
                 </h2>
                 <div id="backgroundpickercontainer">
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn1" onmouseup="setbg('1', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_1.png"></div></a>
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn2" onmouseup="setbg('2', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_2.png"></div></a>
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn3" onmouseup="setbg('3', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_3.png"></div></a>
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn4" onmouseup="setbg('4', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_4.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn1" onmouseup="setbg('1', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_1.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn2" onmouseup="setbg('2', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_2.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn3" onmouseup="setbg('3', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_3.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn4" onmouseup="setbg('4', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_4.png"></div></a>
                 <br />
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn5" onmouseup="setbg('5', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_5.png"></div></a>
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn6" onmouseup="setbg('6', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_6.png"></div></a>
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn7" onmouseup="setbg('7', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_7.png"></div></a>
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn8" onmouseup="setbg('8', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_8.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn5" onmouseup="setbg('5', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_5.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn6" onmouseup="setbg('6', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_6.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn7" onmouseup="setbg('7', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_7.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn8" onmouseup="setbg('8', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_8.png"></div></a>
                 <br />
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn9" onmouseup="setbg('9', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_9.png"></div></a>
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn10" onmouseup="setbg('10', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_10.png"></div></a>
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn11" onmouseup="setbg('11', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_11.png"></div></a>
-                <a class="aintext backgroundpicker bgbtnn" id="bgbtn12" onmouseup="setbg('12', 'manual'); SetCountDowngeneral();"><div><img style="width:0.85in; height: 0.35in; border-radius: 10px; margin-top:0.07in; filter:blur(5px);" src="Backgrounds/enhancedbackground_12.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn9" onmouseup="setbg('9', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_9.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn10" onmouseup="setbg('10', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_10.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn11" onmouseup="setbg('11', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_11.png"></div></a>
+                <a class="aintext backgroundpicker bgbtnn" id="bgbtn12" onmouseup="setbg('12', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_12.png"></div></a>
                 </div>
                 <br />
                 <br />
@@ -387,7 +387,7 @@
                 <a title="Disable confetti on this Countdown (you can disable confetti on all Countdowns in your Personal Options)" class="aintext fontpicker" id="noconfetti" onmouseup="ConfettiModeNone(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-regular fa-circle-xmark"></i></a>
                 <br>
                 <br>
-                <a class="aintext" href="#appearanceoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; text-decoration: underline;">You can disable confetti for all countdowns in your Personal Options.</a>
+                <a class="aintext texttip" href="#appearanceoptions" class="texttip" style="text-decoration: underline;">You can disable confetti for all countdowns in your Personal Options.</a>
                 <br>
                 <br>
                 <br>
@@ -398,12 +398,12 @@
            		 <i title="Clear Ending Sound" class="fa-solid fa-circle-xmark" style="transform:scale(1.75); padding-left:10px;" onclick="resetendsoundinput();"></i>
         		</button>
                 </div>
-                <p style="font-family: 'Dosis', sans-serif; font-size:16px;">
+                <p class="texttip">
                     Enter a <i class="fa-brands fa-youtube"></i> YouTube, <i class="fa-brands fa-soundcloud"></i> SoundCloud, or <i class="fa-solid fa-file-audio"></i> audio file link to play on ending.
                     <br />
                     Any ADs that may be placed by the service will remain.
                 </p>
-                <a class="aintext" href="#eouoptions" style="font-size:16px; font-family: 'Dosis', sans-serif; text-decoration: underline;">You can disable ending sounds for all countdowns in your Personal Options.</a>
+                <a class="aintext texttip" href="#eouoptions" style=" text-decoration: underline;">You can disable ending sounds for all countdowns in your Personal Options.</a>
                 <div id="playerContainer" style="display: none;"></div>
                 <br>
                 <br>
@@ -499,7 +499,7 @@
         <button style="background:transparent; border:none; outline:none; cursor:pointer">
             <i title="Turn off Progress" class="fa-solid fa-circle-xmark" style="transform:scale(1.75); padding-left:10px;" onclick="resetprogressinput();"></i>
         </button>
-        <p style="font-family: 'Dosis', sans-serif; font-size:16px;">
+        <p class="texttip">
             Displays a progress bar to visualize the percent completion, if the event has a starting date
         </p>
 		<br>
@@ -589,7 +589,7 @@
     <br>
     <div id="dangerzone">
         <h1>Danger Zone</h1>
-        <h2 class="textelement" style="font-family: 'Dosis';">Resetting all options will restore Countdown to a point where no trace of your interaction is left. All cookies will be removed, your Dashboard reset.</h2>
+        <h3 style="font-family: 'Dosis', sans-serif; font-size:23px; text-justify:inter-word;">Resetting all options will restore Countdown to a point where no trace of your interaction is left. All cookies will be removed, your Dashboard reset.</h3>
             <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
     </div>
     <br>
