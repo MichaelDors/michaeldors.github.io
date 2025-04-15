@@ -286,19 +286,8 @@
 		<p id="qrcodelinkcautiontext" class="texttip" style="margin-bottom:50px;">
                     Be cautious of sharing personal information
                 </p>
-		<div id="localshortcutcontainerdiv" class="localshortcutcontainerdiv" style="border-radius: 20px; background: #00df52; margin-bottom:125px; color: black; padding:20px; min-width:fit-content; max-width: 75%;">
-                        <p style="color:black; font-size:27px;"><i class="fa-solid fa-location-pin-lock"></i> Local Shortcut</p>
-                        <p style="color:black;" class="texttip">
-                            For a dynamic bookmark that updates with changes saved</br>to Dashboard, use your personal Local Shortcut link
-                        </p>
-			<input id="locallinkinput" class="localshortcutinput" />
-                	<button style="background:transparent; border:none; outline:none; cursor:pointer">
-                    		<i title="Copy Local Shortcut" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px; color:#000000;" onclick="copyinputtextlocalshortcutlink(); showToast('Local Shortcut link copied', 'success');"></i>
-                	</button>
-                    <br>
-            <a style="color: black; font-family:'Dosis'; margin-top:20px;" class="aintext" href="docs#dashboard" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-circle-info"></i> More info</a>
-			<br>
-			<br>
+		<div id="minilocalshortcutcontainerdiv" class="minilocalshortcutcontainerdiv" style="border-radius: 20px; background: #00df52; margin-bottom:125px; color: black; padding:20px; min-width:fit-content; max-width: 75%;">
+                        <p style="color:black;" class="texttip"><i class="fa-solid fa-location-pin-lock"></i> Want a dynamic bookmark that updates with changes? <a class="aintext" style="color:black">Get Your Local Shortcut</a></p>
                 </div>
                 <h1 id="customizationoptions">Customization</h1>
                 <br>
@@ -529,6 +518,20 @@
     <br />
     <br />
     <br />
+		    		<div id="localshortcutcontainerdiv" class="localshortcutcontainerdiv" style="border-radius: 20px; background: #00df52; margin-bottom:125px; color: black; padding:20px; min-width:fit-content; max-width: 75%;">
+                        <p style="color:black; font-size:27px;"><i class="fa-solid fa-location-pin-lock"></i> Local Shortcut</p>
+                        <p style="color:black;" class="texttip">
+                            For a dynamic bookmark that updates with changes saved</br>to Dashboard, use your personal Local Shortcut link
+                        </p>
+			<input id="locallinkinput" class="localshortcutinput" />
+                	<button style="background:transparent; border:none; outline:none; cursor:pointer">
+                    		<i title="Copy Local Shortcut" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px; color:#000000;" onclick="copyinputtextlocalshortcutlink(); showToast('Local Shortcut link copied', 'success');"></i>
+                	</button>
+                    <br>
+            <a style="color: black; font-family:'Dosis'; margin-top:20px;" class="aintext" href="docs#dashboard" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-circle-info"></i> More info</a>
+			<br>
+			<br>
+                </div>
     <h1 class="textelement" id="appearanceoptions">
         Appearance
     </h1>
