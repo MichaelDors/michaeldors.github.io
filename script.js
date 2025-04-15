@@ -172,3 +172,56 @@ function filter(type) {
 }
 
 
+
+// Move this code inside a function that runs when the DOM is ready
+function initCardAnimations() {
+    const cards = document.querySelectorAll('.headerimgcontainer');
+    
+    if (cards.length === 0) {
+        console.log('No card elements found with class .headerimgcontainer');
+        return;
+    }
+
+    cards.forEach(card => {
+        // Use requestAnimationFrame for smoother animations
+        let rafId = null;
+        
+        card.addEventListener("mousemove", (e) => {
+            // Cancel any pending animation frame
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+            }
+            
+            rafId = requestAnimationFrame(() => {
+                const { left, top, width, height } = card.getBoundingClientRect();
+                const x = (e.clientX - left) / width - 0.7; // Range: -0.5 to 0.5
+                const y = (e.clientY - top) / height - 0.7; // Range: -0.5 to 0.5
+
+                const rotateX = y * -50; // Invert Y-axis for natural feel
+                const rotateY = x * 50;
+
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+                rafId = null;
+            });
+        });
+
+        card.addEventListener("mouseleave", () => {
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+            }
+            card.style.transform = "perspective(1000px) rotateX(0) rotateY(0) scale(1)";
+        });
+    });
+}
+
+
+// Run the animation initialization when the DOM is ready
+if (document.readyState !== 'loading') {
+    if (!window.matchMedia("(max-width: 767px)").matches) {
+    initCardAnimations();
+    }
+} else {
+    if (!window.matchMedia("(max-width: 767px)").matches) {
+    document.addEventListener('DOMContentLoaded', initCardAnimations);
+    }
+}
