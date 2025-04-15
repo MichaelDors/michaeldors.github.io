@@ -203,13 +203,26 @@
 
         #returnbutton{
                 position: absolute; /* Use absolute positioning relative to the sidebar */
-    bottom: 17px; /* Place it at the bottom of the sidebar */
+    bottom: 23px; /* Place it at the bottom of the sidebar */
     width: 100%; /* Ensure it spans the full width of the sidebar */
-    background: linear-gradient(to top, var(--mainbgcolor), rgba(255, 255, 255, 0)); /* Gradient fading out upwards */
     padding: 10px; /* Add some padding for better aesthetics */
     text-align: left; /* Center the content inside the button */
             z-index: 10000000000000000000000000000000000; /* Ensure it is above other content */
+            cursor:pointer;
         }
+
+        #returnbutton::before {
+    content: ""; /* Required for pseudo-elements */
+    position: absolute;
+    top: -20px; 
+    left: 0;
+    width: 100%;
+    height: 20px; 
+    background: var(mainbgcolor); 
+    mask-image: linear-gradient(to top, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0)); /* Create a fade-to-transparent mask */
+    -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0)); /* Safari support */
+    pointer-events: none; /* Ensure it doesn't interfere with clicks */
+}
 
             @media (max-width: 768px) {
         .sidebar {
