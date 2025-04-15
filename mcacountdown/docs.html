@@ -201,6 +201,16 @@
                 margin-bottom: 0;
             }
 
+        #returnbutton{
+                position: absolute; /* Use absolute positioning relative to the sidebar */
+    bottom: 0; /* Place it at the bottom of the sidebar */
+    width: 100%; /* Ensure it spans the full width of the sidebar */
+    background: linear-gradient(to top, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0)); /* Gradient fading out upwards */
+    padding: 10px; /* Add some padding for better aesthetics */
+    text-align: left; /* Center the content inside the button */
+            z-index: 10000000000000000000000000000000000; /* Ensure it is above other content */
+        }
+
             @media (max-width: 768px) {
         .sidebar {
             width: 100vw;
@@ -260,6 +270,7 @@
             width: 90%;
             margin: 10px 5px;
             }
+            
             
             .sidebar ul li button {
             width: 100%;
@@ -464,6 +475,7 @@ if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').match
         <ul id="sidebar-links">
             <!-- Buttons will be generated automatically by JavaScript -->
         </ul>
+        <p onclick="window.location.href = 'http://605958.xyz'" id="returnbutton"><i class="fa-solid fa-chevron-left"></i> Back to Countdown</p>
     </div>
     <div class="content">
         <div id="home" class="section active">
