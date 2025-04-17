@@ -2274,7 +2274,7 @@ a:hover:active {
     .schedule-progress {
         height: 100%;
         background: var(--progressbarblur);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1), inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         backdrop-filter: blur(75px);
         -webkit-backdrop-filter: blur(75px);
         width: 0;
@@ -2555,13 +2555,13 @@ font-size:20px;
     }
 
     .progresscolored{
-        box-shadow: 0 0px 0px rgba(0, 0, 0, 0);
+        box-shadow: 0 0px 0px rgba(0, 0, 0, 0), inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         backdrop-filter: blur(0px);
         -webkit-backdrop-filter: blur(0px);
     }
     .progressblur{
         background: var(--progressbarblur) !important;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1), inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         backdrop-filter: blur(75px);
         -webkit-backdrop-filter: blur(75px);
     }
