@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Worship Night '25</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; max-width: 600px; margin: auto; }
+    input, textarea { display: block; width: 100%; margin-bottom: 1rem; padding: 0.5rem; }
+    button { padding: 0.5rem 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Contact Us</h1>
+  <form id="contact-form-questions">
+    <input name="name" placeholder="Your name" required />
+    <input type="email" name="email" placeholder="Your email" required />
+    <textarea name="message" placeholder="Your message" required></textarea>
+    <button type="submit">Send</button>
+  </form>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    const supabase = createClient(
+      'https://edknrdwjvrfpukqkxzlz.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVka25yZHdqdnJmcHVrcWt4emx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUwMDg1OTEsImV4cCI6MjA2MDU4NDU5MX0.BgL_N0mFU5RChIRGXNxp89ayrbwhQIVLGcZrn-8DsYQ'
+    )
+
+    document.getElementById('contact-form-questions').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const form = e.target
+      const { name, email, message } = Object.fromEntries(new FormData(form).entries())
+
+      const { error } = await supabase.from('submissions_questions').insert([{ name, email, message }])
+      if (error) {
+        alert('Error: ' + error.message)
+      } else {
+        alert('Form submitted successfully!')
+        form.reset()
+      }
+    })
+  </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Worship Night '25</title>
+  <meta property="og:image" content="images/worshipnightannouncement.PNG" />
+  <meta property="og:title" content="Worship Night" />
+  <meta property="og:type" content="website" />
+  <meta property="og:description" content="Join us for a night of glorifying God together" />
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <link rel="icon" type="image/x-icon" href="images/icon.ico">
+  <meta name="theme-color" content="ffc600" />
+  <style>
+    body { font-family: sans-serif; padding: 2rem; max-width: 600px; margin: auto; }
+    input, textarea { display: block; width: 100%; margin-bottom: 1rem; padding: 0.5rem; }
+    button { padding: 0.5rem 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Contact Us</h1>
+
+  <form id="contact-form-decisions">
+    <input name="name" placeholder="Your name" required />
+    <input type="email" name="email" placeholder="Your email" required />
+    <textarea name="message" placeholder="Your message" required></textarea>
+    <select name="decision" required>
+      <option value="" disabled selected>Select your decision</option>
+      <option value="accepted">I have accepted the gospel for the first time</option>
+      <option value="rededicated">I have rededicated my life to Christ</option>
+    </select>
+    <button type="submit">Send</button>
+  </form>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    const supabase = createClient(
+      'https://edknrdwjvrfpukqkxzlz.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVka25yZHdqdnJmcHVrcWt4emx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUwMDg1OTEsImV4cCI6MjA2MDU4NDU5MX0.BgL_N0mFU5RChIRGXNxp89ayrbwhQIVLGcZrn-8DsYQ'
+    )
+
+
+    document.getElementById('contact-form-decisions').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const form = e.target
+      const formData = new FormData(form);
+const name = formData.get("name");
+const email = formData.get("email");
+const message = formData.get("message");
+const decision = formData.get("decision"); // <-- this is the fix
+
+      const { error } = await supabase.from('submissions_decisions').insert([{ name, email, message, decision }])
+      if (error) {
+        alert('Error: ' + error.message)
+      } else {
+        alert('Form submitted successfully!')
+        form.reset()
+      }
+    })
+  </script>
+</body>
+</html>
