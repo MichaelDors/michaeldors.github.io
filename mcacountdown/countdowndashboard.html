@@ -624,10 +624,15 @@ function dragEnd(e) {
             }
 
             // Update the links array based on the new order
-            links = Array.from(document.querySelectorAll('.card')).map(card => {
+            const newLinks = [];
+            document.querySelectorAll('.card').forEach((card, index) => {
                 const url = decodeURIComponent(card.getAttribute('data-url'));
-                return links.find(link => link.url === url);
+                const link = links.find(link => link.url === url);
+                if (link) {
+                    newLinks.push(link);
+                }
             });
+            links = newLinks;
 
             saveLinks();
             updateCardIndices();
