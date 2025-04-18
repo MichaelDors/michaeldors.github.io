@@ -66,7 +66,7 @@
             <a title="Create a new Countdown" href="https://michaeldors.com/mcacountdown/betatimer?createnew=1" id="newcountdownbutton"><i class="fa-solid fa-circle-plus"></i></a>
                 <a title="Import a .countdown file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i></a>
                 <a title="Export as a .countdown file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i></a>
-                <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i></a>
+                <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetall();"><i class="fa-solid fa-trash"></i></a>
             <input type="file" id="hiddenFileInput" accept=".countdown" style="display: none;">
             </div>
 
@@ -264,7 +264,7 @@ function renderLinks() {
     });
 }
 
-function resetcookies() { //remove all saved cookies
+function resetall() { //remove all saved cookies
         eraseCookie('memsav');
         eraseCookie('coce');
         eraseCookie('minute');
@@ -275,8 +275,9 @@ function resetcookies() { //remove all saved cookies
         eraseCookie('hour');
         eraseCookie('cookiesAccepted');
         eraseCookie('lcdu');
-        updateoptions(); //update classes of settings buttons
+        
         localStorage.removeItem('dashboardsaved'); //reset dashboard
+        location.reload(); // Reload the page
     }
 
 	       function setCookie(name, value, days) {
