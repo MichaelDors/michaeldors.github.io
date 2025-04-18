@@ -335,13 +335,23 @@ function dragStart(e) {
     // Add mousemove and mouseup listeners to the document
     mouseMoveHandler = (moveEvent) => checkDragThreshold(moveEvent, card);
     document.addEventListener('mousemove', mouseMoveHandler);
-    document.addEventListener('mouseup', (upEvent) => {
-        const mouseUpTime = new Date().getTime();
-        const timeDiff = mouseUpTime - mouseDownTime;
+    document.addEventListener('mouseup', handleMouseUp);
 
-        // If it was a quick click (less than 200ms), treat it as a click to open the link
-        // Also check that the click wasn't on the delete button
-        if (timeDiff < 200 && !isDragging && !upEvent.target.classList.contains('remove-button')) {
+    // Add global event listeners for safety
+    window.addEventListener('blur', cancelDrag);
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) cancelDrag();
+    });
+}
+
+function handleMouseUp(upEvent){
+    const mouseUpTime = new Date().getTime();
+    const timeDiff = mouseUpTime - mouseDownTime;
+
+    // If it was a quick click (less than 200ms), treat it as a click to open the link
+    if (timeDiff < 200 && !isDragging && !upEvent.target.classList.contains('remove-button')) {
+        const card = upEvent.target.closest('.card');
+        if (card) {
             const url = decodeURIComponent(card.getAttribute('data-url'));
             if (upEvent.ctrlKey || upEvent.metaKey) {
                 window.open(url, '_blank');
@@ -349,9 +359,15 @@ function dragStart(e) {
                 window.location.href = url;
             }
         }
+    }
 
-        dragEnd(upEvent);
-    });
+    // Clean up all event listeners
+    document.removeEventListener('mousemove', mouseMoveHandler);
+    document.removeEventListener('mouseup', handleMouseUp);
+    window.removeEventListener('blur', cancelDrag);
+    document.removeEventListener('visibilitychange', cancelDrag);
+
+    dragEnd(upEvent);
 }
 
     document.addEventListener('visibilitychange', function () { //when the tab changes focus state
