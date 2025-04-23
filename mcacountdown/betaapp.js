@@ -401,7 +401,8 @@ const countdownDate = new Date(parameter('date')).getTime();
       else { //if there is no date parameter
           const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
   
-if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !parameter("createnew")) { //if countdowns have been saved
+
+if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !parameter("createnew") && window.location.hash && window.location.hash.length > 1) { // if countdowns have been saved AND there's a non‑empty hash
     const fullUrl = window.location.href;
     const urlParts = fullUrl.split('#');
     let hasMatchingCountdown = false;
@@ -529,6 +530,8 @@ if (mlkthisyear - now < 0) {
     mlkday = new Date(formatDate(getDateString(thisyear, 0, 2, 1)));
 }
   
+
+
   
               // List of holiday dates
               const holidays = [
@@ -584,6 +587,7 @@ if (mlkthisyear - now < 0) {
                   return timeDiff > 0 && timeDiff < (closest.date.getTime() - now.getTime()) ? holiday : closest;
               }, holidays[0]);
   
+              
   
               switch (nextHoliday.name) {
                   case 'newyear':
@@ -622,7 +626,7 @@ if (mlkthisyear - now < 0) {
   
                       EASTER();
                       break;
-                case 'cincodemayo': //see NYD for docs
+                case 'cinco': //see NYD for docs
                       document.getElementById("autopilotprediction").innerHTML = "Cinco de Mayo";
                       document.getElementById("autopilotpredictionmobile").innerHTML = "Cinco de Mayo";
 

@@ -393,7 +393,7 @@ form {
     position: relative;
     border-radius: 100px;
     border: 1px solid #8426ff;
-    background:linear-gradient(to right, rgba(0,0,0,0), rgba(182, 0, 254, 0.3));
+    background:transparent;
     color: var(--mainforegroundcolor);
     margin-bottom:40px;
 }
