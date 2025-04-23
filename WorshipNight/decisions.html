@@ -7,7 +7,7 @@
   <meta property="og:title" content="Worship Night" />
   <meta property="og:type" content="website" />
   <meta property="og:description" content="Join us for a night of glorifying God together" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <link href="https://fonts.cdnfonts.com/css/helvetica-neue-55" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
   <link rel="icon" type="image/x-icon" href="images/icon.ico">
@@ -15,31 +15,12 @@
   <style>
     body { 
         font-family: sans-serif; 
-        padding: 1rem; 
+        padding: 2rem; 
         max-width: 600px; 
         margin: auto; 
         background: url('https://michaeldors.com/WorshipNight/images/bg.PNG') no-repeat center center fixed;
         background-size: cover;
         font-family: 'WorshipNight';
-    }
-    @media (max-width: 768px) {
-        body {
-            padding: 1rem;
-        }
-        .formcontainer {
-            padding: 30px 20px;
-        }
-        input, textarea, select {
-            width: calc(100% - 30px);
-        }
-        button {
-            width: 100%;
-            padding: 1rem 0;
-        }
-        img {
-            width: 100%;
-            height: auto;
-        }
     }
     input, textarea, select { display: block; width: calc(100% - 40px); margin-bottom: 1rem; padding: 0.5rem; border-radius: 20px; height:20px; background-color: black; color:white; border: none; padding-top:15px; padding-bottom:15px; padding-left:20px;}
     button { padding: 1rem 5rem; background-color: black; border-radius: 20px; color:white; border:none; cursor: pointer; transition: background-color 0.3s;       box-shadow:inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
@@ -144,28 +125,28 @@
     <div class="form-page welcome-page active" data-page="1">
       <h2>Welcome!</h2>
       <div class="progress-bar"></div>
-      <p style="margin-bottom:40px;">We're enthralled to hear about your decision to follow Christ. Let's take a moment to document this important step in your faith journey.</p>
+      <p style="margin-bottom:40px;">We want to come alongside you in your walk with Christ! Whether you've made a decision or still have questions, we encourage you to reach out and get connected.</p>
       <button type="button" onclick="nextPage(1)">Begin</button>
     </div>
 
     <!-- Name and Decision Page -->
     <div class="form-page" data-page="2">
-      <h2>Your Decision</h2>
+      <h2>Gospel Responses</h2>
       <div class="progress-bar"></div>
       <input style="border-bottom-left-radius: 0px; border-bottom-right-radius: 0px; margin-bottom:0px" name="name" placeholder="Your name" required />
       <select name="decision" required>
-        <option value="" disabled selected>Select your decision</option>
-        <option value="accepted">I have accepted the gospel for the first time</option>
-        <option value="rededicated">I have rededicated my life to Christ</option>
+        <option value="" disabled selected>Select</option>
+        <option value="accepted">I have dedicated/rededicated my life to Christ </option>
+        <option value="rededicated">I still have some questions</option>
       </select>
       <button type="button" onclick="nextPage(2)">Next</button>
     </div>
 
     <!-- Message Page -->
     <div class="form-page" data-page="3">
-      <h2>Share Your Story</h2>
+      <h2>Tell us about your decision or ask a question!</h2>
       <div class="progress-bar"></div>
-      <textarea style="height:100px" name="message" placeholder="Tell us about your decision..." required></textarea>
+      <textarea style="height:100px" name="message" placeholder="Share your story... no matter where you're at." required></textarea>
       <button type="button" onclick="nextPage(3)">Next</button>
     </div>
 
@@ -173,7 +154,7 @@
     <div class="form-page" data-page="4">
       <h2>Stay Connected</h2>
       <div class="progress-bar"></div>
-      <p>We'd love to keep in touch and support you on your journey.</p>
+      <p>We'd love to support you on your journey.</p>
       <input type="email" name="email" placeholder="Your email" required />
       <button type="button" onclick="submitForm()">Submit</button>
     </div>
@@ -182,7 +163,7 @@
     <div class="form-page" data-page="5">
       <h2>Thank You!</h2>
       <div class="progress-bar"></div>
-      <p style="margin-bottom:40px;">We're so excited about your decision and commitment to follow Christ. We'll be reaching out to you soon to provide support and guidance on your journey.</p>
+      <p style="margin-bottom:40px;">We're so excited to walk alongside you as we all grow closer to Christ. We have an amazing team that will be in contact with you soon.</p>
       <button type="button" onclick="resetForm()">Start Over</button>
     </div>
   </div>
