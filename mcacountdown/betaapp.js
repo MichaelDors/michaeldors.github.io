@@ -4321,6 +4321,7 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--schedulebgbottomblur', '#ffffff');
             document.documentElement.style.setProperty('--progressbarblur', '#ffffffc8');
             document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(0, 0, 0, 0.1)');
+            document.documentElement.style.setProperty('--progressbarhighlight', '0 4px 30px rgba(0, 0, 0, 0.1), inset 0 1.54px 0 rgba(255, 255, 255, 0.3)');
             if(parameter("atc")== "none"){
                 document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
                 document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
@@ -4343,6 +4344,7 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--titlergba', 'rgba(255,255,255,0)');
             document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
             document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(255, 255, 255, 0.1)');
+            document.documentElement.style.setProperty('--progressbarhighlight', 'none');
         }
         
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
