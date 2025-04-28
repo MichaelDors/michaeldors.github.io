@@ -1062,11 +1062,11 @@ class ConfettiManager {
 
           if(cdtitle && ((document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update') || document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-circle-check"></i> Saved')){
               document.getElementById('localshortcutcontainerdiv').style.display = '';
-              document.getElementById('qrcodelinkcautiontext').style.marginBottom = '50px';
+              document.getElementById('localshortcutcontainerdivtooltip').style.display = '';
           }
           else{
               document.getElementById('localshortcutcontainerdiv').style.display = 'none';
-              document.getElementById('qrcodelinkcautiontext').style.marginBottom = '125px';
+              document.getElementById('localshortcutcontainerdivtooltip').style.display = 'none';
           }
           
   
