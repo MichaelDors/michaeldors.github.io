@@ -404,7 +404,7 @@ const countdownDate = new Date(parameter('date')).getTime();
           const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
   
 
-if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !parameter("createnew") && window.location.hash && window.location.hash.length > 1) { // if countdowns have been saved AND there's a non‑empty hash
+if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !parameter("createnew")) { // if countdowns have been saved
     const fullUrl = window.location.href;
     const urlParts = fullUrl.split('#');
     let hasMatchingCountdown = false;
