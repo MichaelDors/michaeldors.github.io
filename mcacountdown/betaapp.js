@@ -357,6 +357,8 @@ const countdownDate = new Date(parameter('date')).getTime();
           document.getElementById("countdowntitle").style.display = ""; //show title
           document.getElementById("clock").style.display = ""; //show clock
       }
+
+      
   
       //fonts or typefaces
       if (parameter('typeface')) {
@@ -940,7 +942,19 @@ class ConfettiManager {
         });
         
       }
-  
+      if (speedDropdown) {
+        const speedButton = speedDropdown.querySelector('.dropdown-button');
+        if (getCookie("speed1")) {
+            speed1();
+            speedButton.innerHTML = '<i class="fa-solid fa-gauge"></i> Default';
+        } else if (getCookie("speed2")) {
+            speed2();
+            speedButton.innerHTML = '<i class="fa-solid fa-seedling"></i> Slow';
+        } else if (getCookie("speed3")) {
+            speed3();
+            speedButton.innerHTML = '<i class="fa-solid fa-bolt"></i> Fast';
+        }
+    }
   
       function speed1() {
           if (!isNaN(parameter("atc"))) {
@@ -1079,32 +1093,6 @@ class ConfettiManager {
   
       updateSaveButtonText();
 
-// Apply remembered speed choice after everything else loads
-if (speedDropdown) {
-    const speedButton = speedDropdown.querySelector('.dropdown-button');
-    if (getCookie("speed1")) {
-        speed1();
-        speedButton.style.color = '#7a2df5';
-        setTimeout(() => {
-            speedButton.innerHTML = '<i class="fa-solid fa-gauge"></i> Default';
-            speedButton.style.color = '#ffffff';
-        }, 150);
-    } else if (getCookie("speed2")) {
-        speed2();
-        speedButton.style.color = '#7a2df5';
-        setTimeout(() => {
-            speedButton.innerHTML = '<i class="fa-solid fa-seedling"></i> Slow';
-            speedButton.style.color = '#ffffff';
-        }, 150);
-    } else if (getCookie("speed3")) {
-        speed3();
-        speedButton.style.color = '#7a2df5';
-        setTimeout(() => {
-            speedButton.innerHTML = '<i class="fa-solid fa-bolt"></i> Fast';
-            speedButton.style.color = '#ffffff';
-        }, 150);
-    }
-}
           
           if(cdtitle){
               document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + cdtitle);
@@ -1194,7 +1182,6 @@ if (speedDropdown) {
   
       }, false);
 
-      SetCountDowngeneral();
   
       //settings
       function settings() {
