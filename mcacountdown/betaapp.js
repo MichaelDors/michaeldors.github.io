@@ -876,44 +876,70 @@ class ConfettiManager {
           const confettiManager = new ConfettiManager();
   
       //animation speed toggle
-      document.querySelector('#searchTypeToggle').addEventListener('click', function (event) {
-  
-          if (event.target.tagName.toLowerCase() == 'input') {
-  
-              let input = event.target;
-              let slider = this.querySelector('div');
-              let labels = this.querySelectorAll('label');
-  
-              slider.style.transform = `translateX(${input.dataset.location})`;
-              labels.forEach(function (label) {
-                  if (label == input.parentElement) {
-                      label.classList.add('selected');
-                  } else {
-                      label.classList.remove('selected');
-                  }
-              });
-  
-              if (event.target == document.getElementById("speed1")) {
-                  eraseCookie('speed2');
-                  eraseCookie('speed3');
-                  setCookie('speed1', 'true', '70');
-                  speed1();
-              }
-              if (event.target == document.getElementById("speed2")) {
-                  eraseCookie('speed1');
-                  eraseCookie('speed3');
-                  setCookie('speed2', 'true', '70');
-                  speed2();
-              }
-              if (event.target == document.getElementById("speed3")) {
-                  eraseCookie('speed2');
-                  eraseCookie('speed1');
-                  setCookie('speed3', 'true', '70');
-                  speed3();
-              }
-          }
-  
-      });
+      // New dropdown speed picker
+      // Place this block after cookie acceptance logic
+      const speedDropdown = document.getElementById('speedDropdown');
+      if (speedDropdown) {
+        const speedButton = speedDropdown.querySelector('.dropdown-button');
+        const speedMenu = document.getElementById('speedMenu');
+        const speedItems = speedMenu.querySelectorAll('.dropdown-item');
+        
+        speedButton.addEventListener('click', () => {
+            if (!speedMenu.classList.contains('visible')) {
+                speedMenu.classList.add('visible', 'animate-open');
+                speedMenu.addEventListener('animationend', () => {
+                    speedMenu.classList.remove('animate-open');
+                    speedMenu.classList.add('opened');
+                }, { once: true });
+            } else {
+                speedMenu.classList.remove('visible', 'opened');
+            }
+        });
+        
+        speedItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const speed = item.dataset.speed;
+                
+                if (speed === 'slow') {
+                    speed2();
+                    document.cookie = 'speed2=True';
+                    document.cookie = 'speed1=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+                    document.cookie = 'speed3=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+                    
+                    speedButton.style.color = '#7a2df5';
+                    setTimeout(() => {
+                        speedButton.innerHTML = '<i class="fa-solid fa-seedling"></i> Slow';
+                        speedButton.style.color = '#ffffff';
+                    }, 150);
+                } else if (speed === 'default') {
+                    speed1();
+                    document.cookie = 'speed1=True';
+                    document.cookie = 'speed2=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+                    document.cookie = 'speed3=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+                    
+                    speedButton.style.color = '#7a2df5';
+                    setTimeout(() => {
+                        speedButton.innerHTML = '<i class="fa-solid fa-gauge"></i> Default';
+                        speedButton.style.color = '#ffffff';
+                    }, 150);
+                } else if (speed === 'fast') {
+                    speed3();
+                    document.cookie = 'speed3=True';
+                    document.cookie = 'speed1=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+                    document.cookie = 'speed2=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+                    
+                    speedButton.style.color = '#7a2df5';
+                    setTimeout(() => {
+                        speedButton.innerHTML = '<i class="fa-solid fa-bolt"></i> Fast';
+                        speedButton.style.color = '#ffffff';
+                    }, 150);
+                }
+        
+                speedMenu.classList.remove('visible', 'opened');
+            });
+        });
+        
+      }
   
   
       function speed1() {
@@ -1051,7 +1077,34 @@ class ConfettiManager {
   
           var cdtitle = document.getElementById("countdowntitle").value; //set the title
   
-          updateSaveButtonText();
+      updateSaveButtonText();
+
+// Apply remembered speed choice after everything else loads
+if (speedDropdown) {
+    const speedButton = speedDropdown.querySelector('.dropdown-button');
+    if (getCookie("speed1")) {
+        speed1();
+        speedButton.style.color = '#7a2df5';
+        setTimeout(() => {
+            speedButton.innerHTML = '<i class="fa-solid fa-gauge"></i> Default';
+            speedButton.style.color = '#ffffff';
+        }, 150);
+    } else if (getCookie("speed2")) {
+        speed2();
+        speedButton.style.color = '#7a2df5';
+        setTimeout(() => {
+            speedButton.innerHTML = '<i class="fa-solid fa-seedling"></i> Slow';
+            speedButton.style.color = '#ffffff';
+        }, 150);
+    } else if (getCookie("speed3")) {
+        speed3();
+        speedButton.style.color = '#7a2df5';
+        setTimeout(() => {
+            speedButton.innerHTML = '<i class="fa-solid fa-bolt"></i> Fast';
+            speedButton.style.color = '#ffffff';
+        }, 150);
+    }
+}
           
           if(cdtitle){
               document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + cdtitle);
@@ -1140,6 +1193,8 @@ class ConfettiManager {
           }
   
       }, false);
+
+      SetCountDowngeneral();
   
       //settings
       function settings() {
@@ -1275,15 +1330,6 @@ class ConfettiManager {
             setLightMode();
         }
   
-          if (getCookie("speed1")) { //if speed one has been chosen in the past and still has a cookie representing it
-              document.getElementById("speed1").click(); //simulate a click on speed one to remember that choice
-          }
-          else if (getCookie("speed2")) { //see speed one
-              document.getElementById("speed2").click(); //see line above
-          }
-          else if (getCookie("speed3")) { //see speed two
-              document.getElementById("speed3").click(); //see line above
-          }
   
           if (!isNaN(parameter("atc"))) {
               document.getElementById("clock").classList.remove("clock"); //remove colored normal clock
@@ -3996,7 +4042,7 @@ showToast('Pick an exception day to add this event to', 'info')
                         document.getElementById("magictitle").classList.remove("magictitle-success");
                     }, 500);
                 setcountdowntitle("front"); 
-                    break;
+                break;
                 case 'stpatricks': // St. Patrick's Day
                 document.getElementById("countdowntitle").value = "St. Patrick's Day";
                 document.getElementById("magictitle").classList.add("magictitle-success");

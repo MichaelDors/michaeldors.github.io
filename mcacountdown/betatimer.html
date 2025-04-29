@@ -532,21 +532,20 @@
         Animation Speed
     </h2>
 
-    <form action="" id="searchTypeToggle" style="zoom:150%">
-        <div id="selectedSpeedDiv"></div>
-        <label>
-            <input type="radio" name="searchtype" data-location="0" value="one" id="speed2">
-            <div style="font-family: 'Dosis';"><i class="fa-solid fa-seedling"></i>  Slow</div>
-        </label>
-        <label class="selected">
-            <input type="radio" name="searchtype" data-location="calc(100% - 11px)" value="two" id="speed1">
-            <div style="font-family: 'Dosis';"><i class="fa-solid fa-gauge"></i>  Default</div>
-        </label>
-        <label>
-            <input type="radio" name="searchtype" data-location="calc(200% - 22px)" value="three" id="speed3">
-            <div style="font-family: 'Dosis';"><i class="fa-solid fa-bolt"></i>  Fast</div>
-        </label>
-    </form>
+    <div class="dropdown-container" id="speedDropdown">
+      <button class="dropdown-button"><i class="fa-solid fa-gauge"></i> Default</button>
+      <div class="dropdown-menu" id="speedMenu">
+        <div class="dropdown-item" data-speed="default">
+          <i class="fa-solid fa-gauge"></i> Default
+        </div>
+        <div class="dropdown-item" data-speed="slow">
+          <i class="fa-solid fa-seedling"></i> Slow
+        </div>
+        <div class="dropdown-item" data-speed="fast">
+          <i class="fa-solid fa-bolt"></i> Fast
+        </div>
+      </div>
+    </div>
     <br>
     <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Time Units</a>
     <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
