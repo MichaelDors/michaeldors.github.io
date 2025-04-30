@@ -405,7 +405,7 @@ form {
   
   .dropdown-button {
     width: 100%;
-    background: #7a2df5;
+    background: #595959;
     color: white;
     border: none;
     font-family: 'Dosis', sans-serif;
@@ -455,6 +455,7 @@ form {
     transition: opacity 0.25s ease;
     box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
 color:white;
+z-index: 10000000;
   }
   
   .dropdown-menu.visible {
@@ -485,7 +486,7 @@ color:white;
     border-bottom: 1px solid #838383;
     color: var(--mainforegroundcolor);
     transition: 0.2s ease-out;
-    
+    text-align: left;
   }
   
   .dropdown-item:last-child {
@@ -792,43 +793,53 @@ a:hover:active {
     box-shadow: none;
 }
 
-.enabled {
-    font-family: 'Fredoka One';
-    background-color: #00df52;
-    text-decoration: none;
-    color: black;
-    box-shadow: 0 7px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-
+.toggle {
+    width: 60px;
+    height: 40px;
+    padding:0px;
+    border-radius: 2000px;
+    position: relative;
+    display: inline-block;
+    transition: 0.5s all ease;
+    vertical-align: middle;
+    margin-top:25px;
 }
 
-    .enabled:hover {
-        position: relative;
-        box-shadow: 0 5px 0 #00b041, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-    }
+.toggle:hover{
+    top:0px;
+    box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
+}
 
-        .enabled:hover:active {
-            position: relative;
-            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-        }
+.toggle::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 36px;
+    height: 36px;
+    background-color: white;
+    border-radius: 50%;
+    transition: left 0.3s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
 
-.disabled {
-    font-family: 'Fredoka One';
+/* Disabled */
+.toggle.disabled {
     background-color: #595959;
-    text-decoration: none;
-    color: white;
-    box-shadow: 0 7px 0 #282828, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-
+    box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3),
+                inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
 }
 
-    .disabled:hover {
-        position: relative;
-        box-shadow: 0 5px 0 #282828, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-    }
+/* Enabled */
+.toggle.enabled {
+    background-color: #00df52;
+    box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3),
+                inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
+}
 
-        .disabled:hover:active {
-            position: relative;
-            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
-        }
+.toggle.enabled::before {
+    left: 22px;
+}
 
 .whitebutton {
     font-family: 'Fredoka One';
@@ -2786,3 +2797,15 @@ filter: blur(40px);
   transform: translateX(50%);
 }
 }
+
+.settingsline{
+    width:80%;
+    margin-bottom: 50px;
+    
+}
+
+.settingsline::after {
+    content: "";
+    display: table;
+    clear: both;
+  }

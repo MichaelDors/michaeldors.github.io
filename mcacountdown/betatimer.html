@@ -170,7 +170,7 @@
                 <br>
                 <a class="sidebaranchor" href="#eouoptions"><i style="background:#00DF52; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-child-reaching"></i> Ease of Use</a>
                 <br>
-                <a id="optionsoianchor" class="sidebaranchor" href="#inclusionoptions"><i style="background:#FF9900; color:white; transition:opacity 1s ease-in-out; font-size:15px !important; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-puzzle-piece"></i> Only Include</a>
+                <a id="optionsoianchor" class="sidebaranchor" href="#inclusionoptions"><i style="background:#FF9900; color:white; transition:opacity 1s ease-in-out; font-size:15px !important; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-puzzle-piece"></i> Formatting</a>
                 <br>
                 <a class="sidebaranchor" href="docs"><i style="background:#8426FF; color:white; transition:opacity 1s ease-in-out; font-size:15px !important; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-book"></i> Documentation</a>
                 <br>
@@ -528,11 +528,12 @@
 	<Br>
         <br>
         <br>
-    <h2 class="textelement" style="font-family: 'Dosis';">
-        Animation Speed
-    </h2>
 
-    <div class="dropdown-container" id="speedDropdown">
+    <div class="settingsline">
+        <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+            <i class="fa-solid fa-bolt"></i> Animation Speed
+        </h2>
+    <div class="dropdown-container" style="float:right" id="speedDropdown">
       <button class="dropdown-button"><i class="fa-solid fa-gauge"></i> Default</button>
       <div class="dropdown-menu" id="speedMenu">
         <div class="dropdown-item" data-speed="default">
@@ -546,9 +547,16 @@
         </div>
       </div>
     </div>
+</div>
     <br>
-    <a id="lcdu" class="disabled" onclick="lcdu();"><i class="fa-solid fa-tag"></i> Label Time Units</a>
-    <a id="coce" class="disabled" onclick="coce();"><i class="fa-solid fa-cake-candles"></i> Disable Confetti</a>
+
+    <br>
+    <div class="settingsline">
+        <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+            <i class="fa-solid fa-cake-candles"></i> Disable Confetti
+        </h2>
+    <a id="coce" style="float:right"  class="disabled toggle" onclick="coce();"></a>
+    </div>
     <br>
     <Br>
     <Br>
@@ -572,26 +580,58 @@
     <br>
     <br>
     </div>
-    <a id="soce" class="disabled" onclick="soce();"><i class="fa-solid fa-volume-mute"></i> Disable End Sounds</a>
-    <a id="memsav" class="disabled" onclick="memsav();"><i class="fa-solid fa-gauge-high"></i> Memory Saver</a>
-	<a id="contrast" class="disabled" onclick="contrast();"><i class="fa-solid fa-circle-half-stroke"></i> Increase Contrast</a>
-	<a style="display:none;" id="opendyslexic" class="disabled" onclick="opendyslexic();"><i class="fa-solid fa-font"></i> Force OpenDyslexic Font</a>
+    <div class="settingsline">
+        <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+            <i class="fa-solid fa-volume-mute"></i> Disable End Sounds
+        </h2>
+        <a id="soce" style="float:right" class="disabled toggle" onclick="soce();"></a>
+    </div>
+    <div class="settingsline">
+        <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+            <i class="fa-solid fa-gauge-high"></i> Memory Saver
+        </h2>
+        <a id="memsav" style="float:right" class="disabled toggle" onclick="memsav();"></a>
+    </div>
+    <div class="settingsline">
+        <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+            <i class="fa-solid fa-circle-half-stroke"></i> Increase Contrast
+        </h2>
+        <a id="contrast" style="float:right" class="disabled toggle" onclick="contrast();"></a>
+    </div>
+	<a style="display:none;" id="opendyslexic" class="disabled toggle" onclick="opendyslexic();"><i class="fa-solid fa-font"></i> Force OpenDyslexic Font</a>
 <br>
     <Br>
     <Br>
     <h1 id="inclusionoptions" class="textelement">
-        Only Include
+        Formatting
     </h1>
-	<p id="cdscheduledisclaimer" style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:30px; display:none; background:linear-gradient(to bottom right, #d616165f, #00000000); border:#ff5353 2px solid; border-radius:100px; padding:5px 10px 5px 10px; width:fit-content;"><i class="fa-regular fa-calendar-xmark"></i> Only Include will not apply to Countdown Schedules</p>
+	<p id="cdscheduledisclaimer" style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:30px; display:none; background:linear-gradient(to bottom right, #d616165f, #00000000); border:#ff5353 2px solid; border-radius:100px; padding:5px 10px 5px 10px; width:fit-content;"><i class="fa-regular fa-calendar-xmark"></i> Only Display will not apply to Countdown Schedules</p>
         <Br>
         <br>
         <br>
-    <a id="week" class="disabled" onclick="week();"><i class="fa-solid fa-calendar-week"></i> Weeks</a>
-    <a id="day" class="disabled" onclick="day();"><i class="fa-solid fa-calendar-days"></i> Days</a>
-    <a id="hour" class="disabled" onclick="hour();"><i class="fa-solid fa-clock"></i> Hours</a>
-    <a id="minute" class="disabled" onclick="minute();"><i class="fa-solid fa-hourglass-start"></i> Minutes</a>
-    <a id="second" class="disabled" onclick="second();"><i class="fa-solid fa-stopwatch-20"></i> Seconds</a>
-    <a id="millisecond" class="disabled" onclick="millisecond();"><i class="fa-solid fa-meteor"></i> Milliseconds</a>
+        <div class="settingsline">
+            <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+                <i class="fa-solid fa-calculator"></i> Time Breakdown
+            </h2>
+        <div style="float: right;" class="dropdown-container" id="includeDropdown">
+            <button class="dropdown-button"><i class="fa-solid fa-stopwatch-20"></i> Only Display</button>
+            <div class="dropdown-menu" id="includeMenu">
+                <div id="week" class="dropdown-item" data-unit="none"><i class="fa-solid fa-circle-xmark"></i> Off</div>
+              <div id="week" class="dropdown-item" data-unit="week"><i class="fa-solid fa-calendar-week"></i> Weeks</div>
+              <div id="day" class="dropdown-item" data-unit="day"><i class="fa-solid fa-calendar-days"></i> Days</div>
+              <div id="hour" class="dropdown-item" data-unit="hour"><i class="fa-solid fa-clock"></i> Hours</div>
+              <div id="minute" class="dropdown-item" data-unit="minute"><i class="fa-solid fa-hourglass-start"></i> Minutes</div>
+              <div id="second" class="dropdown-item" data-unit="second"><i class="fa-solid fa-stopwatch-20"></i> Seconds</div>
+              <div id="millisecond" class="dropdown-item" data-unit="millisecond"><i class="fa-solid fa-meteor"></i> Milliseconds</div>
+            </div>
+          </div>
+        </div>
+        <div class="settingsline">
+            <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+                <i class="fa-solid fa-tag"></i> Label Time Units
+            </h2>
+            <a  style="float:right" id="lcdu" class="disabled toggle" onclick="lcdu();"></a>
+    </div>
     <br>
     <br>
     <br>

@@ -908,7 +908,7 @@ class ConfettiManager {
                     document.cookie = 'speed1=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
                     document.cookie = 'speed3=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
                     
-                    speedButton.style.color = '#7a2df5';
+                    speedButton.style.color = '#595959';
                     setTimeout(() => {
                         speedButton.innerHTML = '<i class="fa-solid fa-seedling"></i> Slow';
                         speedButton.style.color = '#ffffff';
@@ -919,7 +919,7 @@ class ConfettiManager {
                     document.cookie = 'speed2=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
                     document.cookie = 'speed3=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
                     
-                    speedButton.style.color = '#7a2df5';
+                    speedButton.style.color = '#595959';
                     setTimeout(() => {
                         speedButton.innerHTML = '<i class="fa-solid fa-gauge"></i> Default';
                         speedButton.style.color = '#ffffff';
@@ -930,7 +930,7 @@ class ConfettiManager {
                     document.cookie = 'speed1=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
                     document.cookie = 'speed2=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
                     
-                    speedButton.style.color = '#7a2df5';
+                    speedButton.style.color = '#595959';
                     setTimeout(() => {
                         speedButton.innerHTML = '<i class="fa-solid fa-bolt"></i> Fast';
                         speedButton.style.color = '#ffffff';
@@ -1066,7 +1066,53 @@ class ConfettiManager {
       function eraseCookie(name) {
           document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       }
-  
+
+      const includeDropdown = document.getElementById('includeDropdown');
+      const includeButton = includeDropdown.querySelector('.dropdown-button');
+      const includeMenu = document.getElementById('includeMenu');
+      const includeItems = includeMenu.querySelectorAll('.dropdown-item');
+      
+      includeButton.addEventListener('click', () => {
+        if (!includeMenu.classList.contains('visible')) {
+          includeMenu.classList.add('visible', 'animate-open');
+          includeMenu.addEventListener('animationend', () => {
+            includeMenu.classList.remove('animate-open');
+            includeMenu.classList.add('opened');
+          }, { once: true });
+        } else {
+          includeMenu.classList.remove('visible', 'opened');
+        }
+      });
+      
+      includeItems.forEach(item => {
+        item.addEventListener('click', () => {
+          const unit = item.dataset.unit;
+          const allUnits = ['week', 'day', 'hour', 'minute', 'second', 'millisecond'];
+      
+          if (unit === 'none') {
+            allUnits.forEach(u => eraseCookie(u));
+          } else {
+            setCookie(unit, 'true', '70');
+            allUnits.filter(u => u !== unit).forEach(u => eraseCookie(u));
+          }
+      
+      
+          includeButton.style.color = '#595959';
+          setTimeout(() => {
+            includeButton.innerHTML = item.innerHTML;
+            includeButton.style.color = '#ffffff';
+          }, 150);
+          includeMenu.classList.remove('visible', 'opened');
+          updateoptions();
+        });
+      });
+      
+      // On load: set correct label
+      const initUnit = ['week', 'day', 'hour', 'minute', 'second', 'millisecond'].find(u => getCookie(u));
+      const defaultItem = [...includeItems].find(i => i.dataset.unit === (initUnit || 'none'));
+      if (defaultItem) {
+        includeButton.innerHTML = defaultItem.innerHTML;
+      }
   
       function SetCountDowngeneral() { //gets called quite a bit, updates all settings and parameters to match the current state
           countDownDate = new Date(document.querySelector(".datepicker").value);
@@ -1681,59 +1727,6 @@ function stopConfettiManagerAnimation(){
               document.getElementById("lcdu").classList.add("disabled");
           }
   
-          if (getCookie("second")) { //only include seconds
-              document.getElementById("second").classList.add("enabled");
-              document.getElementById("second").classList.remove("disabled");
-          }
-          else {
-              document.getElementById("second").classList.remove("enabled");
-              document.getElementById("second").classList.add("disabled");
-          }
-  
-          if (getCookie("millisecond")) { //only include milliseconds
-              document.getElementById("millisecond").classList.add("enabled");
-              document.getElementById("millisecond").classList.remove("disabled");
-          }
-          else {
-              document.getElementById("millisecond").classList.remove("enabled");
-              document.getElementById("millisecond").classList.add("disabled");
-          }
-  
-          if (getCookie("minute")) { //only include minutes
-              document.getElementById("minute").classList.add("enabled");
-              document.getElementById("minute").classList.remove("disabled");
-          }
-          else {
-              document.getElementById("minute").classList.remove("enabled");
-              document.getElementById("minute").classList.add("disabled");
-          }
-  
-          if (getCookie("hour")) { //only include hours
-              document.getElementById("hour").classList.add("enabled");
-              document.getElementById("hour").classList.remove("disabled");
-          }
-          else {
-              document.getElementById("hour").classList.remove("enabled");
-              document.getElementById("hour").classList.add("disabled");
-          }
-  
-          if (getCookie("day")) { //only include days
-              document.getElementById("day").classList.add("enabled");
-              document.getElementById("day").classList.remove("disabled");
-          }
-          else {
-              document.getElementById("day").classList.remove("enabled");
-              document.getElementById("day").classList.add("disabled");
-          }
-  
-          if (getCookie("week")) { //only include weeks
-              document.getElementById("week").classList.add("enabled");
-              document.getElementById("week").classList.remove("disabled");
-          }
-          else {
-              document.getElementById("week").classList.remove("enabled");
-              document.getElementById("week").classList.add("disabled");
-          }
       }
   
   
@@ -1792,90 +1785,7 @@ function contrast(){ //increase contrast set or remove cookie
       }
   
   
-      function week() { //only include week set or remove cookie
-          if (getCookie('week')) {
-              eraseCookie('week');
-          }
-          else {
-              setCookie('week', 'true', '70');
-              eraseCookie('second'); //remove all other only includes
-              eraseCookie('minute');
-              eraseCookie('hour');
-              eraseCookie('day');
-              eraseCookie('millisecond');
-          }
-          updateoptions();
-      }
-      function day() { //only include day set or remove cookie
-          if (getCookie('day')) {
-              eraseCookie('day');
-          }
-          else {
-              setCookie('day', 'true', '70');
-              eraseCookie('second'); //remove all other only includes
-              eraseCookie('minute');
-              eraseCookie('week');
-              eraseCookie('hour');
-              eraseCookie('millisecond');
-          }
-          updateoptions();
-      }
-      function hour() { //only include hour set or remove cookie
-          if (getCookie('hour')) {
-              eraseCookie('hour');
-          }
-          else {
-              setCookie('hour', 'true', '70');
-              eraseCookie('second'); //remove all other only includes
-              eraseCookie('day');
-              eraseCookie('week');
-              eraseCookie('minute');
-              eraseCookie('millisecond');
-          }
-          updateoptions();
-      }
-      function minute() { //only include minute set or remove cookie
-          if (getCookie('minute')) {
-              eraseCookie('minute');
-          }
-          else {
-              setCookie('minute', 'true', '70');
-              eraseCookie('second'); //remove all other only includes
-              eraseCookie('week');
-              eraseCookie('day');
-              eraseCookie('hour');
-              eraseCookie('millisecond');
-          }
-          updateoptions();
-      }
-      function second() { //only include second set or remove cookie
-          if (getCookie('second')) {
-              eraseCookie('second');
-          }
-          else {
-              setCookie('second', 'true', '70');
-              eraseCookie('minute'); //remove all other only includes
-              eraseCookie('day');
-              eraseCookie('hour');
-              eraseCookie('week');
-              eraseCookie('millisecond');
-          }
-          updateoptions();
-      }
-      function millisecond() { //only include millisecond set or remove cookie
-          if (getCookie('millisecond')) {
-              eraseCookie('millisecond');
-          }
-          else {
-              setCookie('millisecond', 'true', '70');
-              eraseCookie('minute'); //remove all other only includes
-              eraseCookie('day');
-              eraseCookie('second');
-              eraseCookie('hour');
-              eraseCookie('week');
-          }
-          updateoptions();
-      }
+      
       function resetcookies() { //remove all saved cookies
           eraseCookie('memsav');
           eraseCookie('coce');
@@ -4428,7 +4338,7 @@ function searchsettings(){
     else if(searchedphrase == "ease of use"){
         document.getElementById("eouoptions").scrollIntoView();
     }
-    else if(searchedphrase == "only include"){
+    else if(searchedphrase == "formatting"){
         document.getElementById("inclusionoptions").scrollIntoView();
     }
     else if(searchedphrase == "danger zone (reset)" || searchedphrase == "danger zone" || searchedphrase == "reset"){
@@ -4482,22 +4392,22 @@ function searchsettings(){
     else if(searchedphrase == "memory saver"){
         document.getElementById("eouoptions").scrollIntoView();
     }
-    else if(searchedphrase == "only include weeks"){
+    else if(searchedphrase == "only display weeks"){
         document.getElementById("inclusionoptions").scrollIntoView();
     }
-    else if(searchedphrase == "only include days"){
+    else if(searchedphrase == "only display days"){
         document.getElementById("inclusionoptions").scrollIntoView();
     }
-    else if(searchedphrase == "only include hours"){
+    else if(searchedphrase == "only display hours"){
         document.getElementById("inclusionoptions").scrollIntoView();
     }
-    else if(searchedphrase == "only include minutes"){
+    else if(searchedphrase == "only display minutes"){
         document.getElementById("inclusionoptions").scrollIntoView();
     }
-    else if(searchedphrase == "only include seconds"){
+    else if(searchedphrase == "only display seconds"){
         document.getElementById("inclusionoptions").scrollIntoView();
     }
-    else if(searchedphrase == "only include milliseconds"){
+    else if(searchedphrase == "only display milliseconds"){
         document.getElementById("inclusionoptions").scrollIntoView();
     }
 
