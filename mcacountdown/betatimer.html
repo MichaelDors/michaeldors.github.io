@@ -31,24 +31,6 @@
     <meta property="og:description" content="A beautiful and smart countdown timer website." />
     <meta property="og:site_name" content="Michael Dors" />
     <link rel="apple-touch-icon" href="Images/countdownhomescreen.png">
-
-    <style>
-        .colorpicker-container {
-            display: inline-block;
-            position: relative;
-            margin: 5px;
-            cursor: move;
-            transition: transform 0.2s ease, opacity 0.2s ease;
-        }
-
-        .colorpicker-container.drag-over {
-            transform: scale(1.1);
-        }
-
-        .colorpicker-container:active {
-            cursor: grabbing;
-        }
-    </style>
 </head>
 
 <body id="body">
@@ -339,7 +321,8 @@
                         <div class="remove-button" onclick="removeColorPicker(this)" title="Remove this color">-</div>
                     </div>
                 </div>
-                <a class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus-circle"></i> Add a New Color</a>
+                <a class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus-circle"></i> Add Color</a>
+                <a class="clraddfg" onmouseup="addForegroundColorPicker()"><i class="fa-solid fa-circle-half-stroke"></i> Add Foreground</a>
 
                 <p class="texttip">
                     The foreground elements will cycle through the chosen colors

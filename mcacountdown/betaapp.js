@@ -300,14 +300,26 @@ const countdownDate = new Date(parameter('date')).getTime();
               if (parameter(param) === "null") {
                   console.log(`Colors(${id.slice(-1)}) could not be imported properly.`);
               } else {
-                  const colorToUse = '#' + parameter(param);
-                  if (!document.getElementById(id)) {
-                      addColorPicker("auto");
-                      adjustHeightOfColorPickerContainer();
+                  const paramValue = parameter(param);
+                  if (paramValue === 'fg') {
+                      // This is a foreground color
+                      if (!document.getElementById(id)) {
+                          addForegroundColorPicker("auto");
+                      } else {
+                          const picker = document.getElementById(id);
+                          picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
+                          picker.dataset.foreground = 'true';
+                      }
+                  } else {
+                      const colorToUse = '#' + paramValue;
+                      if (!document.getElementById(id)) {
+                          addColorPicker("auto");
+                          adjustHeightOfColorPickerContainer();
+                      }
+                      document.getElementById(id).value = colorToUse;
+                      css.style.setProperty(cssVar, colorToUse);
+                      css.style.setProperty(`--color${id.slice(-1)}`, colorToUse);
                   }
-                  document.getElementById(id).value = colorToUse;
-                  css.style.setProperty(cssVar, colorToUse);
-                  css.style.setProperty(`--color${id.slice(-1)}`, colorToUse);
               }
           } else {
               // Remove color picker if parameter doesn't exist
@@ -322,12 +334,19 @@ const countdownDate = new Date(parameter('date')).getTime();
       for (let i = 5; i <= 8; i++) {
           const colorParam = parameter(`color${i}`);
           if (colorParam && colorParam !== "null") {
-              const colorToUse = '#' + colorParam;
-              if (!document.getElementById(`color${i}`)) {
-                  addColorPicker("auto");
+              if (colorParam === 'fg') {
+                  // This is a foreground color
+                  if (!document.getElementById(`color${i}`)) {
+                      addForegroundColorPicker("auto");
+                  }
+              } else {
+                  const colorToUse = '#' + colorParam;
+                  if (!document.getElementById(`color${i}`)) {
+                      addColorPicker("auto");
+                  }
+                  document.getElementById(`color${i}`).value = colorToUse;
+                  css.style.setProperty(`--color${i}`, colorToUse);
               }
-              document.getElementById(`color${i}`).value = colorToUse;
-              css.style.setProperty(`--color${i}`, colorToUse);
           }
       }
   }
@@ -1123,8 +1142,17 @@ class ConfettiManager {
           // Get all color pickers dynamically
           const colorPickers = document.querySelectorAll('.colorpicker');
           colorPickers.forEach((picker, index) => {
-              colors[index] = picker.value;
-              colorsNormalized[index] = picker.value.replace("#", "");
+              // If this picker is marked to use theme color, get the current theme color
+              if (picker.dataset.useThemeColor === 'true') {
+                  const computedStyle = getComputedStyle(document.documentElement);
+                  const themeColor = computedStyle.getPropertyValue('--mainforegroundcolor').trim();
+                  picker.value = themeColor;
+                  colors[index] = 'fg';
+                  colorsNormalized[index] = 'fg';
+              } else {
+                  colors[index] = picker.value;
+                  colorsNormalized[index] = picker.value.replace("#", "");
+              }
               css.style.setProperty(`--color${index + 1}`, colors[index]);
           });
   
@@ -4282,6 +4310,7 @@ showToast('Pick an exception day to add this event to', 'info')
                 document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
                 document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
             }
+            SetCountDowngeneral(); // Update any theme-colored pickers
         }
         
         function setDarkMode() {
@@ -4301,6 +4330,7 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
             document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(255, 255, 255, 0.1)');
             document.documentElement.style.setProperty('--progressbarhighlight', 'none');
+            SetCountDowngeneral(); // Update any theme-colored pickers
         }
         
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
@@ -4739,6 +4769,7 @@ function searchsettings(){
               newBR.className = 'colorpickerlinebreak';
               container.insertBefore(newBR, container.children[4]);
           }
+
           
           adjustHeightOfColorPickerContainer();
           updateColorAnimations();
@@ -4756,3 +4787,54 @@ function searchsettings(){
               container.addEventListener('drop', handleDrop);
           });
       });
+
+
+function addForegroundColorPicker() {
+    if (colorPickerCount < 8) {
+        colorPickerCount++;
+        const container = document.getElementById('colorPickersContainer');
+        const newColorPickerContainer = document.createElement('div');
+        newColorPickerContainer.className = 'colorpicker-container';
+
+        const newColorPicker = document.createElement('input');
+        newColorPicker.className = 'colorpicker';
+        newColorPicker.id = `color${colorPickerCount}`;
+        newColorPicker.type = 'color';
+        // Use CSS variable for theme color
+        const computedStyle = getComputedStyle(document.documentElement);
+        const themeColor = computedStyle.getPropertyValue('--mainforegroundcolor').trim();
+        newColorPicker.value = themeColor;
+        newColorPicker.dataset.useThemeColor = 'true'; // Mark this picker as using theme color
+        newColorPicker.onblur = SetCountDowngeneral;
+
+        const removeButton = document.createElement('div');
+        removeButton.className = 'remove-button';
+        removeButton.innerHTML = '-';
+        removeButton.onclick = function() { removeColorPicker(removeButton); };
+
+        newColorPickerContainer.appendChild(newColorPicker);
+        newColorPickerContainer.appendChild(removeButton);
+
+        container.appendChild(newColorPickerContainer);
+
+        if(document.querySelector(".colorpickerlinebreak")){
+            document.querySelector(".colorpickerlinebreak").remove();
+        }
+        const colorpickersocontainer = document.getElementById('colorPickersContainer');
+        if (colorpickersocontainer.children.length > 4) {
+            const newBR = document.createElement('br');
+            newBR.className = 'colorpickerlinebreak';
+            colorpickersocontainer.insertBefore(newBR, colorpickersocontainer.children[4]);
+        }
+        
+        if(colorpickersocontainer.children.length > 8){
+            document.querySelector(".clradd").classList.add("clraddoff");
+        }
+        else{
+            document.querySelector(".clradd").classList.remove("clraddoff");
+        }
+
+        adjustHeightOfColorPickerContainer();
+        SetCountDowngeneral();
+    }
+}

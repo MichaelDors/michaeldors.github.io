@@ -123,7 +123,18 @@ opacity: 1;
 transform:scale(1);
 position: relative;
 display: inline-block;
+cursor: move;
+transition: transform 0.2s ease, opacity 0.2s ease;
 }
+
+.colorpicker-container.drag-over {
+    transform: scale(1.1);
+}
+
+.colorpicker-container:active {
+    cursor: grabbing;
+}
+
 
 #colorPickersContainer{
     transition:0.25s all ease;
@@ -1885,6 +1896,16 @@ a:hover:active {
     }
     
     .clradd{
+        margin-top:15px;
+        width:calc(2.8in + 30px) !important;
+        color:white;
+        font-weight: 100;
+        cursor: pointer;
+        transition:0.5s all ease;
+        filter: grayscale(0%) !important;
+    }
+
+    .clraddfg{
         margin-top:15px;
         width:calc(2.8in + 30px) !important;
         color:white;
