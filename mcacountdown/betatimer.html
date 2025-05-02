@@ -31,6 +31,24 @@
     <meta property="og:description" content="A beautiful and smart countdown timer website." />
     <meta property="og:site_name" content="Michael Dors" />
     <link rel="apple-touch-icon" href="Images/countdownhomescreen.png">
+
+    <style>
+        .colorpicker-container {
+            display: inline-block;
+            position: relative;
+            margin: 5px;
+            cursor: move;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .colorpicker-container.drag-over {
+            transform: scale(1.1);
+        }
+
+        .colorpicker-container:active {
+            cursor: grabbing;
+        }
+    </style>
 </head>
 
 <body id="body">
@@ -447,7 +465,7 @@
                             <input type="time" id="schedule-endTime" style="margin-left:10px;" required>
                         </div>
                         <a id="schedule-addOrUpdateEventBtn"><i class="fa-solid fa-plus-circle"></i> Add to Regular Schedule</a>
-			<a onclick="selectexceptiontoaddevent();"><i class="fa-solid fa-calendar-day"></i> Add to Exception</a>
+			<a id="addtoexceptionbutton" onclick="selectexceptiontoaddevent();"><i class="fa-solid fa-calendar-day"></i> Add to Exception</a>
                         <br>
                         <br>
                         <br>

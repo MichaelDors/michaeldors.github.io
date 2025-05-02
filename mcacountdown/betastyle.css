@@ -605,6 +605,8 @@ z-index: 10000000;
     font-family: var(--typeface);
     color: #ffffff;
     /*mix-blend-mode:difference;*/
+    pointer-events: none;
+
 }
 
 .clock {
@@ -616,6 +618,7 @@ z-index: 10000000;
     font-family: var(--typeface);
     animation: backgroundgradient 100s infinite;
     z-index: 1000000;
+    pointer-events: none;
 }
 
 .schedulebgcolored{
@@ -632,6 +635,8 @@ z-index: 10000000;
     font-family: var(--typeface);
     animation: backgroundgradient 200s infinite;
     z-index: 1000000;
+    pointer-events: none;
+
 }
 
 .schedulebgcoloredslow{
@@ -647,6 +652,8 @@ z-index: 10000000;
     font-family: var(--typeface);
     animation: backgroundgradient 5s infinite;
     z-index: 1000000;
+    pointer-events: none;
+
 }
 
 .schedulebgcoloredfast{

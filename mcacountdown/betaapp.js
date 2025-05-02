@@ -2684,6 +2684,13 @@ if (mlkthisyear - now < 0) {
           const container = document.getElementById('colorPickersContainer');
           const newColorPickerContainer = document.createElement('div');
           newColorPickerContainer.className = 'colorpicker-container';
+          newColorPickerContainer.draggable = true;
+          
+          // Add drag event listeners
+          newColorPickerContainer.addEventListener('dragstart', handleDragStart);
+          newColorPickerContainer.addEventListener('dragend', handleDragEnd);
+          newColorPickerContainer.addEventListener('dragover', handleDragOver);
+          newColorPickerContainer.addEventListener('drop', handleDrop);
   
           const newColorPicker = document.createElement('input');
           newColorPicker.className = 'colorpicker';
@@ -2704,7 +2711,7 @@ if (mlkthisyear - now < 0) {
           container.appendChild(newColorPickerContainer);
   
           if(document.querySelector(".colorpickerlinebreak")){
-          document.querySelector(".colorpickerlinebreak").remove();
+              document.querySelector(".colorpickerlinebreak").remove();
           }
           const colorpickersocontainer = document.getElementById('colorPickersContainer');
           if (colorpickersocontainer.children.length > 4) {
@@ -2721,7 +2728,6 @@ if (mlkthisyear - now < 0) {
           }
           newColorPicker.focus();
           newColorPicker.click();
-  
   
           adjustHeightOfColorPickerContainer();
           updateColorAnimations();
@@ -3283,6 +3289,8 @@ if (mlkthisyear - now < 0) {
                               showToast('Error updating event', 'error');
                           }
                       }
+                      document.getElementById('addtoexceptionbutton').style.display = "";
+
                   } else {
                       // Add new event
                       if (schedule_editingExceptionDay !== null) {
@@ -3338,6 +3346,7 @@ if (mlkthisyear - now < 0) {
               document.getElementById('schedule-startTime').value = event.startTime;
               document.getElementById('schedule-endTime').value = event.endTime;
               document.getElementById('schedule-addOrUpdateEventBtn').innerHTML = '<i class="fa-solid fa-check-circle"></i> Update Event';
+              document.getElementById('addtoexceptionbutton').style.display = "none";
           document.getElementById("schedule-eventTitle").scrollIntoView();
           }
 
@@ -4668,3 +4677,82 @@ function searchsettings(){
                 rightArrow.style.display = isScrollable ? "block" : "none";
             }
         }
+
+      // Add these new drag-and-drop handler functions
+      let draggedItem = null;
+
+      function handleDragStart(e) {
+          draggedItem = this;
+          this.style.opacity = '0.4';
+          
+          // Create a custom drag image that matches the color picker
+          const dragImage = this.cloneNode(true);
+          dragImage.style.opacity = '0.7';
+          dragImage.style.position = 'absolute';
+          dragImage.style.top = '-1000px';
+          document.body.appendChild(dragImage);
+          e.dataTransfer.setDragImage(dragImage, 20, 20);
+          
+          // Remove the drag image after it's no longer needed
+          setTimeout(() => {
+              document.body.removeChild(dragImage);
+          }, 0);
+      }
+
+      function handleDragEnd(e) {
+          this.style.opacity = '1';
+          
+          const containers = document.querySelectorAll('.colorpicker-container');
+          containers.forEach(container => {
+              container.classList.remove('drag-over');
+          });
+      }
+
+      function handleDragOver(e) {
+          e.preventDefault();
+          this.classList.add('drag-over');
+      }
+
+      function handleDrop(e) {
+          e.preventDefault();
+          this.classList.remove('drag-over');
+          
+          if (this === draggedItem) return;
+          
+          const container = document.getElementById('colorPickersContainer');
+          const allItems = [...container.getElementsByClassName('colorpicker-container')];
+          const draggedIndex = allItems.indexOf(draggedItem);
+          const droppedIndex = allItems.indexOf(this);
+          
+          if (draggedIndex < droppedIndex) {
+              this.parentNode.insertBefore(draggedItem, this.nextSibling);
+          } else {
+              this.parentNode.insertBefore(draggedItem, this);
+          }
+          
+          // Update the line break position
+          if(document.querySelector(".colorpickerlinebreak")){
+              document.querySelector(".colorpickerlinebreak").remove();
+          }
+          if (container.children.length > 4) {
+              const newBR = document.createElement('br');
+              newBR.className = 'colorpickerlinebreak';
+              container.insertBefore(newBR, container.children[4]);
+          }
+          
+          adjustHeightOfColorPickerContainer();
+          updateColorAnimations();
+          SetCountDowngeneral();
+      }
+
+      // Initialize drag-and-drop for existing color pickers
+      window.addEventListener('load', () => {
+          const containers = document.querySelectorAll('.colorpicker-container');
+          containers.forEach(container => {
+              container.draggable = true;
+              container.addEventListener('dragstart', handleDragStart);
+              container.addEventListener('dragend', handleDragEnd);
+              container.addEventListener('dragover', handleDragOver);
+              container.addEventListener('drop', handleDrop);
+          });
+      });
