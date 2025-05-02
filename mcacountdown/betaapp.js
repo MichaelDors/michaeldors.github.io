@@ -4795,6 +4795,13 @@ function addForegroundColorPicker() {
         const container = document.getElementById('colorPickersContainer');
         const newColorPickerContainer = document.createElement('div');
         newColorPickerContainer.className = 'colorpicker-container';
+        newColorPickerContainer.draggable = true;
+        
+        // Add drag event listeners
+        newColorPickerContainer.addEventListener('dragstart', handleDragStart);
+        newColorPickerContainer.addEventListener('dragend', handleDragEnd);
+        newColorPickerContainer.addEventListener('dragover', handleDragOver);
+        newColorPickerContainer.addEventListener('drop', handleDrop);
 
         const newColorPicker = document.createElement('input');
         newColorPicker.className = 'colorpicker';

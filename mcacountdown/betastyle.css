@@ -102,7 +102,17 @@ input[type="color"] {
 
 .clradd{
     margin-top:15px;
-    width:calc(4in + 30px) !important;
+    width:calc(1.5in + 30px) !important;
+    color:white;
+    font-weight: 100;
+    cursor: pointer;
+    transition:0.5s all ease;
+    filter: grayscale(0%) !important;
+}
+
+.clraddfg{
+    margin-top:15px;
+    width:2in !important;
     color:white;
     font-weight: 100;
     cursor: pointer;
@@ -1895,9 +1905,20 @@ a:hover:active {
         border-radius: 20px;
     }
     
+
     .clradd{
         margin-top:15px;
-        width:calc(2.8in + 30px) !important;
+        width:calc(1.25in + 30px) !important;
+        color:white;
+        font-weight: 100;
+        cursor: pointer;
+        transition:0.5s all ease;
+        filter: grayscale(0%) !important;
+    }
+    
+    .clraddfg{
+        margin-top:15px;
+        width:1.75in !important;
         color:white;
         font-weight: 100;
         cursor: pointer;
@@ -1905,15 +1926,6 @@ a:hover:active {
         filter: grayscale(0%) !important;
     }
 
-    .clraddfg{
-        margin-top:15px;
-        width:calc(2.8in + 30px) !important;
-        color:white;
-        font-weight: 100;
-        cursor: pointer;
-        transition:0.5s all ease;
-        filter: grayscale(0%) !important;
-    }
 
     #qrcode img {
         max-width:30%;
