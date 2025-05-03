@@ -2459,6 +2459,14 @@ if (mlkthisyear - now < 0) {
               SetCountDowngeneral();
           }
           updateSaveButtonText();
+
+                    //countdown schedule styling
+                    if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+                        document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
+                    }
+                    else{
+                        document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+                    }
       }
   
   
