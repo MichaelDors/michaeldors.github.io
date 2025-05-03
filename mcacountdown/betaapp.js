@@ -1,3 +1,4 @@
+let userInteracted = false;
 
   function handleTitleNavigation() {
       const fullUrl = window.location.href;
@@ -34,7 +35,12 @@
   }
       
   function updateSaveButtonText() {
-      const title = document.getElementById("countdowntitle").value;
+    title = "";
+    if(document.getElementById("countdowntitle")){
+        title = document.getElementById("countdowntitle").value;
+    }else{
+     title = 'finishedcddone';
+    }
   
       // Get the existing links from localStorage
       const savedLinks = localStorage.getItem("dashboardsaved");
@@ -811,6 +817,28 @@ if (mlkthisyear - now < 0) {
   }else{
       document.querySelector('meta[property="og:image"]').setAttribute('content', 'sharepanels/defaultshare.jpg');
   }
+
+  if(parameter('endingsound')){
+  showToast('This Countdown has an ending sound- tap or click anywhere to allow', 'persistent');
+}
+
+
+function handleUserInteraction() {
+    if(parameter('endingsound')){
+    if (!userInteracted) {
+      userInteracted = true;
+      setTimeout(() => removeToast(document.getElementById('enableaudiotoast')), 10);
+    }
+}
+  
+    // Remove listeners after first interaction
+    window.removeEventListener('click', handleUserInteraction);
+    window.removeEventListener('keydown', handleUserInteraction);
+  }
+  
+  window.addEventListener('click', handleUserInteraction);
+  window.addEventListener('keydown', handleUserInteraction);
+
 //confetti groundwork for snowflakes and emoji
 class ConfettiManager {
     constructor() {
@@ -1654,7 +1682,7 @@ if(parameter('progress')){ //if the user has their progress bar enabled
     document.getElementById("progress-bar").style.display = "";
 }
   
-          if(distance == 1000){ //when countdown is one second from ending, to give time to load
+          if(distance < 1){ //when countdown is one second from ending, to give time to load
           if(!getCookie('soce')){ //if disable end sound is not enabled
               //check if ending sound url input has value
                       if(document.getElementById("audioLink").value !== ""){
@@ -2646,8 +2674,10 @@ if (mlkthisyear - now < 0) {
   
   if (!window.matchMedia("(max-width: 767px)").matches) {
       document.getElementById("body").addEventListener("mousemove", function (event) {
+        if(document.getElementById("countdowntitle")){
           // Get element dimensions
           const rect = document.getElementById("countdowntitle").getBoundingClientRect();
+        
           const recttoolbar = document.getElementById("toolbar-notch").getBoundingClientRect();
   
           // Calculate distance from mouse to center of element
@@ -2678,7 +2708,9 @@ if (mlkthisyear - now < 0) {
             document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
             document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
         } 
+    }
       });
+    }
   
       const superchargeyourschedulecard = document.getElementById("presetupScheduleContent");
   
@@ -2696,7 +2728,7 @@ if (mlkthisyear - now < 0) {
       superchargeyourschedulecard.addEventListener("mouseleave", () => {
           superchargeyourschedulecard.style.transform = "perspective(1000px) rotateX(0) rotateY(0) scale(1)";
       });
-  }
+
   
   
       //set countdown title
@@ -3712,11 +3744,14 @@ showToast('Pick an exception day to add this event to', 'info')
           let player;
   
   function playAudio() {
+
       const link = document.getElementById('audioLink').value;
       const playerContainer = document.getElementById('playerContainer');
+
       playerContainer.innerHTML = '';
   
       if (link.includes('youtube.com') || link.includes('youtu.be')) {
+
           playYouTube(link);
       } else if (link.includes('soundcloud.com')) {
           playSoundCloud(link);
@@ -3726,31 +3761,36 @@ showToast('Pick an exception day to add this event to', 'info')
   }
   
   function playYouTube(link) {
-      const videoId = extractYouTubeId(link);
-      if (!videoId) {
-        showToast('Invalid YouTube URL', 'error');
-        return;
-      }
+    const videoId = extractYouTubeId(link);
   
-      const iframe = document.createElement('iframe');
-      iframe.width = "0";
-      iframe.height = "0";
-      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-      iframe.allow = "autoplay";
-      document.getElementById('playerContainer').appendChild(iframe);
+    if (!videoId) {
+        console.log("Invalid YouTube URL");
+      return;
+    }
+  
+    const iframe = document.createElement('iframe');
+    iframe.width = "1";
+    iframe.height = "1";
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    iframe.allow = "autoplay; encrypted-media";
+    iframe.style.opacity = "0";
+    
+    const container = document.getElementById('playerContainer');
+    
+    container.appendChild(iframe);
   }
   
   function extractYouTubeId(url) {
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-      const match = url.match(regExp);
-      return (match && match[2].length === 11) ? match[2] : null;
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([\w-]{11})/);
+    return match ? match[1] : null;
   }
   
   function playSoundCloud(link) {
       const iframe = document.createElement('iframe');
-      iframe.width = "0";
-      iframe.height = "0";
+      iframe.width = "1";
+      iframe.height = "1";
       iframe.src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(link)}&auto_play=true`;
+      iframe.style.opacity = "0";
       document.getElementById('playerContainer').appendChild(iframe);
   }
   
@@ -4250,6 +4290,10 @@ showToast('Pick an exception day to add this event to', 'info')
       else if(type == "save"){
           icon.src = "toasticons/save.png";
       }
+      else if(type == "persistent"){
+        toast.id = "enableaudiotoast";
+        icon.src = "toasticons/info.png";
+    }
       else{
           icon.src = "toasticons/info.png";
       }
@@ -4301,8 +4345,10 @@ showToast('Pick an exception day to add this event to', 'info')
               icon.style.height = `${toastHeight}px`;
           }, 100); // Adjust the timeout duration if necessary
           
+          if(type !== 'persistent'){
           // Auto remove after 5 seconds
           setTimeout(() => removeToast(toast), 5000);
+          }
       }
   
       function removeToast(toast) {
