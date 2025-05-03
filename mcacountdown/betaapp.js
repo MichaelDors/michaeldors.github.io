@@ -2025,7 +2025,7 @@ function contrast(){ //increase contrast set or remove cookie
       var thisyear = new Date().getFullYear();
   
       function MES() { //MCA End of School
-          document.querySelector(".datepicker").value = '2025-05-23T11:30';
+          document.querySelector(".datepicker").value = '2025-05-22T11:30';
           SetCountDowngeneral();
       }
       function EASTER() { //Easter
