@@ -296,39 +296,39 @@ const countdownDate = new Date(parameter('date')).getTime();
   } else {
       // Handle existing color parameters
       legacyParams.forEach(({param, id, cssVar}) => {
-          if (parameter(param)) {
-              if (parameter(param) === "null") {
-                  console.log(`Colors(${id.slice(-1)}) could not be imported properly.`);
-              } else {
-                  const paramValue = parameter(param);
-                  if (paramValue === 'fg') {
-                      // This is a foreground color
-                      if (!document.getElementById(id)) {
-                          addForegroundColorPicker("auto");
-                      } else {
-                          const picker = document.getElementById(id);
-                          picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
-                          picker.dataset.foreground = 'true';
-                      }
-                  } else {
-                      const colorToUse = '#' + paramValue;
-                      if (!document.getElementById(id)) {
-                          addColorPicker("auto");
-                          adjustHeightOfColorPickerContainer();
-                      }
-                      document.getElementById(id).value = colorToUse;
-                      css.style.setProperty(cssVar, colorToUse);
-                      css.style.setProperty(`--color${id.slice(-1)}`, colorToUse);
-                  }
-              }
-          } else {
-              // Remove color picker if parameter doesn't exist
-              const picker = document.getElementById(id);
-              if (picker) {
-                  picker.parentElement.remove();
-              }
-          }
-      });
+        if (parameter(param)) {
+            if (parameter(param) === "null") {
+                console.log(`Colors(${id.slice(-1)}) could not be imported properly.`);
+            } else {
+                const paramValue = parameter(param);
+                if (paramValue === 'fg') {
+                    // This is a foreground color
+                    if (!document.getElementById(id)) {
+                        addForegroundColorPicker("auto");
+                    } else {
+                        const picker = document.getElementById(id);
+                        picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
+                        picker.dataset.useThemeColor = 'true';
+                    }
+                } else {
+                    const colorToUse = '#' + paramValue;
+                    if (!document.getElementById(id)) {
+                        addColorPicker("auto");
+                        adjustHeightOfColorPickerContainer();
+                    }
+                    document.getElementById(id).value = colorToUse;
+                    css.style.setProperty(cssVar, colorToUse);
+                    css.style.setProperty(`--color${id.slice(-1)}`, colorToUse);
+                }
+            }
+        } else {
+            // Remove color picker if parameter doesn't exist
+            const picker = document.getElementById(id);
+            if (picker) {
+                picker.parentElement.remove();
+            }
+        }
+    });
   
       // Handle additional color parameters (color5 through color8)
       for (let i = 5; i <= 8; i++) {
