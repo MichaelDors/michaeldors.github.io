@@ -332,24 +332,36 @@ const countdownDate = new Date(parameter('date')).getTime();
   
       // Handle additional color parameters (color5 through color8)
       for (let i = 5; i <= 8; i++) {
-          const colorParam = parameter(`color${i}`);
-          if (colorParam && colorParam !== "null") {
-              if (colorParam === 'fg') {
-                  // This is a foreground color
-                  if (!document.getElementById(`color${i}`)) {
-                      addForegroundColorPicker("auto");
-                  }
-              } else {
-                  const colorToUse = '#' + colorParam;
-                  if (!document.getElementById(`color${i}`)) {
-                      addColorPicker("auto");
-                  }
-                  document.getElementById(`color${i}`).value = colorToUse;
-                  css.style.setProperty(`--color${i}`, colorToUse);
-              }
-          }
-      }
-  }
+        const colorParam = parameter(`color${i}`);
+        if (colorParam && colorParam !== "null") {
+            if (colorParam === 'fg') {
+                // This is a foreground color
+                if (!document.getElementById(`color${i}`)) {
+                    addForegroundColorPicker("auto");
+                }
+                const picker = document.getElementById(`color${i}`);
+                if (picker) {
+                    picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
+                    picker.dataset.useThemeColor = 'true';
+                    css.style.setProperty(`--color${i}`, 'var(--mainforegroundcolor)');
+                }
+            } else {
+                const colorToUse = '#' + colorParam;
+                if (!document.getElementById(`color${i}`)) {
+                    addColorPicker("auto");
+                }
+                document.getElementById(`color${i}`).value = colorToUse;
+                css.style.setProperty(`--color${i}`, colorToUse);
+            }
+        }
+    }
+
+    // Update colorPickerCount to match actual number of pickers
+    const container = document.getElementById('colorPickersContainer');
+    if (container) {
+        colorPickerCount = container.getElementsByClassName('colorpicker-container').length;
+    }
+}
   
       //set up countdown schedules
       if(parameter("schedule") !== "null" && parameter("schedule")){  
@@ -2754,6 +2766,13 @@ if (mlkthisyear - now < 0) {
           else{
               document.querySelector(".clradd").classList.remove("clraddoff");
           }
+
+          if(colorpickersocontainer.children.length > 8){
+            document.querySelector(".clraddfg").classList.add("clraddoff");
+        }
+        else{
+            document.querySelector(".clraddfg").classList.remove("clraddoff");
+        }
           newColorPicker.focus();
           newColorPicker.click();
   
@@ -2789,6 +2808,13 @@ if (mlkthisyear - now < 0) {
           else{
               document.querySelector(".clradd").classList.remove("clraddoff");
           }
+
+          if(colorpickersocontainer.children.length > 8){
+            document.querySelector(".clraddfg").classList.add("clraddoff");
+        }
+        else{
+            document.querySelector(".clraddfg").classList.remove("clraddoff");
+        }
       
       adjustHeightOfColorPickerContainer();
       SetCountDowngeneral();
@@ -2895,30 +2921,25 @@ if (mlkthisyear - now < 0) {
 
           function importICSFile() {
             try {
-                console.log('Creating file input element...');
                 const fileInput = document.createElement('input');
                 fileInput.type = 'file';
                 fileInput.accept = '.ics';
                 
                 // Add event listener before appending to DOM
                 fileInput.addEventListener('change', function(e) {
-                    console.log('File input changed');
                     try {
                         const file = e.target.files[0];
                         if (!file) {
-                            console.log('No file selected');
                             showToast('No file selected', 'error');
                             return;
                         }
                         
-                        console.log('File selected:', file.name, 'size:', file.size);
                         showToast('Reading file...', 'info');
                         
                         const reader = new FileReader();
                         
                         reader.onload = function(event) {
                             try {
-                                console.log('File read successfully');
                                 const icsContent = event.target.result;
                                 processICSContent(icsContent);
                             } catch (error) {
@@ -4310,7 +4331,6 @@ showToast('Pick an exception day to add this event to', 'info')
                 document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
                 document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
             }
-            SetCountDowngeneral(); // Update any theme-colored pickers
         }
         
         function setDarkMode() {
@@ -4330,7 +4350,6 @@ showToast('Pick an exception day to add this event to', 'info')
             document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
             document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(255, 255, 255, 0.1)');
             document.documentElement.style.setProperty('--progressbarhighlight', 'none');
-            SetCountDowngeneral(); // Update any theme-colored pickers
         }
         
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
@@ -4351,6 +4370,8 @@ if (countdownTitle) {
         document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
     }
 }
+SetCountDowngeneral(); // Update any theme-colored pickers
+
 });
 
 function searchsettings(){
@@ -4776,6 +4797,7 @@ function searchsettings(){
           SetCountDowngeneral();
       }
 
+
       // Initialize drag-and-drop for existing color pickers
       window.addEventListener('load', () => {
           const containers = document.querySelectorAll('.colorpicker-container');
@@ -4789,7 +4811,7 @@ function searchsettings(){
       });
 
 
-function addForegroundColorPicker() {
+function addForegroundColorPicker(method) {
     if (colorPickerCount < 8) {
         colorPickerCount++;
         const container = document.getElementById('colorPickersContainer');
@@ -4841,7 +4863,17 @@ function addForegroundColorPicker() {
             document.querySelector(".clradd").classList.remove("clraddoff");
         }
 
+        if(colorpickersocontainer.children.length > 8){
+            document.querySelector(".clraddfg").classList.add("clraddoff");
+        }
+        else{
+            document.querySelector(".clraddfg").classList.remove("clraddoff");
+        }
+
         adjustHeightOfColorPickerContainer();
-        SetCountDowngeneral();
+        updateColorAnimations();
+        if(method !== "auto"){
+            SetCountDowngeneral();
+        }
     }
 }
