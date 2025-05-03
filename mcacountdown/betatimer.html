@@ -322,7 +322,7 @@
                     </div>
                 </div>
                 <a class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus-circle"></i> Add Color</a>
-                <a class="clraddfg" onmouseup="addForegroundColorPicker()"><i class="fa-solid fa-circle-half-stroke"></i> Add Foreground</a>
+                <a class="clraddfg" onmouseup="addForegroundColorPicker()"><i class="fa-solid fa-circle-half-stroke"></i> Add Adaptive</a>
 
                 <p class="texttip">
                     The foreground elements will cycle through the chosen colors
@@ -567,12 +567,12 @@
         <Br>
         <br>
         <br>
-        <div id="localshortcutcontainerdiv" class="localshortcutcontainerdiv" style="border-radius: 20px; background: #00df52; margin-bottom:50px; color: black; padding:20px; min-width:fit-content; max-width:65%;">
+        <div id="localshortcutcontainerdiv" class="localshortcutcontainerdiv" style="border-radius: 20px; background: #00df52; margin-bottom:50px; color: black; padding:50px; width:60%;">
             <p style="color:black; font-size:27px;"><i class="fa-solid fa-location-pin-lock"></i> Local Shortcut</p>
             <p style="color:black; max-width: 70%;" class="texttip">
                 A dynamic bookmark that updates with changes saved to your Dashboard
             </p>
-    <input id="locallinkinput" class="localshortcutinput" />
+    <input id="locallinkinput" class="localshortcutinput" style="width:70%"/>
         <button style="background:transparent; border:none; outline:none; cursor:pointer">
                 <i title="Copy Local Shortcut" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px; color:#000000;" onclick="copyinputtextlocalshortcutlink(); showToast('Local Shortcut link copied', 'success');"></i>
         </button>
