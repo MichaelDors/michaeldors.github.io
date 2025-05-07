@@ -3698,7 +3698,7 @@ showToast('Pick an exception day to add this event to', 'info')
               const timeUntilStart = startTime - new Date();
               const hoursUntilStart = Math.floor(timeUntilStart / 3600000);
               const minutesUntilStart = Math.floor((timeUntilStart % 3600000) / 60000);
-            const secondsUntilStart = timeUntilStart % 60;
+                      const secondsUntilStart = Math.floor((timeUntilStart % 60000) / 1000);
   
               document.getElementById('schedule-classTitle').textContent = `${document.getElementById("countdowntitle").value}`;
 
