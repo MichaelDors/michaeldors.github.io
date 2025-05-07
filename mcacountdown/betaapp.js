@@ -3619,9 +3619,9 @@ showToast('Pick an exception day to add this event to', 'info')
                       document.getElementById('schedule-progress').style.width = '0%';
                       document.getElementById('schedule-remainingText').classList.add("pulsing");
                     if(currentEvent.title){
-                      document.title = currentEvent.title + "Starting Soon";
+                      document.title = currentEvent.title + " Starting Soon";
                     }else{
-                      document.title = document.getElementById("countdowntitle").value + "Starting Soon";
+                      document.title = document.getElementById("countdowntitle").value + " Starting Soon";
                     }
                   } else {
                     document.getElementById('schedule-remainingText').classList.remove("pulsing");
@@ -3698,12 +3698,18 @@ showToast('Pick an exception day to add this event to', 'info')
               const timeUntilStart = startTime - new Date();
               const hoursUntilStart = Math.floor(timeUntilStart / 3600000);
               const minutesUntilStart = Math.floor((timeUntilStart % 3600000) / 60000);
+            const secondsUntilStart = timeUntilStart % 60;
   
-              document.getElementById('schedule-classTitle').textContent = `${firstEvent.title}`;
+              document.getElementById('schedule-classTitle').textContent = `${document.getElementById("countdowntitle").value}`;
+
+            document.getElementById('schedule-remainingText').classList.add("pulsing");
+
+                document.title = document.getElementById("countdowntitle").value + " Starting Soon";
+            
               if (!getCookie("lcdu")) {
-                  document.getElementById('schedule-timeRemaining').textContent = `${hoursUntilStart}:${minutesUntilStart.toString().padStart(2, '0')}`;
+                  document.getElementById('schedule-timeRemaining').textContent = `${hoursUntilStart}:${minutesUntilStart.toString().padStart(2, '0')}:${secondsUntilStart.toString().padStart(2, '0')}`;
               }else{
-                  document.getElementById('schedule-timeRemaining').textContent = `${hoursUntilStart}h ${minutesUntilStart.toString().padStart(2, '0')}m`;
+                  document.getElementById('schedule-timeRemaining').textContent = `${hoursUntilStart}h ${minutesUntilStart.toString().padStart(2, '0')}m ${secondsUntilStart.toString().padStart(2, '0')}s`;
               }
               document.getElementById('schedule-remainingText').textContent = 'starting';
               document.getElementById('schedule-progress').style.width = '0%';
