@@ -3618,7 +3618,7 @@ showToast('Pick an exception day to add this event to', 'info')
                       document.getElementById('schedule-remainingText').textContent = 'starting';
                       document.getElementById('schedule-progress').style.width = '0%';
                       document.getElementById('schedule-remainingText').classList.add("pulsing");
-                      document.title = "Event Starting Soon";
+                      document.title = currentEvent.title + "Starting Soon";
                   } else {
                     document.getElementById('schedule-remainingText').classList.remove("pulsing");
                       const remainingTime = currentEvent.endTime - now;
