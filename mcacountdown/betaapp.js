@@ -935,6 +935,30 @@ class ConfettiManager {
 }
   
           const confettiManager = new ConfettiManager();
+
+
+
+          function initEmojiPlaceholder() {
+            const input = document.getElementById('confettiEmojiPicker');
+            if (!input) return;
+        
+            const placeholders = input.getAttribute('data-placeholders').split(',');
+            let currentIndex = 0;
+        
+            function updatePlaceholder() {
+                input.setAttribute('placeholder', placeholders[currentIndex]);
+                currentIndex = (currentIndex + 1) % placeholders.length;
+            }
+        
+            // Update placeholder every 600ms
+            setInterval(updatePlaceholder, 600);
+        }
+        
+        // Add this to the window.onload or document.ready event
+        document.addEventListener('DOMContentLoaded', function() {
+            initEmojiPlaceholder();
+            // ... existing code ...
+        });
   
       //animation speed toggle
       // New dropdown speed picker
@@ -2227,7 +2251,7 @@ function contrast(){ //increase contrast set or remove cookie
                   christmasday = new Date(thisyear + '-12-25T00:00');
               }
 
-//groundhog day
+              //groundhog day
 var groundhogthisyear = new Date(thisyear + "-02-02T00:00"); //setting up this year's date
 if (groundhogthisyear - now < 0) { //if it's already passed
     groundhogday = new Date(nextyear + '-02-02T00:00'); //then set to next year
@@ -2314,31 +2338,31 @@ if (mlkthisyear - now < 0) {
                   var timeDiff = holiday.date.getTime() - now.getTime();
                   return timeDiff > 0 && timeDiff < (closest.date.getTime() - now.getTime()) ? holiday : closest;
               }, holidays[0]);
-
-
-
+  
+              
+  
               switch (nextHoliday.name) {
                   case 'newyear':
                       NYD(); //run the NYD function to actually set the date and such to NYD
                       break;
-                case 'mlk':
-                    MLK();
-                    break;
+                 case 'mlk':
+                      MLK();
+                      break;
                   case 'groundhog':
-                  GROUNDHOG();
+                      GROUNDHOG();
                       break;
                   case 'valentines': //see NYD for docs
                       VD();
                       break;
                 case 'stpatricks':
-                    SDP();
-                    break;
+                      SDP();
+                      break;
                   case 'easter': //see NYD for docs
                       EASTER();
                       break;
                     case'cinco':
-                        CINCO();
-                        break;
+                      CINCO();
+                      break;
                   case 'independence': //see NYD for docs
                       ID();
                       break;
@@ -2726,14 +2750,14 @@ if (mlkthisyear - now < 0) {
           // Set element opacity
           if (((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) || parameter("atc") !== "none") {
             document.getElementById("countdowntitle").style.border = `1px solid rgba(255, 255, 255, ${opacity})`;
-            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
-            document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
-        }
-        else{
+        document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+        document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
+    }
+    else{
             document.getElementById("countdowntitle").style.border = `1px solid rgba(0, 0, 0, ${opacity})`;
-            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
-            document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
-        } 
+        document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+        document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
+    } 
     }
       });
     }
@@ -2945,11 +2969,11 @@ if (mlkthisyear - now < 0) {
           document.querySelector(".datepicker").value = '9999-12-30T00:00';
   
               if(parameter("atc") == "none"){
-                      document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
-              }
-              else{
-                      document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
-              }
+              document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
+          }
+          else{
+              document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+          }
            SetCountDowngeneral();
   
       document.getElementById("clock").style.display = "none"; //hide clock
@@ -3243,10 +3267,10 @@ if (mlkthisyear - now < 0) {
                             switch (propertyName) {
                                 case 'SUMMARY':
                                     currentEvent.summary = value || 'Untitled Event';
-                                    break;
+                break;
                                 case 'DTSTART':
                                     currentEvent.dtstart = value;
-                                    break;
+                break;
                                 case 'DTEND':
                                     currentEvent.dtend = value;
                                     break;
@@ -4326,7 +4350,7 @@ document.addEventListener('DOMContentLoaded', function() {
               if (index < colors.length - 1) {
                   textKeyframes += `${endPercent}% { color: ${colors[(index + 1) % colors.length]}; }\n`;
                   bgKeyframes += `${endPercent}% { background-color: ${colors[(index + 1) % colors.length]}; }\n`;
-              } else {
+            } else {
                   // Complete the loop back to the first color
                   textKeyframes += `100% { color: ${colors[0]}; }\n`;
                   bgKeyframes += `100% { background-color: ${colors[0]}; }\n`;
@@ -4399,7 +4423,7 @@ document.addEventListener('DOMContentLoaded', function() {
           toastContainer.appendChild(toast);
   
           // Use setTimeout to ensure the banner is fully rendered
-          setTimeout(() => {
+                    setTimeout(() => {
               const toastHeight = toast.offsetHeight;
               icon.style.height = `${toastHeight}px`;
           }, 1); // Adjust the timeout duration if necessary
@@ -4436,7 +4460,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
       function removeToast(toast) {
           toast.style.animation = 'toastslideOut 0.3s ease forwards';
-          setTimeout(() => {
+                    setTimeout(() => {
             toast.remove();
           }, 300);
         }
@@ -4882,7 +4906,7 @@ function searchsettings(){
           e.dataTransfer.setDragImage(dragImage, 20, 20);
           
           // Remove the drag image after it's no longer needed
-          setTimeout(() => {
+                    setTimeout(() => {
               document.body.removeChild(dragImage);
           }, 0);
       }
@@ -4944,9 +4968,9 @@ function searchsettings(){
               container.addEventListener('dragend', handleDragEnd);
               container.addEventListener('dragover', handleDragOver);
               container.addEventListener('drop', handleDrop);
-          });
-      });
-
+            });
+        });
+        
 
 function addForegroundColorPicker(method) {
     if (colorPickerCount < 8) {
@@ -5013,4 +5037,5 @@ function addForegroundColorPicker(method) {
             SetCountDowngeneral();
         }
     }
-}
+          }
+  
