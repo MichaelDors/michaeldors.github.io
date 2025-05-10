@@ -977,6 +977,49 @@ input.addEventListener('input', updateOverlayVisibility);
 
 // Initial state
 updateOverlayVisibility();
+
+
+function spawnIcon(el) {
+  const icon = document.createElement('i');
+  const icons = [
+    'fa-heart',
+    'fa-star',
+    'fa-music',
+    'fa-bolt',
+    'fa-fire',
+    'fa-snowflake',
+    'fa-tree',
+    'fa-gift',
+    'fa-bell',
+    'fa-candy-cane',
+    'fa-holly-berry',
+    'fa-hat-wizard',
+    'fa-ghost',
+    'fa-pumpkin',
+    'fa-birthday-cake',
+    'fa-champagne-glasses',
+  ];
+  
+  icon.className = `fas ${icons[Math.floor(Math.random() * icons.length)]} floating-icon`;
+  
+  // Position relative to parent
+  const rect = el.getBoundingClientRect();
+  icon.style.left = `${20 + Math.random() * (rect.width - 40)}px`;
+  icon.style.top = `${Math.random() * rect.height}px`;
+  el.appendChild(icon);
+
+  setTimeout(() => icon.remove(), 5000); // Remove after animation
+}
+
+function initFloatingIcons() {
+    document.querySelectorAll('.float-icons').forEach(el => {
+        setInterval(() => {
+          if (Math.random() < 0.3) spawnIcon(el);
+        }, 300);
+      });
+}
+
+document.addEventListener('DOMContentLoaded', initFloatingIcons);
           
         
   
