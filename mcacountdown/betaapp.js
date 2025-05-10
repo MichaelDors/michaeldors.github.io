@@ -2418,7 +2418,7 @@ if (mlkthisyear - now < 0) {
         if ((method != "auto") && (parameter("atc") == bgint)) {
             //the selected background is already the set background - turn off background
             enablecolor();
-            showToast("Enabling foreground colors disables the background", 'info');
+            showToast("Disabling the background enables foreground colors", 'info');
             
             // First set opacity to 0 to trigger the transition
             document.getElementById("animatedbackground").style.opacity = "0";
