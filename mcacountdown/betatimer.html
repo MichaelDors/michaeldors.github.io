@@ -463,15 +463,18 @@
                         <div class="schedule-editor-section" id="exceptiondaycontainer">
                             <h2 style="font-family: 'Dosis';">Exception Days</h2>
                             <div class="schedule-form-group">
-                                <select id="schedule-exceptionDay">
-                                    <option value="0">Sunday</option>
-                                    <option value="1">Monday</option>
-                                    <option value="2">Tuesday</option>
-                                    <option value="3">Wednesday</option>
-                                    <option value="4">Thursday</option>
-                                    <option value="5">Friday</option>
-                                    <option value="6">Saturday</option>
-                                </select>
+                                <div class="dropdown-container" style="display: inline-block; width:250px;" id="schedule-exceptionDay">
+                                    <button class="dropdown-button" id="dropdownbuttonexceptionday"><i class="fa-solid fa-calendar-day"></i> Select Day</button>
+                                    <div class="dropdown-menu" id="exceptionDayMenu">
+                                        <div class="dropdown-item" data-day="0"><i class="fa-solid fa-sun"></i> Sunday</div>
+                                        <div class="dropdown-item" data-day="1"><i class="fa-solid fa-mug-hot"></i> Monday</div>
+                                        <div class="dropdown-item" data-day="2"><i class="fa-solid fa-calendar-check"></i> Tuesday</div>
+                                        <div class="dropdown-item" data-day="3"><i class="fa-solid fa-balance-scale"></i> Wednesday</div>
+                                        <div class="dropdown-item" data-day="4"><i class="fa-solid fa-chart-line"></i> Thursday</div>
+                                        <div class="dropdown-item" data-day="5"><i class="fa-solid fa-pizza-slice"></i> Friday</div>
+                                        <div class="dropdown-item" data-day="6"><i class="fa-solid fa-umbrella-beach"></i> Saturday</div>
+                                    </div>
+                                </div>
                                 <a id="schedule-addExceptionBtn" style="margin-left:0px !important; border-top-left-radius: 0px; border-bottom-left-radius: 0px;"><i class="fa-solid fa-plus-circle"></i> Add Exception Day</a>
                             </div>
                             <div style="font-family: 'Dosis'" id="schedule-exceptionList"></div>

@@ -1569,41 +1569,66 @@ class ConfettiManager {
   
           //only include
           if (getCookie("day")) {
-              document.getElementById("clock").innerHTML = days + " days"; //no calc, just use days
+            if(days == 1){
+                document.getElementById("clock").innerHTML = days + " day"; //no calc, just use days
+            }
+            else{
+                document.getElementById("clock").innerHTML = days + " days"; //no calc, just use days
+            }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
               }
           }
           else if (getCookie("hour")) {
               var hourcount = Math.floor(distance / 3600000); //figure out how many hours in that many milliseconds
-              document.getElementById("clock").innerHTML = hourcount + " hours";
+              if(hourcount == 1){
+                  document.getElementById("clock").innerHTML = hourcount + " hour";
+              } else {
+                  document.getElementById("clock").innerHTML = hourcount + " hours";
+              }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
               }
           }
           else if (getCookie("minute")) {
               var minutecount = Math.floor(distance / 60000); //milliseconds converted to days
-              document.getElementById("clock").innerHTML = minutecount + " minutes";
+              if(minutecount == 1){
+                  document.getElementById("clock").innerHTML = minutecount + " minute";
+              } else {
+                  document.getElementById("clock").innerHTML = minutecount + " minutes";
+              }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
               }
           }
           else if (getCookie("second")) {
               var secondcount = Math.floor(distance / 1000); //milliseconds converted to seconds
-              document.getElementById("clock").innerHTML = secondcount + " seconds";
+              if(secondcount == 1){
+                  document.getElementById("clock").innerHTML = secondcount + " second";
+              } else {
+                  document.getElementById("clock").innerHTML = secondcount + " seconds";
+              }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
               }
           }
           else if (getCookie("millisecond")) {
-              document.getElementById("clock").innerHTML = distance + " milliseconds"; //no calc, just use milliseconds
+              if(distance == 1){
+                  document.getElementById("clock").innerHTML = distance + " millisecond"; //no calc, just use milliseconds
+              } else {
+                  document.getElementById("clock").innerHTML = distance + " milliseconds"; //no calc, just use milliseconds
+              }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
               }
           }
           else if (getCookie("week")) {
               var weekcount = Math.floor(days / 7); //days / seven, weeks
-              document.getElementById("clock").innerHTML = weekcount + " weeks";
+              if(weekcount == 1){
+                  document.getElementById("clock").innerHTML = weekcount + " week";
+              } else {
+                  document.getElementById("clock").innerHTML = weekcount + " weeks";
+              }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
               }
@@ -2201,7 +2226,7 @@ function contrast(){ //increase contrast set or remove cookie
               } else {
                   christmasday = new Date(thisyear + '-12-25T00:00');
               }
-  
+
 //groundhog day
 var groundhogthisyear = new Date(thisyear + "-02-02T00:00"); //setting up this year's date
 if (groundhogthisyear - now < 0) { //if it's already passed
@@ -2234,7 +2259,7 @@ if (mlkthisyear - now < 0) {
 } else {
     mlkday = new Date(formatDate(getDateString(thisyear, 0, 2, 1)));
 }
-  
+
   
               // List of holiday dates
               const holidays = [
@@ -2289,8 +2314,9 @@ if (mlkthisyear - now < 0) {
                   var timeDiff = holiday.date.getTime() - now.getTime();
                   return timeDiff > 0 && timeDiff < (closest.date.getTime() - now.getTime()) ? holiday : closest;
               }, holidays[0]);
-  
-  
+
+
+
               switch (nextHoliday.name) {
                   case 'newyear':
                       NYD(); //run the NYD function to actually set the date and such to NYD
@@ -3473,21 +3499,68 @@ showToast('Pick an exception day to add this event to', 'info')
 
           }
   
-          function schedule_addExceptionDay() {
-              const day = document.getElementById('schedule-exceptionDay').value;
-              if (!schedule_exceptions[day]) {
-                  schedule_exceptions[day] = [];
-                  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                  showToast(dayNames[day] + ' exception created', 'success');
-              }
-              else{
-                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                showToast('You already have an exception for ' + dayNames[day], 'error');
-              }
-              schedule_updateExceptionList();
-              schedule_updateURL();
-              schedule_updateScheduleViewer();
-          }
+function schedule_addExceptionDay() {
+    const selectedDay = document.querySelector('#exceptionDayMenu .dropdown-item.selected');
+    if (!selectedDay) {
+        showToast('Please select a day first', 'error');
+        return;
+    }
+    const day = selectedDay.getAttribute('data-day');
+    if (!schedule_exceptions[day]) {
+        schedule_exceptions[day] = [];
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        showToast(dayNames[day] + ' exception created', 'success');
+    }
+    else{
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      showToast('You already have an exception for ' + dayNames[day], 'error');
+    }
+    schedule_updateExceptionList();
+    schedule_updateURL();
+    schedule_updateScheduleViewer();
+}
+
+// Add event listeners for the exception day dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    const exceptionDayDropdown = document.getElementById('schedule-exceptionDay');
+    if (exceptionDayDropdown) {
+        const exceptionDayButton = exceptionDayDropdown.querySelector('.dropdown-button');
+        const exceptionDayMenu = document.getElementById('exceptionDayMenu');
+        const exceptionDayItems = exceptionDayMenu.querySelectorAll('.dropdown-item');
+        
+        exceptionDayButton.addEventListener('click', () => {
+            if (!exceptionDayMenu.classList.contains('visible')) {
+                exceptionDayMenu.classList.add('visible', 'animate-open');
+                exceptionDayMenu.addEventListener('animationend', () => {
+                    exceptionDayMenu.classList.remove('animate-open');
+                    exceptionDayMenu.classList.add('opened');
+                }, { once: true });
+            } else {
+                exceptionDayMenu.classList.remove('visible', 'opened');
+            }
+        });
+
+        exceptionDayItems.forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove selected class from all items
+                exceptionDayItems.forEach(i => i.classList.remove('selected'));
+                // Add selected class to clicked item
+                this.classList.add('selected');
+                // Update button text
+                exceptionDayButton.innerHTML = this.innerHTML;
+                // Close dropdown
+                exceptionDayMenu.classList.remove('visible', 'opened');
+            });
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!exceptionDayDropdown.contains(event.target)) {
+                exceptionDayMenu.classList.remove('visible', 'opened');
+            }
+        });
+    }
+});
   
           function schedule_removeExceptionDay(day) {
               delete schedule_exceptions[day];
