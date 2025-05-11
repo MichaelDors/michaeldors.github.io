@@ -41,6 +41,19 @@ let userInteracted = false;
     }else{
      title = 'finishedcddone';
     }
+    
+    document.querySelectorAll('.manipulatedefaultvaluedatetime').forEach(input => {
+        const now = new Date();
+        now.setHours(12, 30, 0, 0); // Set time to 12:30 PM
+    
+        if (input.type === 'datetime-local') {
+          input.value = now.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+        } else if (input.type === 'date') {
+          input.value = now.toISOString().slice(0, 10); // YYYY-MM-DD
+        } else if (input.type === 'time') {
+          input.value = now.toTimeString().slice(0, 5); // HH:MM
+        }
+      });
   
       // Get the existing links from localStorage
       const savedLinks = localStorage.getItem("dashboardsaved");
@@ -3042,12 +3055,6 @@ if (mlkthisyear - now < 0) {
           history.replaceState(null, '', `?schedule=eyJzY2hlZHVsZV9ldmVudHMiOltdLCJzY2hlZHVsZV9leGNlcHRpb25zIjp7fX0=`);
           document.querySelector(".datepicker").value = '9999-12-30T00:00';
   
-              if(parameter("atc") == "none"){
-              document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
-          }
-          else{
-              document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
-          }
            SetCountDowngeneral();
   
       document.getElementById("clock").style.display = "none"; //hide clock
@@ -3065,6 +3072,13 @@ if (mlkthisyear - now < 0) {
       showToast('Schedule created successfully!', 'success');
 
       document.getElementById("schedule-eventTitle").scrollIntoView();
+
+      if(parameter("atc") == "none"){
+        document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
+    }
+    else{
+        document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+    }
       }
   
           function schedule_resetAll(){
