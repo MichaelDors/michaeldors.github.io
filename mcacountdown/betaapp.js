@@ -199,6 +199,8 @@ function cardmodemanager(){
       couple iterations mess with the text wrapping and cange the size of the banner
       */
       updateSaveButtonText();
+
+      SetCountDowngeneral();
   };
   
   
@@ -311,10 +313,14 @@ const countdownDate = new Date(parameter('date')).getTime();
                     // This is a foreground color
                     if (!document.getElementById(id)) {
                         addForegroundColorPicker("auto");
+
                     } else {
                         const picker = document.getElementById(id);
                         picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
                         picker.dataset.useThemeColor = 'true';
+                        picker.classList.add("fgcolorpicker");
+                        picker.disabled = true;
+                        picker.style.cursor = "default";
                     }
                 } else {
                     const colorToUse = '#' + paramValue;
@@ -350,6 +356,9 @@ const countdownDate = new Date(parameter('date')).getTime();
                     picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
                     picker.dataset.useThemeColor = 'true';
                     css.style.setProperty(`--color${i}`, 'var(--mainforegroundcolor)');
+                    picker.classList.add("fgcolorpicker");
+                    picker.disabled = true;
+                    picker.style.cursor = "default";
                 }
             } else {
                 const colorToUse = '#' + colorParam;
@@ -874,7 +883,7 @@ class ConfettiManager {
                 const emojiArray = Array.from(content); // Convert the content to an array of characters
                 confettiParticle.innerHTML = emojiArray.length > 1 ? emojiArray[Math.floor(Math.random() * emojiArray.length)] : content;
                 confettiParticle.style.fontSize = `${size}px`;
-                confettiParticle.style.color = `#FFFFFF`;
+                confettiParticle.style.color = `var(--mainforegroundcolor)`;
                 confettiParticle.style.fontFamily = `Fredoka One`;
                 break;
         }
@@ -1005,7 +1014,7 @@ function spawnIcon(el) {
   // Position relative to parent
   const rect = el.getBoundingClientRect();
   icon.style.left = `${20 + Math.random() * (rect.width - 40)}px`;
-  icon.style.top = `${Math.random() * rect.height}px`;
+  icon.style.top = `${rect.height - (Math.random() * rect.height)}px`;
   el.appendChild(icon);
 
   setTimeout(() => icon.remove(), 5000); // Remove after animation
@@ -1261,34 +1270,34 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
       }
   
       function SetCountDowngeneral() { //gets called quite a bit, updates all settings and parameters to match the current state
-          countDownDate = new Date(document.querySelector(".datepicker").value);
-          var css = document.querySelector(':root');
-          var colors = [];
-          var colorsNormalized = [];
-          
-          // Get all color pickers dynamically
-          const colorPickers = document.querySelectorAll('.colorpicker');
-          colorPickers.forEach((picker, index) => {
-              // If this picker is marked to use theme color, get the current theme color
-              if (picker.dataset.useThemeColor === 'true') {
-                  const computedStyle = getComputedStyle(document.documentElement);
-                  const themeColor = computedStyle.getPropertyValue('--mainforegroundcolor').trim();
-                  picker.value = themeColor;
-                  colors[index] = 'fg';
-                  colorsNormalized[index] = 'fg';
-              } else {
-                  colors[index] = picker.value;
-                  colorsNormalized[index] = picker.value.replace("#", "");
-              }
-              css.style.setProperty(`--color${index + 1}`, colors[index]);
-          });
-  
-          // Maintain backwards compatibility with old CSS variables
-          css.style.setProperty('--one', colors[0] || '#8426ff');
-          css.style.setProperty('--two', colors[1] || '#3ab6ff');
-          css.style.setProperty('--three', colors[2] || '#00ff5e');
-          css.style.setProperty('--four', colors[3] || '#ff9900');
-          adjustHeightOfColorPickerContainer();
+        countDownDate = new Date(document.querySelector(".datepicker").value);
+        var css = document.querySelector(':root');
+        var colors = [];
+        var colorsNormalized = [];
+        
+        // Get all color pickers dynamically
+        const colorPickers = document.querySelectorAll('.colorpicker, .disabledcolorpicker');
+        colorPickers.forEach((picker, index) => {
+            // If this picker is marked to use theme color, get the current theme color
+            if (picker.dataset.useThemeColor === 'true') {
+                const computedStyle = getComputedStyle(document.documentElement);
+                const themeColor = computedStyle.getPropertyValue('--mainforegroundcolor').trim();
+                picker.value = themeColor;
+                colors[index] = 'fg';
+                colorsNormalized[index] = 'fg';
+            } else {
+                colors[index] = picker.value;
+                colorsNormalized[index] = picker.value.replace("#", "");
+            }
+            css.style.setProperty(`--color${index + 1}`, colors[index]);
+        });
+
+        // Maintain backwards compatibility with old CSS variables
+        css.style.setProperty('--one', colors[0] || '#8426ff');
+        css.style.setProperty('--two', colors[1] || '#3ab6ff');
+        css.style.setProperty('--three', colors[2] || '#00ff5e');
+        css.style.setProperty('--four', colors[3] || '#ff9900');
+        adjustHeightOfColorPickerContainer();
   
           var cdtitle = document.getElementById("countdowntitle").value; //set the title
   
@@ -1383,8 +1392,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
   
       }, false);
 
-  
-      //settings
+        //settings
       function settings() {
           if(getCookie("cookiesAccepted")){
   
@@ -2887,6 +2895,9 @@ if (mlkthisyear - now < 0) {
   
           const newColorPicker = document.createElement('input');
           newColorPicker.className = 'colorpicker';
+          if(parameter("atc")){
+            newColorPicker.classList.add("disabledcolorpicker");
+          }
           newColorPicker.id = `color${colorPickerCount}`;
           newColorPicker.type = 'color';
           newColorPicker.value = getRandomColor();
@@ -5035,70 +5046,71 @@ function searchsettings(){
         });
         
 
-function addForegroundColorPicker(method) {
-    if (colorPickerCount < 8) {
-        colorPickerCount++;
-        const container = document.getElementById('colorPickersContainer');
-        const newColorPickerContainer = document.createElement('div');
-        newColorPickerContainer.className = 'colorpicker-container';
-        newColorPickerContainer.draggable = true;
+        function addForegroundColorPicker(method) {
+            if (colorPickerCount < 8) {
+                colorPickerCount++;
+                const container = document.getElementById('colorPickersContainer');
+                const newColorPickerContainer = document.createElement('div');
+                newColorPickerContainer.className = 'colorpicker-container';
+                newColorPickerContainer.draggable = true;
+                
+                // Add drag event listeners
+                newColorPickerContainer.addEventListener('dragstart', handleDragStart);
+                newColorPickerContainer.addEventListener('dragend', handleDragEnd);
+                newColorPickerContainer.addEventListener('dragover', handleDragOver);
+                newColorPickerContainer.addEventListener('drop', handleDrop);
         
-        // Add drag event listeners
-        newColorPickerContainer.addEventListener('dragstart', handleDragStart);
-        newColorPickerContainer.addEventListener('dragend', handleDragEnd);
-        newColorPickerContainer.addEventListener('dragover', handleDragOver);
-        newColorPickerContainer.addEventListener('drop', handleDrop);
-
-        const newColorPicker = document.createElement('input');
-        newColorPicker.className = 'colorpicker';
-        newColorPicker.id = `color${colorPickerCount}`;
-        newColorPicker.type = 'color';
-        // Use CSS variable for theme color
-        const computedStyle = getComputedStyle(document.documentElement);
-        const themeColor = computedStyle.getPropertyValue('--mainforegroundcolor').trim();
-        newColorPicker.value = themeColor;
-        newColorPicker.dataset.useThemeColor = 'true'; // Mark this picker as using theme color
-        newColorPicker.onblur = SetCountDowngeneral;
-
-        const removeButton = document.createElement('div');
-        removeButton.className = 'remove-button';
-        removeButton.innerHTML = '-';
-        removeButton.onclick = function() { removeColorPicker(removeButton); };
-
-        newColorPickerContainer.appendChild(newColorPicker);
-        newColorPickerContainer.appendChild(removeButton);
-
-        container.appendChild(newColorPickerContainer);
-
-        if(document.querySelector(".colorpickerlinebreak")){
-            document.querySelector(".colorpickerlinebreak").remove();
-        }
-        const colorpickersocontainer = document.getElementById('colorPickersContainer');
-        if (colorpickersocontainer.children.length > 4) {
-            const newBR = document.createElement('br');
-            newBR.className = 'colorpickerlinebreak';
-            colorpickersocontainer.insertBefore(newBR, colorpickersocontainer.children[4]);
-        }
+                const newColorPicker = document.createElement('input');
+                newColorPicker.className = 'colorpicker disabledcolorpicker fgcolorpicker';
+                newColorPicker.id = `color${colorPickerCount}`;
+                newColorPicker.type = 'color';
+                newColorPicker.disabled = true;
+                newColorPicker.style.cursor = "default";
+                // Use CSS variable for theme color
+                const computedStyle = getComputedStyle(document.documentElement);
+                const themeColor = computedStyle.getPropertyValue('--mainforegroundcolor').trim();
+                newColorPicker.value = themeColor;
+                newColorPicker.dataset.useThemeColor = 'true'; // Mark this picker as using theme color
+                newColorPicker.onblur = SetCountDowngeneral;
         
-        if(colorpickersocontainer.children.length > 8){
-            document.querySelector(".clradd").classList.add("clraddoff");
+                const removeButton = document.createElement('div');
+                removeButton.className = 'remove-button';
+                removeButton.innerHTML = '-';
+                removeButton.onclick = function() { removeColorPicker(removeButton); };
+        
+                newColorPickerContainer.appendChild(newColorPicker);
+                newColorPickerContainer.appendChild(removeButton);
+        
+                container.appendChild(newColorPickerContainer);
+        
+                if(document.querySelector(".colorpickerlinebreak")){
+                    document.querySelector(".colorpickerlinebreak").remove();
+                }
+                const colorpickersocontainer = document.getElementById('colorPickersContainer');
+                if (colorpickersocontainer.children.length > 4) {
+                    const newBR = document.createElement('br');
+                    newBR.className = 'colorpickerlinebreak';
+                    colorpickersocontainer.insertBefore(newBR, colorpickersocontainer.children[4]);
+                }
+                
+                if(colorpickersocontainer.children.length > 8){
+                    document.querySelector(".clradd").classList.add("clraddoff");
+                }
+                else{
+                    document.querySelector(".clradd").classList.remove("clraddoff");
+                }
+        
+                if(colorpickersocontainer.children.length > 8){
+                    document.querySelector(".clraddfg").classList.add("clraddoff");
+                }
+                else{
+                    document.querySelector(".clraddfg").classList.remove("clraddoff");
+                }
+        
+                adjustHeightOfColorPickerContainer();
+                updateColorAnimations();
+                if(method !== "auto"){
+                    SetCountDowngeneral();
+                }
+            }
         }
-        else{
-            document.querySelector(".clradd").classList.remove("clraddoff");
-        }
-
-        if(colorpickersocontainer.children.length > 8){
-            document.querySelector(".clraddfg").classList.add("clraddoff");
-        }
-        else{
-            document.querySelector(".clraddfg").classList.remove("clraddoff");
-        }
-
-        adjustHeightOfColorPickerContainer();
-        updateColorAnimations();
-        if(method !== "auto"){
-            SetCountDowngeneral();
-        }
-    }
-          }
-  
