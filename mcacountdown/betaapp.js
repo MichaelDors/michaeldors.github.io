@@ -41,20 +41,9 @@ let userInteracted = false;
     }else{
      title = 'finishedcddone';
     }
-    
-    document.querySelectorAll('.manipulatedefaultvaluedatetime').forEach(input => {
-        const now = new Date();
-        now.setHours(12, 30, 0, 0); // Set time to 12:30 PM
-    
-        if (input.type === 'datetime-local') {
-          input.value = now.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
-        } else if (input.type === 'date') {
-          input.value = now.toISOString().slice(0, 10); // YYYY-MM-DD
-        } else if (input.type === 'time') {
-          input.value = now.toTimeString().slice(0, 5); // HH:MM
-        }
-      });
-  
+
+    schedule_resettimeinputs();
+
       // Get the existing links from localStorage
       const savedLinks = localStorage.getItem("dashboardsaved");
       let links = [];
@@ -3080,6 +3069,21 @@ if (mlkthisyear - now < 0) {
         document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
     }
       }
+
+      function schedule_resettimeinputs(){
+        document.querySelectorAll('.scheduletimeinput').forEach(input => {
+            const now = new Date();
+            now.setHours(12, 30, 0, 0); // Set time to 12:30 PM
+        
+            if (input.type === 'datetime-local') {
+              input.value = now.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+            } else if (input.type === 'date') {
+              input.value = now.toISOString().slice(0, 10); // YYYY-MM-DD
+            } else if (input.type === 'time') {
+              input.value = now.toTimeString().slice(0, 5); // HH:MM
+            }
+          });
+        }
   
           function schedule_resetAll(){
               history.replaceState(null, '', `?schedule=null`);
@@ -3741,6 +3745,7 @@ document.addEventListener('DOMContentLoaded', function() {
               document.getElementById('schedule-eventTitle').value = '';
               document.getElementById('schedule-startTime').value = '';
               document.getElementById('schedule-endTime').value = '';
+              schedule_resettimeinputs();
               document.getElementById('schedule-addOrUpdateEventBtn').innerHTML = '<i class="fa-solid fa-plus-circle"></i> Add to Regular Schedule';
               schedule_editingEvent = null;
               schedule_editingExceptionDay = null;
@@ -3885,7 +3890,11 @@ document.addEventListener('DOMContentLoaded', function() {
               const minutesUntilStart = Math.floor((timeUntilStart % 3600000) / 60000);
                       const secondsUntilStart = Math.floor((timeUntilStart % 60000) / 1000);
   
+                if(document.getElementById("countdowntitle").value){
               document.getElementById('schedule-classTitle').textContent = `${document.getElementById("countdowntitle").value}`;
+                }else{
+                    document.getElementById('schedule-classTitle').textContent = 'Schedule';
+                }
 
             document.getElementById('schedule-remainingText').classList.add("pulsing");
 
