@@ -821,8 +821,9 @@ if (mlkthisyear - now < 0) {
       }else{
           ConfettiModeEmoji();
           document.getElementById("confettiEmojiPicker").value = decodeURIComponent(parameter("confettitype"));
-        updateOverlayVisibility();
       }
+
+ updateOverlayVisibility();
   
   if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && new Date(document.querySelector(".datepicker").value).getDate() === 25) { // December is month 11 (0-based)
       document.querySelector('meta[property="og:image"]').setAttribute('content', 'sharepanels/christmasshare.jpg');
