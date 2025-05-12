@@ -2663,7 +2663,7 @@ border:none;
 outline:none;
 height:96px;
 text-align: center;
-color:white;
+color:var(--mainforegroundcolor);
 font-family:Fredoka One;
 font-size:20px;
 }
