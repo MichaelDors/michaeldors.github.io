@@ -977,10 +977,12 @@ const overlay = document.getElementById('emojiOverlay');
 function updateOverlayVisibility() {
     if (document.activeElement === input || input.value) {
       overlay.classList.remove('pop');
-      overlay.style.opacity = '0';
+      overlay.style.opacity = '0 !important';
+      overlay.style.zindex = "-1";
     } else {
       overlay.classList.add('pop');
       overlay.style.opacity = '1';
+      overlay.style.zindex = "";
     }
   }
 
