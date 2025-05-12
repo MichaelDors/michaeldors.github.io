@@ -956,42 +956,50 @@ class ConfettiManager {
             const raw = input.getAttribute('data-placeholders') || '';
             const placeholders = raw.split(',').map(s => s.trim()).filter(Boolean);
             let i = 0;
+            let popInterval;
           
-            function popNext(){
+            function popNext() {
               overlay.textContent = placeholders[i];
-              overlay.classList.remove('pop');     // restart animation
-              void overlay.offsetWidth;            // force reflow
+              overlay.classList.remove('pop');
+              void overlay.offsetWidth;
               overlay.classList.add('pop');
           
-              input.placeholder = placeholders[i]; // keep placeholder in sync
+              input.placeholder = placeholders[i];
               i = (i + 1) % placeholders.length;
             }
           
-            popNext();               // initial
-            setInterval(popNext, 5000);
+            function startPopCycle() {
+              popNext();
+              popInterval = setInterval(popNext, 5000);
+            }
+          
+            function stopPopCycle() {
+              clearInterval(popInterval);
+            }
+          
+            function updateOverlayVisibility() {
+              if (document.activeElement === input || input.value) {
+                stopPopCycle();
+                overlay.classList.remove('pop');
+                overlay.style.opacity = '0';
+                overlay.style.zIndex = '-1';
+              } else {
+                startPopCycle();
+                overlay.style.opacity = '1';
+                overlay.style.zIndex = '';
+              }
+            }
+          
+            // Initial start
+            startPopCycle();
+            updateOverlayVisibility();
+          
+            // Event listeners
+            input.addEventListener('focus', updateOverlayVisibility);
+            input.addEventListener('blur', updateOverlayVisibility);
+            input.addEventListener('input', updateOverlayVisibility);
           });
-
-          const input = document.getElementById('confettiEmojiPicker');
-const overlay = document.getElementById('emojiOverlay');
-
-function updateOverlayVisibility() {
-    if (document.activeElement === input || input.value) {
-      overlay.classList.remove('pop');
-      overlay.style.opacity = '0 !important';
-      overlay.style.zindex = "-1";
-    } else {
-      overlay.classList.add('pop');
-      overlay.style.opacity = '1';
-      overlay.style.zindex = "";
-    }
-  }
-
-input.addEventListener('focus', updateOverlayVisibility);
-input.addEventListener('blur', updateOverlayVisibility);
-input.addEventListener('input', updateOverlayVisibility);
-
-// Initial state
-updateOverlayVisibility();
+          
 
 
 function spawnIcon(el) {

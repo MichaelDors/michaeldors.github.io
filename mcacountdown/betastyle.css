@@ -2677,15 +2677,19 @@ font-size:20px;
     inset:0; 
     z-index: 1000;
     transition:1s;
+    user-select: none;
+    pointer-events: none;
   }
 
   #confettiEmojiPicker::placeholder {
     opacity: 0;        /* or color: transparent; */
+    z-index: -1;
   }
 
   #confettiEmojiPicker:active #emojiOverlay,
   #confettiEmojiPicker:focus #emojiOverlay,
-  #confettiEmojiPicker:not(:placeholder-shown) #emojiOverlay {
+  #confettiEmojiPicker:not(:placeholder-shown) #emojiOverlay,
+  #emojiconfetti.selectedfontpicker #emojiOverlay {
     opacity: 0 !important;
     z-index: -1;
   }
