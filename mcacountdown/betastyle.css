@@ -34,6 +34,8 @@
 
     --cardborder:1.54px solid rgba(255, 255, 255, 0.1);
     /*1.54px solid rgba(0, 0, 0, 0.1);*/
+
+    --bgbluramount: 250px;
 }
 
 #body{
@@ -2094,7 +2096,7 @@ a:hover:active {
 .bg-color {
     right: 0;
     top: 0;
-    filter: blur(250px);
+    filter: blur(--bgbluramount);
     z-index: -1;
     mix-blend-mode: luminosity;
     width: 200%;
@@ -2105,7 +2107,7 @@ a:hover:active {
 .bg-color-fast {
     right: 0;
     top: 0;
-    filter: blur(250px);
+    filter: blur(--bgbluramount);
     z-index: -1;
     mix-blend-mode: luminosity;
     width: 200%;
@@ -2116,7 +2118,7 @@ a:hover:active {
 .bg-color-slow {
     right: 0;
     top: 0;
-    filter: blur(250px);
+    filter: blur(--bgbluramount);
     z-index: -1;
     mix-blend-mode: luminosity;
     width: 200%;
@@ -2127,7 +2129,7 @@ a:hover:active {
 .bg-black {
     left: 0;
     bottom: 0;
-    filter: blur(250px);
+    filter: blur(--bgbluramount);
     z-index: -10;
     animation-direction: reverse;
     animation-delay: 10s;
@@ -2139,7 +2141,7 @@ a:hover:active {
 .bg-black-fast {
     left: 0;
     bottom: 0;
-    filter: blur(250px);
+    filter: blur(--bgbluramount);
     z-index: -10;
     animation-direction: reverse;
     animation-delay: 10s;
@@ -2151,7 +2153,7 @@ a:hover:active {
 .bg-black-slow {
     left: 0;
     bottom: 0;
-    filter: blur(250px);
+    filter: blur(--bgbluramount);
     z-index: -10;
     animation-direction: reverse;
     animation-delay: 10s;
