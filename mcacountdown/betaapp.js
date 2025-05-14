@@ -1001,6 +1001,38 @@ class ConfettiManager {
           });
           
 
+          function updateActiveSection() {
+            if(!document.getElementById("settings").classList.contains("hidden")){
+            const sections = document.querySelectorAll('h1[id]');
+            const sidebarLinks = document.querySelectorAll('.sidebaranchor');
+            
+            // Get the current scroll position
+            const scrollPosition = window.scrollY;
+            
+            // Find the current section
+            let currentSection = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 100; // Offset to trigger slightly before reaching section
+                if (scrollPosition >= sectionTop) {
+                    currentSection = section.id;
+                }
+            });
+            
+            // Update active state of sidebar links
+            sidebarLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${currentSection}`) {
+                    link.classList.add('active');
+                }
+            });
+        }
+        }
+        
+        // Add scroll event listener
+        window.addEventListener('scroll', updateActiveSection);
+        // Call once on load to set initial state
+        window.addEventListener('load', updateActiveSection);
+
 
 function spawnIcon(el) {
   const icon = document.createElement('i');
@@ -2605,8 +2637,8 @@ if (mlkthisyear - now < 0) {
               if (bggotdisabled == "true" && button.classList.contains("selectedbackgroundpicker")) {
                   button.classList.remove('selectedbackgroundpicker');
                   button.classList.add('backgroundpicker');
-              }
-              else {
+      }
+      else {
                   if (bgint == buttonId) {
                       button.classList.add('selectedbackgroundpicker');
                       button.classList.remove('backgroundpicker');
@@ -2622,13 +2654,13 @@ if (mlkthisyear - now < 0) {
               SetCountDowngeneral();
           }
           updateSaveButtonText();
-
-                    //countdown schedule styling
-                    if(parameter("schedule") !== "null" && parameter("atc") == "none"){
-                        document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
-                    }
-                    else{
-                        document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
+  
+          //countdown schedule styling
+          if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+              document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
+          }
+          else{
+              document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
                     }
       }
   
@@ -3638,8 +3670,8 @@ function schedule_addExceptionDay() {
         schedule_exceptions[day] = [];
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         showToast(dayNames[day] + ' exception created', 'success');
-    }
-    else{
+            }
+            else{
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       showToast('You already have an exception for ' + dayNames[day], 'error');
     }
@@ -4049,7 +4081,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // If found, update the existing countdown, otherwise add a new one
       if (existingIndex !== -1) {
           links[existingIndex] = { url, title };
-      } else {
+              } else {
           links.push({ url, title });
       }
   
@@ -4155,7 +4187,7 @@ if (stpatricksthisyear - now < 0) {
 var cincothisyear = new Date(thisyear + "-05-05T00:00");
 if (cincothisyear - now < 0) {
     cincodemayo = new Date(nextyear + '-05-05T00:00');
-} else {
+              } else {
     cincodemayo = new Date(thisyear + '-05-05T00:00');
 }
 
@@ -4569,7 +4601,7 @@ if (mlkthisyear - now < 0) {
   
       function removeToast(toast) {
           toast.style.animation = 'toastslideOut 0.3s ease forwards';
-                    setTimeout(() => {
+              setTimeout(() => {
             toast.remove();
           }, 300);
         }
@@ -5015,7 +5047,7 @@ function searchsettings(){
           e.dataTransfer.setDragImage(dragImage, 20, 20);
           
           // Remove the drag image after it's no longer needed
-                    setTimeout(() => {
+      setTimeout(() => {
               document.body.removeChild(dragImage);
           }, 0);
       }
@@ -5077,9 +5109,9 @@ function searchsettings(){
               container.addEventListener('dragend', handleDragEnd);
               container.addEventListener('dragover', handleDragOver);
               container.addEventListener('drop', handleDrop);
-            });
-        });
-        
+          });
+      });
+  
 
         function addForegroundColorPicker(method) {
             if (colorPickerCount < 8) {
@@ -5145,7 +5177,7 @@ function searchsettings(){
                 adjustHeightOfColorPickerContainer();
                 updateColorAnimations();
                 if(method !== "auto"){
-                    SetCountDowngeneral();
-                }
+          SetCountDowngeneral();
+      }
             }
         }
