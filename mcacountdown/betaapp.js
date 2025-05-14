@@ -134,6 +134,7 @@ let userInteracted = false;
   }
 
 function cardmodemanager(){
+    document.documentElement.style.setProperty('--bgbluramount', '100px');
     document.getElementById("cookie-banner").style.display = 'none';
       document.getElementById("gear").style.display = 'none';
       document.getElementById("toolbar-notch").style.display = 'none';
