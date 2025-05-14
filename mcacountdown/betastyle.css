@@ -1111,10 +1111,10 @@ a:hover:active {
             padding:0px;
     overflow:hidden;
     white-space:nowrap;
-    transition:0.3s all ease;
+    transition:0.5s all ease;
         }
         .sidebaranchor i{
-            transition:0.3s all ease;
+            transition:0.5s all ease;
         }
         .sidebaranchor:hover{
             position:initial !important;
