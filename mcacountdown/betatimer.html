@@ -53,7 +53,7 @@
                     <div class="schedule-time" id="schedule-timeRemaining"></div>
                     <div class="schedule-remaining-text" id="schedule-remainingText">remaining</div>
                 </div>
-                <div class="schedule-progress-bar">
+                <div class="schedule-progress-bar" id="schedule-progress-bar">
                     <div class="schedule-progress" id="schedule-progress"></div>
                 </div>
             </div>
@@ -507,12 +507,11 @@
 		<br>
 		<br>
 		<br>
-        <div style="display:none">
+        <div>
 		<h2 style="font-family: 'Dosis';">Position</h2>
-		<a class="aintext selectedfontpicker"><img title="No progress bar" alt="No progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/1no.png"/></a>
-                <a class="aintext fontpicker"><img title="Bottom progress bar" alt="Bottom progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/2bottom.png"/></a>
-                <a class="aintext fontpicker"><img title="Under clock progress bar" alt="Under clock progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/3middle.png"/></a>
-                <a class="aintext fontpicker"><img title="Top progress bar" alt="Fullscreen progress bar option" style="width:1in; height:1in;" src="progressbaroptionsicons/4top.png"></a>
+        <a class="aintext fontpicker" id="progressbottombar" onmouseup="ProgressPositionBar(); SetCountDowngeneral();"><i class="fa-solid fa-bars-progress"></i></a>
+        <a class="aintext fontpicker" id="progressfullscreen" onmouseup="ProgressPositionFullscreen(); SetCountDowngeneral();"><i class="fa-solid fa-expand"></i></a>
+        <a class="aintext selectedfontpicker" id="progressnone" onmouseup="ProgressPositionNone(); SetCountDowngeneral();"><i class="fa-regular fa-circle-xmark"></i></a>
                 <br>
                 <br>
                 <br>

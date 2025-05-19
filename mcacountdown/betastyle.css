@@ -2426,6 +2426,15 @@ a:hover:active {
         left: 0;
         right: 0;
     }
+
+    .schedule-progress-bar-fullscreen {
+        height: 110vh;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        opacity: 20%;
+    }
     .schedule-progress {
         height: 100%;
         background: var(--progressbarblur);
@@ -2435,6 +2444,9 @@ a:hover:active {
         width: 0;
         transition: width 1s linear;
         border-top-right-radius: 20px;
+    }
+    .schedule-progress-bar-fullscreen .progress{
+        border-radius: 0px;
     }
     .schedule-upcoming-class {
         background: var(--scheduleblurbg);
@@ -2669,7 +2681,7 @@ animation: settingslocked 0.4s linear;
 100% { transform: translate(0px); }
 }
 
-.emoji‑wrapper {position:relative; display:inline-block;}
+.emoji-wrapper {position:relative; display:inline-block;}
 
 #confettiEmojiPicker{
 width:100%;
@@ -2729,6 +2741,15 @@ font-size:20px;
         left: 0;
         right: 0;
     }
+    .progress-bar-fullscreen {
+        height: 110vh;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        opacity: 20%;
+    }
+
     .progress {
         height: 100%;
         width: 0;
@@ -2746,6 +2767,10 @@ font-size:20px;
         box-shadow: var(--progressbarhighlight);
         backdrop-filter: blur(75px);
         -webkit-backdrop-filter: blur(75px);
+    }
+
+    .progress-bar-fullscreen .progress{
+        border-radius: 0px;
     }
 
 
@@ -2934,3 +2959,41 @@ filter: blur(40px);
     }
   }
   
+/* ---------- universal “home-bar-style” black/white ---------- */
+.home-adaptive{
+    position:relative;
+    isolation:isolate;          /* keep blending local   */
+    color:transparent;          /* hide the original ink */
+    -webkit-text-fill-color:transparent;
+  }
+  
+  /* pseudo layer that actually draws the glyphs */
+  .home-adaptive::before{
+    content:attr(data-text);    /* copy the same text    */
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+  
+    /* keep inherited typography */
+    font:inherit;
+    line-height:inherit;
+    letter-spacing:inherit;
+    text-align:inherit;
+  
+    /* clip the layer to the text outline */
+    -webkit-mask:linear-gradient(#fff 0 0) text;
+            mask:linear-gradient(#fff 0 0) text;
+  
+    /* 1) blur backdrop  2) invert  3) strip colour  4) hard-clip */
+    backdrop-filter:blur(6px) invert(1) grayscale(1) contrast(1000%);
+    -webkit-backdrop-filter:blur(6px) invert(1) grayscale(1) contrast(1000%);
+  }
+  
+  /* ---------- fallback for older browsers ---------- */
+  @supports not (backdrop-filter:blur(2px)){
+    .home-adaptive{
+      color:#fff;                         /* start white */
+      mix-blend-mode:difference;          /* auto-invert */
+      filter:grayscale(1) contrast(1000%);
+    }
+  }
