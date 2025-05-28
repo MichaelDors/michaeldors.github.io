@@ -265,7 +265,7 @@ if(parameter('progressposition') && parameter('progressposition') !== "null"){
 }
     
 
-
+if(!parameter('schedule')){
     if ((progressDate > countdownDate) || progressDate == countdownDate) {
         // Progress date is after countdown date - hide progress bar
         document.getElementById("progress-bar").style.display = "none";
@@ -278,6 +278,22 @@ if(parameter('progressposition') && parameter('progressposition') !== "null"){
   else{
     document.getElementById("progress-bar").style.display = "none";
   }
+}
+
+  progressbarposition = parameter('progressposition');
+        if(parameter('progressposition')){
+        if(parameter('progressposition') == 'bar'){
+            ProgressPositionBar('auto');
+        }
+        else if(parameter('progressposition') == 'fs'){
+            ProgressPositionFullscreen('auto');
+        }
+        else{
+            ProgressPositionNone('auto');
+        }
+      }else{
+        ProgressPositionNone('auto');
+      }
   
       //backgrounds
       var bgstring = "none"; //declaring bgstring to none at the very beginning so it's able to be changed anywhere
@@ -452,20 +468,6 @@ if(parameter('progressposition') && parameter('progressposition') !== "null"){
       }
   
       handleTitleNavigation();
-
-      if(parameter('progressposition')){
-        if(parameter('progressposition') == 'bar'){
-            ProgressPositionBar('auto');
-        }
-        else if(parameter('progressposition') == 'fs'){
-            ProgressPositionFullscreen('auto');
-        }
-        else{
-            ProgressPositionNone('auto');
-        }
-      }else{
-        ProgressPositionNone('auto');
-      }
   
       //date
       if (parameter('date')) {
@@ -2883,7 +2885,6 @@ if (mlkthisyear - now < 0) {
               SetCountDowngeneral();
           }
       }
-     var progressbarposition = "";
 
       function ProgressPositionBar(method){
         progressbarposition = "bar";
