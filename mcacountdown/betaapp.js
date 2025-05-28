@@ -421,6 +421,7 @@ if(!parameter('schedule')){
       document.getElementById("optionsdatecontainer").style.display = "none"; //hide end date area of options
       document.getElementById("optionsendingcontainer").style.display = "none"; //hide ending options area of options	
       document.getElementById("optionsendinganchor").style.opacity = "0.3"; //grey out ending options anchor 	
+      document.getElementById("progressdatepickercontainer").style.display = "none"; //hide progress date picker area of options	
       //document.getElementById("optionsprogresscontainer").style.display = "none"; //hide ending options area of options
       //document.getElementById("optionsprogressanchor").style.opacity = "0.3"; //grey out progress options anchor	
       document.getElementById("cdscheduledisclaimer").style.display = ""; //show personal options schedule disclaimer
@@ -3196,6 +3197,8 @@ if (mlkthisyear - now < 0) {
     else{
         document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
     }
+
+    ProgressPositionBar('manual');
       }
 
       function schedule_resettimeinputs(){
