@@ -2773,7 +2773,9 @@ if (mlkthisyear - now < 0) {
       let autocountdownInterval;
   
       function updateCountdown() {
-          const length = autocircle.getTotalLength();
+        if(autocircle && autocircle.getBBox().width !== 0){
+            const length = autocircle.getTotalLength();
+        }
           if(autocircle){
               const offset = length - (length * (10000 + autocountdown) / 10000);
               autocircle.style.strokeDashoffset = offset;
