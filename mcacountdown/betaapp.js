@@ -112,10 +112,45 @@ let userInteracted = false;
               }
           }
       }
-  
+      
+      const saveBar = document.getElementById('saveBar');
+      const saveText = document.getElementById('savetext');
+      
+      if (buttonText.includes('Saved')) {
+        saveBar.classList.remove('visible');
+        saveBar.classList.add('hiding');
+        setTimeout(() => {
+          saveBar.classList.remove('hiding');
+        }, 300); // duration matches CSS transition
+      } else {
+        saveText.textContent = buttonText.includes('Update')
+          ? "Don't forget to save your changes"
+          : "Pin this to your Dashboard to revisit easily";
+      
+        saveBar.classList.remove('hiding');
+        saveBar.classList.add('visible');
+      }
+
       const saveButton = document.getElementById('savedash');
       if (saveButton) {
           saveButton.innerHTML = buttonText;
+      }
+
+      // Store user metadata in localStorage after saving dashboard
+      // (Assume supabase is globally available if user is logged in)
+      if (typeof supabase !== "undefined" && supabase.auth && typeof supabase.auth.getUser === "function") {
+        // getUser() returns a Promise
+        supabase.auth.getUser().then(function(user) {
+          const user_metadata = user?.data?.user?.user_metadata;
+          if (user_metadata) {
+            localStorage.setItem('dashboardsaved_userdata', JSON.stringify({
+              name: user_metadata.full_name || '',
+              avatar_url: user_metadata.avatar_url || ''
+            }));
+          }
+        }).catch(function(e){
+          // ignore errors
+        });
       }
   }
   
@@ -139,6 +174,12 @@ function cardmodemanager(){
       document.getElementById("gear").style.display = 'none';
       document.getElementById("toolbar-notch").style.display = 'none';
       document.getElementById("countdowntitle").style.display = 'none';
+      if(document.getElementById("autopilotpopup")){
+      document.getElementById("autopilotpopup").style.display = 'none';
+      }
+      if(document.getElementById("autopilotpopupmobile")){
+      document.getElementById("autopilotpopupmobile").style.display = 'none';
+      }
       if(decodeURIComponent(parameter('typeface')) == "Michroma"){
         if (getCookie("lcdu")) {
             document.getElementById("clock").style.fontSize = '15px';
@@ -204,8 +245,12 @@ function cardmodemanager(){
       updateSaveButtonText();
 
       SetCountDowngeneral();
+      generateProfilePic();
 
-     updateOverlayVisibility();
+      // Initialize overlay visibility if elements exist
+      if (document.getElementById('confettiEmojiPicker') && document.getElementById('emojiOverlay')) {
+        updateOverlayVisibility();
+      }
   };
   
   
@@ -440,8 +485,6 @@ if(!parameter('schedule')){
           document.getElementById("countdowntitle").style.display = ""; //show title
           document.getElementById("clock").style.display = ""; //show clock
       }
-
-      
   
       //fonts or typefaces
       if (parameter('typeface')) {
@@ -467,286 +510,71 @@ if(!parameter('schedule')){
       else {
           css.style.setProperty('--typeface', "Fredoka One"); //if no parameter is found for the typeface, simply set it to the default (Fredoka One)
       }
-  
       handleTitleNavigation();
-  
-      //date
-      if (parameter('date')) {
-          if(parameter('date').includes('T') && parameter('date').includes(':') ){ //if there is an included time, it will be saved as 12/34/56T12:34, this is checking for the T and the :
-             document.querySelector(".datepicker").value = parameter('date'); 
-          }
-          else{
-              document.querySelector(".datepicker").value = parameter('date') + 'T00:00'; //if there is no included time, and it's just 12/34/56 for example, it adds the T00:00 for midnight. backwards compatibility for before time was supported
-          }
-          var countDownDate = new Date(document.querySelector(".datepicker").value); //sets the datepicker in settings to the correct date + time
-  
-          document.getElementById("autopilotpopup").remove(); //removes the Autopilot popup if a date exists
-          document.getElementById("autopilotpopupmobile").remove(); //same with mobile Autopilot popup
-      }
-      else { //if there is no date parameter
-          const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
-  
 
-if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !parameter("createnew")) { // if countdowns have been saved
-    const fullUrl = window.location.href;
-    const urlParts = fullUrl.split('#');
-    let hasMatchingCountdown = false;
+  
+          //date
+          if (parameter('date')) {
+              if(parameter('date').includes('T') && parameter('date').includes(':') ){ //if there is an included time, it will be saved as 12/34/56T12:34, this is checking for the T and the :
+                 document.querySelector(".datepicker").value = parameter('date'); 
+              }
+              else{
+                  document.querySelector(".datepicker").value = parameter('date') + 'T00:00'; //if there is no included time, and it's just 12/34/56 for example, it adds the T00:00 for midnight. backwards compatibility for before time was supported
+              }
+              var countDownDate = new Date(document.querySelector(".datepicker").value); //sets the datepicker in settings to the correct date + time
+      
+              document.getElementById("autopilotpopup").remove(); //removes the Autopilot popup if a date exists
+              document.getElementById("autopilotpopupmobile").remove(); //same with mobile Autopilot popup
+          }
+          else { //if there is no date parameter
+              const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
+      
 
-    if (urlParts.length >= 2) { // Check if there's a hash
-        const urlTitle = urlParts.pop().toLowerCase().trim();
-        if (urlTitle && urlTitle !== 'betatimer.html' && urlTitle !== 'timer.html' || urlTitle === 'betatimer' || urlTitle === 'timer') {
-            try {
-                const links = JSON.parse(savedLinks);
-                hasMatchingCountdown = links.some(link => {
-                    try {
-                        const linkUrl = new URL(link.url, window.location.origin);
-                        const titleParam = linkUrl.searchParams.get('title');
-                        return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === decodeURIComponent(urlTitle);
-                    } catch (e) {
-                        console.error('Error parsing URL:', e);
-                        return false;
-                    }
-                });
-            } catch (e) {
-                console.error('Error parsing saved countdowns:', e);
+    if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !parameter("createnew")) { // if countdowns have been saved
+        const fullUrl = window.location.href;
+        const urlParts = fullUrl.split('#');
+        let hasMatchingCountdown = false;
+
+        if (urlParts.length >= 2) { // Check if there's a hash
+            const urlTitle = urlParts.pop().toLowerCase().trim();
+            if (urlTitle && urlTitle !== 'betatimer.html' && urlTitle !== 'timer.html' || urlTitle === 'betatimer' || urlTitle === 'timer') {
+                try {
+                    const links = JSON.parse(savedLinks);
+                    hasMatchingCountdown = links.some(link => {
+                        try {
+                            const linkUrl = new URL(link.url, window.location.origin);
+                            const titleParam = linkUrl.searchParams.get('title');
+                            return titleParam && decodeURIComponent(titleParam).toLowerCase().trim() === decodeURIComponent(urlTitle);
+                        } catch (e) {
+                            console.error('Error parsing URL:', e);
+                            return false;
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error parsing saved countdowns:', e);
+                }
             }
         }
+
+        if (!hasMatchingCountdown) {
+            window.location.href = "countdowndashboard"; //take the user to their dashboard
+        }
     }
+              else{ //no countdowns have been saved; new user experience with Autopilot  
+                const { nextHoliday, matchingHoliday } = getHolidayData();
+                document.getElementById("autopilotprediction").innerHTML = nextHoliday.fullname; //set Autopilot to tell the user that NYD is next
+                document.getElementById("autopilotpredictionmobile").innerHTML = nextHoliday.fullname; //same for Autopilot mobile
 
-    if (!hasMatchingCountdown) {
-        window.location.href = "countdowndashboard"; //take the user to their dashboard
-    }
-}
-          else{ //no countdowns have been saved; new user experience with Autopilot
-              var now = new Date(); //getting the current date
-              var nextyear = new Date().getFullYear() + 1; //setting up a next year variable
-              var thisyear = new Date().getFullYear(); //setting up a this year variable
-  
-              //new years
-              var newyearsthisyear = new Date(thisyear + "-01-01T00:00"); //setting up a this year variable for when new years day is in the current year
-              if (newyearsthisyear - now < 0) { //if it's already passed
-                  newyearsday = new Date(nextyear + '-01-01T00:00'); //then set the countdown to new year's next year
-              } else { //otherwise, if it's not passed yet
-                  newyearsday = new Date(thisyear + '-01-01T00:00'); //set the countdown to new year's this year
-              }
-  
-              //valentines
-              var valentinesthisyear = new Date(thisyear + "-02-14T00:00"); //see new years for docs
-              if (valentinesthisyear - now < 0) {
-                  valentinessday = new Date(nextyear + '-02-14T00:00');
-              } else {
-                  valentinessday = new Date(thisyear + '-02-14T00:00');
-              }
-  
-              //easter
-              var epoch = 2444238.5, elonge = 278.83354, elongp = 282.596403, eccent = .016718, sunsmax = 149598500, sunangsiz = .533128, mmlong = 64.975464, mmlongp = 349.383063, mlnode = 151.950429, minc = 5.145396, mecc = .0549, mangsiz = .5181, msmax = 384401, mparallax = .9507, synmonth = 29.53058868, lunatbase = 2423436, earthrad = 6378.16, PI = 3.141592653589793, epsilon = 1e-6; function sgn(x) { return x < 0 ? -1 : x > 0 ? 1 : 0 } function abs(x) { return x < 0 ? -x : x } function fixAngle(a) { return a - 360 * Math.floor(a / 360) } function toRad(d) { return d * (PI / 180) } function toDeg(d) { return d * (180 / PI) } function dsin(x) { return Math.sin(toRad(x)) } function dcos(x) { return Math.cos(toRad(x)) } function toJulianTime(date) { var year, month, day; year = date.getFullYear(); var m = (month = date.getMonth() + 1) > 2 ? month : month + 12, y = month > 2 ? year : year - 1, d = (day = date.getDate()) + date.getHours() / 24 + date.getMinutes() / 1440 + (date.getSeconds() + date.getMilliseconds() / 1e3) / 86400, b = isJulianDate(year, month, day) ? 0 : 2 - y / 100 + y / 100 / 4; return Math.floor(365.25 * (y + 4716) + Math.floor(30.6001 * (m + 1)) + d + b - 1524.5) } function isJulianDate(year, month, day) { if (year < 1582) return !0; if (year > 1582) return !1; if (month < 10) return !0; if (month > 10) return !1; if (day < 5) return !0; if (day > 14) return !1; throw "Any date in the range 10/5/1582 to 10/14/1582 is invalid!" } function jyear(td, yy, mm, dd) { var z, f, alpha, b, c, d, e; return f = (td += .5) - (z = Math.floor(td)), b = (z < 2299161 ? z : z + 1 + (alpha = Math.floor((z - 1867216.25) / 36524.25)) - Math.floor(alpha / 4)) + 1524, c = Math.floor((b - 122.1) / 365.25), d = Math.floor(365.25 * c), e = Math.floor((b - d) / 30.6001), { day: Math.floor(b - d - Math.floor(30.6001 * e) + f), month: Math.floor(e < 14 ? e - 1 : e - 13), year: Math.floor(mm > 2 ? c - 4716 : c - 4715) } } function jhms(j) { var ij; return j += .5, ij = Math.floor(86400 * (j - Math.floor(j)) + .5), { hour: Math.floor(ij / 3600), minute: Math.floor(ij / 60 % 60), second: Math.floor(ij % 60) } } function jwday(j) { return Math.floor(j + 1.5) % 7 } function meanphase(sdate, k) { var t, t2; return 2415020.75933 + synmonth * k + 1178e-7 * (t2 = (t = (sdate - 2415020) / 36525) * t) - 155e-9 * (t2 * t) + 33e-5 * dsin(166.56 + 132.87 * t - .009173 * t2) } function truephase(k, phase) { var t, t2, t3, pt, m, mprime, f, apcor = !1; if (pt = 2415020.75933 + synmonth * (k += phase) + 1178e-7 * (t2 = (t = k / 1236.85) * t) - 155e-9 * (t3 = t2 * t) + 33e-5 * dsin(166.56 + 132.87 * t - .009173 * t2), m = 359.2242 + 29.10535608 * k - 333e-7 * t2 - 347e-8 * t3, mprime = 306.0253 + 385.81691806 * k + .0107306 * t2 + 1236e-8 * t3, f = 21.2964 + 390.67050646 * k - .0016528 * t2 - 239e-8 * t3, phase < .01 || abs(phase - .5) < .01 ? (pt += (.1734 - 393e-6 * t) * dsin(m) + .0021 * dsin(2 * m) - .4068 * dsin(mprime) + .0161 * dsin(2 * mprime) - 4e-4 * dsin(3 * mprime) + .0104 * dsin(2 * f) - .0051 * dsin(m + mprime) - .0074 * dsin(m - mprime) + 4e-4 * dsin(2 * f + m) - 4e-4 * dsin(2 * f - m) - 6e-4 * dsin(2 * f + mprime) + .001 * dsin(2 * f - mprime) + 5e-4 * dsin(m + 2 * mprime), apcor = !0) : (abs(phase - .25) < .01 || abs(phase - .75) < .01) && (pt += (.1721 - 4e-4 * t) * dsin(m) + .0021 * dsin(2 * m) - .628 * dsin(mprime) + .0089 * dsin(2 * mprime) - 4e-4 * dsin(3 * mprime) + .0079 * dsin(2 * f) - .0119 * dsin(m + mprime) - .0047 * dsin(m - mprime) + 3e-4 * dsin(2 * f + m) - 4e-4 * dsin(2 * f - m) - 6e-4 * dsin(2 * f + mprime) + .0021 * dsin(2 * f - mprime) + 3e-4 * dsin(m + 2 * mprime) + 4e-4 * dsin(m - 2 * mprime) - 3e-4 * dsin(2 * m + mprime), pt += phase < .5 ? .0028 - 4e-4 * dcos(m) + 3e-4 * dcos(mprime) : 4e-4 * dcos(m) - .0028 - 3e-4 * dcos(mprime), apcor = !0), !apcor) throw "Error calculating moon phase!"; return pt } function phasehunt(sdate, phases) { var adate, k1, k2, nt1, nt2, yy, mm, dd, jyearResult = jyear(adate = sdate - 45, yy, mm, dd); for (yy = jyearResult.year, mm = jyearResult.month, dd = jyearResult.day, adate = nt1 = meanphase(adate, k1 = Math.floor(12.3685 * (yy + 1 / 12 * (mm - 1) - 1900))); nt2 = meanphase(adate += synmonth, k2 = k1 + 1), !(nt1 <= sdate && nt2 > sdate);)nt1 = nt2, k1 = k2; return phases[0] = truephase(k1, 0), phases[1] = truephase(k1, .25), phases[2] = truephase(k1, .5), phases[3] = truephase(k1, .75), phases[4] = truephase(k2, 0), phases } function kepler(m, ecc) { var e, delta; e = m = toRad(m); do { e -= (delta = e - ecc * Math.sin(e) - m) / (1 - ecc * Math.cos(e)) } while (abs(delta) > epsilon); return e } function getMoonPhase(julianDate) { var Day, N, M, Ec, Lambdasun, ml, MM, MN, Ev, Ae, MmP, mEc, lP, lPP, NP, y, x, MoonAge, MoonPhase, MoonDist, MoonDFrac, MoonAng, F, SunDist, SunAng; return N = fixAngle(360 / 365.2422 * (Day = julianDate - epoch)), Ec = kepler(M = fixAngle(N + elonge - elongp), eccent), Ec = Math.sqrt((1 + eccent) / (1 - eccent)) * Math.tan(Ec / 2), Lambdasun = fixAngle((Ec = 2 * toDeg(Math.atan(Ec))) + elongp), F = (1 + eccent * Math.cos(toRad(Ec))) / (1 - eccent * eccent), SunDist = sunsmax / F, SunAng = F * sunangsiz, ml = fixAngle(13.1763966 * Day + mmlong), MM = fixAngle(ml - .1114041 * Day - mmlongp), MN = fixAngle(mlnode - .0529539 * Day), MmP = MM + (Ev = 1.2739 * Math.sin(toRad(2 * (ml - Lambdasun) - MM))) - (Ae = .1858 * Math.sin(toRad(M))) - .37 * Math.sin(toRad(M)), lPP = (lP = ml + Ev + (mEc = 6.2886 * Math.sin(toRad(MmP))) - Ae + .214 * Math.sin(toRad(2 * MmP))) + .6583 * Math.sin(toRad(2 * (lP - Lambdasun))), NP = MN - .16 * Math.sin(toRad(M)), y = Math.sin(toRad(lPP - NP)) * Math.cos(toRad(minc)), x = Math.cos(toRad(lPP - NP)), toDeg(Math.atan2(y, x)), NP, toDeg(Math.asin(Math.sin(toRad(lPP - NP)) * Math.sin(toRad(minc)))), MoonAge = lPP - Lambdasun, MoonPhase = (1 - Math.cos(toRad(MoonAge))) / 2, MoonDist = msmax * (1 - mecc * mecc) / (1 + mecc * Math.cos(toRad(MmP + mEc))), MoonAng = mangsiz / (MoonDFrac = MoonDist / msmax), mparallax / MoonDFrac, { moonIllumination: MoonPhase, moonAgeInDays: synmonth * (fixAngle(MoonAge) / 360), distanceInKm: MoonDist, angularDiameterInDeg: MoonAng, distanceToSun: SunDist, sunAngularDiameter: SunAng, moonPhase: fixAngle(MoonAge) / 360 } } function getMoonInfo(date) { return null == date ? { moonPhase: 0, moonIllumination: 0, moonAgeInDays: 0, distanceInKm: 0, angularDiameterInDeg: 0, distanceToSun: 0, sunAngularDiameter: 0 } : getMoonPhase(toJulianTime(date)) } function getEaster(year) { var previousMoonInfo, moonInfo, fullMoon = new Date(year, 2, 21), gettingDarker = void 0; do { previousMoonInfo = getMoonInfo(fullMoon), fullMoon.setDate(fullMoon.getDate() + 1), moonInfo = getMoonInfo(fullMoon), void 0 === gettingDarker ? gettingDarker = moonInfo.moonIllumination < previousMoonInfo.moonIllumination : gettingDarker && moonInfo.moonIllumination > previousMoonInfo.moonIllumination && (gettingDarker = !1) } while (gettingDarker && moonInfo.moonIllumination < previousMoonInfo.moonIllumination || !gettingDarker && moonInfo.moonIllumination > previousMoonInfo.moonIllumination); for (fullMoon.setDate(fullMoon.getDate() - 1); 0 !== fullMoon.getDay();)fullMoon.setDate(fullMoon.getDate() + 1); return fullMoon.toISOString().split('T')[0] }
-              //the above line calculates the moon's path to figure out when Easter is
-  
-              var easterthisyear = new Date(getEaster(thisyear) + "T00:00"); //see new years for docs, except it's calculating easter as it's not a set date
-              if (easterthisyear - now < 0) {
-                  easterday = new Date(getEaster(nextyear) + "T00:00");
-              } else {
-                  easterday = new Date(getEaster(thisyear) + "T00:00");
-              }
-  
-              //independence
-              var independencethisyear = new Date(thisyear + "-07-04T00:00"); //see new years for docs
-              if (independencethisyear - now < 0) {
-                  independenceday = new Date(nextyear + '-07-04T00:00');
-              } else {
-                  independenceday = new Date(thisyear + '-07-04T00:00');
-              }
-  
-              //halloween
-              var halloweenthisyear = new Date(thisyear + "-10-31T00:00"); //see new years for docs
-              if (halloweenthisyear - now < 0) {
-                  halloweenday = new Date(nextyear + '-10-31T00:00');
-              } else {
-                  halloweenday = new Date(thisyear + '-10-31T00:00');
-              }
-  
-              //thanksgiving
-              var thanksgivingthisyear = new Date(formatDate(getDateString(thisyear, 10, 3, 4))); //10th month, 3rd week, 4th day (thursday)
-              if (thanksgivingthisyear - now < 0) { //see new years for docs
-                  thanksgivingday = new Date(formatDate(getDateString(nextyear, 10, 3, 4)));
-              }
-              else {
-                  thanksgivingday = new Date(formatDate(getDateString(thisyear, 10, 3, 4)));
-              }
-  
-              //christmas
-              var christmasthisyear = new Date(thisyear + "-12-25T00:00"); //see new years for doce
-              if (christmasthisyear - now < 0) {
-                  christmasday = new Date(nextyear + '-12-25T00:00');
-              } else {
-                  christmasday = new Date(thisyear + '-12-25T00:00');
-              }
-
-              //groundhog day
-var groundhogthisyear = new Date(thisyear + "-02-02T00:00"); //setting up this year's date
-if (groundhogthisyear - now < 0) { //if it's already passed
-    groundhogday = new Date(nextyear + '-02-02T00:00'); //then set to next year
-} else { //otherwise, if it's not passed yet
-    groundhogday = new Date(thisyear + '-02-02T00:00'); //set to this year
-}
-
-
-//st patricks day
-var stpatricksthisyear = new Date(thisyear + "-03-17T00:00");
-if (stpatricksthisyear - now < 0) {
-    stpatricksday = new Date(nextyear + '-03-17T00:00');
-} else {
-    stpatricksday = new Date(thisyear + '-03-17T00:00');
-}
-
-//cinco de mayo
-var cincothisyear = new Date(thisyear + "-05-05T00:00");
-if (cincothisyear - now < 0) {
-    cincodemayo = new Date(nextyear + '-05-05T00:00');
-} else {
-    cincodemayo = new Date(thisyear + '-05-05T00:00');
-}
-
-//mlk jr day (third Monday in January)
-var mlkthisyear = new Date(formatDate(getDateString(thisyear, 0, 2, 1))); //0th month (Jan), 2nd week, 1st day (Monday)
-if (mlkthisyear - now < 0) {
-    mlkday = new Date(formatDate(getDateString(nextyear, 0, 2, 1)));
-} else {
-    mlkday = new Date(formatDate(getDateString(thisyear, 0, 2, 1)));
-}
-  
-
-
-  
-              // List of holiday dates
-              const holidays = [
-                {
-                    name: 'newyear',
-                    date: newyearsday
-                },
-                {
-                    name: 'mlk',
-                    date: mlkday
-                },
-                {
-                    name: 'groundhog',
-                    date: groundhogday
-                },
-                {
-                    name: 'valentines',
-                    date: valentinessday
-                },
-                {
-                    name: 'stpatricks',
-                    date: stpatricksday
-                },
-                {
-                    name: 'easter',
-                    date: easterday
-                },
-                {
-                    name: 'cinco',
-                    date: cincodemayo
-                },
-                {
-                    name: 'independence',
-                    date: independenceday
-                },
-                {
-                    name: 'halloween',
-                    date: halloweenday
-                },
-                {
-                    name: 'thanksgiving',
-                    date: thanksgivingday
-                },
-                {
-                    name: 'christmas',
-                    date: christmasday
-                }
-            ];
-  
-              // Now that all the holidays are in a list and we've calculated when they occur next, it'll find which is coming up the soonest
-              var nextHoliday = holidays.reduce(function (closest, holiday) {
-                  var timeDiff = holiday.date.getTime() - now.getTime();
-                  return timeDiff > 0 && timeDiff < (closest.date.getTime() - now.getTime()) ? holiday : closest;
-              }, holidays[0]);
-  
-              
-  
-              switch (nextHoliday.name) {
-                  case 'newyear':
-                      document.getElementById("autopilotprediction").innerHTML = "New Year's Day"; //set Autopilot to tell the user that NYD is next
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "New Year's Day"; //same for Autopilot mobile
-  
-                      NYD(); //and run the NYD function to actually set the date and such to NYD
-                      break;
-                 case 'mlk':
-                      document.getElementById("autopilotprediction").innerHTML = "MLK Jr Day";
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "MLK Jr Day";
-
-                      MLK();
-                      break;
-                  case 'groundhog': //see NYD for docs
-                      document.getElementById("autopilotprediction").innerHTML = "Groundhog Day";
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "Groundhog Day";
-
-                      GROUNDHOG();
-                      break;
-                  case 'valentines': //see NYD for docs
-                      document.getElementById("autopilotprediction").innerHTML = "Valentine's Day";
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "Valentine's Day";
-  
-                      VD();
-                      break;
-                case 'stpatricks': //see NYD for docs
-                      document.getElementById("autopilotprediction").innerHTML = "St. Patrick's Day";
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "St. Patrick's Day";
-
-                      SDP();
-                      break;
-                  case 'easter': //see NYD for docs
-                      document.getElementById("autopilotprediction").innerHTML = "Easter";
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "Easter";
-  
-                      EASTER();
-                      break;
-                case 'cinco': //see NYD for docs
-                      document.getElementById("autopilotprediction").innerHTML = "Cinco de Mayo";
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "Cinco de Mayo";
-
-                      CINCO();
-                      break;
-                  case 'independence': //see NYD for docs
-                      document.getElementById("autopilotprediction").innerHTML = "Independence Day";
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "Independence Day";
-  
-                      ID();
-                      break;
-                  case 'halloween': //see NYD for docs
-                      document.getElementById("autopilotprediction").innerHTML = "Halloween";
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "Halloween";
-  
-                      H();
-                      break;
-                  case 'thanksgiving': //see NYD for docs
-                      document.getElementById("autopilotprediction").innerHTML = "Thanksgiving";
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "Thanksgiving";
-  
-                      T();
-                      break;
-                  case 'christmas': //see NYD for docs
-                      document.getElementById("autopilotprediction").innerHTML = "Christmas";
-                      document.getElementById("autopilotpredictionmobile").innerHTML = "Christmas";
-  
-                      C();
-                      break;
-                  default:
-                      // handle cases where nextHoliday.name doesn't match any of the above
-                      console.error('Unexpected holiday name:', nextHoliday.name);
-              }
+                const year = nextHoliday.date.getFullYear();
+                const month = String(nextHoliday.date.getMonth() + 1).padStart(2, '0');
+                const day = String(nextHoliday.date.getDate()).padStart(2, '0');
+                const hours = String(nextHoliday.date.getHours()).padStart(2, '0');
+                const minutes = String(nextHoliday.date.getMinutes()).padStart(2, '0');
+                document.querySelector(".datepicker").value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                SetCountDowngeneral();
           }
       }
+      
   
       if(parameter("schedule") !== "null" && parameter("schedule")){
           document.querySelector(".datepicker").value = '9999-12-30T00:00';
@@ -982,49 +810,68 @@ class ConfettiManager {
   
           const confettiManager = new ConfettiManager();
 
+          // Global variables for emoji overlay functionality
+          let emojiPopInterval;
+          let emojiPlaceholderIndex = 0;
+
+          function emojiPopNext() {
+            const input = document.getElementById('confettiEmojiPicker');
+            const overlay = document.getElementById('emojiOverlay');
+            if (!input || !overlay) return;
+            
+            const raw = input.getAttribute('data-placeholders') || '';
+            const placeholders = raw.split(',').map(s => s.trim()).filter(Boolean);
+            
+            if (placeholders.length === 0) return;
+            
+            overlay.textContent = placeholders[emojiPlaceholderIndex];
+            overlay.classList.remove('pop');
+            void overlay.offsetWidth;
+            overlay.classList.add('pop');
+            
+            input.placeholder = placeholders[emojiPlaceholderIndex];
+            emojiPlaceholderIndex = (emojiPlaceholderIndex + 1) % placeholders.length;
+          }
+
+          function startEmojiPopCycle() {
+            // Don't start if already running
+            if (emojiPopInterval) return;
+            
+            emojiPopNext();
+            emojiPopInterval = setInterval(emojiPopNext, 5000);
+          }
+
+          function stopEmojiPopCycle() {
+            if (emojiPopInterval) {
+              clearInterval(emojiPopInterval);
+              emojiPopInterval = null;
+            }
+          }
+
+          function updateOverlayVisibility() {
+            const input = document.getElementById('confettiEmojiPicker');
+            const overlay = document.getElementById('emojiOverlay');
+            if (!input || !overlay) return;
+            
+            if (document.activeElement === input || input.value) {
+              stopEmojiPopCycle();
+              overlay.classList.remove('pop');
+              overlay.style.opacity = '0';
+              overlay.style.zIndex = '-1';
+            } else {
+              if (!emojiPopInterval) {
+                startEmojiPopCycle();
+              }
+              overlay.style.opacity = '1';
+              overlay.style.zIndex = '';
+            }
+          }
 
           document.addEventListener('DOMContentLoaded', () => {
             const input = document.getElementById('confettiEmojiPicker');
-            const overlay = document.getElementById('emojiOverlay');
-            const raw = input.getAttribute('data-placeholders') || '';
-            const placeholders = raw.split(',').map(s => s.trim()).filter(Boolean);
-            let i = 0;
-            let popInterval;
-          
-            function popNext() {
-              overlay.textContent = placeholders[i];
-              overlay.classList.remove('pop');
-              void overlay.offsetWidth;
-              overlay.classList.add('pop');
-          
-              input.placeholder = placeholders[i];
-              i = (i + 1) % placeholders.length;
-            }
-          
-            function startPopCycle() {
-              popNext();
-              popInterval = setInterval(popNext, 5000);
-            }
-          
-            function stopPopCycle() {
-              clearInterval(popInterval);
-            }
-          
-            function updateOverlayVisibility() {
-              if (document.activeElement === input || input.value) {
-                stopPopCycle();
-                overlay.classList.remove('pop');
-                overlay.style.opacity = '0';
-                overlay.style.zIndex = '-1';
-              } else {
-                startPopCycle();
-                overlay.style.opacity = '1';
-                overlay.style.zIndex = '';
-              }
-            }
-          
-            // Initial start
-            startPopCycle();
+            if (!input) return;
+            
+            // Initialize overlay visibility (this will start the cycle if appropriate)
             updateOverlayVisibility();
           
             // Event listeners
@@ -1036,7 +883,7 @@ class ConfettiManager {
 
           function updateActiveSection() {
             if(!document.getElementById("settings").classList.contains("hidden")){
-            const sections = document.querySelectorAll('h1[id]');
+            const sections = document.querySelectorAll('h1[id]:not(#personalSettingsOverlay h1[id])');
             const sidebarLinks = document.querySelectorAll('.sidebaranchor');
             
             // Get the current scroll position
@@ -1286,6 +1133,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               expires = "; expires=" + date.toUTCString();
           }
           document.cookie = name + "=" + (value || "") + expires + "; path=/";
+          debouncedSaveCookies(); // Trigger cloud sync
       }
       function getCookie(name) {
           var nameEQ = name + "=";
@@ -1299,6 +1147,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
       }
       function eraseCookie(name) {
           document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+          debouncedSaveCookies(); // Trigger cloud sync
       }
 
       const includeDropdown = document.getElementById('includeDropdown');
@@ -1434,9 +1283,13 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           '&progressposition=' + progressbarposition + 
               '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
               '&schedule=' + parameter('schedule');
-          window.history.pushState({ path: refresh }, '', refresh); //create and push a new URL
+          // Only update URL if it's actually different to avoid unnecessary history entries
+          if (window.location.href !== refresh) {
+            window.history.replaceState({ path: refresh }, '', refresh); //update current URL without creating new history entry
+          }
   
           document.getElementById("linkinput").value = refresh; //refresh the link
+          document.getElementById("previewiframe").src = refresh + "&cardmode=true";
           document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(cdtitle);
           if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
             document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
@@ -1472,7 +1325,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
   
       }, false);
 
-        //settings
+//settings
       function settings() {
           if(getCookie("cookiesAccepted")){
   
@@ -1557,6 +1410,55 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               }, 500);
           }
       }
+
+// Improved searchsettings function for settings search
+function searchsettings() {
+    const input = document.getElementById("searchbarinput");
+    const filter = input.value.toLowerCase();
+    const resultsContainer = document.getElementById("search-results");
+    resultsContainer.innerHTML = "";
+
+    if (!filter) {
+        resultsContainer.classList.add("hidden");
+        return;
+    }
+
+    const headings = document.querySelectorAll('#settings h1[id], #settings h2[id], #settings h3[id]');
+    let found = false;
+
+    headings.forEach(heading => {
+        let combinedText = heading.textContent.toLowerCase();
+        let sibling = heading.nextElementSibling;
+        let collectedText = "";
+
+        while (sibling && !['H1','H2','H3'].includes(sibling.tagName)) {
+            collectedText += " " + sibling.textContent.toLowerCase();
+            sibling = sibling.nextElementSibling;
+        }
+
+        combinedText += collectedText;
+
+        if (combinedText.includes(filter)) {
+            const resultBtn = document.createElement("button");
+            resultBtn.className = "searchresultbtn";
+            resultBtn.textContent = heading.textContent;
+            resultBtn.onclick = () => {
+                heading.scrollIntoView({ behavior: "smooth", block: "start" });
+                document.getElementById("searchbarinput").value = "";
+                resultsContainer.innerHTML = "";
+                resultsContainer.classList.add("hidden");
+
+                if (window.innerWidth < 768) {
+                    settings(); // close settings on mobile
+                }
+            };
+            resultsContainer.appendChild(resultBtn);
+            found = true;
+        }
+    });
+
+    resultsContainer.classList.toggle("hidden", !found);
+}
   
       //grey out color pickers and theme color for background
       if (!isNaN(parameter("atc"))) { //if animated background is enabled
@@ -2107,6 +2009,8 @@ function contrast(){ //increase contrast set or remove cookie
           css.style.setProperty('--typeface', "Fredoka One"); //reset typeface
   
           localStorage.removeItem('dashboardsaved'); //reset dashboard
+          localStorage.removeItem('pfp_color'); //reset dashboard
+          localStorage.removeItem('pfp_name'); //reset dashboard
   
           window.location.href = window.location.origin + window.location.pathname; //set URL
   
@@ -2185,22 +2089,7 @@ function contrast(){ //increase contrast set or remove cookie
     
   
   
-      const holidays = { // keys are formatted as month,week,day
-          "0,2,1": "Martin Luther King, Jr. Day",
-          "1,2,1": "President's Day",
-          "2,1,0": "Daylight Savings Time Begins",
-          "3,3,3": "Administrative Assistants Day",
-          "4,1,0": "Mother's Day",
-          "4,-1,1": "Memorial Day",
-          "5,2,0": "Father's Day",
-          "6,2,0": "Parents Day",
-          "8,0,1": "Labor Day",
-          "8,1,0": "Grandparents Day",
-          "8,-1,0": "Gold Star Mothers Day",
-          "9,1,1": "Columbus Day",
-          "10,0,0": "Daylight Savings Time Ends",
-          "10,3,4": "Thanksgiving Day"
-      };
+
       function getDate(year, month, week, day) {
           const firstDay = 1;
           if (week < 0) {
@@ -2239,7 +2128,7 @@ function contrast(){ //increase contrast set or remove cookie
       var thisyear = new Date().getFullYear();
   
       function MES() { //MCA End of School
-          document.querySelector(".datepicker").value = '2025-05-22T11:30';
+          document.querySelector(".datepicker").value = '2026-05-21T11:30';
           SetCountDowngeneral();
       }
       function EASTER() { //Easter
@@ -2276,7 +2165,7 @@ function contrast(){ //increase contrast set or remove cookie
           var independencethisyear = new Date(thisyear + "-07-04T00:00");
           if (independencethisyear - now < 0) {
               document.querySelector(".datepicker").value = nextyear + '-07-04T00:00';
-} else {
+        } else {
               document.querySelector(".datepicker").value = thisyear + '-07-04T00:00';
           }
           SetCountDowngeneral();
@@ -2351,199 +2240,16 @@ function contrast(){ //increase contrast set or remove cookie
     }
   
           function autopilottab(){
-              showToast('Autopilot found the next holiday!', 'success');
-              var now = new Date(); //getting the current date
-              var nextyear = new Date().getFullYear() + 1; //setting up a next year variable
-              var thisyear = new Date().getFullYear(); //setting up a this year variable
-  
-              //new years
-              var newyearsthisyear = new Date(thisyear + "-01-01T00:00"); //setting up a this year variable for when new years day is in the current year
-              if (newyearsthisyear - now < 0) { //if it's already passed
-                  newyearsday = new Date(nextyear + '-01-01T00:00'); //then set the countdown to new year's next year
-              } else { //otherwise, if it's not passed yet
-                  newyearsday = new Date(thisyear + '-01-01T00:00'); //set the countdown to new year's this year
-              }
-  
-              //valentines
-              var valentinesthisyear = new Date(thisyear + "-02-14T00:00"); //see new years for docs
-              if (valentinesthisyear - now < 0) {
-                  valentinessday = new Date(nextyear + '-02-14T00:00');
-              } else {
-                  valentinessday = new Date(thisyear + '-02-14T00:00');
-              }
-  
-              //easter
-          var epoch = 2444238.5, elonge = 278.83354, elongp = 282.596403, eccent = .016718, sunsmax = 149598500, sunangsiz = .533128, mmlong = 64.975464, mmlongp = 349.383063, mlnode = 151.950429, minc = 5.145396, mecc = .0549, mangsiz = .5181, msmax = 384401, mparallax = .9507, synmonth = 29.53058868, lunatbase = 2423436, earthrad = 6378.16, PI = 3.141592653589793, epsilon = 1e-6; function sgn(x) { return x < 0 ? -1 : x > 0 ? 1 : 0 } function abs(x) { return x < 0 ? -x : x } function fixAngle(a) { return a - 360 * Math.floor(a / 360) } function toRad(d) { return d * (PI / 180) } function toDeg(d) { return d * (180 / PI) } function dsin(x) { return Math.sin(toRad(x)) } function dcos(x) { return Math.cos(toRad(x)) } function toJulianTime(date) { var year, month, day; year = date.getFullYear(); var m = (month = date.getMonth() + 1) > 2 ? month : month + 12, y = month > 2 ? year : year - 1, d = (day = date.getDate()) + date.getHours() / 24 + date.getMinutes() / 1440 + (date.getSeconds() + date.getMilliseconds() / 1e3) / 86400, b = isJulianDate(year, month, day) ? 0 : 2 - y / 100 + y / 100 / 4; return Math.floor(365.25 * (y + 4716) + Math.floor(30.6001 * (m + 1)) + d + b - 1524.5) } function isJulianDate(year, month, day) { if (year < 1582) return !0; if (year > 1582) return !1; if (month < 10) return !0; if (month > 10) return !1; if (day < 5) return !0; if (day > 14) return !1; throw "Any date in the range 10/5/1582 to 10/14/1582 is invalid!" } function jyear(td, yy, mm, dd) { var z, f, alpha, b, c, d, e; return f = (td += .5) - (z = Math.floor(td)), b = (z < 2299161 ? z : z + 1 + (alpha = Math.floor((z - 1867216.25) / 36524.25)) - Math.floor(alpha / 4)) + 1524, c = Math.floor((b - 122.1) / 365.25), d = Math.floor(365.25 * c), e = Math.floor((b - d) / 30.6001), { day: Math.floor(b - d - Math.floor(30.6001 * e) + f), month: Math.floor(e < 14 ? e - 1 : e - 13), year: Math.floor(mm > 2 ? c - 4716 : c - 4715) } } function jhms(j) { var ij; return j += .5, ij = Math.floor(86400 * (j - Math.floor(j)) + .5), { hour: Math.floor(ij / 3600), minute: Math.floor(ij / 60 % 60), second: Math.floor(ij % 60) } } function jwday(j) { return Math.floor(j + 1.5) % 7 } function meanphase(sdate, k) { var t, t2; return 2415020.75933 + synmonth * k + 1178e-7 * (t2 = (t = (sdate - 2415020) / 36525) * t) - 155e-9 * (t2 * t) + 33e-5 * dsin(166.56 + 132.87 * t - .009173 * t2) } function truephase(k, phase) { var t, t2, t3, pt, m, mprime, f, apcor = !1; if (pt = 2415020.75933 + synmonth * (k += phase) + 1178e-7 * (t2 = (t = k / 1236.85) * t) - 155e-9 * (t3 = t2 * t) + 33e-5 * dsin(166.56 + 132.87 * t - .009173 * t2), m = 359.2242 + 29.10535608 * k - 333e-7 * t2 - 347e-8 * t3, mprime = 306.0253 + 385.81691806 * k + .0107306 * t2 + 1236e-8 * t3, f = 21.2964 + 390.67050646 * k - .0016528 * t2 - 239e-8 * t3, phase < .01 || abs(phase - .5) < .01 ? (pt += (.1734 - 393e-6 * t) * dsin(m) + .0021 * dsin(2 * m) - .4068 * dsin(mprime) + .0161 * dsin(2 * mprime) - 4e-4 * dsin(3 * mprime) + .0104 * dsin(2 * f) - .0051 * dsin(m + mprime) - .0074 * dsin(m - mprime) + 4e-4 * dsin(2 * f + m) - 4e-4 * dsin(2 * f - m) - 6e-4 * dsin(2 * f + mprime) + .001 * dsin(2 * f - mprime) + 5e-4 * dsin(m + 2 * mprime), apcor = !0) : (abs(phase - .25) < .01 || abs(phase - .75) < .01) && (pt += (.1721 - 4e-4 * t) * dsin(m) + .0021 * dsin(2 * m) - .628 * dsin(mprime) + .0089 * dsin(2 * mprime) - 4e-4 * dsin(3 * mprime) + .0079 * dsin(2 * f) - .0119 * dsin(m + mprime) - .0047 * dsin(m - mprime) + 3e-4 * dsin(2 * f + m) - 4e-4 * dsin(2 * f - m) - 6e-4 * dsin(2 * f + mprime) + .0021 * dsin(2 * f - mprime) + 3e-4 * dsin(m + 2 * mprime) + 4e-4 * dsin(m - 2 * mprime) - 3e-4 * dsin(2 * m + mprime), pt += phase < .5 ? .0028 - 4e-4 * dcos(m) + 3e-4 * dcos(mprime) : 4e-4 * dcos(m) - .0028 - 3e-4 * dcos(mprime), apcor = !0), !apcor) throw "Error calculating moon phase!"; return pt } function phasehunt(sdate, phases) { var adate, k1, k2, nt1, nt2, yy, mm, dd, jyearResult = jyear(adate = sdate - 45, yy, mm, dd); for (yy = jyearResult.year, mm = jyearResult.month, dd = jyearResult.day, adate = nt1 = meanphase(adate, k1 = Math.floor(12.3685 * (yy + 1 / 12 * (mm - 1) - 1900))); nt2 = meanphase(adate += synmonth, k2 = k1 + 1), !(nt1 <= sdate && nt2 > sdate);)nt1 = nt2, k1 = k2; return phases[0] = truephase(k1, 0), phases[1] = truephase(k1, .25), phases[2] = truephase(k1, .5), phases[3] = truephase(k1, .75), phases[4] = truephase(k2, 0), phases } function kepler(m, ecc) { var e, delta; e = m = toRad(m); do { e -= (delta = e - ecc * Math.sin(e) - m) / (1 - ecc * Math.cos(e)) } while (abs(delta) > epsilon); return e } function getMoonPhase(julianDate) { var Day, N, M, Ec, Lambdasun, ml, MM, MN, Ev, Ae, MmP, mEc, lP, lPP, NP, y, x, MoonAge, MoonPhase, MoonDist, MoonDFrac, MoonAng, F, SunDist, SunAng; return N = fixAngle(360 / 365.2422 * (Day = julianDate - epoch)), Ec = kepler(M = fixAngle(N + elonge - elongp), eccent), Ec = Math.sqrt((1 + eccent) / (1 - eccent)) * Math.tan(Ec / 2), Lambdasun = fixAngle((Ec = 2 * toDeg(Math.atan(Ec))) + elongp), F = (1 + eccent * Math.cos(toRad(Ec))) / (1 - eccent * eccent), SunDist = sunsmax / F, SunAng = F * sunangsiz, ml = fixAngle(13.1763966 * Day + mmlong), MM = fixAngle(ml - .1114041 * Day - mmlongp), MN = fixAngle(mlnode - .0529539 * Day), MmP = MM + (Ev = 1.2739 * Math.sin(toRad(2 * (ml - Lambdasun) - MM))) - (Ae = .1858 * Math.sin(toRad(M))) - .37 * Math.sin(toRad(M)), lPP = (lP = ml + Ev + (mEc = 6.2886 * Math.sin(toRad(MmP))) - Ae + .214 * Math.sin(toRad(2 * MmP))) + .6583 * Math.sin(toRad(2 * (lP - Lambdasun))), NP = MN - .16 * Math.sin(toRad(M)), y = Math.sin(toRad(lPP - NP)) * Math.cos(toRad(minc)), x = Math.cos(toRad(lPP - NP)), toDeg(Math.atan2(y, x)), NP, toDeg(Math.asin(Math.sin(toRad(lPP - NP)) * Math.sin(toRad(minc)))), MoonAge = lPP - Lambdasun, MoonPhase = (1 - Math.cos(toRad(MoonAge))) / 2, MoonDist = msmax * (1 - mecc * mecc) / (1 + mecc * Math.cos(toRad(MmP + mEc))), MoonAng = mangsiz / (MoonDFrac = MoonDist / msmax), mparallax / MoonDFrac, { moonIllumination: MoonPhase, moonAgeInDays: synmonth * (fixAngle(MoonAge) / 360), distanceInKm: MoonDist, angularDiameterInDeg: MoonAng, distanceToSun: SunDist, sunAngularDiameter: SunAng, moonPhase: fixAngle(MoonAge) / 360 } } function getMoonInfo(date) { return null == date ? { moonPhase: 0, moonIllumination: 0, moonAgeInDays: 0, distanceInKm: 0, angularDiameterInDeg: 0, distanceToSun: 0, sunAngularDiameter: 0 } : getMoonPhase(toJulianTime(date)) } function getEaster(year) { var previousMoonInfo, moonInfo, fullMoon = new Date(year, 2, 21), gettingDarker = void 0; do { previousMoonInfo = getMoonInfo(fullMoon), fullMoon.setDate(fullMoon.getDate() + 1), moonInfo = getMoonInfo(fullMoon), void 0 === gettingDarker ? gettingDarker = moonInfo.moonIllumination < previousMoonInfo.moonIllumination : gettingDarker && moonInfo.moonIllumination > previousMoonInfo.moonIllumination && (gettingDarker = !1) } while (gettingDarker && moonInfo.moonIllumination < previousMoonInfo.moonIllumination || !gettingDarker && moonInfo.moonIllumination > previousMoonInfo.moonIllumination); for (fullMoon.setDate(fullMoon.getDate() - 1); 0 !== fullMoon.getDay();)fullMoon.setDate(fullMoon.getDate() + 1); return fullMoon.toISOString().split('T')[0] }
-              //the above line calculates the moon's path to figure out when Easter is
-  
-              var easterthisyear = new Date(getEaster(thisyear) + "T00:00"); //see new years for docs, except it's calculating easter as it's not a set date
-              if (easterthisyear - now < 0) {
-                  easterday = new Date(getEaster(nextyear) + "T00:00");
-              } else {
-                  easterday = new Date(getEaster(thisyear) + "T00:00");
-              }
-  
-              //independence
-              var independencethisyear = new Date(thisyear + "-07-04T00:00"); //see new years for docs
-              if (independencethisyear - now < 0) {
-                  independenceday = new Date(nextyear + '-07-04T00:00');
-              } else {
-                  independenceday = new Date(thisyear + '-07-04T00:00');
-              }
-  
-              //halloween
-              var halloweenthisyear = new Date(thisyear + "-10-31T00:00"); //see new years for docs
-              if (halloweenthisyear - now < 0) {
-                  halloweenday = new Date(nextyear + '-10-31T00:00');
-              } else {
-                  halloweenday = new Date(thisyear + '-10-31T00:00');
-              }
-  
-              //thanksgiving
-              var thanksgivingthisyear = new Date(formatDate(getDateString(thisyear, 10, 3, 4))); //10th month, 3rd week, 4th day (thursday)
-              if (thanksgivingthisyear - now < 0) { //see new years for docs
-                  thanksgivingday = new Date(formatDate(getDateString(nextyear, 10, 3, 4)));
-              }
-              else {
-                  thanksgivingday = new Date(formatDate(getDateString(thisyear, 10, 3, 4)));
-              }
-  
-              //christmas
-              var christmasthisyear = new Date(thisyear + "-12-25T00:00"); //see new years for doce
-              if (christmasthisyear - now < 0) {
-                  christmasday = new Date(nextyear + '-12-25T00:00');
-              } else {
-                  christmasday = new Date(thisyear + '-12-25T00:00');
-              }
+              showToast('Timekeeper found the next holiday!', 'success');
+              const { nextHoliday, matchingHoliday } = getHolidayData();
 
-              //groundhog day
-var groundhogthisyear = new Date(thisyear + "-02-02T00:00"); //setting up this year's date
-if (groundhogthisyear - now < 0) { //if it's already passed
-    groundhogday = new Date(nextyear + '-02-02T00:00'); //then set to next year
-} else { //otherwise, if it's not passed yet
-    groundhogday = new Date(thisyear + '-02-02T00:00'); //set to this year
-}
-
-
-//st patricks day
-var stpatricksthisyear = new Date(thisyear + "-03-17T00:00");
-if (stpatricksthisyear - now < 0) {
-    stpatricksday = new Date(nextyear + '-03-17T00:00');
-} else {
-    stpatricksday = new Date(thisyear + '-03-17T00:00');
-}
-
-//cinco de mayo
-var cincothisyear = new Date(thisyear + "-05-05T00:00");
-if (cincothisyear - now < 0) {
-    cincodemayo = new Date(nextyear + '-05-05T00:00');
-} else {
-    cincodemayo = new Date(thisyear + '-05-05T00:00');
-}
-
-//mlk jr day (third Monday in January)
-var mlkthisyear = new Date(formatDate(getDateString(thisyear, 0, 2, 1))); //0th month (Jan), 2nd week, 1st day (Monday)
-if (mlkthisyear - now < 0) {
-    mlkday = new Date(formatDate(getDateString(nextyear, 0, 2, 1)));
-} else {
-    mlkday = new Date(formatDate(getDateString(thisyear, 0, 2, 1)));
-}
-
-  
-              // List of holiday dates
-              const holidays = [
-                {
-                    name: 'newyear',
-                    date: newyearsday
-                },
-                {
-                    name: 'mlk',
-                    date: mlkday
-                },
-                {
-                    name: 'groundhog',
-                    date: groundhogday
-                },
-                {
-                    name: 'valentines',
-                    date: valentinessday
-                },
-                {
-                    name: 'stpatricks',
-                    date: stpatricksday
-                },
-                {
-                    name: 'easter',
-                    date: easterday
-                },
-                {
-                    name: 'cinco',
-                    date: cincodemayo
-                },
-                {
-                    name: 'independence',
-                    date: independenceday
-                },
-                {
-                    name: 'halloween',
-                    date: halloweenday
-                },
-                {
-                    name: 'thanksgiving',
-                    date: thanksgivingday
-                },
-                {
-                    name: 'christmas',
-                    date: christmasday
-                }
-            ];
-  
-              // Now that all the holidays are in a list and we've calculated when they occur next, it'll find which is coming up the soonest
-              var nextHoliday = holidays.reduce(function (closest, holiday) {
-                  var timeDiff = holiday.date.getTime() - now.getTime();
-                  return timeDiff > 0 && timeDiff < (closest.date.getTime() - now.getTime()) ? holiday : closest;
-              }, holidays[0]);
-  
-              
-  
-              switch (nextHoliday.name) {
-                  case 'newyear':
-                      NYD(); //run the NYD function to actually set the date and such to NYD
-                      break;
-                 case 'mlk':
-                      MLK();
-                      break;
-                  case 'groundhog':
-                      GROUNDHOG();
-                      break;
-                  case 'valentines': //see NYD for docs
-                      VD();
-                      break;
-                case 'stpatricks':
-                      SDP();
-                      break;
-                  case 'easter': //see NYD for docs
-                      EASTER();
-                      break;
-                    case'cinco':
-                      CINCO();
-                      break;
-                  case 'independence': //see NYD for docs
-                      ID();
-                      break;
-                  case 'halloween': //see NYD for docs
-                      H();
-                      break;
-                  case 'thanksgiving': //see NYD for docs
-                      T();
-                      break;
-                  case 'christmas': //see NYD for docs
-                      C();
-                      break;
-                  default:
-                      // handle cases where nextHoliday.name doesn't match any of the above
-                      console.error('Unexpected holiday name:', nextHoliday.name);
-              }
+              const year = nextHoliday.date.getFullYear();
+              const month = String(nextHoliday.date.getMonth() + 1).padStart(2, '0');
+              const day = String(nextHoliday.date.getDate()).padStart(2, '0');
+              const hours = String(nextHoliday.date.getHours()).padStart(2, '0');
+              const minutes = String(nextHoliday.date.getMinutes()).padStart(2, '0');
+              document.querySelector(".datepicker").value = `${year}-${month}-${day}T${hours}:${minutes}`;
+              SetCountDowngeneral();
           }
   
   
@@ -2734,7 +2440,7 @@ if (mlkthisyear - now < 0) {
           icon.onload = function generateQR() {
               if (qrcodeElement.children.length === 0) {
                   new QRCode(qrcodeElement, {
-                      text: "https://michaeldors.com/mcacountdown/timer?date=" + parameter('date') + "?colorone=" + parameter('colorone') + "?colortwo=" + parameter('colortwo') + "?colorthree=" + parameter('colorthree') + "?colorfour=" + parameter('colorfour'),
+                      text: document.getElementById("linkinput").value,
                       width: 150,
                       height: 150,
                       colorDark: "#000000",
@@ -3808,6 +3514,56 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+
+    const accountDropdown = document.getElementById('accountDropdown');
+    if (accountDropdown) {
+        const accountButton = document.getElementById('accountDropdownButton');
+        const accountMenu = document.getElementById('accountMenu');
+        const accountItems = accountMenu.querySelectorAll('.dropdown-item');
+        
+        accountButton.addEventListener('click', () => {
+            if (!accountMenu.classList.contains('visible')) {
+                accountMenu.classList.add('visible', 'animate-open');
+                accountMenu.addEventListener('animationend', () => {
+                    accountMenu.classList.remove('animate-open');
+                    accountMenu.classList.add('opened');
+                }, { once: true });
+            } else {
+                accountMenu.classList.remove('visible', 'opened');
+            }
+        });
+
+        accountItems.forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove selected class from all items
+                accountItems.forEach(i => i.classList.remove('selected'));
+                // Add selected class to clicked item
+                this.classList.add('selected');
+                // Close dropdown
+                accountMenu.classList.remove('visible', 'opened');
+            });
+        });
+    }
+
+    const resetDropdown = document.getElementById('resetDropdown');
+    if (resetDropdown) {
+      const resetButton = resetDropdown.querySelector('.dropdown-button');
+      const resetMenu = document.getElementById('resetMenu');
+      const resetItems = resetMenu.querySelectorAll('.dropdown-item');
+      
+      resetButton.addEventListener('click', () => {
+          if (!resetMenu.classList.contains('visible')) {
+              resetMenu.classList.add('visible', 'animate-open');
+              resetMenu.addEventListener('animationend', () => {
+                  resetMenu.classList.remove('animate-open');
+                  resetMenu.classList.add('opened');
+              }, { once: true });
+          } else {
+              resetMenu.classList.remove('visible', 'opened');
+          }
+      });
+    }
 });
   
           function schedule_removeExceptionDay(day) {
@@ -4202,269 +3958,15 @@ document.addEventListener('DOMContentLoaded', function() {
      setcountdowntitle("front"); 
       }
       else{
-              var now = new Date(); //getting the current date
-              var nextyear = new Date().getFullYear() + 1; //setting up a next year variable
-              var thisyear = new Date().getFullYear(); //setting up a this year variable
-  
-              //new years
-              var newyearsthisyear = new Date(thisyear + "-01-01T00:00"); //setting up a this year variable for when new years day is in the current year
-              if (newyearsthisyear - now < 0) { //if it's already passed
-                  newyearsday = new Date(nextyear + '-01-01T00:00'); //then set the countdown to new year's next year
-              } else { //otherwise, if it's not passed yet
-                  newyearsday = new Date(thisyear + '-01-01T00:00'); //set the countdown to new year's this year
-              }
-  
-              //valentines
-              var valentinesthisyear = new Date(thisyear + "-02-14T00:00"); //see new years for docs
-              if (valentinesthisyear - now < 0) {
-                  valentinessday = new Date(nextyear + '-02-14T00:00');
-              } else {
-                  valentinessday = new Date(thisyear + '-02-14T00:00');
-              }
-  
-              //easter
-              var epoch = 2444238.5, elonge = 278.83354, elongp = 282.596403, eccent = .016718, sunsmax = 149598500, sunangsiz = .533128, mmlong = 64.975464, mmlongp = 349.383063, mlnode = 151.950429, minc = 5.145396, mecc = .0549, mangsiz = .5181, msmax = 384401, mparallax = .9507, synmonth = 29.53058868, lunatbase = 2423436, earthrad = 6378.16, PI = 3.141592653589793, epsilon = 1e-6; function sgn(x) { return x < 0 ? -1 : x > 0 ? 1 : 0 } function abs(x) { return x < 0 ? -x : x } function fixAngle(a) { return a - 360 * Math.floor(a / 360) } function toRad(d) { return d * (PI / 180) } function toDeg(d) { return d * (180 / PI) } function dsin(x) { return Math.sin(toRad(x)) } function dcos(x) { return Math.cos(toRad(x)) } function toJulianTime(date) { var year, month, day; year = date.getFullYear(); var m = (month = date.getMonth() + 1) > 2 ? month : month + 12, y = month > 2 ? year : year - 1, d = (day = date.getDate()) + date.getHours() / 24 + date.getMinutes() / 1440 + (date.getSeconds() + date.getMilliseconds() / 1e3) / 86400, b = isJulianDate(year, month, day) ? 0 : 2 - y / 100 + y / 100 / 4; return Math.floor(365.25 * (y + 4716) + Math.floor(30.6001 * (m + 1)) + d + b - 1524.5) } function isJulianDate(year, month, day) { if (year < 1582) return !0; if (year > 1582) return !1; if (month < 10) return !0; if (month > 10) return !1; if (day < 5) return !0; if (day > 14) return !1; throw "Any date in the range 10/5/1582 to 10/14/1582 is invalid!" } function jyear(td, yy, mm, dd) { var z, f, alpha, b, c, d, e; return f = (td += .5) - (z = Math.floor(td)), b = (z < 2299161 ? z : z + 1 + (alpha = Math.floor((z - 1867216.25) / 36524.25)) - Math.floor(alpha / 4)) + 1524, c = Math.floor((b - 122.1) / 365.25), d = Math.floor(365.25 * c), e = Math.floor((b - d) / 30.6001), { day: Math.floor(b - d - Math.floor(30.6001 * e) + f), month: Math.floor(e < 14 ? e - 1 : e - 13), year: Math.floor(mm > 2 ? c - 4716 : c - 4715) } } function jhms(j) { var ij; return j += .5, ij = Math.floor(86400 * (j - Math.floor(j)) + .5), { hour: Math.floor(ij / 3600), minute: Math.floor(ij / 60 % 60), second: Math.floor(ij % 60) } } function jwday(j) { return Math.floor(j + 1.5) % 7 } function meanphase(sdate, k) { var t, t2; return 2415020.75933 + synmonth * k + 1178e-7 * (t2 = (t = (sdate - 2415020) / 36525) * t) - 155e-9 * (t2 * t) + 33e-5 * dsin(166.56 + 132.87 * t - .009173 * t2) } function truephase(k, phase) { var t, t2, t3, pt, m, mprime, f, apcor = !1; if (pt = 2415020.75933 + synmonth * (k += phase) + 1178e-7 * (t2 = (t = k / 1236.85) * t) - 155e-9 * (t3 = t2 * t) + 33e-5 * dsin(166.56 + 132.87 * t - .009173 * t2), m = 359.2242 + 29.10535608 * k - 333e-7 * t2 - 347e-8 * t3, mprime = 306.0253 + 385.81691806 * k + .0107306 * t2 + 1236e-8 * t3, f = 21.2964 + 390.67050646 * k - .0016528 * t2 - 239e-8 * t3, phase < .01 || abs(phase - .5) < .01 ? (pt += (.1734 - 393e-6 * t) * dsin(m) + .0021 * dsin(2 * m) - .4068 * dsin(mprime) + .0161 * dsin(2 * mprime) - 4e-4 * dsin(3 * mprime) + .0104 * dsin(2 * f) - .0051 * dsin(m + mprime) - .0074 * dsin(m - mprime) + 4e-4 * dsin(2 * f + m) - 4e-4 * dsin(2 * f - m) - 6e-4 * dsin(2 * f + mprime) + .001 * dsin(2 * f - mprime) + 5e-4 * dsin(m + 2 * mprime), apcor = !0) : (abs(phase - .25) < .01 || abs(phase - .75) < .01) && (pt += (.1721 - 4e-4 * t) * dsin(m) + .0021 * dsin(2 * m) - .628 * dsin(mprime) + .0089 * dsin(2 * mprime) - 4e-4 * dsin(3 * mprime) + .0079 * dsin(2 * f) - .0119 * dsin(m + mprime) - .0047 * dsin(m - mprime) + 3e-4 * dsin(2 * f + m) - 4e-4 * dsin(2 * f - m) - 6e-4 * dsin(2 * f + mprime) + .0021 * dsin(2 * f - mprime) + 3e-4 * dsin(m + 2 * mprime) + 4e-4 * dsin(m - 2 * mprime) - 3e-4 * dsin(2 * m + mprime), pt += phase < .5 ? .0028 - 4e-4 * dcos(m) + 3e-4 * dcos(mprime) : 4e-4 * dcos(m) - .0028 - 3e-4 * dcos(mprime), apcor = !0), !apcor) throw "Error calculating moon phase!"; return pt } function phasehunt(sdate, phases) { var adate, k1, k2, nt1, nt2, yy, mm, dd, jyearResult = jyear(adate = sdate - 45, yy, mm, dd); for (yy = jyearResult.year, mm = jyearResult.month, dd = jyearResult.day, adate = nt1 = meanphase(adate, k1 = Math.floor(12.3685 * (yy + 1 / 12 * (mm - 1) - 1900))); nt2 = meanphase(adate += synmonth, k2 = k1 + 1), !(nt1 <= sdate && nt2 > sdate);)nt1 = nt2, k1 = k2; return phases[0] = truephase(k1, 0), phases[1] = truephase(k1, .25), phases[2] = truephase(k1, .5), phases[3] = truephase(k1, .75), phases[4] = truephase(k2, 0), phases } function kepler(m, ecc) { var e, delta; e = m = toRad(m); do { e -= (delta = e - ecc * Math.sin(e) - m) / (1 - ecc * Math.cos(e)) } while (abs(delta) > epsilon); return e } function getMoonPhase(julianDate) { var Day, N, M, Ec, Lambdasun, ml, MM, MN, Ev, Ae, MmP, mEc, lP, lPP, NP, y, x, MoonAge, MoonPhase, MoonDist, MoonDFrac, MoonAng, F, SunDist, SunAng; return N = fixAngle(360 / 365.2422 * (Day = julianDate - epoch)), Ec = kepler(M = fixAngle(N + elonge - elongp), eccent), Ec = Math.sqrt((1 + eccent) / (1 - eccent)) * Math.tan(Ec / 2), Lambdasun = fixAngle((Ec = 2 * toDeg(Math.atan(Ec))) + elongp), F = (1 + eccent * Math.cos(toRad(Ec))) / (1 - eccent * eccent), SunDist = sunsmax / F, SunAng = F * sunangsiz, ml = fixAngle(13.1763966 * Day + mmlong), MM = fixAngle(ml - .1114041 * Day - mmlongp), MN = fixAngle(mlnode - .0529539 * Day), MmP = MM + (Ev = 1.2739 * Math.sin(toRad(2 * (ml - Lambdasun) - MM))) - (Ae = .1858 * Math.sin(toRad(M))) - .37 * Math.sin(toRad(M)), lPP = (lP = ml + Ev + (mEc = 6.2886 * Math.sin(toRad(MmP))) - Ae + .214 * Math.sin(toRad(2 * MmP))) + .6583 * Math.sin(toRad(2 * (lP - Lambdasun))), NP = MN - .16 * Math.sin(toRad(M)), y = Math.sin(toRad(lPP - NP)) * Math.cos(toRad(minc)), x = Math.cos(toRad(lPP - NP)), toDeg(Math.atan2(y, x)), NP, toDeg(Math.asin(Math.sin(toRad(lPP - NP)) * Math.sin(toRad(minc)))), MoonAge = lPP - Lambdasun, MoonPhase = (1 - Math.cos(toRad(MoonAge))) / 2, MoonDist = msmax * (1 - mecc * mecc) / (1 + mecc * Math.cos(toRad(MmP + mEc))), MoonAng = mangsiz / (MoonDFrac = MoonDist / msmax), mparallax / MoonDFrac, { moonIllumination: MoonPhase, moonAgeInDays: synmonth * (fixAngle(MoonAge) / 360), distanceInKm: MoonDist, angularDiameterInDeg: MoonAng, distanceToSun: SunDist, sunAngularDiameter: SunAng, moonPhase: fixAngle(MoonAge) / 360 } } function getMoonInfo(date) { return null == date ? { moonPhase: 0, moonIllumination: 0, moonAgeInDays: 0, distanceInKm: 0, angularDiameterInDeg: 0, distanceToSun: 0, sunAngularDiameter: 0 } : getMoonPhase(toJulianTime(date)) } function getEaster(year) { var previousMoonInfo, moonInfo, fullMoon = new Date(year, 2, 21), gettingDarker = void 0; do { previousMoonInfo = getMoonInfo(fullMoon), fullMoon.setDate(fullMoon.getDate() + 1), moonInfo = getMoonInfo(fullMoon), void 0 === gettingDarker ? gettingDarker = moonInfo.moonIllumination < previousMoonInfo.moonIllumination : gettingDarker && moonInfo.moonIllumination > previousMoonInfo.moonIllumination && (gettingDarker = !1) } while (gettingDarker && moonInfo.moonIllumination < previousMoonInfo.moonIllumination || !gettingDarker && moonInfo.moonIllumination > previousMoonInfo.moonIllumination); for (fullMoon.setDate(fullMoon.getDate() - 1); 0 !== fullMoon.getDay();)fullMoon.setDate(fullMoon.getDate() + 1); return fullMoon.toISOString().split('T')[0] }
-              //the above line calculates the moon's path to figure out when Easter is
-  
-              var easterthisyear = new Date(getEaster(thisyear) + "T00:00"); //see new years for docs, except it's calculating easter as it's not a set date
-              if (easterthisyear - now < 0) {
-                  easterday = new Date(getEaster(nextyear) + "T00:00");
-              } else {
-                  easterday = new Date(getEaster(thisyear) + "T00:00");
-              }
-  
-              //independence
-              var independencethisyear = new Date(thisyear + "-07-04T00:00"); //see new years for docs
-              if (independencethisyear - now < 0) {
-                  independenceday = new Date(nextyear + '-07-04T00:00');
-              } else {
-                  independenceday = new Date(thisyear + '-07-04T00:00');
-              }
-  
-              //halloween
-              var halloweenthisyear = new Date(thisyear + "-10-31T00:00"); //see new years for docs
-              if (halloweenthisyear - now < 0) {
-                  halloweenday = new Date(nextyear + '-10-31T00:00');
-              } else {
-                  halloweenday = new Date(thisyear + '-10-31T00:00');
-              }
-  
-              //thanksgiving
-              var thanksgivingthisyear = new Date(formatDate(getDateString(thisyear, 10, 3, 4))); //10th month, 3rd week, 4th day (thursday)
-              if (thanksgivingthisyear - now < 0) { //see new years for docs
-                  thanksgivingday = new Date(formatDate(getDateString(nextyear, 10, 3, 4)));
-              }
-              else {
-                  thanksgivingday = new Date(formatDate(getDateString(thisyear, 10, 3, 4)));
-              }
-  
-              //christmas
-              var christmasthisyear = new Date(thisyear + "-12-25T00:00"); //see new years for doce
-              if (christmasthisyear - now < 0) {
-                  christmasday = new Date(nextyear + '-12-25T00:00');
-              } else {
-                  christmasday = new Date(thisyear + '-12-25T00:00');
-              }
-              //groundhog day
-var groundhogthisyear = new Date(thisyear + "-02-02T00:00"); //setting up this year's date
-if (groundhogthisyear - now < 0) { //if it's already passed
-    groundhogday = new Date(nextyear + '-02-02T00:00'); //then set to next year
-} else { //otherwise, if it's not passed yet
-    groundhogday = new Date(thisyear + '-02-02T00:00'); //set to this year
-}
-
-
-//st patricks day
-var stpatricksthisyear = new Date(thisyear + "-03-17T00:00");
-if (stpatricksthisyear - now < 0) {
-    stpatricksday = new Date(nextyear + '-03-17T00:00');
-} else {
-    stpatricksday = new Date(thisyear + '-03-17T00:00');
-}
-
-//cinco de mayo
-var cincothisyear = new Date(thisyear + "-05-05T00:00");
-if (cincothisyear - now < 0) {
-    cincodemayo = new Date(nextyear + '-05-05T00:00');
-              } else {
-    cincodemayo = new Date(thisyear + '-05-05T00:00');
-}
-
-//mlk jr day (third Monday in January)
-var mlkthisyear = new Date(formatDate(getDateString(thisyear, 0, 2, 1))); //0th month (Jan), 2nd week, 1st day (Monday)
-if (mlkthisyear - now < 0) {
-    mlkday = new Date(formatDate(getDateString(nextyear, 0, 2, 1)));
-} else {
-    mlkday = new Date(formatDate(getDateString(thisyear, 0, 2, 1)));
-}
-              
-
-  
-              // List of holiday dates
-              const holidays = [
-                {
-                    name: 'newyear',
-                    date: newyearsday
-                },
-                {
-                    name: 'mlk',
-                    date: mlkday
-                },
-                {
-                    name: 'groundhog',
-                    date: groundhogday
-                },
-                {
-                    name: 'valentines',
-                    date: valentinessday
-                },
-                {
-                    name: 'stpatricks',
-                    date: stpatricksday
-                },
-                {
-                    name: 'easter',
-                    date: easterday
-                },
-                {
-                    name: 'cinco',
-                    date: cincodemayo
-                },
-                {
-                    name: 'independence',
-                    date: independenceday
-                },
-                {
-                    name: 'halloween',
-                    date: halloweenday
-                },
-                {
-                    name: 'thanksgiving',
-                    date: thanksgivingday
-                },
-                {
-                    name: 'christmas',
-                    date: christmasday
-                }
-            ];
-  
-              // Now that all the holidays are in a list, we'll find the holiday that matches the current datepicker input value
-              var selectedDate = new Date(document.querySelector(".datepicker").value);
-              var matchingHoliday = holidays.find(function (holiday) {
-                  return holiday.date.toDateString() === selectedDate.toDateString();
-              }) || { name: 'none', date: null }; // Default to none if no match is found
-  
-  
-              switch (matchingHoliday.name) {
-                case 'newyear':
-                document.getElementById("countdowntitle").value = "New Year's Day";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                    showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                  
-                setcountdowntitle("front"); 
-                      break;
-                case 'mlk': // MLK Jr. Day
-                document.getElementById("countdowntitle").value = "Martin Luther King Jr. Day";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                    showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                setcountdowntitle("front"); 
-                      break;
-                case 'groundhog': // Groundhog Day
-                document.getElementById("countdowntitle").value = "Groundhog Day";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                    showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                setcountdowntitle("front"); 
-                      break;
-                  case 'valentines': //see NYD for docs
-                document.getElementById("countdowntitle").value = "Valentine's Day";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                    showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                setcountdowntitle("front"); 
-                      break;
-                case 'stpatricks': // St. Patrick's Day
-                document.getElementById("countdowntitle").value = "St. Patrick's Day";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                    showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                setcountdowntitle("front"); 
-                      break;
-                  case 'easter': //see NYD for docs
-                document.getElementById("countdowntitle").value = "Easter";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                    showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                setcountdowntitle("front"); 
-                      break;
-                case 'cinco': // Cinco de Mayo
-                document.getElementById("countdowntitle").value = "Cinco de Mayo";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                    showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                setcountdowntitle("front"); 
-                      break;
-                  case 'independence': //see NYD for docs
-                document.getElementById("countdowntitle").value = "Independence Day";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                    showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                setcountdowntitle("front"); 
-                      break;
-                  case 'halloween': //see NYD for docs
-                document.getElementById("countdowntitle").value = "Halloween";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                    showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                setcountdowntitle("front"); 
-                      break;
-                  case 'thanksgiving': //see NYD for docs
-                document.getElementById("countdowntitle").value = "Thanksgiving";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                    showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                setcountdowntitle("front"); 
-                      break;
-                  case 'christmas': //see NYD for docs
-                document.getElementById("countdowntitle").value = "Christmas";
-                document.getElementById("magictitle").classList.add("magictitle-success");
-                  showToast('Autopilot found a matching event!', 'success');
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-success");
-                    }, 500);
-                setcountdowntitle("front");
-                      break;
-                  default:
-                      // handle cases where nextHoliday.name doesn't match any of the above
-                    console.error('Magic Title did not find a matching holiday.');
-                    showToast('Autopilot did not find an event matching that date', 'error');
-                    document.getElementById("magictitle").classList.add("magictitle-failed");
-                    setTimeout(function() {
-                        document.getElementById("magictitle").classList.remove("magictitle-failed");
-                    }, 500);
-            }
+        const { nextHoliday, matchingHoliday } = getHolidayData();
+        document.getElementById("countdowntitle").value = matchingHoliday.fullname;
+        document.getElementById("magictitle").classList.add("magictitle-success");
+        showToast('Timekeeper found a matching event!', 'success');
+        setTimeout(function() {
+            document.getElementById("magictitle").classList.remove("magictitle-success");
+        }, 500);
+      
+    setcountdowntitle("front"); 
           }
       
       }
@@ -4531,8 +4033,12 @@ if (mlkthisyear - now < 0) {
       let input = '';
       return (event) => {
           if (event.key === 'Escape') {
+            if(document.getElementById('personalSettingsOverlay').style.display = "none"){
               settings();
-              return;
+            }else{
+                closePersonalSettings();
+            }
+            return;
           }
     if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault(); // Prevent the default save action
@@ -4721,9 +4227,10 @@ if (mlkthisyear - now < 0) {
             document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left,rgba(129, 70, 255, 0.42), transparent)');
             document.documentElement.style.setProperty('--speeddivbackground', 'linear-gradient(to bottom right,rgba(255, 255, 255, 0.61), #9a4cff)');
             document.documentElement.style.setProperty('--blurbackground', 'rgba(239, 239, 239, 0.73)');
+            document.documentElement.style.setProperty('--altblurbackground', 'rgba(255, 255, 255, 0.8)');
             document.documentElement.style.setProperty('--blurbackgroundshadowcolor', 'rgba(255, 255, 255, 0.1)');
             document.documentElement.style.setProperty('--sidebarcolor', '#ffffff');
-            document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(239, 239, 239, 0.73)');
+            document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(239, 239, 239, 0.85)');
             document.documentElement.style.setProperty('--schedulebgbottomblur', '#ffffff');
             document.documentElement.style.setProperty('--progressbarblur', '#ffffffc8');
             document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(0, 0, 0, 0.1)');
@@ -4742,6 +4249,7 @@ if (mlkthisyear - now < 0) {
             document.documentElement.style.setProperty('--inputbackground', 'linear-gradient(to left, rgba(129, 70, 255, 0.42), transparent)');
             document.documentElement.style.setProperty('--speeddivbackground', 'linear-gradient(to bottom right, #00000000, #2e0960)');
             document.documentElement.style.setProperty('--blurbackground', 'rgba(20, 20, 20, 0.83)');
+            document.documentElement.style.setProperty('--altblurbackground', 'rgba(0, 0, 0, 0.8)');
             document.documentElement.style.setProperty('--blurbackgroundshadowcolor', 'rgba(0, 0, 0, 0.1)');
             document.documentElement.style.setProperty('--sidebarcolor', '#000000');
             document.documentElement.style.setProperty('--scheduleblurbg', 'rgba(20, 20, 20, 0.83)');
@@ -4775,105 +4283,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
 
 });
 
-function searchsettings(){
-    const searchedphrase = document.getElementById('searchbarinput').value.toLowerCase();
 
-    if(searchedphrase == "general"){
-        document.getElementById("dashboardbuttonoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "customization"){
-        document.getElementById("customizationoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "schedules"){
-        document.getElementById("scheduleoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "ending options" || searchedphrase == "ending"){
-        document.getElementById("endingoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "progress"){
-        document.getElementById("progressoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "appearance"){
-        document.getElementById("appearanceoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "ease of use"){
-        document.getElementById("eouoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "formatting"){
-        document.getElementById("inclusionoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "danger zone (reset)" || searchedphrase == "danger zone" || searchedphrase == "reset"){
-        document.getElementById("dangerzone").scrollIntoView();
-    }
-    else if(searchedphrase == "date + time" || searchedphrase == "date and time" || searchedphrase == "date"){
-        document.getElementById("optionsdatecontainer").scrollIntoView();
-    }
-    else if(searchedphrase == "title"){
-        document.getElementById("cdtitlesettings").scrollIntoView();
-    }
-    else if(searchedphrase == "link"){
-        document.getElementById("linkinput").scrollIntoView();
-    }
-    else if(searchedphrase == "qr code"){
-        document.getElementById("qrcodecontainerdiv").scrollIntoView();
-    }
-    else if(searchedphrase == "local shortcut"){
-        document.getElementById("localshortcutcontainerdiv").scrollIntoView();
-    }
-    else if(searchedphrase == "foreground colors"){
-        document.getElementById("colorPickersContainer").scrollIntoView();
-    }
-    else if(searchedphrase == "background"){
-        document.getElementById("backgroundpickercontainer").scrollIntoView();
-    }
-    else if(searchedphrase == "typeface (font)"){
-        document.getElementById("fredoka").scrollIntoView();
-    }
-    else if(searchedphrase == "confetti options"){
-        document.getElementById("defaultconfetti").scrollIntoView();
-    }
-    else if(searchedphrase == "ending sound (soundcloud, youtube, audio file)"){
-        document.getElementById("audioLink").scrollIntoView();
-    }
-    else if(searchedphrase == "animation speed"){
-        document.getElementById("appearanceoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "disable confetti"){
-        document.getElementById("appearanceoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "increase contrast"){
-        document.getElementById("eouoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "disable ending sounds"){
-        document.getElementById("eouoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "label time units"){
-        document.getElementById("appearanceoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "memory saver"){
-        document.getElementById("eouoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "only display weeks"){
-        document.getElementById("inclusionoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "only display days"){
-        document.getElementById("inclusionoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "only display hours"){
-        document.getElementById("inclusionoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "only display minutes"){
-        document.getElementById("inclusionoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "only display seconds"){
-        document.getElementById("inclusionoptions").scrollIntoView();
-    }
-    else if(searchedphrase == "only display milliseconds"){
-        document.getElementById("inclusionoptions").scrollIntoView();
-    }
-
-    document.getElementById('searchbarinput').value = "";
-}
 
         function parseRRule(rruleStr) {
             console.log('Parsing RRULE:', rruleStr);
@@ -5015,120 +4425,7 @@ function searchsettings(){
                 return '00:00'; // Default in case of error
             }
         }
-        function reorderHolidayTabs() {
-            // Get current date for comparison
-            const now = new Date();
-            
-            // Get the tabs container
-            const tabsBox = document.getElementById("tabs-box");
-            if (!tabsBox) return; // Exit if tabs container doesn't exist
-            
-            // Store all tabs in an array
-            const allTabs = Array.from(tabsBox.children);
-            
-            // Find the autopilot and MCA tabs
-            const autopilotTab = document.getElementById("autopilottab");
-            const mcaTab = document.getElementById("endtab");
-            
-            // Create a mapping of tab IDs to holiday dates
-            const holidayMapping = [
-                { id: "nydtab", date: newyearsday, name: "newyear" },
-                { id: "mlktab", date: mlkday, name: "mlk" },
-                { id: "groundhogtab", date: groundhogday, name: "groundhog" },
-                { id: "vdtab", date: valentinessday, name: "valentines" },
-                { id: "stpatrickstab", date: stpatricksday, name: "stpatricks" },
-                { id: "eastertab", date: easterday, name: "easter" },
-                { id: "cincotab", date: cincodemayo, name: "cinco" },
-                { id: "idtab", date: independenceday, name: "independence" },
-                { id: "htab", date: halloweenday, name: "halloween" },
-                { id: "ttab", date: thanksgivingday, name: "thanksgiving" },
-                { id: "ctab", date: christmasday, name: "christmas" }
-            ];
-            
-            // Create a new array to hold tabs in the desired order
-            const newOrder = [];
-            
-            // First add autopilot and MCA tabs if they exist
-            if (autopilotTab) newOrder.push(autopilotTab);
-            if (mcaTab) newOrder.push(mcaTab);
-            
-            // Sort holiday tabs by upcoming date
-            const sortedHolidayTabs = holidayMapping
-                .filter(mapping => {
-                    const tab = document.getElementById(mapping.id);
-                    return tab !== null;
-                })
-                .sort((a, b) => {
-                    const timeA = a.date.getTime() - now.getTime();
-                    const timeB = b.date.getTime() - now.getTime();
-                    
-                    // If both are in the past, sort by which comes sooner next year
-                    if (timeA < 0 && timeB < 0) {
-                        // Compare month and day only
-                        const aMonth = a.date.getMonth();
-                        const aDay = a.date.getDate();
-                        const bMonth = b.date.getMonth();
-                        const bDay = b.date.getDate();
-                        
-                        if (aMonth !== bMonth) return aMonth - bMonth;
-                        return aDay - bDay;
-                    }
-                    
-                    // If one is in the past and one is in the future, the future one comes first
-                    if (timeA < 0) return 1;
-                    if (timeB < 0) return -1;
-                    
-                    // If both are in the future, the sooner one comes first
-                    return timeA - timeB;
-                });
-            
-            // Add the sorted holiday tabs to our new order
-            sortedHolidayTabs.forEach(mapping => {
-                const tab = document.getElementById(mapping.id);
-                if (tab && tab !== autopilotTab && tab !== mcaTab) {
-                    newOrder.push(tab);
-                }
-            });
-            
-            // Add any remaining tabs that weren't in our mapping
-            allTabs.forEach(tab => {
-                if (!newOrder.includes(tab)) {
-                    newOrder.push(tab);
-                }
-            });
-            
-            // Clear the tabs container
-            while (tabsBox.firstChild) {
-                tabsBox.removeChild(tabsBox.firstChild);
-            }
-            
-            // Add tabs back in the new order
-            newOrder.forEach(tab => {
-                tabsBox.appendChild(tab);
-            });
-            
-            // Initialize the tabs scrolling functionality
-            initTabsScroll();
-        }
-        
-        // Helper function to reinitialize tabs scrolling after reordering
-        function initTabsScroll() {
-            const tabsBox = document.getElementById("tabs-box");
-            const leftArrow = document.getElementById("left");
-            const rightArrow = document.getElementById("right");
-            
-            if (leftArrow && rightArrow && tabsBox) {
-                // Reset scroll position
-                tabsBox.scrollLeft = 0;
-                
-                // Check if scrolling is needed
-                const isScrollable = tabsBox.scrollWidth > tabsBox.clientWidth;
-                
-                // Show/hide arrows based on scrollability
-                leftArrow.style.display = isScrollable ? "block" : "none";
-                rightArrow.style.display = isScrollable ? "block" : "none";
-            }
-        }
+
 
       // Add these new drag-and-drop handler functions
       let draggedItem = null;
@@ -5232,6 +4529,7 @@ function searchsettings(){
                 newColorPicker.type = 'color';
                 newColorPicker.disabled = true;
                 newColorPicker.style.cursor = "default";
+                newColorPicker.title = "This color dynamically changes with your system theme";
                 // Use CSS variable for theme color
                 const computedStyle = getComputedStyle(document.documentElement);
                 const themeColor = computedStyle.getPropertyValue('--mainforegroundcolor').trim();
@@ -5281,3 +4579,283 @@ function searchsettings(){
                     }
                 }
                 
+                document.querySelectorAll('.pfp-stack').forEach(stack=>{
+                    const avatars = stack.querySelectorAll('.pfp');
+                    avatars.forEach((av,i)=>{
+                      av.style.zIndex = avatars.length - i;
+                    });
+                  });
+
+
+                  const colors = ['#8426ff', '#3ab6ff', '#00df52', '#ff9900'];
+
+                  function getInitials(name) {
+                    const parts = name.trim().split(/\s+/).filter(Boolean);
+                    return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
+                  }
+                  
+                  function generateProfilePic() {
+                    // Prevent concurrent calls
+                    if (window.generatingProfile) return;
+                    window.generatingProfile = true;
+                    
+                    if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
+                        window.supabaseClient.auth.getUser().then(async function(response) {
+                            const user = response?.data?.user;
+                            if (user && user.id) {
+                                try {
+                                    const { data: userData, error } = await window.supabaseClient
+                                        .from('users')
+                                        .select('name, has_plus, avatar_url')
+                                        .eq('id', user.id)
+                                        .maybeSingle();
+                                    
+                                    if (userData) {
+                                        if (userData.has_plus && userData.avatar_url) {
+                                            document.getElementById('userpfp').src = userData.avatar_url;
+                                            document.getElementById('usrname').textContent = userData.name || 'User';
+                                            return;
+                                        }
+                                        
+                                        if (userData.name && !error) {
+                                            generateProfilePicWithName(userData.name);
+                                            localStorage.setItem('pfp_name', userData.name);
+                                        } else {
+                                            const fallbackName = localStorage.getItem('pfp_name') || user.user_metadata?.full_name || 'User';
+                                            generateProfilePicWithName(fallbackName);
+                                        }
+                                    } else {
+                                        const fallbackName = localStorage.getItem('pfp_name') || user.user_metadata?.full_name || 'User';
+                                        generateProfilePicWithName(fallbackName);
+                                    }
+                                } catch (dbError) {
+                                    console.error('Database error:', dbError);
+                                    const fallbackName = localStorage.getItem('pfp_name') || user.user_metadata?.full_name || 'User';
+                                    generateProfilePicWithName(fallbackName);
+                                }
+                            } else {
+                                const localName = localStorage.getItem('pfp_name') || 'User';
+                                generateProfilePicWithName(localName);
+                            }
+                        }).catch(function(authError) {
+                            console.error('Auth error:', authError);
+                            const localName = localStorage.getItem('pfp_name') || 'User';
+                            generateProfilePicWithName(localName);
+                        }).finally(() => {
+                            window.generatingProfile = false;
+                        });
+                    } else {
+                        const localName = localStorage.getItem('pfp_name') || 'User';
+                        generateProfilePicWithName(localName);
+                        window.generatingProfile = false;
+                    }
+                  }
+
+                  function generateProfilePicWithName(name) {
+                    document.getElementById('usrname').textContent = name;
+                    let color = localStorage.getItem('pfp_color');
+                  
+                    // Assign a random color only on first visit
+                    if (!color) {
+                      color = colors[Math.floor(Math.random() * colors.length)];
+                      localStorage.setItem('pfp_color', color);
+                    }
+                  
+                    localStorage.setItem('pfp_name', name); // ensure name is stored locally
+                  
+                    const initials = getInitials(name);
+                    const canvas = document.getElementById('profileCanvas');
+                    const ctx = canvas.getContext('2d');
+                  
+                    ctx.fillStyle = color;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                  
+                    ctx.fillStyle = 'white';
+                    ctx.font = '100 80px "Fredoka One"';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(initials, canvas.width / 2, canvas.height / 2);
+                  
+                    const dataURL = canvas.toDataURL('image/png');
+                    document.getElementById('userpfp').src = dataURL;
+                  }
+
+                  // Set up authentication state listener (only once globally)
+                  if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth && !window.authListenerSetup) {
+                    window.authListenerSetup = true;
+                    window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                        if (event === 'SIGNED_IN' && session?.user) {
+                            // User signed in, regenerate profile pic with database data
+                            generateProfilePic();
+                            // Load cookies from cloud when user logs in
+                            await loadCookiesFromCloud();
+                        } else if (event === 'SIGNED_OUT') {
+                            // User signed out, use local storage
+                            const localName = localStorage.getItem('pfp_name') || 'User';
+                            generateProfilePicWithName(localName);
+                        }
+                    });
+                  }
+
+                  function renameUser() {
+                    const newName = prompt('Enter your new name:');
+                    if (newName?.trim()) {
+                      localStorage.setItem('pfp_name', newName.trim());
+                      generateProfilePic(); // regenerate with new name, same color
+                    }
+                  }
+
+
+                  function openPersonalSettings() {
+                    document.getElementById('personalSettingsOverlay').style.display = 'flex';
+                  }
+                
+                  function closePersonalSettings() {
+                    document.getElementById('personalSettingsOverlay').style.display = 'none';
+                  }
+
+
+
+// --- Search settings functionality ---
+function searchsettings() {
+    const input = document.getElementById("searchbarinput");
+    const filter = input.value.toLowerCase();
+    const resultsContainer = document.getElementById("search-results");
+    resultsContainer.innerHTML = "";
+
+    if (!filter) {
+        resultsContainer.classList.add("searchhidden");
+        return;
+    }
+
+    const sections = document.querySelectorAll('#settings h1[id], #settings h2[id], #settings h3[id]');
+    let found = false;
+    
+    sections.forEach(section => {
+        const fullText = [
+            section.textContent,
+            section.nextElementSibling?.textContent
+          ].join(" ").toLowerCase();
+              
+        if (fullText.includes(filter)) {
+            const resultBtn = document.createElement("button");
+            resultBtn.className = "searchresultbtn";
+            resultBtn.textContent = section.textContent;
+            resultBtn.onclick = () => {
+                section.scrollIntoView({ behavior: "smooth", block: "start" });
+                document.getElementById("searchbarinput").value = "";
+                resultsContainer.innerHTML = "";
+                resultsContainer.classList.add("searchhidden");
+    
+                if (window.innerWidth < 768) {
+                    settings(); // close settings on mobile
+                }
+            };
+            resultsContainer.appendChild(resultBtn);
+            found = true;
+        }
+    });
+
+    if (found) {
+        resultsContainer.classList.remove("searchhidden");
+      } else {
+        resultsContainer.classList.add("searchhidden");
+      }
+    }
+
+    function getAllCookiesAsString() {
+        const cookies = document.cookie.split(';');
+        let cookieString = '';
+        cookies.forEach(cookie => {
+            const [name, value] = cookie.trim().split('=');
+            if (!name.toLowerCase().includes('posthog')) {
+                cookieString += `${name}: ${value}\n`;
+            }
+        });
+        return cookieString;
+    }
+
+    async function saveCookiesToCloud() {
+        // Get current user
+        const { data } = await supabaseClient.auth.getUser();
+        const user = data.user;
+        if (!user) {
+            return;
+        }
+
+        // Get all cookies and filter out posthog
+        const cookies = document.cookie.split(';');
+        const cookieSettings = {};
+        cookies.forEach(cookie => {
+            const [name, value] = cookie.trim().split('=');
+            if (!name.toLowerCase().includes('posthog')) {
+                cookieSettings[name] = value;
+            }
+        });
+
+        // Update user settings in database
+        const { error } = await supabaseClient
+            .from('users')
+            .update({
+                settings: cookieSettings,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+
+        if (error) {
+            console.error("Failed to save cookie settings:", error.message);
+            showToast("Failed to sync settings", "error");
+        }
+    }
+
+    async function loadCookiesFromCloud() {
+        // Get current user
+        const { data } = await supabaseClient.auth.getUser();
+        const user = data.user;
+        if (!user) {
+            return;
+        }
+
+        // Get user settings from database
+        const { data: userData, error } = await supabaseClient
+            .from('users')
+            .select('settings')
+            .eq('id', user.id)
+            .single();
+
+        if (error) {
+            console.error("Error loading settings:", error.message);
+            return;
+        }
+
+        if (!userData?.settings) {
+            return;
+        }
+
+        // Get current cookies
+        const currentCookies = {};
+        document.cookie.split(';').forEach(cookie => {
+            const [name, value] = cookie.trim().split('=');
+            if (!name.toLowerCase().includes('posthog')) {
+                currentCookies[name] = value;
+            }
+        });
+
+        // Merge cloud settings with local cookies
+        // If a setting exists locally, it takes precedence
+        const mergedSettings = { ...userData.settings, ...currentCookies };
+
+        // Apply merged settings as cookies
+        Object.entries(mergedSettings).forEach(([name, value]) => {
+            setCookie(name, value, 70); // 70 days expiry
+        });
+
+        // Update UI based on new settings
+        updateoptions();
+    }
+
+
+    // Debounce function for saving cookies to cloud
+    const debouncedSaveCookies = debounce(async () => {
+        await saveCookiesToCloud();
+    }, 1000);

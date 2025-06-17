@@ -1,4 +1,13 @@
 <!DOCTYPE html>
+<html lang="en">
+<script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init Ie Ts Ms Ee Es Rs capture Ge calculateEventProperties Os register register_once register_for_session unregister unregister_for_session js getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty Ds Fs createPersonProfile Ls Ps opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing Cs debug I As getPageViewId captureTraceFeedback captureTraceMetric".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_DR8GzWFM4BXGN6uqCri7Gx4WxKx0RwyoLzhIjygk0Rt', {
+        api_host: 'https://us.i.posthog.com',
+        defaults: '2025-05-24',
+        person_profiles: 'identified_only', // or 'always' to create profiles for anonymous users as well
+    })
+</script>
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,6 +40,12 @@
     <meta property="og:description" content="A beautiful and smart countdown timer website." />
     <meta property="og:site_name" content="Michael Dors" />
     <link rel="apple-touch-icon" href="Images/countdownhomescreen.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="supabaseclient.js"></script>
+
+    <script src="timekeeper.js" defer></script>
+    <script src="betaapp.js" defer></script>
+    
 </head>
 
 <body id="body">
@@ -108,55 +123,166 @@
         </div>
     </center>
 
-
+    <div id="personalSettingsOverlay" class="personal-settings-overlay">
+        <div class="personal-settings-popup">
+          <button class="personal-settings-close" onclick="closePersonalSettings()"><i class="fa-solid fa-circle-xmark"></i></button>
+        <center>
+          <div class="personal-settings-content">
+            <div style="width:100%; margin:0px; padding:0px; border-top: #fe980070 2px solid; border-bottom: #fe980070 2px solid; margin-top: 50px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
+                <h1><i style="color: #FE9A00" class="fa-solid fa-user-lock"></i> Personal Settings</h1>
+            </div>
+            <h1 class="textelement">
+                Your Profile
+            </h1>
+            <h2>Name</h2>
+            <br />
+            <br />
+            <br />
+            <br />
+            <h1 class="textelement" id="appearanceoptions">
+                Appearance
+            </h1>
+            <Br>
+                <br>
+                <br>
+        
+            <div class="settingsline">
+                <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+                    <i class="fa-solid fa-bolt"></i> Animation Speed
+                </h2>
+            <div class="dropdown-container" style="float:right" id="speedDropdown">
+              <button class="dropdown-button"><i class="fa-solid fa-gauge"></i> Default</button>
+              <div class="dropdown-menu" id="speedMenu">
+                <div class="dropdown-item" data-speed="default">
+                  <i class="fa-solid fa-gauge"></i> Default
+                </div>
+                <div class="dropdown-item" data-speed="slow">
+                  <i class="fa-solid fa-seedling"></i> Slow
+                </div>
+                <div class="dropdown-item" data-speed="fast">
+                  <i class="fa-solid fa-bolt"></i> Fast
+                </div>
+              </div>
+            </div>
+        </div>
+            <br>
+        
+            <br>
+            <div class="settingsline">
+                <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+                    <i class="fa-solid fa-cake-candles"></i> Disable Confetti
+                </h2>
+            <a id="coce" style="float:right"  class="disabled toggle" onclick="coce();"></a>
+            </div>
+            <br>
+            <Br>
+            <Br>
+            <h1 class="textelement" id="eouoptions">
+                Ease of Use
+            </h1>
+                <Br>
+                <br>
+                <br>
+                <div id="localshortcutcontainerdiv" class="localshortcutcontainerdiv" style="border-radius: 20px; background: #00df52; margin-bottom:50px; color: black; padding:50px; width:60%;">
+                    <p style="color:black; font-size:27px;"><i class="fa-solid fa-location-pin-lock"></i> Local Shortcut</p>
+                    <p style="color:black; max-width: 70%;" class="texttip">
+                        A dynamic bookmark that updates with changes saved to your Dashboard
+                    </p>
+            <input id="locallinkinput" class="localshortcutinput" style="width:70%"/>
+                <button style="background:transparent; border:none; outline:none; cursor:pointer">
+                        <i title="Copy Local Shortcut" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px; color:#000000;" onclick="copyinputtextlocalshortcutlink(); showToast('Local Shortcut link copied', 'success');"></i>
+                </button>
+                <br>
+            <a style="color: black; font-family:'Dosis'; margin-top:20px;" class="aintext" href="docs#dashboard" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-circle-info"></i> More info</a>
+            <br>
+            <br>
+            </div>
+            <div class="settingsline">
+                <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+                    <i class="fa-solid fa-volume-mute"></i> Disable End Sounds
+                </h2>
+                <a id="soce" style="float:right" class="disabled toggle" onclick="soce();"></a>
+            </div>
+            <div class="settingsline">
+                <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+                    <i class="fa-solid fa-gauge-high"></i> Memory Saver
+                </h2>
+                <a id="memsav" style="float:right" class="disabled toggle" onclick="memsav();"></a>
+            </div>
+            <div class="settingsline">
+                <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+                    <i class="fa-solid fa-circle-half-stroke"></i> Increase Contrast
+                </h2>
+                <a id="contrast" style="float:right" class="disabled toggle" onclick="contrast();"></a>
+            </div>
+            <a style="display:none;" id="opendyslexic" class="disabled toggle" onclick="opendyslexic();"><i class="fa-solid fa-font"></i> Force OpenDyslexic Font</a>
+        <br>
+            <Br>
+            <Br>
+            <h1 id="inclusionoptions" class="textelement">
+                Formatting
+            </h1>
+            <p id="cdscheduledisclaimer" style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:30px; display:none; background:linear-gradient(to bottom right, #d616165f, #00000000); border:#ff5353 2px solid; border-radius:100px; padding:5px 10px 5px 10px; width:fit-content;"><i class="fa-regular fa-calendar-xmark"></i> Time Breakdown will not apply to Countdown Schedules</p>
+                <Br>
+                <br>
+                <br>
+                <div class="settingsline">
+                    <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+                        <i class="fa-solid fa-calculator"></i> Time Breakdown
+                    </h2>
+                <div style="float: right;" class="dropdown-container" id="includeDropdown">
+                    <button class="dropdown-button"><i class="fa-solid fa-stopwatch-20"></i> Only Display</button>
+                    <div class="dropdown-menu" id="includeMenu">
+                        <div id="week" class="dropdown-item" data-unit="none"><i class="fa-solid fa-circle-xmark"></i> Off</div>
+                      <div id="week" class="dropdown-item" data-unit="week"><i class="fa-solid fa-calendar-week"></i> Weeks</div>
+                      <div id="day" class="dropdown-item" data-unit="day"><i class="fa-solid fa-calendar-days"></i> Days</div>
+                      <div id="hour" class="dropdown-item" data-unit="hour"><i class="fa-solid fa-clock"></i> Hours</div>
+                      <div id="minute" class="dropdown-item" data-unit="minute"><i class="fa-solid fa-hourglass-start"></i> Minutes</div>
+                      <div id="second" class="dropdown-item" data-unit="second"><i class="fa-solid fa-stopwatch-20"></i> Seconds</div>
+                      <div id="millisecond" class="dropdown-item" data-unit="millisecond"><i class="fa-solid fa-meteor"></i> Milliseconds</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="settingsline">
+                    <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
+                        <i class="fa-solid fa-tag"></i> Label Time Units
+                    </h2>
+                    <a  style="float:right" id="lcdu" class="disabled toggle" onclick="lcdu();"></a>
+            </div>
+            <br>
+            <br>
+            <br>
+            <div id="dangerzone" style="margin-bottom:85px;">
+                <h1>Danger Zone</h1>
+                <h3 style="font-family: 'Dosis', sans-serif; font-size:23px; text-justify:inter-word;">Resetting Countdown will restore it to a point where no trace of your interaction is left. All locally stored data—including options, your dashboard, and more—will be reset.</h3>
+                    <div class="dropdown-container" id="resetDropdown">
+                        <a title="Reset all Countdown options and saved data" style="width: initial;" id="reset" class="warning dropdown-button"><i class="fa-solid fa-trash"></i> Reset All</a>
+                        <div class="dropdown-menu" id="resetMenu">
+                          <div class="dropdown-item dropdown-warning" onclick="resetcookies();">
+                            <i class="fa-solid fa-circle-exclamation"></i> Confirm
+                          </div>
+                        </div>
+                      </div>
+                    
+            </div>
+          </div>
+        </center>
+        </div>
+      </div>
 
     <div class="hidden" id="settings">
         <div id="settingssidebar">
+            <a style="position: absolute; left:6%; top:2.7%; font-size: 35px; color:var(--mainforegroundcolor) !important;" class="aintext" title="Close options" onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-circle-left"></i></a>
+
             <div style="position: relative;">
-                <input id="searchbarinput" type="input" list="settingsheaders" placeholder="Search for an option">
-                <button style="cursor:pointer" onclick="searchsettings()" type="button"><i class="fa-solid fa-magnifying-glass-arrow-right"></i></button>
+                <input id="searchbarinput" type="input" onkeyup="searchsettings()" list="settingsheaders" placeholder="Search for an option">
             </div>
-            <datalist id="settingsheaders">
-                <option value="General"></option>
-                <option value="Customization"></option>
-                <option value="Ending"></option>
-                <option value="Schedules"></option>
-                <option value="Progress"></option>
+            <div id="search-results" class="search-results searchhidden"></div>
 
-                <option value="Appearance"></option>
-                <option value="Ease of Use"></option>
-                <option value="Only Include"></option>
-                <option value="Danger Zone (Reset)"></option>
-
-                <option value="Date + Time"></option>
-                <option value="Title"></option>
-                <option value="Link"></option>
-                <option value="QR Code"></option>
-                <option value="Local Shortcut"></option>
-                <option value="Foreground Colors"></option>
-                <option value="Background"></option>
-                <option value="Typeface (Font)"></option>
-                <option value="Confetti Options"></option>
-                <option value="Ending Sound (SoundCloud, YouTube, Audio file)"></option>
-                <option value="Disable Ending Sounds"></option>
-                <option value="Animation Speed"></option>
-                <option value="Disable Confetti"></option>
-                <option value="Increase Contrast"></option>
-                <option value="Label Time Units"></option>
-                <option value="Memory Saver"></option>
-                <option value="Only Include"></option>
-                <option value="Only Include Weeks"></option>
-                <option value="Only Include Days"></option>
-                <option value="Only Include Hours"></option>
-                <option value="Only Include Minutes"></option>
-                <option value="Only Include Seconds"></option>
-                <option value="Only Include Milliseconds"></option>
-            </datalist>
             <div id="settingssidebarpaneshareable">
-                <h3>Shareable</h3>
                 <a class="sidebaranchor" href="#generaloptions"><i style="background:#8426FF; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-regular fa-clock"></i> General</a>
                 <br>
-                <a class="sidebaranchor" href="#customizationoptions"><i style="background:#3ab6ff; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-palette"></i> Customization</a>
+                <a class="sidebaranchor" href="#customizationoptions"><i style="background:#3ab6ff; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-palette"></i> Styling</a>
                 <br>
                 <a id="optionsendinganchor" class="sidebaranchor" href="#endingoptions"><i style="background:#00DF52; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-flag-checkered"></i> Ending</a>
                 <br>
@@ -164,39 +290,47 @@
                 <br>
                 <a id="optionsprogressanchor" class="sidebaranchor" href="#progressoptions"><i style="background:#8426FF; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-spinner"></i> Progress</a>
             </div>
-            <div id="settingssidebarpanepersonal">
-                <h3>Personal</h3>
-                <a class="sidebaranchor" href="#appearanceoptions"><i style="background:#3ab6ff; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-circle-half-stroke"></i> Appearance</a>
-                <br>
-                <a class="sidebaranchor" href="#eouoptions"><i style="background:#00DF52; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-child-reaching"></i> Ease of Use</a>
-                <br>
-                <a id="optionsoianchor" class="sidebaranchor" href="#inclusionoptions"><i style="background:#FF9900; color:white; font-size:15px !important; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-puzzle-piece"></i> Formatting</a>
-                <br>
-                <a class="sidebaranchor" href="docs"><i style="background:#8426FF; color:white; transition:opacity 1s ease-in-out; font-size:15px !important; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-book"></i> Documentation</a>
-                <br>
-                <a class="sidebaranchor" href="#dangerzone"><i style="background:#ff5353; color:white; transition:opacity 1s ease-in-out; font-size:15px !important; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-trash"></i> Danger Zone</a>
+            <div id="previewiframecontainer">
+                <p class="preview-label">Preview:</p>
+                <div class="iframe-aspect-wrapper">
+                  <iframe frameborder="0" allowfullscreen id="previewiframe"></iframe>
+                </div>
+              </div>
+        </div>
+        <div  id="accountDropdownButton">
+        <div class="pfp-stack">
+            <div class="pfp"><img id="userpfp" src="" alt=""></div>
+        </div>
+        <p class="pfp-name" id="usrname"></p>
+        <p class="pfp-detail" id="usrdetail">Settings, dashboard, and more</p>
+    </div>
+        <div class="dropdown-container" style="position:fixed; left:25px; bottom:290px; z-index: 1000001;" id="accountDropdown">
+            <div class="dropdown-menu" id="accountMenu">
+              <div class="dropdown-item" onclick="renameUser();">
+                <i class="fa-solid fa-pencil"></i> Rename
+              </div>
+              <div class="dropdown-item" onclick="openPersonalSettings();">
+                <i class="fa-solid fa-user"></i> Settings
+              </div>
+              <div class="dropdown-item" onclick="window.location.href='countdowndashboard'">
+                <i class="fa-solid fa-border-all"></i> Dashboard
+              </div>
+              <div class="dropdown-item dropdown-warning">
+                <i class="fa-solid fa-right-from-bracket"></i> Log Out
+              </div>
             </div>
-
+          </div>
+          <div class="save-bar visible" id="saveBar">
+            <span class="save-text" id="savetext"></span>
+            <a title="Save to Countdown Dashboard" id="savedash" class="savedash" style="margin-top:0px" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
         </div>
         <div id="settingsmainpane">
-            <center id="mainpanebodycontainer">
-                <br>
-                <Br>
-                <h1 class="textelement">Options</h1>
-                <p class="textelement" style="max-width:85%;">
-		            <a class="aintext dependencieslink" href="http://605958.xyz/"><i style="margin-right:10px;" class="fa-solid fa-house"></i> Home</a>
-                    <a class="aintext dependencieslink" href="docs#cookiepolicy" target="_blank" rel="noopener noreferrer"><i style="margin-right:10px;" class="fa-solid fa-cookie-bite"></i> Cookie Policy</a>
-                    <a class="aintext dependencieslink" href="Information/dependencies" target="_blank" rel="noopener noreferrer"><i style="margin-right:10px;" class="fa-solid fa-file-code"></i> Dependencies</a>
-                </p>
-                <br>
-                <Br>
-                <a title="Close options" onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-gear"></i> Close</a>
-                <a title="Get a shareable link or QR code" id="sharebuttonoptions" class="sharebutton" href="#linkoptions"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
-		<a title="Countdown Dashboard" id="dashboardbuttonoptions" class="dashboardbutton" href="countdowndashboard"><i class="fa-solid fa-border-all"></i> Dashboard</a>
-                <a title="Save to Countdown Dashboard" id="savedash" class="savedash" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
+            <center id="mainpanebodycontainer" style="margin-top:100px">
 
+
+                <h1>Options</h1>
 		<div id="debugoptions" style="display:none;">
-			<h1><i class="fa-solid fa-bug-slash"></i> Debug Options Are Enabled</h1>
+			<p><i class="fa-solid fa-bug-slash"></i> Debug Options Are Enabled</p>
 		<p style="font-family: 'Dosis', sans-serif; color:#ff5353; font-size:16px;">
                     <strong><i class="fa-solid fa-circle-exclamation"></i> IF YOU OPENED THIS MENU BY ACCIDENT</strong> PLEASE RELOAD THE PAGE
                 </p>
@@ -215,19 +349,12 @@
         <a href="https://michaeldors.com/mcacountdown/betatimer?date=9999-12-30T00:00&schedule=eyJzY2hlZHVsZV9ldmVudHMiOltdLCJzY2hlZHVsZV9leGNlcHRpb25zIjp7fX0">New Schedule</a>
 
 		</div>
-                <div style="width:100%; margin:0px; padding:0px; border-top: #39B8FB70 2px solid; border-bottom: #39B8FB70 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
-                    <h1><i style="color: #39B8FB" class="fa-solid fa-paper-plane"></i> Shareable Options</h1>
-                    <p style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:30px;">Options that are specifically for this Countdown and everyone who visits it</p>
-                </div>
-                <br />
-                <br />
-                <br />
-                <h1 id="generaloptions">General Options</h1>
-                <br>
-                <br>
-                <br>
-		<div id="optionsdatecontainer">
-                <h2 class="textelement" style="font-family: 'Dosis';">
+        <div style="width:100%; margin:0px; padding:0px; border-top: #8426FF70 2px solid; border-bottom: #8426FF70 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #8426ff39)">
+            <h1 id="generaloptions"><i style="color: #8426FF" class="fa-solid fa-clock"></i> General</h1>
+        </div>
+
+		<div id="optionsdatecontainer" style="margin-bottom:100px">
+                <h2 id="datetag" class="textelement" style="font-family: 'Dosis';">
                     Date
                 </h2>
 
@@ -235,44 +362,33 @@
                 <div class="wrapper">
                     <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
                     <ul class="tabs-box" id="tabs-box">
-			<li class="debugtab" id="onemintab" style="display:none" onclick="const datepicker = document.querySelector('.datepicker'); const now = new Date(); now.setMinutes(now.getMinutes() + 1); const offset = now.getTimezoneOffset(); now.setMinutes(now.getMinutes() - offset); const localISOTime = now.toISOString().slice(0, 16); datepicker.value = localISOTime; setCountDowngeneral();">One Minute</li>
-                        <li title="Timekeeper will automatically pick the next upcoming holiday" id="autopilottab" class="autopilottab float-icons" style="position: relative;" onclick="autopilottab(); autopilotsparkle(event); SetCountDowngeneral();"><i class="fa-solid fa-business-time"></i> Second Sense</li>
-                        <li id="endtab" class="mcatab" onclick="MES(); SetCountDowngeneral();">MCA</li>
-                        <li id="nydtab" class="tab" onclick="NYD(); SetCountDowngeneral();">New Year's Day</li>
-                        <li id="mlktab" class="tab" onclick="MLK(); SetCountDowngeneral();">MLK Jr. Day</li>
-                        <li id="groundhogtab" class="tab" onclick="GROUNDHOG(); SetCountDowngeneral();">Groundhog Day</li>
-                        <li id="vdtab" class="tab" onclick="VD(); SetCountDowngeneral();">Valentine's Day</li>
-                        <li id="stpatrickstab" class="tab" onclick="SDP(); SetCountDowngeneral();">St. Patrick's</li>
-                        <li id="eastertab" class="tab" onclick="EASTER(); SetCountDowngeneral();">Easter</li>
-                        <li id="cincotab" class="tab" onclick="CINCO(); SetCountDowngeneral();">Cinco de Mayo</li>
-                        <li id="idtab" class="tab" onclick="ID(); SetCountDowngeneral();">Independence Day</li>
-                        <li id="htab" class="tab" onclick="H(); SetCountDowngeneral();">Halloween</li>
-                        <li id="ttab" class="tab" onclick="T(); SetCountDowngeneral();">Thanksgiving</li>
-                        <li id="ctab" class="tab" onclick="C(); SetCountDowngeneral();">Christmas</li>
+
                     </ul>
                     <div class="icon"><i id="right" class="fa-solid fa-angle-right"></i></div>
                 </div>
-                <br />
-                <br />
 		</div>
-                <h2 class="textelement" style="font-family: 'Dosis';">
+                <h2 id="titletag" class="textelement" style="font-family: 'Dosis';">
                     Title
                 </h2>
-                <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:75px;" />
+                <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:100px;" />
                 <button style="background:transparent; border:none; outline:none; cursor:pointer">
                     <i id="magictitle" title="Timekeeper will automatically select a title for your Countdown" class="fa fa-wand-magic-sparkles" style="transform:scale(1.75); padding-left:10px;" onclick="magictitle(); autopilotsparkle(event);"></i>
                 </button>
                 <h2 class="textelement" style="font-family: 'Dosis';" id="linkoptions">
-                    Link
+                    Sharing
                 </h2>
 
-
-                <input id="linkinput" class="input" />
+                <div class="share-pfp-stack">
+                    <div class="share-pfp"><img src="https://picsum.photos/600" alt=""></div>
+                    <div class="share-pfp"><img src="https://picsum.photos/500" alt=""></div>
+                  <div class="share-pfp"><img src="https://picsum.photos/400" alt=""></div>
+                  <div class="share-pfp"><img src="https://picsum.photos/300" alt=""></div>
+                  <div class="share-pfp"><img src="https://picsum.photos/200" alt=""></div>
+                </div>
+                <input id="linkinput" class="input" style="margin-bottom:30px;"/>
                 <button style="background:transparent; border:none; outline:none; cursor:pointer">
                     <i title="Copy link" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlink(); showToast('Shareable link copied', 'success');"></i>
                 </button>
-                <br />
-                <br />
                 <div id="qrcodecontainerdiv" style="border-radius: 20px; background: linear-gradient(to bottom right, #FFFFFF, #FFFFFF, #BD8BFF);margin-bottom:20px; padding: 20px; color: black; height: 180px; width:fit-content; max-width:75%;">
                     <div id="qrcode" style="float: left; box-shadow: #ffffff 1px 1px 25px; padding-top: 15px; padding-left:20px; transform:scale(1.1)"></div>
                     <div style="float:left; padding-left:30px; text-align:left;">
@@ -288,18 +404,16 @@
                     Be cautious of sharing personal information
                 </p>
 
-                <a href="#localshortcutcontainerdiv" id="localshortcutcontainerdivtooltip" class="localshortcutcontainerdivtooltip aintext" style="border-radius: 2000px; background: #00df52; margin-bottom:30px; color: black; padding-left:15px; padding-right: 15px; min-width:fit-content; max-width:75%;">
+                <a onclick="openPersonalSettings();" href="#localshortcutcontainerdiv" id="localshortcutcontainerdivtooltip" class="localshortcutcontainerdivtooltip aintext" style="border-radius: 2000px; background: #00df52; margin-bottom:30px; color: black; padding-left:15px; padding-right: 15px; min-width:fit-content; max-width:75%;">
                     <p style="color:black;" class="texttip">
                         View your personal shortcut <i class="fa-solid fa-chevron-right"></i>
                     </p>
                 </a>
+                <div style="width:100%; margin:0px; padding:0px; border-top: #39B8FB70 2px solid; border-bottom: #39B8FB70 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
+                    <h1 id="customizationoptions"><i style="color: #39B8FB" class="fa-solid fa-palette"></i> Styling</h1>
+                </div>
 
-                <h1 id="customizationoptions">Customization</h1>
-                <br>
-                <br>
-                <br>
-
-                <h2 class="textelement" style="font-family: 'Dosis';">
+                <h2 class="textelement" id="foregroundcolorstag" style="font-family: 'Dosis';">
                     Foreground Colors
                 </h2>
 
@@ -325,19 +439,15 @@
                 <a class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus-circle"></i> Add Color</a>
                 <a title="Add a color that dynamically changes with your system theme" class="clraddfg" onmouseup="addForegroundColorPicker()"><i class="fa-solid fa-circle-half-stroke"></i> Add Adaptive</a>
 
-                <p class="texttip">
+                <p class="texttip" style="margin-bottom:100px">
                     The foreground elements will cycle through the chosen colors
                     <br />
                     Keep contrast in mind when choosing colors
                 </p>
-                <br />
-                <br />
-                <br>
-                <br>
-                <h2 class="textelement" style="font-family: 'Dosis';">
+                <h2 class="textelement" id="backgroundcolorstag" style="font-family: 'Dosis';">
                     Background
                 </h2>
-                <div id="backgroundpickercontainer">
+                <div id="backgroundpickercontainer" style="margin-bottom:100px">
                 <a class="aintext backgroundpicker bgbtnn" id="bgbtn1" onmouseup="setbg('1', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_1.png"></div></a>
                 <a class="aintext backgroundpicker bgbtnn" id="bgbtn2" onmouseup="setbg('2', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_2.png"></div></a>
                 <a class="aintext backgroundpicker bgbtnn" id="bgbtn3" onmouseup="setbg('3', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_3.png"></div></a>
@@ -353,45 +463,31 @@
                 <a class="aintext backgroundpicker bgbtnn" id="bgbtn11" onmouseup="setbg('11', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_11.png"></div></a>
                 <a class="aintext backgroundpicker bgbtnn" id="bgbtn12" onmouseup="setbg('12', 'manual'); SetCountDowngeneral();"><div><img class="bgpickerimg" src="Backgrounds/enhancedbackground_12.png"></div></a>
                 </div>
-                <br />
-                <br />
-                <br>
-                <br>
-                <br />
-                <br />
-                <h2 class="textelement" style="font-family: 'Dosis';">
+
+                <h2 class="textelement" id="typefacetag" style="font-family: 'Dosis';">
                     Typeface
                 </h2>
                 <a class="aintext selectedfontpicker" id="fredoka" style="font-family:'Fredoka One'" onmouseup="FontFredoka('Manual'); SetCountDowngeneral();">12:34</a>
                 <a class="aintext fontpicker" id="poppins" style="font-family:'Poppins'" onmouseup="FontPoppins('Manual'); SetCountDowngeneral();">12:34</a>
                 <a class="aintext fontpicker" id="dmserif" style="font-family: 'DM Serif Display', serif;" onmouseup="FontDMSerif('Manual'); SetCountDowngeneral();">12:34</a>
-                <a class="aintext fontpicker" id="michroma" style="font-family:'Michroma'; font-size:15px;" onmouseup="FontMichroma('Manual'); SetCountDowngeneral();">12:34</a>
-                <br>
-                <br>
-                <Br>
-                <Br>
-                <br>
-                <br>
+                <a class="aintext fontpicker" id="michroma" style="font-family:'Michroma'; font-size:15px; margin-bottom:100px;" onmouseup="FontMichroma('Manual'); SetCountDowngeneral();">12:34</a>
+
 		<div id="optionsendingcontainer">
-                <h1 id="endingoptions">Ending Options</h1>
-		<br>
-		<br>
-		<br>
-                <h2 class="textelement" style="font-family: 'Dosis';">Confetti Options</h2>
+                <div style="width:100%; margin:0px; padding:0px; border-top: #00DF5270 2px solid; border-bottom: #00DF5270 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #00df522f)">
+                    <h1 id="endingoptions"><i style="color: #00DF52" class="fa-solid fa-flag-checkered"></i> Ending</h1>
+                </div>
+                <h2 class="textelement" id="confettioptionstag" style="font-family: 'Dosis';">Confetti Options</h2>
                 <a title="Default confetti themed to your colors" class="aintext selectedfontpicker" id="defaultconfetti" onmouseup="ConfettiModeDefault(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-solid fa-palette"></i></a>
                 <a title="Input an emoji or symbol to use as confetti" class="aintext fontpicker" id="emojiconfetti" style="position:relative;" onmouseup="ConfettiModeEmoji(); SetCountDowngeneral();">
                     <span id="emojiOverlay"></span>
                     <input onblur="ConfettiModeEmoji(); SetCountDowngeneral();" id="confettiEmojiPicker" placeholder="😃" data-placeholders="😃,🎉,A,✨,🎈,!,🚀,😎,🍕🎶,★,⚾🏀,♻,☀️">
                 </a>
                 <a title="Festive snowflakes instead of confetti" class="aintext fontpicker" id="snowconfetti" onmouseup="ConfettiModeSnow(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-solid fa-snowflake"></i></a>
-                <a title="Disable confetti on this Countdown (you can disable confetti on all Countdowns in your Personal Options)" class="aintext fontpicker" id="noconfetti" onmouseup="ConfettiModeNone(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-regular fa-circle-xmark"></i></a>
+                <a title="Disable confetti on this Countdown (you can disable confetti on all Countdowns in your Personal Settings)" class="aintext fontpicker" id="noconfetti" onmouseup="ConfettiModeNone(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-regular fa-circle-xmark"></i></a>
                 <br>
                 <br>
-                <a class="aintext texttip" href="#appearanceoptions" class="texttip" style="text-decoration: underline;">You can disable confetti for all countdowns in your Personal Options.</a>
-                <br>
-                <br>
-                <br>
-                <h2 class="textelement" style="font-family: 'Dosis';">Ending Sound</h2>
+                <a class="aintext texttip" onclick="openPersonalSettings();" href="#appearanceoptions" class="texttip" style="text-decoration: underline; margin-bottom: 100px;">You can disable confetti for all countdowns in your Personal Settings.</a>
+                <h2 class="textelement" id="endingsoundtag" style="font-family: 'Dosis';">Ending Sound</h2>
                 <div class="container">
                     <input class="input" type="text" id="audioLink" onblur="SetCountDowngeneral();" placeholder="Audio link">
 		        <button style="background:transparent; border:none; outline:none; cursor:pointer">
@@ -403,18 +499,12 @@
                     <br />
                     Any ADs that may be placed by the service will remain.
                 </p>
-                <a class="aintext texttip" href="#eouoptions" style=" text-decoration: underline;">You can disable ending sounds for all countdowns in your Personal Options.</a>
-                <br>
-                <br>
-                <Br>
-                <Br>
-                <br>
-                <br>
+                <a class="aintext texttip" onclick="openPersonalSettings();" href="#eouoptions" style=" text-decoration: underline; margin-bottom:100px;">You can disable ending sounds for all countdowns in your Personal Settings.</a>
 		</div>
-                <h1 id="scheduleoptions">Countdown Schedule <span class="betatag">NEW</span></h1>
-		<Br>
-                <br>
-                <br>
+        <div style="width:100%; margin:0px; padding:0px; border-top: #ff990070 2px solid; border-bottom: #ff990070 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #ff990035)">
+            <h1 id="scheduleoptions"><i style="color: #ff9900" class="fa-solid fa-calendar"></i> Countdown Schedule</h1>
+        </div>
+
 		    <div id="presetupScheduleContent">
 		<h2 style="font-family: 'Dosis';">Convert to Countdown Schedule</h2>
 		<div style="text-align:left; width:fit-content;">
@@ -441,7 +531,7 @@
                         <!--<div id="scheduleimportcontainer" style="border-radius: 20px; background: #3ab6ff; margin-bottom:125px; color: black; padding:20px; min-width:fit-content; max-width: 75%;">
                             <a class="betabutton"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Schedule with Gemini</a>
                         </div>-->
-                        <h2 style="font-family: 'Dosis';">Edit Schedule</h2>
+                        <h2 id="editscheduletag" style="font-family: 'Dosis';">Edit Schedule</h2>
                         <div class="schedule-form-group">
                             <input type="text" placeholder="Pick a title" id="schedule-eventTitle" required>
                         </div>
@@ -457,7 +547,7 @@
                         <br>
 
                         <div class="schedule-editor-section">
-                            <h2 style="font-family: 'Dosis';">Regular Schedule</h2>
+                            <h2 id="regdaystag" style="font-family: 'Dosis';">Regular Schedule</h2>
                             <button style="font-family: 'Dosis'" class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">Show/Hide Regular Schedule</button>
                             <div class="schedule-content">
                                 <ul id="schedule-eventList"></ul>
@@ -465,7 +555,7 @@
                         </div>
 
                         <div class="schedule-editor-section" id="exceptiondaycontainer">
-                            <h2 style="font-family: 'Dosis';">Exception Days</h2>
+                            <h2 id="exceptiondaystag" style="font-family: 'Dosis';">Exception Days</h2>
                             <div class="schedule-form-group">
                                 <div class="dropdown-container" style="display: inline-block; width:250px;" id="schedule-exceptionDay">
                                     <button class="dropdown-button" id="dropdownbuttonexceptionday"><i class="fa-solid fa-calendar-day"></i> Select Day</button>
@@ -485,174 +575,35 @@
                         </div>
                     </div>
                 </div>
-                <br>
-                <br>
-                <Br>
-                <Br>
-                <br>
-                <br>
 		<div id="optionsprogresscontainer">
-                <h1 id="progressoptions">Progress <span class="betatag">BETA</span></h1>
-		<Br>
-                <br>
-                <br>
+                <div style="width:100%; margin:0px; padding:0px; border-top: #8426FF70 2px solid; border-bottom: #8426FF70 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #8426ff27)">
+                    <h1 id="progressoptions"><i style="color: #8426FF" class="fa-solid fa-spinner"></i> Progress</h1>
+                </div>
                 <div id="progressdatepickercontainer">
-		<h2 style="font-family: 'Dosis';">Starting Date</h2>
+		<h2 id="startingdaytag" style="font-family: 'Dosis';">Starting Date</h2>
 		<input id="progressdatepicker" class="progressdatepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
         <button style="background:transparent; border:none; outline:none; cursor:pointer">
             <i title="Turn off Progress" class="fa-solid fa-circle-xmark" style="transform:scale(1.75); padding-left:10px;" onclick="resetprogressinput();"></i>
         </button>
-        <p class="texttip">
+        <p class="texttip" style="margin-bottom:100px">
             Displays a progress bar to visualize the percent completion, if the event has a starting date
         </p>
-		<br>
-		<br>
     </div>
-		<br>
         <div>
-		<h2 style="font-family: 'Dosis';">Position</h2>
+		<h2 id="positiontag" style="font-family: 'Dosis';">Position</h2>
         <a class="aintext fontpicker" id="progressbottombar" onmouseup="ProgressPositionBar(); SetCountDowngeneral();"><i class="fa-solid fa-bars-progress"></i></a>
         <a class="aintext fontpicker" id="progressfullscreen" onmouseup="ProgressPositionFullscreen(); SetCountDowngeneral();"><i class="fa-solid fa-expand"></i></a>
         <a class="aintext selectedfontpicker" id="progressnone" onmouseup="ProgressPositionNone(); SetCountDowngeneral();"><i class="fa-regular fa-circle-xmark"></i></a>
-                <br>
-                <br>
-                <br>
+
             </div>
         </div>
-
-	
-    <br>
-    <div style="width:100%; margin:0px; padding:0px; border-top: #fe980070 2px solid; border-bottom: #fe980070 2px solid; margin-top: 150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
-        <h1><i style="color: #FE9A00" class="fa-solid fa-user-lock"></i> Personal Options</h1>
-        <p style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:30px;">Options that are universally applied across Countdowns you visit</p>
-    </div>
-    <br />
-    <br />
-    <br />
-    <br />
-    <h1 class="textelement" id="appearanceoptions">
-        Appearance
-    </h1>
-	<Br>
-        <br>
-        <br>
-
-    <div class="settingsline">
-        <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
-            <i class="fa-solid fa-bolt"></i> Animation Speed
-        </h2>
-    <div class="dropdown-container" style="float:right" id="speedDropdown">
-      <button class="dropdown-button"><i class="fa-solid fa-gauge"></i> Default</button>
-      <div class="dropdown-menu" id="speedMenu">
-        <div class="dropdown-item" data-speed="default">
-          <i class="fa-solid fa-gauge"></i> Default
-        </div>
-        <div class="dropdown-item" data-speed="slow">
-          <i class="fa-solid fa-seedling"></i> Slow
-        </div>
-        <div class="dropdown-item" data-speed="fast">
-          <i class="fa-solid fa-bolt"></i> Fast
-        </div>
-      </div>
-    </div>
-</div>
-    <br>
-
-    <br>
-    <div class="settingsline">
-        <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
-            <i class="fa-solid fa-cake-candles"></i> Disable Confetti
-        </h2>
-    <a id="coce" style="float:right"  class="disabled toggle" onclick="coce();"></a>
-    </div>
-    <br>
-    <Br>
-    <Br>
-    <h1 class="textelement" id="eouoptions">
-        Ease of Use
-    </h1>
-        <Br>
-        <br>
-        <br>
-        <div id="localshortcutcontainerdiv" class="localshortcutcontainerdiv" style="border-radius: 20px; background: #00df52; margin-bottom:50px; color: black; padding:50px; width:60%;">
-            <p style="color:black; font-size:27px;"><i class="fa-solid fa-location-pin-lock"></i> Local Shortcut</p>
-            <p style="color:black; max-width: 70%;" class="texttip">
-                A dynamic bookmark that updates with changes saved to your Dashboard
-            </p>
-    <input id="locallinkinput" class="localshortcutinput" style="width:70%"/>
-        <button style="background:transparent; border:none; outline:none; cursor:pointer">
-                <i title="Copy Local Shortcut" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px; color:#000000;" onclick="copyinputtextlocalshortcutlink(); showToast('Local Shortcut link copied', 'success');"></i>
-        </button>
-        <br>
-    <a style="color: black; font-family:'Dosis'; margin-top:20px;" class="aintext" href="docs#dashboard" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-circle-info"></i> More info</a>
-    <br>
-    <br>
-    </div>
-    <div class="settingsline">
-        <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
-            <i class="fa-solid fa-volume-mute"></i> Disable End Sounds
-        </h2>
-        <a id="soce" style="float:right" class="disabled toggle" onclick="soce();"></a>
-    </div>
-    <div class="settingsline">
-        <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
-            <i class="fa-solid fa-gauge-high"></i> Memory Saver
-        </h2>
-        <a id="memsav" style="float:right" class="disabled toggle" onclick="memsav();"></a>
-    </div>
-    <div class="settingsline">
-        <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
-            <i class="fa-solid fa-circle-half-stroke"></i> Increase Contrast
-        </h2>
-        <a id="contrast" style="float:right" class="disabled toggle" onclick="contrast();"></a>
-    </div>
-	<a style="display:none;" id="opendyslexic" class="disabled toggle" onclick="opendyslexic();"><i class="fa-solid fa-font"></i> Force OpenDyslexic Font</a>
-<br>
-    <Br>
-    <Br>
-    <h1 id="inclusionoptions" class="textelement">
-        Formatting
-    </h1>
-	<p id="cdscheduledisclaimer" style="font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:30px; display:none; background:linear-gradient(to bottom right, #d616165f, #00000000); border:#ff5353 2px solid; border-radius:100px; padding:5px 10px 5px 10px; width:fit-content;"><i class="fa-regular fa-calendar-xmark"></i> Time Breakdown will not apply to Countdown Schedules</p>
-        <Br>
-        <br>
-        <br>
-        <div class="settingsline">
-            <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
-                <i class="fa-solid fa-calculator"></i> Time Breakdown
-            </h2>
-        <div style="float: right;" class="dropdown-container" id="includeDropdown">
-            <button class="dropdown-button"><i class="fa-solid fa-stopwatch-20"></i> Only Display</button>
-            <div class="dropdown-menu" id="includeMenu">
-                <div id="week" class="dropdown-item" data-unit="none"><i class="fa-solid fa-circle-xmark"></i> Off</div>
-              <div id="week" class="dropdown-item" data-unit="week"><i class="fa-solid fa-calendar-week"></i> Weeks</div>
-              <div id="day" class="dropdown-item" data-unit="day"><i class="fa-solid fa-calendar-days"></i> Days</div>
-              <div id="hour" class="dropdown-item" data-unit="hour"><i class="fa-solid fa-clock"></i> Hours</div>
-              <div id="minute" class="dropdown-item" data-unit="minute"><i class="fa-solid fa-hourglass-start"></i> Minutes</div>
-              <div id="second" class="dropdown-item" data-unit="second"><i class="fa-solid fa-stopwatch-20"></i> Seconds</div>
-              <div id="millisecond" class="dropdown-item" data-unit="millisecond"><i class="fa-solid fa-meteor"></i> Milliseconds</div>
-            </div>
-          </div>
-        </div>
-        <div class="settingsline">
-            <h2 class="textelement" style="font-family: 'Dosis'; float:left;">
-                <i class="fa-solid fa-tag"></i> Label Time Units
-            </h2>
-            <a  style="float:right" id="lcdu" class="disabled toggle" onclick="lcdu();"></a>
-    </div>
-    <br>
-    <br>
-    <br>
-    <div id="dangerzone">
-        <h1>Danger Zone</h1>
-        <h3 style="font-family: 'Dosis', sans-serif; font-size:23px; text-justify:inter-word;">Resetting all options will restore Countdown to a point where no trace of your interaction is left. All cookies will be removed, your Dashboard reset.</h3>
-            <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetcookies();"><i class="fa-solid fa-trash"></i> Reset All</a>
-    </div>
-    <br>
-    <br>
-    <br>
-    <p style="color:var(--mainforegroundcolor); font-family: Dosis; font-size:17px; margin-bottom:20px;">Countdown is a free service provided by <a class="aintext" style="color:var(--mainforegroundcolor); font-family: Dosis; font-size:17px; margin-bottom:20px; text-decoration: underline;" href="https://michaeldors.com/">michaeldors.com</a>.</p>
-
+    <p style="color:var(--mainforegroundcolor); font-family: Dosis; font-size:17px; margin-bottom:20px; margin-top:150px;">Countdown is a free service provided by <a class="aintext" style="color:var(--mainforegroundcolor); font-family: Dosis; font-size:17px; margin-bottom:20px; text-decoration: underline;" href="https://michaeldors.com/">michaeldors.com</a>.</p>
+    <p class="textelement" style="max-width:100%;">
+        <a class="aintext dependencieslink" style="margin-left:0px" href="http://605958.xyz/"><i style="margin-right:10px;" class="fa-solid fa-house"></i> Home</a>
+        <a class="aintext dependencieslink" href="docs#cookiepolicy" target="_blank" rel="noopener noreferrer"><i style="margin-right:10px;" class="fa-solid fa-cookie-bite"></i> Policy</a>
+        <a class="aintext dependencieslink" href="Information/dependencies" target="_blank" rel="noopener noreferrer"><i style="margin-right:10px;" class="fa-solid fa-file-code"></i> Dependencies</a>
+        <a class="aintext dependencieslink" href="docs" target="_blank" rel="noopener noreferrer" style="margin-bottom:100px;"><i style="margin-right:10px" class="fa-solid fa-book"></i> Docs</a>
+    </p>
       </div>
 
     </center>
@@ -709,6 +660,6 @@
 
     </div>
     <div id="playerContainer"></div>
+    <canvas id="profileCanvas" width="200" height="200" style="display: none;"></canvas>
 
 </body>
-<script src="betaapp.js"></script>

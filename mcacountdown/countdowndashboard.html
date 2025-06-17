@@ -1,20 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
+    <script>
+        !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init Ie Ts Ms Ee Es Rs capture Ge calculateEventProperties Os register register_once register_for_session unregister unregister_for_session js getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty Ds Fs createPersonProfile Ls Ps opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing Cs debug I As getPageViewId captureTraceFeedback captureTraceMetric".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+        posthog.init('phc_DR8GzWFM4BXGN6uqCri7Gx4WxKx0RwyoLzhIjygk0Rt', {
+            api_host: 'https://us.i.posthog.com',
+            defaults: '2025-05-24',
+            person_profiles: 'identified_only', // or 'always' to create profiles for anonymous users as well
+        })
+    </script>
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Countdown Dashboard</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
     <link rel="icon" type="image/x-icon" href="icon.ico">
     <meta name="theme-color" content="#8426ff" />
 
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Countdown">
 
@@ -25,6 +36,7 @@
     <meta property="og:description" content="All of your countdowns in one place." />
     <meta property="og:site_name" content="Michael Dors" />
     <link rel="apple-touch-icon" href="Images/countdownhomescreen.png">
+    <script src="supabaseclient.js"></script>
 </head>
 
 <body>
@@ -37,14 +49,14 @@
           <path d="M0,0 C30,0 50,45 80,45 L0,45 L0,0" fill="black"/>
         </svg>
       </div>
+      <h1 class="textelement" style="font-family: 'Dosis';">Pinned</h1>
     <div class="container">
         <div id="linksContainer" class="links-container">
         </div>
-
-        <!--<div id="curated">
-            <h2 class="textelement" style="font-family: 'Dosis';">
+        <div id="curated">
+            <h1 class="textelement" style="font-family: 'Dosis';">
                 Curated Countdowns <span class="betatag">BETA</span>
-            </h2>
+            </h1>
             <div class="presetswrapper">
                 <div class="presetsicon"><i id="presetsleft" class="fa-solid fa-angle-left"></i></div>
                 <ul class="presetstabs-box" id="presetstabs-box">
@@ -59,16 +71,18 @@
                 </ul>
                 <div class="presetsicon"><i id="presetsright" class="fa-solid fa-angle-right"></i></div>
             </div>
-        </div>-->
-
-
+        </div>
+        <h1 class="textelement" style="font-family: 'Dosis';">Your Countdowns</h1>
+        <h1 class="textelement" style="font-family: 'Dosis';">Shared With You</h1>
+        <div style="margin-bottom:300px;"></div>
         <div class="input-container">
             <a title="Create a new Countdown" href="https://michaeldors.com/mcacountdown/betatimer?createnew=1" id="newcountdownbutton"><i class="fa-solid fa-circle-plus"></i></a>
-                <a title="Import a .countdown file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i></a>
-                <a title="Export as a .countdown file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i></a>
-                <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetall();"><i class="fa-solid fa-trash"></i></a>
+            <a title="Import a .countdown file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i></a>
+            <a title="Export as a .countdown file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i></a>
+            <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetall();"><i class="fa-solid fa-trash"></i></a>
+            <a title="Sign in with Google" onclick="loginWithGoogle();"><i class="fa-solid fa-right-to-bracket"></i></a>
             <input type="file" id="hiddenFileInput" accept=".countdown" style="display: none;">
-            </div>
+        </div>
 
 <img id="threedtrash" alt="Trash Can" src="3d/backoftrashcanexport.png">
 <img id="foregroundtrash" alt="Trash Can" src="3d/frontoftrashcanexport.png">
@@ -89,7 +103,6 @@
 
 
     <script>
-
 // Check if the browser is WebKit-based
 const isWebKit = /AppleWebKit/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent) && 'WebkitAppearance' in document.documentElement.style;
 
@@ -153,6 +166,8 @@ function loadLinks() {
 
 function saveLinks() {
     localStorage.setItem('dashboardsaved', JSON.stringify(links));
+    // Force immediate sync for deletions
+    saveDashboardToCloud();
 }
 
 
@@ -183,7 +198,13 @@ function removeLink(index, event) {
         // Remove the deleted card
         cardToDelete.remove();
         links.splice(index, 1);
-        saveLinks();
+        
+        // Save to localStorage and force an immediate cloud sync
+        localStorage.setItem('dashboardsaved', JSON.stringify(links));
+        saveDashboardToCloud().then(() => {
+            // After successful cloud sync, update the UI
+            renderLinks();
+        });
 
         // Remove shift class from remaining cards
         document.querySelectorAll('.card-shift').forEach(card => {
@@ -255,7 +276,7 @@ function renderLinks() {
         	<iframe src="${link.url}${link.url.includes('?') ? '&' : '?'}cardmode=true" title="${link.title}" sandbox="allow-scripts allow-same-origin"></iframe>
             <div class="card-content">
                 <h3>${link.title}</h3>
-                <i class="remove-button fa-solid fa-trash" onclick="removeLink(${index}, event)" style="cursor:pointer;"></i>
+                <i class="remove-button fa-solid fa-thumbtack-slash" onclick="removeLink(${index}, event)" style="cursor:pointer;"></i>
             </div>
         `;
 
@@ -868,6 +889,129 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
 });
 
 loadLinks();
+// Set up Supabase login and dashboard sync
+let isInitialLoad = true;
+
+supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    if (session?.user && isInitialLoad) {
+        isInitialLoad = false;
+        // Get current user using supabase.auth.getUser() and upsert using correct fields for RLS
+        supabaseClient.auth.getUser().then(({ data }) => {
+            const userId = data.user?.id;
+            const email = data.user?.email;
+            const name = data.user?.user_metadata?.full_name;
+            const avatar_url = data.user?.user_metadata?.avatar_url;
+
+            if (!userId || !email || !name) return;
+
+            // Upsert user only on initial load
+            supabaseClient.from("users").upsert({
+                id: userId,
+                email,
+                name,
+                avatar_url,
+            }, { onConflict: 'id' })
+            .then(({ error }) => {
+                if (error) {
+                    console.error("Insert error (users):", error.message);
+                } else {
+                    console.log("User upserted");
+                }
+            });
+
+            // Fetch dashboard data for this user only on initial load
+            supabaseClient
+                .from('user_dashboards')
+                .select('dashboard_data')
+                .eq('user_id', userId)
+                .maybeSingle()
+                .then(({ data, error: dashFetchError }) => {
+                  if (dashFetchError && dashFetchError.code !== 'PGRST116') {
+                    console.error("Error loading dashboard:", dashFetchError.message);
+                    return;
+                  }
+
+                  const cloudLinks = data?.dashboard_data || [];
+                  const localLinks = JSON.parse(localStorage.getItem("dashboardsaved") || "[]");
+
+                  // If local links exist, they take precedence (they might include deletions)
+                  if (localLinks.length > 0) {
+                      links = localLinks;
+                      saveDashboardToCloud();
+                      renderLinks();
+                  } else if (cloudLinks.length > 0) {
+                      // Only use cloud links if local storage is empty
+                      links = cloudLinks;
+                      renderLinks();
+                  } else {
+                      // Both empty
+                      links = [];
+                      renderLinks();
+                  }
+                });
+        }).catch((err) => {
+            console.error("AuthStateChange error:", err);
+        });
+    }
+});
+
+// Debounce function to limit API calls
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Debounced version of saveDashboardToCloud
+const debouncedSaveDashboard = debounce(async () => {
+    await saveDashboardToCloud();
+}, 1000); // Wait 1 second after last change before saving
+
+async function saveDashboardToCloud() {
+    // Get current user
+    const { data } = await supabaseClient.auth.getUser();
+    const user = data.user;
+    if (!user) {
+        return;
+    }
+    const userId = user.id;
+    const email = user.email;
+    const name = user.user_metadata?.full_name;
+    const avatar_url = user.user_metadata?.avatar_url;
+
+    if (!userId || !email || !name) {
+        showToast("Cloud save failed: missing user info", "error");
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from('user_dashboards')
+        .upsert({
+            user_id: userId,
+            dashboard_data: links,
+            updated_at: new Date().toISOString()
+        }, { onConflict: ['user_id'] });
+    if (error) {
+        console.error("Failed to save dashboard:", error.message);
+        showToast("Cloud save failed", "error");
+    }
+}
+
+async function loginWithGoogle() {
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + window.location.pathname
+    }
+  });
+  if (error) alert("Login failed: " + error.message);
+}
     </script>
 </body>
 <style>
@@ -961,7 +1105,6 @@ button:hover {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 20px;
     position: relative;
-margin-bottom:300px;
 }
 
 .card {
