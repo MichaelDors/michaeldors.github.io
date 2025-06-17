@@ -4681,9 +4681,9 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                   }
 
                   // Set up authentication state listener (only once globally)
-                  if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth && !window.authListenerSetup) {
+                  if (typeof supabaseClient !== "undefined" && supabaseClient.auth && !window.authListenerSetup) {
                     window.authListenerSetup = true;
-                    window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                    supabaseClient.auth.onAuthStateChange(async (event, session) => {
                         if (event === 'SIGNED_IN' && session?.user) {
                             // User signed in, regenerate profile pic with database data
                             generateProfilePic();
