@@ -4698,6 +4698,34 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     window.authListenerSetup = true;
                     supabaseClient.auth.onAuthStateChange(async (event, session) => {
                         if (event === 'SIGNED_IN' && session?.user) {
+                            // Create/update user in database
+                            const user = session.user;
+                            const userId = user.id;
+                            const email = user.email;
+                            const name = user.user_metadata?.full_name;
+                            const avatar_url = user.user_metadata?.avatar_url;
+                            
+                            if (userId && email && name) {
+                                try {
+                                    const { error } = await supabaseClient
+                                        .from("users")
+                                        .upsert({
+                                            id: userId,
+                                            email,
+                                            name,
+                                            avatar_url,
+                                        }, { onConflict: 'id' });
+                                    
+                                    if (error) {
+                                        console.error('[betaapp] User upsert error:', error.message);
+                                    } else {
+                                        console.log('[betaapp] User upserted successfully');
+                                    }
+                                } catch (upsertError) {
+                                    console.error('[betaapp] User upsert failed:', upsertError);
+                                }
+                            }
+                            
                             // User signed in, regenerate profile pic with database data
                             generateProfilePic();
                             // Load cookies from cloud when user logs in
