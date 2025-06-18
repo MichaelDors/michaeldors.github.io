@@ -103,6 +103,18 @@
 
 
     <script>
+function parameter(name) { //returns the value of the parameter it's sent
+    var query = window.location.search.substring(1);
+    var parameters = query.split('&');
+    for (var i = 0; i < parameters.length; i++) {
+        var pair = parameters[i].split('=');
+        if (pair[0] == name) {
+            return pair[1];
+        }
+    }
+    return null;
+}
+    
 // Check if the browser is WebKit-based
 const isWebKit = /AppleWebKit/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent) && 'WebkitAppearance' in document.documentElement.style;
 
@@ -893,6 +905,7 @@ loadLinks();
 let isInitialLoad = true;
 
 supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    console.log('[dashboard] Auth state changed:', _event, session);
     if (session?.user && isInitialLoad) {
         isInitialLoad = false;
         // Get current user using supabase.auth.getUser() and upsert using correct fields for RLS
@@ -901,10 +914,13 @@ supabaseClient.auth.onAuthStateChange(async (_event, session) => {
             const email = data.user?.email;
             const name = data.user?.user_metadata?.full_name;
             const avatar_url = data.user?.user_metadata?.avatar_url;
-
-            if (!userId || !email || !name) return;
-
+            console.log('[dashboard] getUser result:', { userId, email, name, avatar_url });
+            if (!userId || !email || !name) {
+                console.warn('[dashboard] Missing user info, aborting upsert');
+                return;
+            }
             // Upsert user only on initial load
+            console.log('[dashboard] Upserting user:', { userId, email, name, avatar_url });
             supabaseClient.from("users").upsert({
                 id: userId,
                 email,
@@ -913,13 +929,13 @@ supabaseClient.auth.onAuthStateChange(async (_event, session) => {
             }, { onConflict: 'id' })
             .then(({ error }) => {
                 if (error) {
-                    console.error("Insert error (users):", error.message);
+                    console.error('[dashboard] Insert error (users):', error.message);
                 } else {
-                    console.log("User upserted");
+                    console.log('[dashboard] User upserted');
                 }
             });
-
             // Fetch dashboard data for this user only on initial load
+            console.log('[dashboard] Fetching dashboard for user:', userId);
             supabaseClient
                 .from('user_dashboards')
                 .select('dashboard_data')
@@ -927,30 +943,33 @@ supabaseClient.auth.onAuthStateChange(async (_event, session) => {
                 .maybeSingle()
                 .then(({ data, error: dashFetchError }) => {
                   if (dashFetchError && dashFetchError.code !== 'PGRST116') {
-                    console.error("Error loading dashboard:", dashFetchError.message);
+                    console.error('[dashboard] Error loading dashboard:', dashFetchError.message);
                     return;
                   }
-
+                  console.log('[dashboard] Dashboard fetch result:', data);
                   const cloudLinks = data?.dashboard_data || [];
                   const localLinks = JSON.parse(localStorage.getItem("dashboardsaved") || "[]");
-
+                  console.log('[dashboard] Local links:', localLinks);
                   // If local links exist, they take precedence (they might include deletions)
                   if (localLinks.length > 0) {
                       links = localLinks;
+                      console.log('[dashboard] Using local links, saving to cloud');
                       saveDashboardToCloud();
                       renderLinks();
                   } else if (cloudLinks.length > 0) {
                       // Only use cloud links if local storage is empty
                       links = cloudLinks;
+                      console.log('[dashboard] Using cloud links');
                       renderLinks();
                   } else {
                       // Both empty
                       links = [];
+                      console.log('[dashboard] No links found, starting empty');
                       renderLinks();
                   }
                 });
         }).catch((err) => {
-            console.error("AuthStateChange error:", err);
+            console.error('[dashboard] AuthStateChange error:', err);
         });
     }
 });
@@ -975,21 +994,24 @@ const debouncedSaveDashboard = debounce(async () => {
 
 async function saveDashboardToCloud() {
     // Get current user
+    console.log('[dashboard] saveDashboardToCloud called');
     const { data } = await supabaseClient.auth.getUser();
     const user = data.user;
+    console.log('[dashboard] getUser result:', user);
     if (!user) {
+        console.warn('[dashboard] No user, aborting cloud save');
         return;
     }
     const userId = user.id;
     const email = user.email;
     const name = user.user_metadata?.full_name;
     const avatar_url = user.user_metadata?.avatar_url;
-
+    console.log('[dashboard] Saving dashboard for:', { userId, email, name, avatar_url, links });
     if (!userId || !email || !name) {
         showToast("Cloud save failed: missing user info", "error");
+        console.error('[dashboard] Cloud save failed: missing user info');
         return;
     }
-
     const { error } = await supabaseClient
         .from('user_dashboards')
         .upsert({
@@ -998,19 +1020,27 @@ async function saveDashboardToCloud() {
             updated_at: new Date().toISOString()
         }, { onConflict: ['user_id'] });
     if (error) {
-        console.error("Failed to save dashboard:", error.message);
+        console.error('[dashboard] Failed to save dashboard:', error.message);
         showToast("Cloud save failed", "error");
+    } else {
+        console.log('[dashboard] Dashboard saved to cloud successfully');
     }
 }
 
 async function loginWithGoogle() {
+  console.log('[dashboard] loginWithGoogle called');
   const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: window.location.origin + window.location.pathname
     }
   });
-  if (error) alert("Login failed: " + error.message);
+  if (error) {
+    alert("Login failed: " + error.message);
+    console.error('[dashboard] Login failed:', error.message);
+  } else {
+    console.log('[dashboard] Login with Google initiated');
+  }
 }
     </script>
 </body>

@@ -1,5 +1,18 @@
 let userInteracted = false;
 
+// Debounce function for limiting how often a function can be called
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
   function handleTitleNavigation() {
       const fullUrl = window.location.href;
       const urlParts = fullUrl.split('#');
