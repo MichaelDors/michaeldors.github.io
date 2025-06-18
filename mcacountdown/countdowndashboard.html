@@ -906,8 +906,7 @@ let isInitialLoad = true;
 
 supabaseClient.auth.onAuthStateChange(async (_event, session) => {
     console.log('[dashboard] Auth state changed:', _event, session);
-    if (session?.user && isInitialLoad) {
-        isInitialLoad = false;
+    if (session?.user) {
         // Get current user using supabase.auth.getUser() and upsert using correct fields for RLS
         supabaseClient.auth.getUser().then(({ data }) => {
             const userId = data.user?.id;
@@ -919,7 +918,7 @@ supabaseClient.auth.onAuthStateChange(async (_event, session) => {
                 console.warn('[dashboard] Missing user info, aborting upsert');
                 return;
             }
-            // Upsert user only on initial load
+            // Upsert user on every auth state change
             console.log('[dashboard] Upserting user:', { userId, email, name, avatar_url });
             supabaseClient.from("users").upsert({
                 id: userId,
@@ -934,43 +933,56 @@ supabaseClient.auth.onAuthStateChange(async (_event, session) => {
                     console.log('[dashboard] User upserted');
                 }
             });
-            // Fetch dashboard data for this user only on initial load
-            console.log('[dashboard] Fetching dashboard for user:', userId);
-            supabaseClient
-                .from('user_dashboards')
-                .select('dashboard_data')
-                .eq('user_id', userId)
-                .maybeSingle()
-                .then(({ data, error: dashFetchError }) => {
-                  if (dashFetchError && dashFetchError.code !== 'PGRST116') {
-                    console.error('[dashboard] Error loading dashboard:', dashFetchError.message);
-                    return;
-                  }
-                  console.log('[dashboard] Dashboard fetch result:', data);
-                  const cloudLinks = data?.dashboard_data || [];
-                  const localLinks = JSON.parse(localStorage.getItem("dashboardsaved") || "[]");
-                  console.log('[dashboard] Local links:', localLinks);
-                  // If local links exist, they take precedence (they might include deletions)
-                  if (localLinks.length > 0) {
-                      links = localLinks;
-                      console.log('[dashboard] Using local links, saving to cloud');
-                      saveDashboardToCloud();
-                      renderLinks();
-                  } else if (cloudLinks.length > 0) {
-                      // Only use cloud links if local storage is empty
-                      links = cloudLinks;
-                      console.log('[dashboard] Using cloud links');
-                      renderLinks();
-                  } else {
-                      // Both empty
-                      links = [];
-                      console.log('[dashboard] No links found, starting empty');
-                      renderLinks();
-                  }
-                });
+            
+            // Only fetch dashboard data on initial load to avoid overwriting local changes
+            if (isInitialLoad) {
+                isInitialLoad = false;
+                // Fetch dashboard data for this user only on initial load
+                console.log('[dashboard] Fetching dashboard for user:', userId);
+                supabaseClient
+                    .from('user_dashboards')
+                    .select('dashboard_data')
+                    .eq('user_id', userId)
+                    .maybeSingle()
+                    .then(({ data, error: dashFetchError }) => {
+                      if (dashFetchError && dashFetchError.code !== 'PGRST116') {
+                        console.error('[dashboard] Error loading dashboard:', dashFetchError.message);
+                        return;
+                      }
+                      console.log('[dashboard] Dashboard fetch result:', data);
+                      const cloudLinks = data?.dashboard_data || [];
+                      const localLinks = JSON.parse(localStorage.getItem("dashboardsaved") || "[]");
+                      console.log('[dashboard] Local links:', localLinks);
+                      // If local links exist, they take precedence (they might include deletions)
+                      if (localLinks.length > 0) {
+                          links = localLinks;
+                          console.log('[dashboard] Using local links, saving to cloud');
+                          saveDashboardToCloud();
+                          renderLinks();
+                      } else if (cloudLinks.length > 0) {
+                          // Only use cloud links if local storage is empty
+                          links = cloudLinks;
+                          console.log('[dashboard] Using cloud links');
+                          renderLinks();
+                      } else {
+                          // Both empty
+                          links = [];
+                          console.log('[dashboard] No links found, starting empty');
+                          renderLinks();
+                      }
+                    });
+            } else {
+                // On subsequent auth changes, just save current state to cloud
+                console.log('[dashboard] User authenticated, saving current dashboard to cloud');
+                saveDashboardToCloud();
+            }
         }).catch((err) => {
             console.error('[dashboard] AuthStateChange error:', err);
         });
+    } else {
+        // User signed out
+        console.log('[dashboard] User signed out');
+        isInitialLoad = true; // Reset for next sign in
     }
 });
 
