@@ -4608,64 +4608,100 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                   }
                   
                   function generateProfilePic() {
-                    // Prevent concurrent calls
-                    if (window.generatingProfile) return;
-                    window.generatingProfile = true;
-                    
-                    if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
-                        window.supabaseClient.auth.getUser().then(async function(response) {
-                            const user = response?.data?.user;
-                            if (user && user.id) {
-                                try {
-                                    const { data: userData, error } = await window.supabaseClient
-                                        .from('users')
-                                        .select('name, has_plus, avatar_url')
-                                        .eq('id', user.id)
-                                        .maybeSingle();
-                                    
-                                    if (userData) {
-                                        if (userData.has_plus && userData.avatar_url) {
-                                            document.getElementById('userpfp').src = userData.avatar_url;
-                                            document.getElementById('usrname').textContent = userData.name || 'User';
-                                            return;
-                                        }
-                                        
-                                        if (userData.name && !error) {
-                                            generateProfilePicWithName(userData.name);
-                                            localStorage.setItem('pfp_name', userData.name);
-                                        } else {
-                                            const fallbackName = localStorage.getItem('pfp_name') || user.user_metadata?.full_name || 'User';
-                                            generateProfilePicWithName(fallbackName);
-                                        }
-                                    } else {
-                                        const fallbackName = localStorage.getItem('pfp_name') || user.user_metadata?.full_name || 'User';
-                                        generateProfilePicWithName(fallbackName);
-                                    }
-                                } catch (dbError) {
-                                    console.error('Database error:', dbError);
-                                    const fallbackName = localStorage.getItem('pfp_name') || user.user_metadata?.full_name || 'User';
-                                    generateProfilePicWithName(fallbackName);
-                                }
-                            } else {
-                                const localName = localStorage.getItem('pfp_name') || 'User';
-                                generateProfilePicWithName(localName);
-                            }
-                        }).catch(function(authError) {
-                            console.error('Auth error:', authError);
-                            const localName = localStorage.getItem('pfp_name') || 'User';
-                            generateProfilePicWithName(localName);
-                        }).finally(() => {
-                            window.generatingProfile = false;
-                        });
-                    } else {
-                        const localName = localStorage.getItem('pfp_name') || 'User';
-                        generateProfilePicWithName(localName);
-                        window.generatingProfile = false;
+    console.log('[betaapp] generateProfilePic called');
+    // Prevent concurrent calls and redundant calls
+    if (window.generatingProfile || window.lastProfileGeneration && Date.now() - window.lastProfileGeneration < 1000) {
+        console.log('[betaapp] Profile generation skipped - too soon or already in progress');
+        return;
+    }
+    window.generatingProfile = true;
+    window.lastProfileGeneration = Date.now();
+    
+    // Skip database features in card mode
+    if (parameter('cardmode')) {
+        const localName = localStorage.getItem('pfp_name') || 'User';
+        console.log('[betaapp] Card mode, using local name:', localName);
+        generateProfilePicWithName(localName);
+        window.generatingProfile = false;
+        return;
+    }
+    
+    // First check if we have a session
+    window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
+        console.log('[betaapp] Session check:', session ? 'Logged in' : 'Not logged in');
+        
+        if (session?.user) {
+            try {
+                // Get user data from database
+                const { data: userData, error } = await window.supabaseClient
+                    .from('users')
+                    .select('name, has_plus, avatar_url')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+                
+                console.log('[betaapp] Database query result:', { userData, error });
+                
+                if (userData) {
+                    if (userData.has_plus && userData.avatar_url) {
+                        console.log('[betaapp] Using avatar from database');
+                        document.getElementById('userpfp').src = userData.avatar_url;
+                        document.getElementById('usrname').textContent = userData.name || 'User';
+                        return;
                     }
+                    
+                    if (userData.name && !error) {
+                        console.log('[betaapp] Using name from database:', userData.name);
+                        generateProfilePicWithName(userData.name);
+                        localStorage.setItem('pfp_name', userData.name);
+                        return;
+                    }
+                }
+                
+                // Fallback to user metadata if no database entry
+                const fallbackName = session.user.user_metadata?.full_name || localStorage.getItem('pfp_name') || 'User';
+                console.log('[betaapp] Using fallback name:', fallbackName);
+                generateProfilePicWithName(fallbackName);
+                localStorage.setItem('pfp_name', fallbackName);
+                
+            } catch (error) {
+                console.error('[betaapp] Error getting user data:', error);
+                const fallbackName = session.user.user_metadata?.full_name || localStorage.getItem('pfp_name') || 'User';
+                generateProfilePicWithName(fallbackName);
+            }
+        } else {
+            // Not logged in, use local storage
+            const localName = localStorage.getItem('pfp_name') || 'User';
+            console.log('[betaapp] Not logged in, using local name:', localName);
+            generateProfilePicWithName(localName);
+        }
+    }).catch(error => {
+        console.error('[betaapp] Session check error:', error);
+        const localName = localStorage.getItem('pfp_name') || 'User';
+        generateProfilePicWithName(localName);
+    }).finally(() => {
+        window.generatingProfile = false;
+    });
                   }
 
                   function generateProfilePicWithName(name) {
-                    document.getElementById('usrname').textContent = name;
+                    console.log('[betaapp] generateProfilePicWithName called with:', name);
+                    
+                    const usrnameElement = document.getElementById('usrname');
+                    const userpfpElement = document.getElementById('userpfp');
+                    const profileCanvasElement = document.getElementById('profileCanvas');
+                    
+                    console.log('[betaapp] DOM elements found:', {
+                        usrname: !!usrnameElement,
+                        userpfp: !!userpfpElement,
+                        profileCanvas: !!profileCanvasElement
+                    });
+                    
+                    if (!usrnameElement || !userpfpElement || !profileCanvasElement) {
+                        console.error('[betaapp] Missing required DOM elements');
+                        return;
+                    }
+                    
+                    usrnameElement.textContent = name;
                     let color = localStorage.getItem('pfp_color');
                   
                     // Assign a random color only on first visit
@@ -4677,7 +4713,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     localStorage.setItem('pfp_name', name); // ensure name is stored locally
                   
                     const initials = getInitials(name);
-                    const canvas = document.getElementById('profileCanvas');
+                    const canvas = profileCanvasElement;
                     const ctx = canvas.getContext('2d');
                   
                     ctx.fillStyle = color;
@@ -4690,52 +4726,90 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     ctx.fillText(initials, canvas.width / 2, canvas.height / 2);
                   
                     const dataURL = canvas.toDataURL('image/png');
-                    document.getElementById('userpfp').src = dataURL;
+                    userpfpElement.src = dataURL;
+                    console.log('[betaapp] Profile picture generated successfully');
                   }
 
                   // Set up authentication state listener (only once globally)
-                  if (typeof supabaseClient !== "undefined" && supabaseClient.auth && !window.authListenerSetup) {
-                    window.authListenerSetup = true;
-                    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-                        if (event === 'SIGNED_IN' && session?.user) {
-                            // Create/update user in database
-                            const user = session.user;
-                            const userId = user.id;
-                            const email = user.email;
-                            const name = user.user_metadata?.full_name;
-                            const avatar_url = user.user_metadata?.avatar_url;
-                            
-                            if (userId && email && name) {
-                                try {
-                                    const { error } = await supabaseClient
-                                        .from("users")
-                                        .upsert({
-                                            id: userId,
-                                            email,
-                                            name,
-                                            avatar_url,
-                                        }, { onConflict: 'id' });
-                                    
-                                    if (error) {
-                                        console.error('[betaapp] User upsert error:', error.message);
-                                    } else {
-                                        console.log('[betaapp] User upserted successfully');
+                  if (!parameter('cardmode')) {
+                    if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth && !window.authListenerSetup) {
+                      window.authListenerSetup = true;
+                      console.log('[betaapp] Setting up auth listener');
+                      
+                      // First check current session
+                      window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                          console.log('[betaapp] Initial session check:', session ? 'Logged in' : 'Not logged in');
+                          
+                          // Set up auth state change listener
+                          window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                              console.log('[betaapp] Auth state changed:', event, session);
+                              if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+                                // Create/update user in database
+                                const user = session.user;
+                                const userId = user.id;
+                                const email = user.email;
+                                const name = user.user_metadata?.full_name;
+                                const avatar_url = user.user_metadata?.avatar_url;
+                                
+                                console.log('[betaapp] User signed in:', { userId, email, name, avatar_url });
+                                
+                                if (userId && email && name) {
+                                    try {
+                                        const { error } = await window.supabaseClient
+                                            .from("users")
+                                            .upsert({
+                                                id: userId,
+                                                email,
+                                                name,
+                                                avatar_url,
+                                            }, { onConflict: 'id' });
+                                        
+                                        if (error) {
+                                            console.error('[betaapp] User upsert error:', error.message);
+                                        } else {
+                                            console.log('[betaapp] User upserted successfully');
+                                            // Only generate profile pic after successful upsert
+                                            generateProfilePic();
+                                            // Load cookies from cloud when user logs in
+                                            await loadCookiesFromCloud();
+                                        }
+                                    } catch (upsertError) {
+                                        console.error('[betaapp] User upsert failed:', upsertError);
                                     }
-                                } catch (upsertError) {
-                                    console.error('[betaapp] User upsert failed:', upsertError);
+                                } else {
+                                    console.warn('[betaapp] Missing user info for upsert:', { userId, email, name });
                                 }
-                            }
-                            
-                            // User signed in, regenerate profile pic with database data
-                            generateProfilePic();
-                            // Load cookies from cloud when user logs in
-                            await loadCookiesFromCloud();
-                        } else if (event === 'SIGNED_OUT') {
-                            // User signed out, use local storage
-                            const localName = localStorage.getItem('pfp_name') || 'User';
-                            generateProfilePicWithName(localName);
-                        }
-                    });
+                              } else if (event === 'SIGNED_OUT') {
+                                  console.log('[betaapp] User signed out');
+                                  // User signed out, use local storage
+                                  const localName = localStorage.getItem('pfp_name') || 'User';
+                                  generateProfilePicWithName(localName);
+                              }
+                          });
+                          
+                          // If we have a session, trigger initial profile pic generation
+                          if (session) {
+                              generateProfilePic();
+                          }
+                      });
+                    } else {
+                      console.log('[betaapp] Auth listener setup skipped:', {
+                          supabaseClientExists: typeof window.supabaseClient !== "undefined",
+                          authExists: typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth,
+                          alreadySetup: window.authListenerSetup
+                      });
+                    }
+                  }
+
+                  // Initialize profile picture on page load
+                  if (parameter('cardmode')) {
+                    // In card mode, just generate once with local data
+                    console.log('[betaapp] Card mode - generating with local data');
+                    const localName = localStorage.getItem('pfp_name') || 'User';
+                    generateProfilePicWithName(localName);
+                  } else if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
+                    console.log('[betaapp] Initializing profile picture on page load');
+                    // Let the auth listener handle the initial profile pic generation
                   }
 
                   function renameUser() {
