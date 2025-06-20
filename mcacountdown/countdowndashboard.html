@@ -168,11 +168,20 @@ updateStyles();
         let dragCounter = 0;
 
 
-function loadLinks() {
+async function loadLinks() {
     const savedLinks = localStorage.getItem("dashboardsaved");
     if (savedLinks) {
         links = JSON.parse(savedLinks);
-        renderLinks();
+        // Only render if no user is authenticated (auth listener will handle authenticated users)
+        try {
+            const { data } = await supabaseClient.auth.getUser();
+            if (!data?.user) {
+                renderLinks();
+            }
+        } catch (error) {
+            // If there's an error getting user, render anyway
+            renderLinks();
+        }
     }
 }
 
@@ -183,10 +192,11 @@ function saveLinks() {
 }
 
 // Add a separate function for immediate saves (like deletions)
-function saveLinksImmediate() {
+async function saveLinksImmediate() {
     localStorage.setItem('dashboardsaved', JSON.stringify(links));
     // Force immediate sync for deletions
-    saveDashboardToCloud();
+    await saveDashboardToCloud();
+    renderLinks();
 }
 
 function removeLink(index, event) {
@@ -902,97 +912,95 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
     }
 });
 
-loadLinks();
+loadLinks().catch(console.error);
 // Set up Supabase login and dashboard sync
 let isInitialLoad = true;
 
-// Only set up dashboard-specific auth handling if we're not already handling it elsewhere
-// and we're not in card mode
-if (!window.dashboardAuthSetup && !parameter('cardmode')) {
-    window.dashboardAuthSetup = true;
-    
-    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-        console.log('[dashboard] Auth state changed:', _event, session);
-        if (session?.user) {
-            // Get current user using supabase.auth.getUser() and upsert using correct fields for RLS
-            supabaseClient.auth.getUser().then(({ data }) => {
-                const userId = data.user?.id;
-                const email = data.user?.email;
-                const name = data.user?.user_metadata?.full_name;
-                const avatar_url = data.user?.user_metadata?.avatar_url;
-                console.log('[dashboard] getUser result:', { userId, email, name, avatar_url });
-                if (!userId || !email || !name) {
-                    console.warn('[dashboard] Missing user info, aborting upsert');
-                    return;
-                }
-                // Upsert user on every auth state change (not just initial load)
-                console.log('[dashboard] Upserting user:', { userId, email, name, avatar_url });
-                supabaseClient.from("users").upsert({
-                    id: userId,
-                    email,
-                    name,
-                    avatar_url,
-                }, { onConflict: 'id' })
-                .then(({ error }) => {
-                    if (error) {
-                        console.error('[dashboard] Insert error (users):', error.message);
-                    } else {
-                        console.log('[dashboard] User upserted');
-                    }
-                });
-                
-                // Only fetch dashboard data on initial load to avoid overwriting local changes
-                if (isInitialLoad) {
-                    isInitialLoad = false;
-                    // Fetch dashboard data for this user only on initial load
-                    console.log('[dashboard] Fetching dashboard for user:', userId);
-                    supabaseClient
-                        .from('user_dashboards')
-                        .select('dashboard_data')
-                        .eq('user_id', userId)
-                        .maybeSingle()
-                        .then(({ data, error: dashFetchError }) => {
-                          if (dashFetchError && dashFetchError.code !== 'PGRST116') {
-                            console.error('[dashboard] Error loading dashboard:', dashFetchError.message);
-                            return;
-                          }
-                          console.log('[dashboard] Dashboard fetch result:', data);
-                          const cloudLinks = data?.dashboard_data || [];
-                          const localLinks = JSON.parse(localStorage.getItem("dashboardsaved") || "[]");
-                          console.log('[dashboard] Local links:', localLinks);
-                          // If local links exist, they take precedence (they might include deletions)
-                          if (localLinks.length > 0) {
-                              links = localLinks;
-                              console.log('[dashboard] Using local links, saving to cloud');
-                              saveDashboardToCloud();
-                              renderLinks();
-                          } else if (cloudLinks.length > 0) {
-                              // Only use cloud links if local storage is empty
-                              links = cloudLinks;
-                              console.log('[dashboard] Using cloud links');
-                              renderLinks();
-                          } else {
-                              // Both empty
-                              links = [];
-                              console.log('[dashboard] No links found, starting empty');
-                              renderLinks();
-                          }
-                        });
+// Set up dashboard-specific auth handling
+supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    console.log('[dashboard] Auth state changed:', _event, session);
+    if (session?.user) {
+        // Get current user using supabase.auth.getUser() and upsert using correct fields for RLS
+        supabaseClient.auth.getUser().then(({ data }) => {
+            const userId = data.user?.id;
+            const email = data.user?.email;
+            const name = data.user?.user_metadata?.full_name;
+            const avatar_url = data.user?.user_metadata?.avatar_url;
+            console.log('[dashboard] getUser result:', { userId, email, name, avatar_url });
+            if (!userId || !email || !name) {
+                console.warn('[dashboard] Missing user info, aborting upsert');
+                return;
+            }
+            // Upsert user on every auth state change (not just initial load)
+            console.log('[dashboard] Upserting user:', { userId, email, name, avatar_url });
+            supabaseClient.from("users").upsert({
+                id: userId,
+                email,
+                name,
+                avatar_url,
+            }, { onConflict: 'id' })
+            .then(({ error }) => {
+                if (error) {
+                    console.error('[dashboard] Insert error (users):', error.message);
                 } else {
-                    // On subsequent auth changes, just save current state to cloud
-                    console.log('[dashboard] User authenticated, saving current dashboard to cloud');
-                    saveLinks(); // Use debounced save for regular auth changes
+                    console.log('[dashboard] User upserted');
                 }
-            }).catch((err) => {
-                console.error('[dashboard] AuthStateChange error:', err);
             });
-        } else {
-            // User signed out
-            console.log('[dashboard] User signed out');
-            isInitialLoad = true; // Reset for next sign in
-        }
-    });
-}
+            
+            // Only fetch dashboard data on initial load to avoid overwriting local changes
+            if (isInitialLoad) {
+                isInitialLoad = false;
+                // Fetch dashboard data for this user only on initial load
+                console.log('[dashboard] Fetching dashboard for user:', userId);
+                supabaseClient
+                    .from('user_dashboards')
+                    .select('dashboard_data')
+                    .eq('user_id', userId)
+                    .maybeSingle()
+                    .then(({ data, error: dashFetchError }) => {
+                      if (dashFetchError && dashFetchError.code !== 'PGRST116') {
+                        console.error('[dashboard] Error loading dashboard:', dashFetchError.message);
+                        return;
+                      }
+                      console.log('[dashboard] Dashboard fetch result:', data);
+                      const cloudLinks = data?.dashboard_data || [];
+                      const localLinks = JSON.parse(localStorage.getItem("dashboardsaved") || "[]");
+                      console.log('[dashboard] Local links:', localLinks);
+                      console.log('[dashboard] Cloud links:', cloudLinks);
+                      
+                      // If local links exist and are not empty, they take precedence
+                      if (localLinks.length > 0) {
+                          links = localLinks;
+                          console.log('[dashboard] Using local links, saving to cloud');
+                          saveDashboardToCloud();
+                          renderLinks();
+                      } else if (cloudLinks.length > 0) {
+                          // Use cloud links if local storage is empty
+                          links = cloudLinks;
+                          console.log('[dashboard] Using cloud links');
+                          localStorage.setItem('dashboardsaved', JSON.stringify(cloudLinks));
+                          renderLinks();
+                      } else {
+                          // Both empty
+                          links = [];
+                          console.log('[dashboard] No links found, starting empty');
+                          renderLinks();
+                      }
+                    });
+            } else {
+                // On subsequent auth changes, just save current state to cloud
+                console.log('[dashboard] User authenticated, saving current dashboard to cloud');
+                saveLinks(); // Use debounced save for regular auth changes
+            }
+        }).catch((err) => {
+            console.error('[dashboard] AuthStateChange error:', err);
+        });
+    } else {
+        // User signed out
+        console.log('[dashboard] User signed out');
+        isInitialLoad = true; // Reset for next sign in
+    }
+});
 
 // Debounce function to limit API calls
 function debounce(func, wait) {
@@ -1015,6 +1023,7 @@ const debouncedSaveDashboard = debounce(async () => {
 async function saveDashboardToCloud() {
     // Get current user
     console.log('[dashboard] saveDashboardToCloud called');
+    console.log('[dashboard] Current links array:', links);
     const { data } = await supabaseClient.auth.getUser();
     const user = data.user;
     console.log('[dashboard] getUser result:', user);
@@ -1044,6 +1053,7 @@ async function saveDashboardToCloud() {
         showToast("Cloud save failed", "error");
     } else {
         console.log('[dashboard] Dashboard saved to cloud successfully');
+        showToast("Dashboard synced to cloud", "success");
     }
 }
 
