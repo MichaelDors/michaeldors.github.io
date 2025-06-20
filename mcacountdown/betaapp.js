@@ -13,6 +13,8 @@ function debounce(func, wait) {
     };
 }
 
+syncCookiesToCloud();
+
   function handleTitleNavigation() {
       const fullUrl = window.location.href;
       const urlParts = fullUrl.split('#');
@@ -1146,7 +1148,6 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               expires = "; expires=" + date.toUTCString();
           }
           document.cookie = name + "=" + (value || "") + expires + "; path=/";
-          debouncedSaveCookies(); // Trigger cloud sync
       }
       function getCookie(name) {
           var nameEQ = name + "=";
@@ -1160,7 +1161,6 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
       }
       function eraseCookie(name) {
           document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-          debouncedSaveCookies(); // Trigger cloud sync
       }
 
       const includeDropdown = document.getElementById('includeDropdown');
@@ -1922,6 +1922,15 @@ function stopConfettiManagerAnimation(){
           else {
               document.getElementById("lcdu").classList.remove("enabled");
               document.getElementById("lcdu").classList.add("disabled");
+          }
+
+
+          if(!parameter('cardmode') == "1"){
+            // Use debounce to limit execution to once every 30 seconds
+            const debouncedCookieSync = debounce(() => {
+             syncCookiesToCloud();
+            }, 30000);
+            debouncedCookieSync();
           }
   
       }
@@ -4878,6 +4887,7 @@ function searchsettings() {
       }
     }
 
+
     function getAllCookiesAsString() {
         const cookies = document.cookie.split(';');
         let cookieString = '';
@@ -4890,87 +4900,90 @@ function searchsettings() {
         return cookieString;
     }
 
-    async function saveCookiesToCloud() {
-        // Get current user
-        const { data } = await supabaseClient.auth.getUser();
-        const user = data.user;
-        if (!user) {
-            return;
-        }
-
-        // Get all cookies and filter out posthog
-        const cookies = document.cookie.split(';');
-        const cookieSettings = {};
-        cookies.forEach(cookie => {
-            const [name, value] = cookie.trim().split('=');
-            if (!name.toLowerCase().includes('posthog')) {
-                cookieSettings[name] = value;
+function syncCookiesToCloud() {
+    if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
+        window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
+            if (session?.user) {
+                try {
+                    // First, get the current cloud settings
+                    const { data: cloudData, error: fetchError } = await window.supabaseClient
+                        .from('users')
+                        .select('settings')
+                        .eq('id', session.user.id)
+                        .single();
+                    
+                    if (fetchError) {
+                        console.error('[betaapp] Error fetching cloud settings:', fetchError);
+                        return;
+                    }
+                    
+                    // Get local cookies
+                    const localCookies = getAllCookiesAsString();
+                    
+                    // Parse cloud settings if they exist
+                    let mergedSettings = localCookies;
+                    if (cloudData?.settings) {
+                        const cloudCookies = cloudData.settings;
+                        
+                        // Convert both to objects for easier comparison
+                        const localCookieObj = {};
+                        const cloudCookieObj = {};
+                        
+                        // Parse local cookies
+                        localCookies.split('\n').forEach(line => {
+                            const [name, value] = line.split(': ');
+                            if (name && value !== undefined) {
+                                localCookieObj[name.trim()] = value.trim();
+                            }
+                        });
+                        
+                        // Parse cloud cookies
+                        cloudCookies.split('\n').forEach(line => {
+                            const [name, value] = line.split(': ');
+                            if (name && value !== undefined) {
+                                cloudCookieObj[name.trim()] = value.trim();
+                            }
+                        });
+                        
+                        // Check for cloud settings that aren't local yet and save them locally
+                        Object.entries(cloudCookieObj).forEach(([name, value]) => {
+                            if (!localCookieObj.hasOwnProperty(name)) {
+                                // Decode the cookie value and save it locally
+                                try {
+                                    const decodedValue = decodeURIComponent(value);
+                                    setCookie(name, decodedValue, 70);
+                                    console.log(`[betaapp] Synced cloud setting to local: ${name}`);
+                                } catch (decodeError) {
+                                    console.error(`[betaapp] Error decoding cookie ${name}:`, decodeError);
+                                }
+                            }
+                        });
+                        
+                        // Merge: local settings take precedence, but keep cloud settings that don't exist locally
+                        const mergedCookieObj = { ...cloudCookieObj, ...localCookieObj };
+                        
+                        // Convert back to string format
+                        mergedSettings = Object.entries(mergedCookieObj)
+                            .map(([name, value]) => `${name}: ${value}`)
+                            .join('\n');
+                    }
+                    
+                    // Update cloud with merged settings
+                    const { error: updateError } = await window.supabaseClient
+                        .from('users')
+                        .update({ settings: mergedSettings })
+                        .eq('id', session.user.id);
+                    
+                    if (updateError) {
+                        console.error('[betaapp] Error updating settings:', updateError);
+                    } else {
+                        console.log('[betaapp] Settings merged and updated successfully');
+                    }
+                } catch (updateError) {
+                    console.error('[betaapp] Settings update failed:', updateError);
+                }
             }
         });
-
-        // Update user settings in database
-        const { error } = await supabaseClient
-            .from('users')
-            .update({
-                settings: cookieSettings,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
-
-        if (error) {
-            console.error("Failed to save cookie settings:", error.message);
-            showToast("Failed to sync settings", "error");
-        }
     }
+}
 
-    async function loadCookiesFromCloud() {
-        // Get current user
-        const { data } = await supabaseClient.auth.getUser();
-        const user = data.user;
-        if (!user) {
-            return;
-        }
-
-        // Get user settings from database
-        const { data: userData, error } = await supabaseClient
-            .from('users')
-            .select('settings')
-            .eq('id', user.id)
-            .single();
-
-        if (error) {
-            console.error("Error loading settings:", error.message);
-            return;
-        }
-
-        if (!userData?.settings) {
-            return;
-        }
-
-        // Get current cookies
-        const currentCookies = {};
-        document.cookie.split(';').forEach(cookie => {
-            const [name, value] = cookie.trim().split('=');
-            if (!name.toLowerCase().includes('posthog')) {
-                currentCookies[name] = value;
-            }
-        });
-
-        // Merge cloud settings with local cookies
-        // If a setting exists locally, it takes precedence
-        const mergedSettings = { ...userData.settings, ...currentCookies };
-
-        // Apply merged settings as cookies
-        Object.entries(mergedSettings).forEach(([name, value]) => {
-            setCookie(name, value, 70); // 70 days expiry
-        });
-
-        // Update UI based on new settings
-        updateoptions();
-    }
-
-
-    // Debounce function for saving cookies to cloud
-    const debouncedSaveCookies = debounce(async () => {
-        await saveCookiesToCloud();
-    }, 1000);
