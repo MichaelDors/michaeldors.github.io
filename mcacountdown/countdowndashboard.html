@@ -170,6 +170,9 @@ updateStyles();
 
 async function loadLinks() {
     const savedLinks = localStorage.getItem("dashboardsaved");
+    const deletedItemsList = JSON.parse(localStorage.getItem("dashboard_deleted_items") || "[]");
+    deletedItems = new Set(deletedItemsList);
+    
     if (savedLinks) {
         links = JSON.parse(savedLinks);
         // Only render if no user is authenticated (auth listener will handle authenticated users)
@@ -187,6 +190,7 @@ async function loadLinks() {
 
 function saveLinks() {
     localStorage.setItem('dashboardsaved', JSON.stringify(links));
+    localStorage.setItem('dashboard_deleted_items', JSON.stringify(Array.from(deletedItems)));
     // Use debounced save for regular operations
     debouncedSaveDashboard();
 }
@@ -194,6 +198,7 @@ function saveLinks() {
 // Add a separate function for immediate saves (like deletions)
 async function saveLinksImmediate() {
     localStorage.setItem('dashboardsaved', JSON.stringify(links));
+    localStorage.setItem('dashboard_deleted_items', JSON.stringify(Array.from(deletedItems)));
     // Force immediate sync for deletions
     await saveDashboardToCloud();
     renderLinks();
@@ -223,6 +228,10 @@ function removeLink(index, event) {
     });
 
     setTimeout(() => {
+        // Mark the item as deleted before removing it
+        const linkToDelete = links[index];
+        markAsDeleted(linkToDelete);
+        
         // Remove the deleted card
         cardToDelete.remove();
         links.splice(index, 1);
@@ -267,6 +276,9 @@ document.getElementById('hiddenFileInput').addEventListener('change', (event) =>
             try {
                 const data = JSON.parse(e.target.result);
                 links = data;
+                // Clear deleted items tracking when importing a new file
+                deletedItems.clear();
+                localStorage.removeItem('dashboard_deleted_items');
                 saveLinks();
                 renderLinks();
             } catch (error) {
@@ -322,6 +334,8 @@ function resetall() { //remove all saved cookies
         eraseCookie('lcdu');
         
         localStorage.removeItem('dashboardsaved'); //reset dashboard
+        localStorage.removeItem('dashboard_deleted_items'); //reset deleted items tracking
+        deletedItems.clear(); //clear the in-memory set
         location.reload(); // Reload the page
     }
 
@@ -785,6 +799,9 @@ document.addEventListener('drop', (event) => {
             try {
                 const data = JSON.parse(e.target.result);
                 links = data;
+                // Clear deleted items tracking when importing a new file
+                deletedItems.clear();
+                localStorage.removeItem('dashboard_deleted_items');
                 saveLinks();
                 renderLinks();
             } catch (error) {
@@ -915,6 +932,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
 loadLinks().catch(console.error);
 // Set up Supabase login and dashboard sync
 let isInitialLoad = true;
+let deletedItems = new Set(); // Track manually deleted items to prevent re-sync
 
 // Set up dashboard-specific auth handling
 supabaseClient.auth.onAuthStateChange(async (_event, session) => {
@@ -965,27 +983,23 @@ supabaseClient.auth.onAuthStateChange(async (_event, session) => {
                       console.log('[dashboard] Dashboard fetch result:', data);
                       const cloudLinks = data?.dashboard_data || [];
                       const localLinks = JSON.parse(localStorage.getItem("dashboardsaved") || "[]");
+                      const deletedItemsList = JSON.parse(localStorage.getItem("dashboard_deleted_items") || "[]");
+                      deletedItems = new Set(deletedItemsList);
+                      
                       console.log('[dashboard] Local links:', localLinks);
                       console.log('[dashboard] Cloud links:', cloudLinks);
+                      console.log('[dashboard] Deleted items:', Array.from(deletedItems));
                       
-                      // If local links exist and are not empty, they take precedence
-                      if (localLinks.length > 0) {
-                          links = localLinks;
-                          console.log('[dashboard] Using local links, saving to cloud');
-                          saveDashboardToCloud();
-                          renderLinks();
-                      } else if (cloudLinks.length > 0) {
-                          // Use cloud links if local storage is empty
-                          links = cloudLinks;
-                          console.log('[dashboard] Using cloud links');
-                          localStorage.setItem('dashboardsaved', JSON.stringify(cloudLinks));
-                          renderLinks();
-                      } else {
-                          // Both empty
-                          links = [];
-                          console.log('[dashboard] No links found, starting empty');
-                          renderLinks();
-                      }
+                      // Merge local and cloud links, filtering out deleted items
+                      const mergedLinks = mergeDashboardData(localLinks, cloudLinks);
+                      links = mergedLinks;
+                      
+                      console.log('[dashboard] Merged links:', links);
+                      
+                      // Save merged data to both local storage and cloud
+                      localStorage.setItem('dashboardsaved', JSON.stringify(links));
+                      saveDashboardToCloud();
+                      renderLinks();
                     });
             } else {
                 // On subsequent auth changes, just save current state to cloud
@@ -1001,6 +1015,136 @@ supabaseClient.auth.onAuthStateChange(async (_event, session) => {
         isInitialLoad = true; // Reset for next sign in
     }
 });
+
+// Function to merge local and cloud dashboard data
+function mergeDashboardData(localLinks, cloudLinks) {
+    const mergedMap = new Map();
+    
+    // Helper function to create a unique key for a countdown
+    const getCountdownKey = (link) => {
+        // Use URL as the primary identifier, but also consider title for uniqueness
+        return `${link.url}|${link.title}`;
+    };
+    
+    // Helper function to check if a link should be included (not deleted)
+    const isNotDeleted = (link) => {
+        const key = getCountdownKey(link);
+        return !deletedItems.has(key);
+    };
+    
+    console.log('[dashboard] Starting merge process...');
+    console.log('[dashboard] Local links count:', localLinks.length);
+    console.log('[dashboard] Cloud links count:', cloudLinks.length);
+    console.log('[dashboard] Deleted items count:', deletedItems.size);
+    
+    // Process local links first (they take precedence for conflicts)
+    localLinks.forEach(link => {
+        if (isNotDeleted(link)) {
+            const key = getCountdownKey(link);
+            mergedMap.set(key, link);
+            console.log('[dashboard] Added local link:', link.title);
+        } else {
+            console.log('[dashboard] Skipped deleted local link:', link.title);
+        }
+    });
+    
+    // Process cloud links, only adding if not already present and not deleted
+    cloudLinks.forEach(link => {
+        if (isNotDeleted(link)) {
+            const key = getCountdownKey(link);
+            if (!mergedMap.has(key)) {
+                mergedMap.set(key, link);
+                console.log('[dashboard] Added cloud link:', link.title);
+            } else {
+                console.log('[dashboard] Skipped duplicate cloud link:', link.title);
+            }
+        } else {
+            console.log('[dashboard] Skipped deleted cloud link:', link.title);
+        }
+    });
+    
+    const result = Array.from(mergedMap.values());
+    console.log('[dashboard] Merge complete. Total links:', result.length);
+    return result;
+}
+
+// Function to mark an item as deleted
+function markAsDeleted(link) {
+    const key = `${link.url}|${link.title}`;
+    deletedItems.add(key);
+    // Save deleted items to localStorage
+    localStorage.setItem('dashboard_deleted_items', JSON.stringify(Array.from(deletedItems)));
+    console.log('[dashboard] Marked as deleted:', link.title, 'Key:', key);
+    console.log('[dashboard] Total deleted items:', deletedItems.size);
+}
+
+// Function to clear deleted items (useful for testing or if user wants to restore)
+function clearDeletedItems() {
+    deletedItems.clear();
+    localStorage.removeItem('dashboard_deleted_items');
+}
+
+// Debug function to help with testing sync functionality
+function debugSync() {
+    const localLinks = JSON.parse(localStorage.getItem("dashboardsaved") || "[]");
+    const deletedItemsList = JSON.parse(localStorage.getItem("dashboard_deleted_items") || "[]");
+    
+    console.log('=== Dashboard Sync Debug ===');
+    console.log('Current links array:', links);
+    console.log('Local storage links:', localLinks);
+    console.log('Deleted items:', Array.from(deletedItems));
+    console.log('Deleted items from localStorage:', deletedItemsList);
+    console.log('Is user authenticated:', !!supabaseClient.auth.getUser());
+    console.log('===========================');
+}
+
+// Make debug function available globally for testing
+window.debugSync = debugSync;
+window.clearDeletedItems = clearDeletedItems;
+
+// Function to manually trigger a sync (useful for testing)
+async function manualSync() {
+    console.log('[dashboard] Manual sync triggered');
+    const { data } = await supabaseClient.auth.getUser();
+    if (!data?.user) {
+        console.log('[dashboard] No user authenticated, cannot sync');
+        return;
+    }
+    
+    // Fetch current cloud data
+    const { data: cloudData, error } = await supabaseClient
+        .from('user_dashboards')
+        .select('dashboard_data')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+    
+    if (error && error.code !== 'PGRST116') {
+        console.error('[dashboard] Error fetching cloud data:', error);
+        return;
+    }
+    
+    const cloudLinks = cloudData?.dashboard_data || [];
+    const localLinks = JSON.parse(localStorage.getItem("dashboardsaved") || "[]");
+    
+    console.log('[dashboard] Manual sync - Local links:', localLinks);
+    console.log('[dashboard] Manual sync - Cloud links:', cloudLinks);
+    
+    // Merge and update
+    const mergedLinks = mergeDashboardData(localLinks, cloudLinks);
+    links = mergedLinks;
+    
+    console.log('[dashboard] Manual sync - Merged links:', links);
+    
+    // Save to both local and cloud
+    localStorage.setItem('dashboardsaved', JSON.stringify(links));
+    await saveDashboardToCloud();
+    renderLinks();
+    
+    console.log('[dashboard] Manual sync completed');
+}
+
+// Make manual sync available globally for testing
+window.manualSync = manualSync;
 
 // Debounce function to limit API calls
 function debounce(func, wait) {
