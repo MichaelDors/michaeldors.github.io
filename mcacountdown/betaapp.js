@@ -3958,17 +3958,58 @@ document.addEventListener('DOMContentLoaded', function() {
       // If found, update the existing countdown, otherwise add a new one
       if (existingIndex !== -1) {
           links[existingIndex] = { url, title };
-              } else {
+          console.log('[savetodash] Updated existing countdown:', title);
+      } else {
           links.push({ url, title });
+          console.log('[savetodash] Added new countdown:', title);
       }
   
       // Save the updated links back to localStorage
       localStorage.setItem('dashboardsaved', JSON.stringify(links));
+      
+      // Also save deleted items tracking to maintain sync state
+      const deletedItemsList = JSON.parse(localStorage.getItem("dashboard_deleted_items") || "[]");
+      localStorage.setItem('dashboard_deleted_items', JSON.stringify(deletedItemsList));
   
-  updateSaveButtonText();
+      // Trigger cloud sync if user is authenticated
+      syncToCloud(links);
+  
+      updateSaveButtonText();
       showToast('Your Countdown was saved to Dashboard', 'success');
       SetCountDowngeneral();
   }
+
+  async function syncToCloud(links) {
+    try {
+        // Check if user is authenticated
+        const { data } = await supabaseClient.auth.getUser();
+        if (!data?.user) {
+            console.log('[savetodash] User not authenticated, skipping cloud sync');
+            return;
+        }
+        
+        console.log('[savetodash] Syncing to cloud for user:', data.user.id);
+        
+        // Save to cloud
+        const { error } = await supabaseClient
+            .from('user_dashboards')
+            .upsert({
+                user_id: data.user.id,
+                dashboard_data: links,
+                updated_at: new Date().toISOString()
+            }, { onConflict: ['user_id'] });
+            
+        if (error) {
+            console.error('[savetodash] Cloud sync failed:', error.message);
+            showToast('Saved locally, but cloud sync failed', 'error');
+        } else {
+            console.log('[savetodash] Cloud sync successful');
+        }
+    } catch (error) {
+        console.error('[savetodash] Error during cloud sync:', error);
+        showToast('Saved locally, but cloud sync failed', 'error');
+    }
+}
   
   function magictitle(){
       if(parameter("schedule") !== "null" && parameter("schedule")){
