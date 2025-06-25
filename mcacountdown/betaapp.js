@@ -4695,7 +4695,9 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     if (userData.has_plus && userData.avatar_url) {
                         console.log('[betaapp] Using avatar from database');
                         document.getElementById('userpfp').src = userData.avatar_url;
+                        document.getElementById('settingsuserpfp').src = userData.avatar_url;
                         document.getElementById('usrname').textContent = userData.name || 'User';
+                        document.getElementById('settingsusrname').textContent = userData.name || 'User';
                         return;
                     }
                     
@@ -4737,21 +4739,26 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     console.log('[betaapp] generateProfilePicWithName called with:', name);
                     
                     const usrnameElement = document.getElementById('usrname');
+                    const settingsusrnameElement = document.getElementById('settingsusrname');
                     const userpfpElement = document.getElementById('userpfp');
+                    const settingsuserpfpElement = document.getElementById('settingsuserpfp');
                     const profileCanvasElement = document.getElementById('profileCanvas');
                     
                     console.log('[betaapp] DOM elements found:', {
                         usrname: !!usrnameElement,
+                        settingsusrname: !!settingsusrnameElement,
                         userpfp: !!userpfpElement,
+                        settingsuserpfp: !!settingsuserpfpElement,
                         profileCanvas: !!profileCanvasElement
                     });
                     
-                    if (!usrnameElement || !userpfpElement || !profileCanvasElement) {
+                    if (!usrnameElement || !userpfpElement || !profileCanvasElement || !settingsusrnameElement || !settingsuserpfpElement) {
                         console.error('[betaapp] Missing required DOM elements');
                         return;
                     }
                     
                     usrnameElement.textContent = name;
+                    settingsusrnameElement.textContent = name;
                     let color = localStorage.getItem('pfp_color');
                   
                     // Assign a random color only on first visit
@@ -4777,6 +4784,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                   
                     const dataURL = canvas.toDataURL('image/png');
                     userpfpElement.src = dataURL;
+                    settingsuserpfpElement.src = dataURL;
                     console.log('[betaapp] Profile picture generated successfully');
                   }
 
