@@ -77,11 +77,11 @@
         <div style="margin-bottom:300px;"></div>
         <div class="input-container">
             <a title="Create a new Countdown" href="https://michaeldors.com/mcacountdown/betatimer?createnew=1" id="newcountdownbutton"><i class="fa-solid fa-circle-plus"></i></a>
-            <a title="Import a .countdown file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i></a>
-            <a title="Export as a .countdown file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i></a>
+            <a title="Import a .minutehand file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i></a>
+            <a title="Export as a .minutehand file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i></a>
             <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetall();"><i class="fa-solid fa-trash"></i></a>
             <a title="Sign in with Google" onclick="loginWithGoogle();"><i class="fa-solid fa-right-to-bracket"></i></a>
-            <input type="file" id="hiddenFileInput" accept=".countdown" style="display: none;">
+            <input type="file" id="hiddenFileInput" accept=".minutehand" style="display: none;">
         </div>
 
 <img id="threedtrash" alt="Trash Can" src="3d/backoftrashcanexport.png">
@@ -254,7 +254,7 @@ function exportLinks() {
 	// Download the file
 	const link = document.createElement("a");
 	link.href = url;
-	link.download = "dashboardsave.countdown";
+	link.download = "dashboardsave.minutehand";
 	link.click();
 	URL.revokeObjectURL(url);
 	showToast("Downloading your Dashboard save file", 'info');
@@ -270,7 +270,7 @@ document.addEventListener('keydown', (event) => {
 
 document.getElementById('hiddenFileInput').addEventListener('change', (event) => {
     const file = event.target.files[0];
-    if (file && file.name.endsWith('.countdown')) {
+    if (file && file.name.endsWith('.minutehand')) {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -288,7 +288,7 @@ document.getElementById('hiddenFileInput').addEventListener('change', (event) =>
         };
         reader.readAsText(file);
     } else {
-        alert("Please upload a valid .countdown file.");
+        alert("Please upload a valid .minutehand file.");
     }
 });
 
@@ -793,7 +793,7 @@ document.addEventListener('drop', (event) => {
         }, 300);
 
     const file = event.dataTransfer.files[0];
-    if (file && file.name.endsWith('.countdown')) {
+    if (file && file.name.endsWith('.minutehand')) {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -811,7 +811,7 @@ document.addEventListener('drop', (event) => {
         };
         reader.readAsText(file);
     } else {
-        alert("Please upload a valid .countdown file.");
+        alert("Please upload a valid .minutehand file.");
     }
 });
 
