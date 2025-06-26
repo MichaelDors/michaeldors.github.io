@@ -38,6 +38,10 @@
     /*1.54px solid rgba(0, 0, 0, 0.1);*/
 
     --bgbluramount: 250px;
+    
+    /* Title positioning variables */
+    --title-top-offset: 43px;
+    --title-top-percentage: 40%;
 }
 
 #body{
@@ -627,7 +631,7 @@ z-index: 10000000;
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    top: calc(40% - 43px);
+    top: calc(var(--title-top-percentage) - var(--title-top-offset));
     background: none !important;
     border: 1px solid var(--titlergba);
     padding: 13px 20px;
@@ -2066,7 +2070,7 @@ backdrop-filter: blur(12px);
         position: absolute; /* or absolute */
         left: 50%;
         transform: translateX(-50%);
-        top: calc(40% - 43px);
+        top: calc(var(--title-top-percentage) - var(--title-top-offset));
         font-size: 20px;
         text-align: center;
         border:none !important;

@@ -13,6 +13,39 @@ function debounce(func, wait) {
     };
 }
 
+function updateTitlePosition(fontSize) {
+    // Calculate title positioning based on font size
+    // Larger font sizes need the title positioned higher
+    let titleOffset;
+    let titlePercentage;
+    
+    switch(fontSize) {
+        case 75: // Default size (days, hours, etc.)
+            titleOffset = 43;
+            titlePercentage = 40;
+            break;
+        case 100: // Hours only
+            titleOffset = 60;
+            titlePercentage = 40;
+            break;
+        case 150: // Minutes only
+            titleOffset = 90;
+            titlePercentage = 40;
+            break;
+        case 175: // Seconds only
+            titleOffset = 105;
+            titlePercentage = 40;
+            break;
+        default:
+            titleOffset = 43;
+            titlePercentage = 40;
+    }
+    
+    // Update CSS variables
+    document.documentElement.style.setProperty('--title-top-offset', titleOffset + 'px');
+    document.documentElement.style.setProperty('--title-top-percentage', titlePercentage + '%');
+}
+
 syncCookiesToCloud();
 
   function handleTitleNavigation() {
@@ -1308,6 +1341,14 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
             document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
             }
           makeQR(); //refresh the QR code
+          
+          // Initialize title position based on current clock font size
+          const clockElement = document.getElementById("clock");
+          if (clockElement) {
+              const computedStyle = window.getComputedStyle(clockElement);
+              const fontSize = parseInt(computedStyle.fontSize);
+              updateTitlePosition(fontSize);
+          }
       }
   
       function parameter(name) { //returns the value of the parameter it's sent
@@ -1667,6 +1708,7 @@ function searchsettings() {
             }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
+                  updateTitlePosition(75);
               }
           }
           else if (getCookie("hour")) {
@@ -1678,6 +1720,7 @@ function searchsettings() {
               }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
+                  updateTitlePosition(75);
               }
           }
           else if (getCookie("minute")) {
@@ -1689,6 +1732,7 @@ function searchsettings() {
               }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
+                  updateTitlePosition(75);
               }
           }
           else if (getCookie("second")) {
@@ -1700,6 +1744,7 @@ function searchsettings() {
               }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
+                  updateTitlePosition(75);
               }
           }
           else if (getCookie("millisecond")) {
@@ -1710,6 +1755,7 @@ function searchsettings() {
               }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
+                  updateTitlePosition(75);
               }
           }
           else if (getCookie("week")) {
@@ -1721,6 +1767,7 @@ function searchsettings() {
               }
               if(enablecardmode == "0"){
                   document.getElementById("clock").style.fontSize = '75px';
+                  updateTitlePosition(75);
               }
           }
           else if (getCookie("lcdu")) { //label countdown units
@@ -1728,24 +1775,28 @@ function searchsettings() {
                   document.getElementById("clock").innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s "; //same as title, change the text as needed depending on what's left
                   if(enablecardmode == "0"){
                       document.getElementById("clock").style.fontSize = '75px';
+                      updateTitlePosition(75);
                   }
               }
               else if (hours > 0) {
                   document.getElementById("clock").innerHTML = hours + "h " + minutes + "m " + seconds + "s "; //only for hours, no more days
                   if(enablecardmode == "0"){
                       document.getElementById("clock").style.fontSize = '100px';
+                      updateTitlePosition(100);
                   }
               }
               else if (minutes > 0) {
                   document.getElementById("clock").innerHTML = minutes + "m " + seconds + "s "; //only for minutes no more hours
                   if(enablecardmode == "0"){
                       document.getElementById("clock").style.fontSize = '150px';
+                      updateTitlePosition(150);
                   }
               }
               else {
                   document.getElementById("clock").innerHTML = seconds + "s"; //just seconds
                   if(enablecardmode == "0"){
                       document.getElementById("clock").style.fontSize = '175px';
+                      updateTitlePosition(175);
                   }
               }
           }
@@ -1754,24 +1805,28 @@ function searchsettings() {
                   document.getElementById("clock").innerHTML =  formatZeroesofNumber(days) + ":" +  formatZeroesofNumber(hours) + ":" +  formatZeroesofNumber(minutes) + ":" +  formatZeroesofNumber(seconds); //same as labeled just without labels
                   if(enablecardmode == "0"){
                       document.getElementById("clock").style.fontSize = '75px';
+                      updateTitlePosition(75);
                   }
               }
               else if (hours > 0) {
                   document.getElementById("clock").innerHTML =  formatZeroesofNumber(hours) + ":" +  formatZeroesofNumber(minutes) + ":" +  formatZeroesofNumber(seconds); //only for hours no more days
                   if(enablecardmode == "0"){   
                       document.getElementById("clock").style.fontSize = '100px';
+                      updateTitlePosition(100);
                   }
               }
               else if (minutes > 0) {
                   document.getElementById("clock").innerHTML =  formatZeroesofNumber(minutes) + ":" +  formatZeroesofNumber(seconds); //only for minutes no more hours
                   if(enablecardmode == "0"){
                       document.getElementById("clock").style.fontSize = '150px';
+                      updateTitlePosition(150);
                   }
               }
               else {
                   document.getElementById("clock").innerHTML = seconds;
                   if(enablecardmode == "0"){
                       document.getElementById("clock").style.fontSize = '175px'; //just seconds
+                      updateTitlePosition(175);
                   } 
               }
           }
