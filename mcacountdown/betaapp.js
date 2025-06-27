@@ -5009,79 +5009,19 @@ function syncCookiesToCloud() {
         window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
             if (session?.user) {
                 try {
-                    // First, get the current cloud settings
-                    const { data: cloudData, error: fetchError } = await window.supabaseClient
-                        .from('users')
-                        .select('settings')
-                        .eq('id', session.user.id)
-                        .single();
-                    
-                    if (fetchError) {
-                        console.error('[betaapp] Error fetching cloud settings:', fetchError);
-                        return;
-                    }
-                    
-                    // Get local cookies
+                    // Get local cookies as the source of truth
                     const localCookies = getAllCookiesAsString();
                     
-                    // Parse cloud settings if they exist
-                    let mergedSettings = localCookies;
-                    if (cloudData?.settings) {
-                        const cloudCookies = cloudData.settings;
-                        
-                        // Convert both to objects for easier comparison
-                        const localCookieObj = {};
-                        const cloudCookieObj = {};
-                        
-                        // Parse local cookies
-                        localCookies.split('\n').forEach(line => {
-                            const [name, value] = line.split(': ');
-                            if (name && value !== undefined) {
-                                localCookieObj[name.trim()] = value.trim();
-                            }
-                        });
-                        
-                        // Parse cloud cookies
-                        cloudCookies.split('\n').forEach(line => {
-                            const [name, value] = line.split(': ');
-                            if (name && value !== undefined) {
-                                cloudCookieObj[name.trim()] = value.trim();
-                            }
-                        });
-                        
-                        // Check for cloud settings that aren't local yet and save them locally
-                        Object.entries(cloudCookieObj).forEach(([name, value]) => {
-                            if (!localCookieObj.hasOwnProperty(name)) {
-                                // Decode the cookie value and save it locally
-                                try {
-                                    const decodedValue = decodeURIComponent(value);
-                                    setCookie(name, decodedValue, 70);
-                                    console.log(`[betaapp] Synced cloud setting to local: ${name}`);
-                                } catch (decodeError) {
-                                    console.error(`[betaapp] Error decoding cookie ${name}:`, decodeError);
-                                }
-                            }
-                        });
-                        
-                        // Merge: local settings take precedence, but keep cloud settings that don't exist locally
-                        const mergedCookieObj = { ...cloudCookieObj, ...localCookieObj };
-                        
-                        // Convert back to string format
-                        mergedSettings = Object.entries(mergedCookieObj)
-                            .map(([name, value]) => `${name}: ${value}`)
-                            .join('\n');
-                    }
-                    
-                    // Update cloud with merged settings
+                    // Update cloud with local settings (no merging)
                     const { error: updateError } = await window.supabaseClient
                         .from('users')
-                        .update({ settings: mergedSettings })
+                        .update({ settings: localCookies })
                         .eq('id', session.user.id);
                     
                     if (updateError) {
                         console.error('[betaapp] Error updating settings:', updateError);
                     } else {
-                        console.log('[betaapp] Settings merged and updated successfully');
+                        console.log('[betaapp] Settings synced to cloud successfully');
                     }
                 } catch (updateError) {
                     console.error('[betaapp] Settings update failed:', updateError);
