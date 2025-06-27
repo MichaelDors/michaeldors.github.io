@@ -5031,3 +5031,30 @@ function syncCookiesToCloud() {
     }
 }
 
+async function logoutUser() {
+    console.log('[betaapp] Logout function called');
+    
+    try {
+        const { data: { user } } = await window.supabaseClient.auth.getUser();
+        
+        if (!user) {
+            return;
+        }
+                
+        const { error } = await window.supabaseClient.auth.signOut();
+        
+        if (error) {
+            showToast('Logout failed: ' + error.message, 'error');
+        } else {
+            showToast('Logged out successfully', 'success');
+        }
+    } catch (error) {
+        showToast('Logout failed: ' + error.message, 'error');
+    }
+
+    // Reload the page after logout
+    setTimeout(() => {
+        window.location.reload();
+    }, 1000);
+}
+
