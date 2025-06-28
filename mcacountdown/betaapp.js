@@ -4803,7 +4803,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
         console.log('[betaapp] Card mode, using default name:', localName);
         generateProfilePicWithName(localName);
         const usrdetail = document.getElementById('usrdetail');
-        if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
+        if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
         window.generatingProfile = false;
         return;
     }
@@ -4846,7 +4846,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                 generateProfilePicWithName(fallbackName);
                 if (fallbackName === 'Log In') {
                   const usrdetail = document.getElementById('usrdetail');
-                  if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
+                  if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
                 }
             } catch (error) {
                 console.error('[betaapp] Error getting user data:', error);
@@ -4854,7 +4854,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                 generateProfilePicWithName(fallbackName);
                 if (fallbackName === 'Log In') {
                   const usrdetail = document.getElementById('usrdetail');
-                  if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
+                  if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
                 }
             }
         } else {
@@ -4863,14 +4863,14 @@ SetCountDowngeneral(); // Update any theme-colored pickers
             console.log('[betaapp] Not logged in, using default name:', localName);
             generateProfilePicWithName(localName);
             const usrdetail = document.getElementById('usrdetail');
-            if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
+            if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
         }
     }).catch(error => {
         console.error('[betaapp] Session check error:', error);
         const localName = 'Log In';
         generateProfilePicWithName(localName);
         const usrdetail = document.getElementById('usrdetail');
-        if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
+        if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
     }).finally(() => {
         window.generatingProfile = false;
     });
@@ -4982,7 +4982,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                                   const localName = 'Log In';
                                   generateProfilePicWithName(localName);
                                   const usrdetail = document.getElementById('usrdetail');
-                                  if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
+                                  if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
                               }
                           });
                           
