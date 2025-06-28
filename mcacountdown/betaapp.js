@@ -1282,7 +1282,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + cdtitle);
           }
           else{
-              document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown - Michael Dors');
+              document.querySelector('meta[property="og:title"]').setAttribute('content', 'Minutehand - Michael Dors');
           }
 
           if(cdtitle && ((document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update') || document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-circle-check"></i> Saved')){
@@ -1349,9 +1349,6 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               const fontSize = parseInt(computedStyle.fontSize);
               updateTitlePosition(fontSize);
           }
-          
-          // Sync to database with cooldown
-          syncCountdownToDatabase();
       }
   
       // Database sync cooldown

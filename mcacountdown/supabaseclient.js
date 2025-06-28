@@ -8,36 +8,11 @@ function parameter(name) {
 }
 
 if(!parameter('cardmode')){
-    // Function to get Supabase credentials from localStorage or prompt user
-    function getSupabaseCredentials() {
-        let supabaseUrl = localStorage.getItem('supabaseUrl');
-        let supabaseAnonKey = localStorage.getItem('supabaseAnonKey');
-        console.log('[supabaseclient] Fetching credentials from localStorage:', { supabaseUrl, supabaseAnonKey });
-        
-        // If credentials don't exist in localStorage, prompt user
-        if (!supabaseUrl || !supabaseAnonKey) {
-            supabaseUrl = prompt('Enter your Supabase URL:');
-            supabaseAnonKey = prompt('Enter your Supabase anon key:');
-            console.log('[supabaseclient] Prompted user for credentials:', { supabaseUrl, supabaseAnonKey });
-            
-            // Save to localStorage if user provided values
-            if (supabaseUrl && supabaseAnonKey) {
-                localStorage.setItem('supabaseUrl', supabaseUrl);
-                localStorage.setItem('supabaseAnonKey', supabaseAnonKey);
-                console.log('[supabaseclient] Saved credentials to localStorage');
-            } else {
-                console.error('[supabaseclient] Supabase credentials are required, aborting');
-                throw new Error('Supabase credentials are required');
-            }
-        }
-        
-        console.log('[supabaseclient] Returning credentials:', { supabaseUrl, supabaseAnonKey });
-        return { supabaseUrl, supabaseAnonKey };
-    }
-
-    // Get credentials and create client
-    const { supabaseUrl, supabaseAnonKey } = getSupabaseCredentials();
-    console.log('[supabaseclient] Creating Supabase client with:', { supabaseUrl, supabaseAnonKey });
+    // Hardcoded Supabase credentials
+    const supabaseUrl = 'https://milgdlhbepxdzxiylgqj.supabase.co/';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pbGdkbGhiZXB4ZHp4aXlsZ3FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg4ODU0MjAsImV4cCI6MjA2NDQ2MTQyMH0.pkJC5dKql4yiwGL6NZ-X7dqTqTAd4VlhYid0nJ0AHL8';
+    
+    // Create Supabase client
     window.supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
             autoRefreshToken: true,
