@@ -1358,6 +1358,15 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
       let lastDatabaseSync = 0;
       const DATABASE_SYNC_COOLDOWN = 5000; // 5 seconds
       
+      function generateShortId() {
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+          let result = '';
+          for (let i = 0; i < 11; i++) {
+              result += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          return result;
+      }
+      
       async function syncCountdownToDatabase() {
           // Check cooldown
           const now = Date.now();
@@ -1402,7 +1411,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               });
               
               // Generate countdown ID
-              const countdownId = crypto.randomUUID();
+              const countdownId = generateShortId();
               
               // Save to database
               const { error } = await supabaseClient
