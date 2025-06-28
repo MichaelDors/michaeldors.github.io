@@ -747,6 +747,7 @@ function dragEnd(e) {
     document.removeEventListener('mouseup', dragEnd);
     document.removeEventListener('visibilitychange', cancelDrag);
     window.removeEventListener('blur', cancelDrag);
+    saveDashboardToCloud();
 }
 
 function updateCardIndices() {
