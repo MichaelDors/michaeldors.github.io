@@ -4822,7 +4822,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
     
     // Skip database features in card mode
     if (parameter('cardmode')) {
-        const localName = 'Log In'; // Use default name instead of localStorage
+        const localName = 'Sign In'; // Use default name instead of localStorage
         console.log('[betaapp] Card mode, using default name:', localName);
         generateProfilePicWithName(localName);
         const usrdetail = document.getElementById('usrdetail');
@@ -4864,25 +4864,25 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                 }
                 
                 // Fallback to user metadata if no database entry
-                const fallbackName = session.user.user_metadata?.full_name || 'Log In';
+                const fallbackName = session.user.user_metadata?.full_name || 'Sign In';
                 console.log('[betaapp] Using fallback name:', fallbackName);
                 generateProfilePicWithName(fallbackName);
-                if (fallbackName === 'Log In') {
+                if (fallbackName === 'Sign In') {
                   const usrdetail = document.getElementById('usrdetail');
                   if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
                 }
             } catch (error) {
                 console.error('[betaapp] Error getting user data:', error);
-                const fallbackName = session.user.user_metadata?.full_name || 'Log In';
+                const fallbackName = session.user.user_metadata?.full_name || 'Sign In';
                 generateProfilePicWithName(fallbackName);
-                if (fallbackName === 'Log In') {
+                if (fallbackName === 'Sign In') {
                   const usrdetail = document.getElementById('usrdetail');
                   if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
                 }
             }
         } else {
             // Not logged in, use default name
-            const localName = 'Log In';
+            const localName = 'Sign In';
             console.log('[betaapp] Not logged in, using default name:', localName);
             generateProfilePicWithName(localName);
             const usrdetail = document.getElementById('usrdetail');
@@ -4890,7 +4890,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
         }
     }).catch(error => {
         console.error('[betaapp] Session check error:', error);
-        const localName = 'Log In';
+        const localName = 'Sign In';
         generateProfilePicWithName(localName);
         const usrdetail = document.getElementById('usrdetail');
         if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
@@ -4930,8 +4930,12 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                       color = colors[Math.floor(Math.random() * colors.length)];
                       localStorage.setItem('pfp_color', color);
                     }
-                  
-                    const initials = getInitials(name);
+                  let initials = "";
+                  if(name == 'Sign In'){
+                     initials = '?';
+                  }else{
+                     initials = getInitials(name);
+                  }
                     const canvas = profileCanvasElement;
                     const ctx = canvas.getContext('2d');
                   
@@ -5002,7 +5006,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                               } else if (event === 'SIGNED_OUT') {
                                   console.log('[betaapp] User signed out');
                                   // User signed out, use default name
-                                  const localName = 'Log In';
+                                  const localName = 'Sign In';
                                   generateProfilePicWithName(localName);
                                   const usrdetail = document.getElementById('usrdetail');
                                   if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
@@ -5027,7 +5031,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                   if (parameter('cardmode')) {
                     // In card mode, just generate once with default data
                     console.log('[betaapp] Card mode - generating with default data');
-                    const localName = 'Log In';
+                    const localName = 'Sign In';
                     generateProfilePicWithName(localName);
                   } else if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
                     // Let the auth listener handle the initial profile pic generation
