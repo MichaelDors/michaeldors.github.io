@@ -4799,9 +4799,11 @@ SetCountDowngeneral(); // Update any theme-colored pickers
     
     // Skip database features in card mode
     if (parameter('cardmode')) {
-        const localName = localStorage.getItem('pfp_name') || 'User';
-        console.log('[betaapp] Card mode, using local name:', localName);
+        const localName = 'Log In'; // Use default name instead of localStorage
+        console.log('[betaapp] Card mode, using default name:', localName);
         generateProfilePicWithName(localName);
+        const usrdetail = document.getElementById('usrdetail');
+        if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
         window.generatingProfile = false;
         return;
     }
@@ -4834,32 +4836,41 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     if (userData.name && !error) {
                         console.log('[betaapp] Using name from database:', userData.name);
                         generateProfilePicWithName(userData.name);
-                        localStorage.setItem('pfp_name', userData.name);
                         return;
                     }
                 }
                 
                 // Fallback to user metadata if no database entry
-                const fallbackName = session.user.user_metadata?.full_name || localStorage.getItem('pfp_name') || 'User';
+                const fallbackName = session.user.user_metadata?.full_name || 'Log In';
                 console.log('[betaapp] Using fallback name:', fallbackName);
                 generateProfilePicWithName(fallbackName);
-                localStorage.setItem('pfp_name', fallbackName);
-                
+                if (fallbackName === 'Log In') {
+                  const usrdetail = document.getElementById('usrdetail');
+                  if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
+                }
             } catch (error) {
                 console.error('[betaapp] Error getting user data:', error);
-                const fallbackName = session.user.user_metadata?.full_name || localStorage.getItem('pfp_name') || 'User';
+                const fallbackName = session.user.user_metadata?.full_name || 'Log In';
                 generateProfilePicWithName(fallbackName);
+                if (fallbackName === 'Log In') {
+                  const usrdetail = document.getElementById('usrdetail');
+                  if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
+                }
             }
         } else {
-            // Not logged in, use local storage
-            const localName = localStorage.getItem('pfp_name') || 'User';
-            console.log('[betaapp] Not logged in, using local name:', localName);
+            // Not logged in, use default name
+            const localName = 'Log In';
+            console.log('[betaapp] Not logged in, using default name:', localName);
             generateProfilePicWithName(localName);
+            const usrdetail = document.getElementById('usrdetail');
+            if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
         }
     }).catch(error => {
         console.error('[betaapp] Session check error:', error);
-        const localName = localStorage.getItem('pfp_name') || 'User';
+        const localName = 'Log In';
         generateProfilePicWithName(localName);
+        const usrdetail = document.getElementById('usrdetail');
+        if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
     }).finally(() => {
         window.generatingProfile = false;
     });
@@ -4896,8 +4907,6 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                       color = colors[Math.floor(Math.random() * colors.length)];
                       localStorage.setItem('pfp_color', color);
                     }
-                  
-                    localStorage.setItem('pfp_name', name); // ensure name is stored locally
                   
                     const initials = getInitials(name);
                     const canvas = profileCanvasElement;
@@ -4969,9 +4978,11 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                                 }
                               } else if (event === 'SIGNED_OUT') {
                                   console.log('[betaapp] User signed out');
-                                  // User signed out, use local storage
-                                  const localName = localStorage.getItem('pfp_name') || 'User';
+                                  // User signed out, use default name
+                                  const localName = 'Log In';
                                   generateProfilePicWithName(localName);
+                                  const usrdetail = document.getElementById('usrdetail');
+                                  if (usrdetail) usrdetail.innerHTML = 'to save, share, sync, and more';
                               }
                           });
                           
@@ -4991,9 +5002,9 @@ SetCountDowngeneral(); // Update any theme-colored pickers
 
                   // Initialize profile picture on page load
                   if (parameter('cardmode')) {
-                    // In card mode, just generate once with local data
-                    console.log('[betaapp] Card mode - generating with local data');
-                    const localName = localStorage.getItem('pfp_name') || 'User';
+                    // In card mode, just generate once with default data
+                    console.log('[betaapp] Card mode - generating with default data');
+                    const localName = 'Log In';
                     generateProfilePicWithName(localName);
                   } else if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
                     // Let the auth listener handle the initial profile pic generation
@@ -5002,8 +5013,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                   function renameUser() {
                     const newName = prompt('Enter your new name:');
                     if (newName?.trim()) {
-                      localStorage.setItem('pfp_name', newName.trim());
-                      generateProfilePic(); // regenerate with new name, same color
+                      generateProfilePicWithName(newName.trim()); // regenerate with new name, same color
                     }
                   }
 
