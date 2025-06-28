@@ -1178,35 +1178,41 @@ async function saveDashboardToCloud() {
     // Get current user
     console.log('[dashboard] saveDashboardToCloud called');
     console.log('[dashboard] Current links array:', links);
-    const { data } = await supabaseClient.auth.getUser();
-    const user = data.user;
-    console.log('[dashboard] getUser result:', user);
-    if (!user) {
-        console.warn('[dashboard] No user, aborting cloud save');
-        return;
-    }
-    const userId = user.id;
-    const email = user.email;
-    const name = user.user_metadata?.full_name;
-    const avatar_url = user.user_metadata?.avatar_url;
-    console.log('[dashboard] Saving dashboard for:', { userId, email, name, avatar_url, links });
-    if (!userId || !email || !name) {
-        showToast("Cloud save failed: missing user info", "error");
-        console.error('[dashboard] Cloud save failed: missing user info');
-        return;
-    }
-    const { error } = await supabaseClient
-        .from('user_dashboards')
-        .upsert({
-            user_id: userId,
-            dashboard_data: links,
-            updated_at: new Date().toISOString()
-        }, { onConflict: ['user_id'] });
-    if (error) {
-        console.error('[dashboard] Failed to save dashboard:', error.message);
-        showToast("Cloud save failed", "error");
-    } else {
-        console.log('[dashboard] Dashboard saved to cloud successfully');
+    
+    try {
+        const { data } = await supabaseClient.auth.getUser();
+        const user = data.user;
+        console.log('[dashboard] getUser result:', user);
+        if (!user) {
+            console.warn('[dashboard] No user, aborting cloud save');
+            return;
+        }
+        const userId = user.id;
+        const email = user.email;
+        const name = user.user_metadata?.full_name;
+        const avatar_url = user.user_metadata?.avatar_url;
+        console.log('[dashboard] Saving dashboard for:', { userId, email, name, avatar_url, links });
+        if (!userId || !email || !name) {
+            showToast("Cloud save failed: missing user info", "error");
+            console.error('[dashboard] Cloud save failed: missing user info');
+            return;
+        }
+        const { error } = await supabaseClient
+            .from('user_dashboards')
+            .upsert({
+                user_id: userId,
+                dashboard_data: links,
+                updated_at: new Date().toISOString()
+            }, { onConflict: ['user_id'] });
+        if (error) {
+            console.error('[dashboard] Failed to save dashboard:', error.message);
+            showToast("Cloud save failed", "error");
+        } else {
+            console.log('[dashboard] Dashboard saved to cloud successfully');
+        }
+    } catch (error) {
+        console.error('[dashboard] Network error during cloud save:', error);
+        showToast("Cannot save to cloud - check your connection", "error");
     }
 }
     </script>
