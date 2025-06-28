@@ -1349,6 +1349,81 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               const fontSize = parseInt(computedStyle.fontSize);
               updateTitlePosition(fontSize);
           }
+          
+          // Sync to database with cooldown
+          syncCountdownToDatabase();
+      }
+  
+      // Database sync cooldown
+      let lastDatabaseSync = 0;
+      const DATABASE_SYNC_COOLDOWN = 5000; // 5 seconds
+      
+      async function syncCountdownToDatabase() {
+          // Check cooldown
+          const now = Date.now();
+          if (now - lastDatabaseSync < DATABASE_SYNC_COOLDOWN) {
+              return;
+          }
+          
+          try {
+              // Check if user is authenticated
+              const { data } = await supabaseClient.auth.getUser();
+              if (!data?.user) {
+                  return; // Not logged in, skip sync
+              }
+              
+              const title = document.getElementById("countdowntitle").value;
+              if (!title) {
+                  return; // No title, skip sync
+              }
+              
+              // Extract countdown data
+              const countdownData = {
+                  date: document.querySelector(".datepicker").value,
+                  title: title,
+                  typeface: getComputedStyle(document.documentElement).getPropertyValue('--typeface'),
+                  background: bgstring,
+                  confettiType: confettiType,
+                  progress: document.getElementById("progressdatepicker").value,
+                  progressPosition: progressbarposition,
+                  endingSound: document.getElementById("audioLink").value,
+                  schedule: parameter('schedule'),
+                  colors: []
+              };
+              
+              // Get all color pickers
+              const colorPickers = document.querySelectorAll('.colorpicker, .disabledcolorpicker');
+              colorPickers.forEach((picker, index) => {
+                  if (picker.dataset.useThemeColor === 'true') {
+                      countdownData.colors[index] = 'fg';
+                  } else {
+                      countdownData.colors[index] = picker.value.replace("#", "");
+                  }
+              });
+              
+              // Generate countdown ID
+              const countdownId = `${title.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
+              
+              // Save to database
+              const { error } = await supabaseClient
+                  .from('countdowns')
+                  .upsert({
+                      id: countdownId,
+                      data: JSON.stringify(countdownData),
+                      creator: data.user.id,
+                      collaborator_ids: [],
+                      visibility: 1 // unlisted by default
+                  }, { onConflict: ['id'] });
+                  
+              if (error) {
+                  console.error('[syncCountdownToDatabase] Database sync failed:', error.message);
+              } else {
+                  console.log('[syncCountdownToDatabase] Countdown synced to database');
+                  lastDatabaseSync = now;
+              }
+          } catch (error) {
+              console.error('[syncCountdownToDatabase] Error during database sync:', error);
+          }
       }
   
       function parameter(name) { //returns the value of the parameter it's sent
@@ -4921,7 +4996,6 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     const localName = localStorage.getItem('pfp_name') || 'User';
                     generateProfilePicWithName(localName);
                   } else if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
-                    console.log('[betaapp] Initializing profile picture on page load');
                     // Let the auth listener handle the initial profile pic generation
                   }
 
