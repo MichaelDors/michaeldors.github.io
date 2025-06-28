@@ -1406,7 +1406,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               
               // Save to database
               const { error } = await supabaseClient
-                  .from('countdowns')
+                  .from('countdown')
                   .upsert({
                       id: countdownId,
                       data: JSON.stringify(countdownData),
