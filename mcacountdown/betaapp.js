@@ -3683,7 +3683,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const accountMenu = document.getElementById('accountMenu');
         const accountItems = accountMenu.querySelectorAll('.dropdown-item');
         
-        accountButton.addEventListener('click', () => {
+        accountButton.addEventListener('click', async () => {
+            // Check if user is logged in
+            if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
+                const { data: { session } } = await window.supabaseClient.auth.getSession();
+                
+                if (!session) {
+                    // User is not logged in, redirect to auth page
+                    window.location.href = 'auth';
+                    return;
+                }
+            } else {
+                // Supabase client not available, redirect to auth page
+                window.location.href = 'auth';
+                return;
+            }
+            
+            // User is logged in, show dropdown menu
+            
             if (!accountMenu.classList.contains('visible')) {
                 accountMenu.classList.add('visible', 'animate-open');
                 accountMenu.addEventListener('animationend', () => {

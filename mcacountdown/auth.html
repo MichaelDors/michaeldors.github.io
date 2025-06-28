@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Countdown</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@400;600&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="supabaseclient.js"></script>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="icon.ico">
+    <meta name="theme-color" content="#8426ff" />
+    
+    <!-- PWA Meta -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Countdown">
+    
+    <!-- Open Graph -->
+    <meta property="og:image" content="https://michaeldors.com/Images/countdowncover.jpg" />
+    <meta property="og:title" content="Sign In - Countdown" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://michaeldors.com/mcacountdown/auth" />
+    <meta property="og:description" content="Sign in to sync your countdowns across devices." />
+    <meta property="og:site_name" content="Michael Dors" />
+    <link rel="apple-touch-icon" href="Images/countdownhomescreen.png">
+</head>
+
+<body>
+    <div class="auth-container">
+        <!-- Left side - Image -->
+        <div class="auth-image">
+
+        </div>
+        
+        <!-- Right side - Login Form -->
+        <div class="auth-form">
+            <div class="form-container">
+                <div class="form-header">
+                    <h2>Sign In</h2>
+                    <p>to share, save, and sync your countdowns</p>
+                </div>
+                
+                <div class="login-options">
+                    <button class="google-login-btn" onclick="loginWithGoogle()">
+                        <i class="fab fa-google"></i>
+                        <span>Continue with Google</span>
+                    </button>
+                    
+                    <div class="divider" style="display:none;">
+                        <span>or</span>
+                    </div>
+                    
+                    <form class="email-form" onsubmit="loginWithEmail(event)" style="display:none;">
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" required placeholder="Enter your email">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" name="password" required placeholder="Enter your password">
+                        </div>
+                        
+                        <button type="submit" class="email-login-btn">
+                            <i class="fas fa-envelope"></i>
+                            <span>Sign In</span>
+                        </button>
+                    </form>
+                    
+                    <div class="form-links" style="display:none;">
+                        <a href="#" onclick="showSignUp()">Don't have an account? Sign up</a>
+                        <a href="#" onclick="showForgotPassword()">Forgot password?</a>
+                    </div>
+                </div>
+                
+                <div class="form-footer">
+                    <p>By continuing, you agree to our <a href="docs#privacypolicy" target="_blank">Privacy Policy</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Signing you in...</p>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container"></div>
+
+    <script>
+        // Check if user is already authenticated
+        async function checkAuthStatus() {
+            try {
+                const { data } = await supabaseClient.auth.getUser();
+                if (data?.user) {
+                    // User is already signed in, redirect to dashboard
+                    window.location.href = 'countdowndashboard.html';
+                }
+            } catch (error) {
+                console.error('Error checking auth status:', error);
+            }
+        }
+
+        // Google login function
+        async function loginWithGoogle() {
+            showLoading();
+            
+            try {
+                const { error } = await supabaseClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin + '/mcacountdown/countdowndashboard.html'
+                    }
+                });
+                
+                if (error) {
+                    hideLoading();
+                    showToast("Login failed: " + error.message, "error");
+                    console.error('Login failed:', error.message);
+                } else {
+                    console.log('Login with Google initiated');
+                    // Loading will continue until redirect
+                }
+            } catch (error) {
+                hideLoading();
+                showToast("An unexpected error occurred", "error");
+                console.error('Unexpected error:', error);
+            }
+        }
+
+
+        // Email login function
+        async function loginWithEmail(event) {
+            event.preventDefault();
+            showLoading();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                // TODO: Implement actual email/password authentication when backend is ready
+                // For now, just simulate a successful login
+                console.log('Email login attempted:', { email, password });
+                
+                // Simulate API call delay
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // For now, just redirect to dashboard
+                // In the future, this will validate credentials with Supabase
+                hideLoading();
+                window.location.href = 'countdowndashboard.html';
+                
+            } catch (error) {
+                hideLoading();
+                showToast("Login failed. Please check your credentials.", "error");
+                console.error('Email login error:', error);
+            }
+        }
+
+        // Sign up function (placeholder)
+        function showSignUp() {
+            showToast("Sign up functionality coming soon!", "info");
+        }
+
+        // Forgot password function (placeholder)
+        function showForgotPassword() {
+            showToast("Password reset functionality coming soon!", "info");
+        }
+
+        // Loading overlay functions
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        // Toast system functions
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            // Create icon element
+            const icon = document.createElement('img');
+            icon.className = 'toast-icon';
+            if(type == "error"){
+                icon.src = "toasticons/error.png";
+            }
+            else if(type == "info"){
+                icon.src = "toasticons/info.png";
+            }
+            else if(type == "success"){
+                icon.src = "toasticons/success.png";
+            }
+            else if(type == "save"){
+                icon.src = "toasticons/save.png";
+            }
+            else{
+                icon.src = "toasticons/info.png";
+            }
+            
+            // Create toast content
+            const content = document.createElement('div');
+            content.className = 'toast-content';
+            content.textContent = message;
+            
+            // Create close button
+            const closeButton = document.createElement('button');
+            closeButton.className = 'toast-close';
+            closeButton.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+            closeButton.onclick = () => removeToast(toast);
+            
+            // Assemble toast
+            toast.appendChild(icon);
+            toast.appendChild(content);
+            toast.appendChild(closeButton);
+            toastContainer.appendChild(toast);
+
+            // Use setTimeout to ensure the banner is fully rendered
+            setTimeout(() => {
+                const toastHeight = toast.offsetHeight;
+                icon.style.height = `${toastHeight}px`;
+            }, 1);
+            setTimeout(() => {
+                const toastHeight = toast.offsetHeight;
+                icon.style.height = `${toastHeight}px`;
+            }, 3);
+            setTimeout(() => {
+                const toastHeight = toast.offsetHeight;
+                icon.style.height = `${toastHeight}px`;
+            }, 5);
+            setTimeout(() => {
+                const toastHeight = toast.offsetHeight;
+                icon.style.height = `${toastHeight}px`;
+            }, 10);
+            setTimeout(() => {
+                const toastHeight = toast.offsetHeight;
+                icon.style.height = `${toastHeight}px`;
+            }, 20);
+            setTimeout(() => {
+                const toastHeight = toast.offsetHeight;
+                icon.style.height = `${toastHeight}px`;
+            }, 50);
+            setTimeout(() => {
+                const toastHeight = toast.offsetHeight;
+                icon.style.height = `${toastHeight}px`;
+            }, 100);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => removeToast(toast), 5000);
+        }
+
+        function removeToast(toast) {
+            toast.style.animation = 'toastslideOut 0.3s ease forwards';
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }
+
+        // Check auth status on page load
+        document.addEventListener('DOMContentLoaded', checkAuthStatus);
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Dosis', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        :root {
+            --toast-width: 350px;
+            --one: #8426ff;
+            --two: #3ab6ff;
+            --three: #00df52;
+            --four: #ff9900;
+            --typeface: 'Fredoka One';
+            --comptypeface: 'Dosis';
+            --mainbgcolor: #141414;
+            --mainforegroundcolor: #ffffff;
+            --selectedgreen: #01FE5E;
+            --selectedgreengradient: linear-gradient(to bottom right, #14141400, #01fe5e34);
+            --inputbackground: linear-gradient(to left, rgba(129, 70, 255, 0.42), transparent);
+            --speeddivbackground: linear-gradient(to bottom right, #00000000, #2e0960);
+            --blurbackground: rgba(20, 20, 20, 0.83);
+            --altblurbackground: rgba(255, 255, 255, 0.80);
+            --blurbackgroundshadowcolor: rgba(0, 0, 0, 0.1);
+            --sidebarcolor: #000000;
+            --scheduleblurbg: rgba(20, 20, 20, 0.83);
+            --schedulebgbottomblur: #14141491;
+            --progressbarblur: #141414c8;
+            --titlergba: rgba(255,255,255,0);
+            --cardborder: 1.54px solid rgba(255, 255, 255, 0.1);
+            --bgbluramount: 250px;
+            --title-top-offset: 43px;
+            --title-top-percentage: 40%;
+        }
+
+        .auth-container {
+            display: flex;
+            min-height: 100vh;
+            background: #fff;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Left side - Image */
+        .auth-image {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('sharepanels/defaultshare.png') center/cover;
+            opacity: 1;
+            z-index: 1;
+        }
+
+        .image-overlay {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            color: white;
+            padding: 2rem;
+        }
+
+        .brand-content {
+            max-width: 400px;
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        }
+
+        .brand-content h1 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .brand-content p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        /* Right side - Form */
+        .auth-form {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: #fff;
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .form-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .form-header h2 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 2.5rem;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .login-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .google-login-btn, .guest-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Dosis', sans-serif;
+        }
+
+        .google-login-btn {
+            background: #fff;
+            color: #333;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .google-login-btn:hover {
+            background: #f8f9fa;
+            border-color: #dadce0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .guest-btn {
+            background: #8426ff;
+            color: white;
+        }
+
+        .guest-btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(132, 38, 255, 0.3);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+            color: #666;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        .divider span {
+            padding: 0 1rem;
+            font-size: 0.9rem;
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .form-footer a {
+            color: #8426ff;
+            text-decoration: none;
+        }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            color: white;
+        }
+
+        .loading-spinner i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #8426ff;
+        }
+
+        .loading-spinner p {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        /* Error toast */
+        .error-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff4757;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+            z-index: 10001;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Toast system styles */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100000000000000000;
+        }
+
+        .toast {
+            width: var(--toast-width);
+            margin-bottom: 10px;
+            border-radius: 12px;
+            background: var(--blurbackground);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 0.3px solid rgba(43, 43, 43, 0.3);
+            display: flex;
+            align-items: center;
+            animation: toastslideIn 0.3s ease forwards;
+            transition: all 0.3s ease;
+            font-family: Dosis, sans-serif;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08), /* bottom soft shadow */
+            inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .toast::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            background: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent);
+            pointer-events: none;
+            mix-blend-mode: screen;
+            z-index: 10000000;
+        }
+
+        .toast::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            pointer-events: none;
+            z-index: 1000000;
+            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 0 18px rgba(255, 255, 255, 0.05);
+            border: var(--cardborder);
+        }
+
+        .toast-icon {
+            margin-right: 5px;
+            height: 1px;
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+        }
+
+        .toast-content {
+            flex-grow: 1;
+            font-size: 14px;
+            color: var(--mainforegroundcolor);
+            margin: 16px;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--mainforegroundcolor);
+            cursor: pointer;
+            padding: 0 8px;
+            margin-left: 10px;
+            margin-right: 10px;
+            font-size: 18px;
+            transition: color 0.2s ease;
+        }
+
+        @keyframes toastslideIn {
+            from {
+                transform: translateX(100%);
+                filter: blur(40px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                filter: blur(0px);
+                opacity: 1;
+            }
+        }
+
+        @keyframes toastslideOut {
+            from {
+                transform: translateX(0);
+                filter: blur(0px);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                filter: blur(60px);
+                opacity: 0;
+            }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .auth-container {
+                flex-direction: column;
+            }
+
+            .auth-image {
+                flex: none;
+                height: 40vh;
+                min-height: 300px;
+            }
+
+            .brand-content h1 {
+                font-size: 2rem;
+            }
+
+            .brand-content p {
+                font-size: 1rem;
+            }
+
+            .logo {
+                width: 80px;
+                height: 80px;
+            }
+
+            .auth-form {
+                flex: 1;
+                padding: 1.5rem;
+            }
+
+            .form-header h2 {
+                font-size: 2rem;
+            }
+
+            .google-login-btn, .guest-btn {
+                padding: 0.875rem 1.25rem;
+                font-size: 1rem;
+            }
+
+            /* Toast responsive styles */
+            :root {
+                --toast-width: calc(100vw - 40px);
+            }
+
+            #toast-container {
+                right: 50%;
+                transform: translateX(50%);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .auth-image {
+                height: 35vh;
+                min-height: 250px;
+            }
+
+            .brand-content h1 {
+                font-size: 1.75rem;
+            }
+
+            .form-header h2 {
+                font-size: 1.75rem;
+            }
+
+            .auth-form {
+                padding: 1rem;
+            }
+
+            .form-container {
+                max-width: 100%;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .auth-container {
+                background: var(--mainbgcolor);
+            }
+
+            .auth-form {
+                background: var(--mainbgcolor);
+            }
+
+            .form-header h2 {
+                color: var(--mainforegroundcolor);
+            }
+
+            .form-header p {
+                color: #ccc;
+            }
+
+            .google-login-btn {
+                background: #2a2a2a;
+                color: var(--mainforegroundcolor);
+                border-color: #444;
+            }
+
+            .google-login-btn:hover {
+                background: #333;
+                border-color: #555;
+            }
+
+            .divider {
+                color: #ccc;
+            }
+
+            .divider::before,
+            .divider::after {
+                background: #444;
+            }
+
+            .form-footer {
+                color: #ccc;
+            }
+
+            /* Dark mode for email form */
+            .form-group label {
+                color: var(--mainforegroundcolor);
+            }
+
+            .form-group input {
+                background: #2a2a2a;
+                border-color: #444;
+                color: var(--mainforegroundcolor);
+            }
+
+            .form-group input:focus {
+                border-color: var(--one);
+                box-shadow: 0 0 0 3px rgba(132, 38, 255, 0.2);
+            }
+
+            .form-group input::placeholder {
+                color: #888;
+            }
+
+            .form-links a {
+                color: var(--one);
+            }
+
+            .form-links a:hover {
+                color: #a855f7;
+            }
+        }
+
+        /* Email form styles */
+        .email-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            padding: 0.875rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: 'Dosis', sans-serif;
+            transition: all 0.3s ease;
+            background: #fff;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #8426ff;
+            box-shadow: 0 0 0 3px rgba(132, 38, 255, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #999;
+        }
+
+        .email-login-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Dosis', sans-serif;
+            background: #8426ff;
+            color: white;
+            margin-top: 0.5rem;
+        }
+
+        .email-login-btn:hover {
+            background: #6a1b9a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(132, 38, 255, 0.3);
+        }
+
+        .email-login-btn {
+            font-family: 'Fredoka One';
+            background-color: #8426ff;
+            text-decoration: none;
+            color: white;
+            box-shadow: 0 7px 0 #4d00b2, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            user-select: none;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: 100;
+            margin: 0px 5px 25px 5px;
+            display: inline-block;
+            width: 100%;
+            text-align: center;
+            border: none;
+        }
+
+        .email-login-btn:hover {
+            position: relative;
+            top: 4px;
+            box-shadow: 0 5px 0 #4d00b2, inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
+            display: inline-block;
+        }
+
+        .email-login-btn:active {
+            position: relative;
+            top: 9px;
+            box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
+            display: inline-block;
+        }
+
+        .form-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .form-links a {
+            color: #8426ff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+
+        .form-links a:hover {
+            color: #6a1b9a;
+            text-decoration: underline;
+        }
+    </style>
+</body>
+</html>
