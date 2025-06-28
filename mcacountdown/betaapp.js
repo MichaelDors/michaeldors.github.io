@@ -5161,6 +5161,7 @@ async function logoutUser() {
     } catch (error) {
         showToast('Logout failed: ' + error.message, 'error');
     }
+    resetcookies();
 
     // Reload the page after logout
     setTimeout(() => {
