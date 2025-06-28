@@ -1402,7 +1402,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               });
               
               // Generate countdown ID
-              const countdownId = `${title.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
+              const countdownId = crypto.randomUUID();
               
               // Save to database
               const { error } = await supabaseClient
