@@ -2173,6 +2173,35 @@ function contrast(){ //increase contrast set or remove cookie
           window.location.href = window.location.origin + window.location.pathname; //set URL
   
       }
+
+      function deletalldata(){
+        resetcookies();
+      // Delete user data from database
+      window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
+          if (session?.user) {
+              try {
+                  // Delete user's countdowns
+                  await window.supabaseClient
+                      .from('countdowns')
+                      .delete()
+                      .eq('creator', session.user.id);
+                  
+                  // Delete user's dashboard data
+                  await window.supabaseClient
+                      .from('dashboards')
+                      .delete()
+                      .eq('user_id', session.user.id);
+                  
+                  // Delete the user account
+                  await window.supabaseClient.auth.admin.deleteUser(session.user.id);
+                  
+                  console.log('[betaapp] User data deleted successfully');
+              } catch (error) {
+                  console.error('[betaapp] Error deleting user data:', error);
+              }
+          }
+      });
+      }
   
       //date picker presets tab box
       const tabsBox = document.querySelector(".tabs-box"),
