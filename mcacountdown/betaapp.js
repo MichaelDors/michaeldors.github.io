@@ -2176,35 +2176,7 @@ function contrast(){ //increase contrast set or remove cookie
 
       function deletalldata(){
         resetcookies();
-      // Delete user data from database
-      window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
-        if (session?.user) {
-          try {
-            const userId = session.user.id;
-      
-            // Delete user's countdowns
-            const { error: countdownsError } = await window.supabaseClient
-              .from('countdowns')
-              .delete()
-              .eq('creator', userId);
-            if (countdownsError) throw countdownsError;
-      
-            // Delete user's dashboards
-            const { error: dashboardsError } = await window.supabaseClient
-              .from('dashboards')
-              .delete()
-              .eq('user_id', userId);
-            if (dashboardsError) throw dashboardsError;
-      
-            // Optionally: Sign the user out (frontend only)
-            await window.supabaseClient.auth.signOut();
-      
-            console.log('[betaapp] User data deleted (user still exists)');
-          } catch (error) {
-            console.error('[betaapp] Error deleting user data:', error);
-          }
-        }
-      });
+        alert("Account deletion is coming soon. Please contact us if you need to delete your account during this beta period.");
       }
   
       //date picker presets tab box
