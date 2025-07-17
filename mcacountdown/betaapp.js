@@ -437,6 +437,11 @@ if(!parameter('schedule')){
             if (parameter(param) === "null") {
                 console.log(`Colors(${id.slice(-1)}) could not be imported properly.`);
             } else {
+                const picker = document.getElementById(id);
+                picker.addEventListener('dragstart', handleDragStart);
+                picker.addEventListener('dragend', handleDragEnd);
+                picker.addEventListener('dragover', handleDragOver);
+                picker.addEventListener('drop', handleDrop);
                 const paramValue = parameter(param);
                 if (paramValue === 'fg') {
                     // This is a foreground color
@@ -4709,6 +4714,20 @@ SetCountDowngeneral(); // Update any theme-colored pickers
               newBR.className = 'colorpickerlinebreak';
               container.insertBefore(newBR, container.children[4]);
           }
+
+          // For all except the first, set opacity to 1 and reset other vals
+          allItems.forEach((item, idx) => {
+              const removeBtn = item.querySelector('.remove-button');
+              if (removeBtn) {
+                  if (idx === 0) {
+                      removeBtn.style.cssText += "opacity:0 !important; user-select: none; cursor: default;";
+                  } else {
+                      removeBtn.style.opacity = "";
+                      removeBtn.style.userSelect = "";
+                      removeBtn.style.cursor = "";
+                  }
+              }
+          });
 
           
           adjustHeightOfColorPickerContainer();
