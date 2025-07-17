@@ -4715,21 +4715,23 @@ SetCountDowngeneral(); // Update any theme-colored pickers
               container.insertBefore(newBR, container.children[4]);
           }
 
-          // For all except the first, set opacity to 1 and reset other vals
-          allItems.forEach((item, idx) => {
-              const removeBtn = item.querySelector('.remove-button');
-              if (removeBtn) {
-                  if (idx === 0) {
-                      removeBtn.style.cssText += "opacity:0 !important; user-select: none; cursor: default;";
-                  } else {
-                      removeBtn.style.opacity = "";
-                      removeBtn.style.userSelect = "";
-                      removeBtn.style.cursor = "";
+          // Defer remove button update until after DOM order is correct
+          setTimeout(() => {
+              const allItems = [...container.getElementsByClassName('colorpicker-container')];
+              allItems.forEach((item, idx) => {
+                  const removeBtn = item.querySelector('.remove-button');
+                  if (removeBtn) {
+                      if (idx === 0) {
+                          removeBtn.style.cssText += "opacity:0 !important; user-select: none; cursor: default;";
+                      } else {
+                          removeBtn.style.opacity = "";
+                          removeBtn.style.userSelect = "";
+                          removeBtn.style.cursor = "";
+                      }
                   }
-              }
-          });
+              });
+          }, 0);
 
-          
           adjustHeightOfColorPickerContainer();
           updateColorAnimations();
               SetCountDowngeneral();
