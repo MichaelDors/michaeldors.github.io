@@ -4461,6 +4461,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.documentElement.style.setProperty('--progressbarblur', '#ffffffc8');
             document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(0, 0, 0, 0.1)');
             document.documentElement.style.setProperty('--progressbarhighlight', '0 4px 30px rgba(0, 0, 0, 0.1), inset 0 1.54px 0 rgba(255, 255, 255, 0.3)');
+            document.documentElement.style.setProperty('--collaborationcardbg', '#d3b3ff');
+            document.documentElement.style.setProperty('--collaborationcardbuttonshadow', '#343434');
+            document.documentElement.style.setProperty('--collaborationbuttonbg', '#000000');
             if(parameter("atc")== "none"){
                 document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
                 document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
@@ -4485,6 +4488,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
             document.documentElement.style.setProperty('--cardborder', '1.54px solid rgba(255, 255, 255, 0.1)');
             document.documentElement.style.setProperty('--progressbarhighlight', 'none');
+            document.documentElement.style.setProperty('--collaborationcardbg', '#8426ff');
+            document.documentElement.style.setProperty('--collaborationcardbuttonshadow', '#c0c0c0');
+            document.documentElement.style.setProperty('--collaborationbuttonbg', '#ffffff');
         }
         
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {

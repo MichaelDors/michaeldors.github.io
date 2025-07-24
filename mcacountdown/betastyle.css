@@ -42,6 +42,10 @@
     /* Title positioning variables */
     --title-top-offset: 43px;
     --title-top-percentage: 40%;
+
+    --collaborationcardbg: #d3b3ff;
+    --collaborationcardbuttonshadow: #c0c0c0;
+    --collaborationbuttonbg: #000000;
 }
 
 #body{
@@ -981,6 +985,7 @@ a:hover:active {
             box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);
         }
 
+
     .whitebutton::before {
         content: "";
         mix-blend-mode: multiply;
@@ -1002,6 +1007,30 @@ a:hover:active {
     to {
         width: 100%;
     }
+}
+
+.blackbtn {
+    font-family: 'Fredoka One' !important;
+    background-color: var(--collaborationbuttonbg) !important;
+    text-decoration: none !important;
+    color: var(--mainbgcolor) !important;
+    box-shadow: 0 7px 0 var(--collaborationcardbuttonshadow), inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1) !important;
+    border-radius: 20px !important;
+    padding: 20px !important;
+    user-select: none !important;
+    cursor: pointer !important;
+    font-weight: 100 !important;
+    height: 25px !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.blackbtn:hover {
+    box-shadow: 0 5px 0 var(--collaborationcardbuttonshadow), inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1) !important;
+}
+
+.blackbtn:hover:active {
+    box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1) !important;
 }
 
 .warning {
@@ -3475,3 +3504,73 @@ filter: blur(40px);
   margin-left:0;                         /* keep it anchored */
   margin-right:calc(var(--size)*0.35);   /* push the following avatars right */
 }
+
+
+.shareeventcard {
+    border-radius: 20px;
+    background: var(--collaborationcardbg);
+    color: white;
+    padding: 40px 30px 15px 30px;
+    margin-bottom: 50px;
+    margin-top: 0;
+    width: 60%;
+    max-width: 420px;
+    min-width: 260px;
+    box-shadow: 0 2px 16px 0 rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+  .shareeventcard .share-pfp-stack {
+    display: flex;
+    gap: 0;
+    margin-bottom: 18px;
+  }
+  .shareeventcard .share-pfp {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
+    margin-left: -12px;
+    background: #f3f3f3;
+  }
+  .shareeventcard .share-pfp:first-child { margin-left: 0; }
+  .shareeventcard .share-pfp img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .shareeventcard .share-card-title {
+    font-family: 'Dosis', 'Poppins', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--mainforegroundcolor);
+    text-align: center;
+    margin-bottom: 22px;
+    margin-top: 6px;
+  }
+
+  .shareeventcard::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    background: linear-gradient(to bottom right, rgba(255,255,255,0.05), transparent);
+    pointer-events: none;
+    mix-blend-mode: screen;
+    z-index:10000000;
+  }
+  
+  .shareeventcard::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    pointer-events: none;
+    z-index: 1000000;
+    box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 0 18px rgba(255, 255, 255, 0.3);
+    border: var(--cardborder);
+  }

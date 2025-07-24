@@ -379,13 +379,6 @@
                     Sharing
                 </h2>
 
-                <div class="share-pfp-stack">
-                    <div class="share-pfp"><img src="https://picsum.photos/600" alt=""></div>
-                    <div class="share-pfp"><img src="https://picsum.photos/500" alt=""></div>
-                  <div class="share-pfp"><img src="https://picsum.photos/400" alt=""></div>
-                  <div class="share-pfp"><img src="https://picsum.photos/300" alt=""></div>
-                  <div class="share-pfp"><img src="https://picsum.photos/200" alt=""></div>
-                </div>
                 <input id="linkinput" class="input" style="margin-bottom:30px;"/>
                 <button style="background:transparent; border:none; outline:none; cursor:pointer">
                     <i title="Copy link" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlink(); showToast('Shareable link copied', 'success');"></i>
@@ -404,6 +397,20 @@
 		<p id="qrcodelinkcautiontext" class="texttip" style="margin-bottom:50px;">
                     Be cautious of sharing personal information
                 </p>
+
+                <div class="shareeventcard">
+                  <div class="share-pfp-stack" style="cursor:default; pointer-events: none; user-select: none;">
+                    <div class="share-pfp"><img src="https://picsum.photos/600" alt=""></div>
+                    <div class="share-pfp"><img src="https://picsum.photos/500" alt=""></div>
+                    <div class="share-pfp"><img src="https://picsum.photos/400" alt=""></div>
+                    <div class="share-pfp"><img src="https://picsum.photos/300" alt=""></div>
+                    <div class="share-pfp"><img src="https://picsum.photos/200" alt=""></div>
+                  </div>
+                  <div class="share-card-title">Share the moment with your people</div>
+                  <a class="blackbtn">
+                    Invite Collaborators
+                  </a>
+                </div>
 
                 <a onclick="openPersonalSettings();" href="#localshortcutcontainerdiv" id="localshortcutcontainerdivtooltip" class="localshortcutcontainerdivtooltip aintext" style="border-radius: 2000px; background: #00df52; margin-bottom:30px; color: black; padding-left:15px; padding-right: 15px; min-width:fit-content; max-width:75%;">
                     <p style="color:black;" class="texttip">
