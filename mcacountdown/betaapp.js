@@ -1390,19 +1390,19 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
                   return; // No title, skip sync
               }
               
-              // Extract countdown data
-              const countdownData = {
-                  date: document.querySelector(".datepicker").value,
-                  title: title,
-                  typeface: getComputedStyle(document.documentElement).getPropertyValue('--typeface'),
-                  background: bgstring,
-                  confettiType: confettiType,
-                  progress: document.getElementById("progressdatepicker").value,
-                  progressPosition: progressbarposition,
-                  endingSound: document.getElementById("audioLink").value,
-                  schedule: parameter('schedule'),
-                  colors: []
-              };
+              // Extract countdown data using the exact same string as the refresh variable in setcountdowngeneral 
+              var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + 
+                  '?date=' + document.querySelector(".datepicker").value + 
+                  colorParams + 
+                  '&typeface=' + encodeURIComponent(css.style.getPropertyValue('--typeface')) + 
+                  '&atc=' + bgstring + 
+                  '&title=' + encodeURIComponent(cdtitle) + 
+                  '&confettitype=' + confettiType + 
+                  '&progress=' + document.getElementById("progressdatepicker").value + 
+                  '&progressposition=' + progressbarposition + 
+                  '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
+                  '&schedule=' + parameter('schedule');
+              const countdownData = refresh;
               
               // Get all color pickers
               const colorPickers = document.querySelectorAll('.colorpicker, .disabledcolorpicker');
