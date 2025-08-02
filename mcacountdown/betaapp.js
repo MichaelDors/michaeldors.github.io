@@ -1354,6 +1354,8 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               const fontSize = parseInt(computedStyle.fontSize);
               updateTitlePosition(fontSize);
           }
+
+          syncCountdownToDatabase();
       }
   
       // Database sync cooldown
