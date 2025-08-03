@@ -1382,21 +1382,19 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           }
           
           try {
-              // Check if user is authenticated
-              let user;
-              try {
-                  const { data, error } = await supabaseClient.auth.getUser();
-                  if (error) {
-                      console.log("uploading cd to db - error getting user", error);
+              // Check if user is authenticated using the same system as account dropdown
+              if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
+                  const { data: { session } } = await window.supabaseClient.auth.getSession();
+                  
+                  if (!session) {
+                      console.log("uploading cd to db - not logged in");
+                      return; // Not logged in, skip sync
                   }
-                  user = data?.user || data?.session?.user;
-              } catch (e) {
-                  console.log("uploading cd to db - error getting user", e);
-                  user = null;
-              }
-              if (!user) {
-                  console.log("uploading cd to db - not logged in");
-                  return; // Not logged in, skip sync
+                  
+                  const user = session.user;
+              } else {
+                  console.log("uploading cd to db - supabase client not available");
+                  return; // Supabase client not available, skip sync
               }
               
               const title = document.getElementById("countdowntitle").value;
@@ -1441,7 +1439,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
                   .upsert({
                       id: countdownId,
                       data: JSON.stringify(countdownData),
-                      creator: data.user.id,
+                      creator: user.id,
                       collaborator_ids: [],
                       visibility: 1 // unlisted by default
                   }, { onConflict: ['id'] });
