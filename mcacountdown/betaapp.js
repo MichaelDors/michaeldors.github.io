@@ -5150,7 +5150,15 @@ function searchsettings() {
         return cookieString;
     }
 
+let lastCookieSyncTime = 0;
+const COOKIE_SYNC_COOLDOWN = 30000; // 30 seconds
+
 function syncCookiesToCloud() {
+    const now = Date.now();
+    if (now - lastCookieSyncTime < COOKIE_SYNC_COOLDOWN) {
+        console.log('[betaapp] Cookie sync skipped due to cooldown');
+        return;
+    }
     if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
         window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
             if (session?.user) {
@@ -5168,6 +5176,7 @@ function syncCookiesToCloud() {
                         console.error('[betaapp] Error updating settings:', updateError);
                     } else {
                         console.log('[betaapp] Settings synced to cloud successfully');
+                        lastCookieSyncTime = now;
                     }
                 } catch (updateError) {
                     console.error('[betaapp] Settings update failed:', updateError);
