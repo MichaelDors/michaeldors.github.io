@@ -1356,7 +1356,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           }
           
           // Sync to database after all variables are defined
-          syncCountdownToDatabase();
+          syncCountdownToDatabase(refresh);
       }
   
       
@@ -1374,7 +1374,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
             let lastDatabaseSync = 0;
             const DATABASE_SYNC_COOLDOWN = 5000; // 5 seconds
       
-      async function syncCountdownToDatabase() {
+      async function syncCountdownToDatabase(countdownData) {
         console.log("uploading cd to db - init");
           // Check cooldown
           const now = Date.now();
@@ -1412,31 +1412,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
                   return; // No title, skip sync
               }
               
-              // Extract countdown data using the exact same string as the refresh variable in setcountdowngeneral 
-              var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + 
-                  '?date=' + document.querySelector(".datepicker").value + 
-                  colorParams + 
-                  '&typeface=' + encodeURIComponent(css.style.getPropertyValue('--typeface')) + 
-                  '&atc=' + bgstring + 
-                  '&title=' + encodeURIComponent(cdtitle) + 
-                  '&confettitype=' + confettiType + 
-                  '&progress=' + document.getElementById("progressdatepicker").value + 
-                  '&progressposition=' + progressbarposition + 
-                  '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
-                  '&schedule=' + parameter('schedule');
-              const countdownData = refresh;
-
               console.log("uploading cd to db " + countdownData);
-              
-              // Get all color pickers
-              const colorPickers = document.querySelectorAll('.colorpicker, .disabledcolorpicker');
-              colorPickers.forEach((picker, index) => {
-                  if (picker.dataset.useThemeColor === 'true') {
-                      countdownData.colors[index] = 'fg';
-                  } else {
-                      countdownData.colors[index] = picker.value.replace("#", "");
-                  }
-              });
               
               // Generate countdown ID
               const countdownId = generateShortId();
