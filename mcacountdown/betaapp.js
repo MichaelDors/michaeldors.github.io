@@ -1382,20 +1382,27 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           }
           
           try {
+
               // Check if user is authenticated using the same system as account dropdown
-              if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
-                  const { data: { session } } = await window.supabaseClient.auth.getSession();
-                  
-                  if (!session) {
-                      console.log("uploading cd to db - not logged in");
-                      return; // Not logged in, skip sync
-                  }
-                  
-                  const user = session.user;
-              } else {
-                  console.log("uploading cd to db - supabase client not available");
+              console.log("uploading cd to db - checking supabase client:", typeof window.supabaseClient, window.supabaseClient?.auth);
+              
+              // Wait for Supabase client to be available and initialized
+              if (typeof window.supabaseClient === "undefined" || !window.supabaseClient.auth) {
+                  console.log("uploading cd to db - supabase client not available, skipping sync");
                   return; // Supabase client not available, skip sync
               }
+              
+              // Use the same pattern as the auth listener setup
+              const { data: { session } } = await window.supabaseClient.auth.getSession();
+              console.log("uploading cd to db - session result:", session);
+              
+              if (!session) {
+                  console.log("uploading cd to db - not logged in");
+                  return; // Not logged in, skip sync
+              }
+              
+              const user = session.user;
+              console.log("uploading cd to db - user found:", user.id);
               
               const title = document.getElementById("countdowntitle").value;
               if (!title) {
