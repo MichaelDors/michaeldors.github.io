@@ -1310,8 +1310,6 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               confettiType = document.getElementById("confettiEmojiPicker").value;
           }
 
-          syncCountdownToDatabase();
-  
           // Build color parameters string
           let colorParams = '';
           colorsNormalized.forEach((color, index) => {
@@ -1356,6 +1354,9 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               const fontSize = parseInt(computedStyle.fontSize);
               updateTitlePosition(fontSize);
           }
+          
+          // Sync to database after all variables are defined
+          syncCountdownToDatabase();
       }
   
       // Database sync cooldown
