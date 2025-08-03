@@ -1323,17 +1323,19 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               }
           });
   
-          var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + 
-              '?date=' + document.querySelector(".datepicker").value + 
-              colorParams + 
-              '&typeface=' + encodeURIComponent(css.style.getPropertyValue('--typeface')) + 
-              '&atc=' + bgstring + 
-              '&title=' + encodeURIComponent(cdtitle) + 
-              '&confettitype=' + confettiType + 
-          '&progress=' + document.getElementById("progressdatepicker").value + 
-          '&progressposition=' + progressbarposition + 
-              '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
-              '&schedule=' + parameter('schedule');
+          var parameterstring = 
+          '?date=' + document.querySelector(".datepicker").value + 
+          colorParams + 
+          '&typeface=' + encodeURIComponent(css.style.getPropertyValue('--typeface')) + 
+          '&atc=' + bgstring + 
+          '&title=' + encodeURIComponent(cdtitle) + 
+          '&confettitype=' + confettiType + 
+      '&progress=' + document.getElementById("progressdatepicker").value + 
+      '&progressposition=' + progressbarposition + 
+          '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
+          '&schedule=' + parameter('schedule');
+
+          var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + parameterstring;
           // Only update URL if it's actually different to avoid unnecessary history entries
           if (window.location.href !== refresh) {
             window.history.replaceState({ path: refresh }, '', refresh); //update current URL without creating new history entry
@@ -1356,7 +1358,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           }
           
           // Sync to database after all variables are defined
-          syncCountdownToDatabase(refresh);
+          syncCountdownToDatabase(parameterstring);
       }
   
       
