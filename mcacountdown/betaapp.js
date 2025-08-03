@@ -1385,11 +1385,13 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               // Check if user is authenticated
               const { data } = await supabaseClient.auth.getUser();
               if (!data?.user) {
+                  console.log("uploading cd to db - not logged in");
                   return; // Not logged in, skip sync
               }
               
               const title = document.getElementById("countdowntitle").value;
               if (!title) {
+                  console.log("uploading cd to db - no title");
                   return; // No title, skip sync
               }
               
