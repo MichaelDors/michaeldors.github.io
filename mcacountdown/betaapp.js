@@ -1383,8 +1383,18 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           
           try {
               // Check if user is authenticated
-              const { data } = await supabaseClient.auth.getUser();
-              if (!data?.user) {
+              let user;
+              try {
+                  const { data, error } = await supabaseClient.auth.getUser();
+                  if (error) {
+                      console.log("uploading cd to db - error getting user", error);
+                  }
+                  user = data?.user || data?.session?.user;
+              } catch (e) {
+                  console.log("uploading cd to db - error getting user", e);
+                  user = null;
+              }
+              if (!user) {
                   console.log("uploading cd to db - not logged in");
                   return; // Not logged in, skip sync
               }
