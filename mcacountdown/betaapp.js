@@ -1309,6 +1309,8 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           if(!confettiType){
               confettiType = document.getElementById("confettiEmojiPicker").value;
           }
+
+          syncCountdownToDatabase();
   
           // Build color parameters string
           let colorParams = '';
@@ -1354,8 +1356,6 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               const fontSize = parseInt(computedStyle.fontSize);
               updateTitlePosition(fontSize);
           }
-
-          syncCountdownToDatabase();
       }
   
       // Database sync cooldown
@@ -1364,6 +1364,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
       
       function generateShortId() {
           const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+          console.log("uploading cd to db - generating ID");
           let result = '';
           for (let i = 0; i < 11; i++) {
               result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -1372,9 +1373,11 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
       }
       
       async function syncCountdownToDatabase() {
+        console.log("uploading cd to db - init");
           // Check cooldown
           const now = Date.now();
           if (now - lastDatabaseSync < DATABASE_SYNC_COOLDOWN) {
+            console.log("uploading cd to db - stopped via cooldown");
               return;
           }
           
@@ -1403,6 +1406,8 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
                   '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
                   '&schedule=' + parameter('schedule');
               const countdownData = refresh;
+
+              console.log("uploading cd to db " + countdownData);
               
               // Get all color pickers
               const colorPickers = document.querySelectorAll('.colorpicker, .disabledcolorpicker');
