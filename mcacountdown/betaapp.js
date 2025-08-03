@@ -1359,9 +1359,6 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           syncCountdownToDatabase();
       }
   
-      // Database sync cooldown
-      let lastDatabaseSync = 0;
-      const DATABASE_SYNC_COOLDOWN = 5000; // 5 seconds
       
       function generateShortId() {
           const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -1372,6 +1369,10 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           }
           return result;
       }
+
+            // Database sync cooldown
+            let lastDatabaseSync = 0;
+            const DATABASE_SYNC_COOLDOWN = 5000; // 5 seconds
       
       async function syncCountdownToDatabase() {
         console.log("uploading cd to db - init");
