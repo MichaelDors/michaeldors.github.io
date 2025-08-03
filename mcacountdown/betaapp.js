@@ -1716,38 +1716,38 @@ function searchsettings() {
               if (document.getElementById("countdowntitle").value != "") { //if the countdown has a title
                   if (days > 0) { //if it's over 0 days, we use the days text with the title since there is a title
                       if(days == 1){
-                          document.title = document.getElementById("countdowntitle").value + " in " + days + " day | Countdown";
+                          document.title = document.getElementById("countdowntitle").value + " in " + days + " day | Minutehand";
                       }
                       else{
-                          document.title = document.getElementById("countdowntitle").value + " in " + days + " days | Countdown";
+                          document.title = document.getElementById("countdowntitle").value + " in " + days + " days | Minutehand";
                       }
                   }
                   else if (hours > 0) { //over 0 hours use hours with title
                       if(hours == 1){
-                          document.title = document.getElementById("countdowntitle").value + " in " + hours + " hour | Countdown";
+                          document.title = document.getElementById("countdowntitle").value + " in " + hours + " hour | Minutehand";
                       }
                       else{
-                          document.title = document.getElementById("countdowntitle").value + " in " + hours + " hours | Countdown";
+                          document.title = document.getElementById("countdowntitle").value + " in " + hours + " hours | Minutehand";
                       }
                   }
                   else if (minutes > 0) { //over 0 minutes use minutes with title
                       if(minutes == 1){
-                          document.title = document.getElementById("countdowntitle").value + " in " + minutes + " minute | Countdown";
+                          document.title = document.getElementById("countdowntitle").value + " in " + minutes + " minute | Minutehand";
                       }
                       else{
-                          document.title = document.getElementById("countdowntitle").value + " in " + minutes + " minutes | Countdown";
+                          document.title = document.getElementById("countdowntitle").value + " in " + minutes + " minutes | Minutehand";
                       }
                   }
                   else if (seconds > 0) { //over 0 seconds use seconds with title
                       if(seconds == 1){
-                          document.title = document.getElementById("countdowntitle").value + " in " + seconds + " second | Countdown";
+                          document.title = document.getElementById("countdowntitle").value + " in " + seconds + " second | Minutehand";
                       }
                       else{
-                          document.title = document.getElementById("countdowntitle").value + " in " + seconds + " seconds | Countdown";
+                          document.title = document.getElementById("countdowntitle").value + " in " + seconds + " seconds | Minutehand";
                       }
                   }
-                  else { //otherwise just use Countdown
-                      document.title = "Countdown";
+                  else { //otherwise just use Minutehand
+                      document.title = "Minutehand";
                   }
               }
               else {
@@ -1784,7 +1784,7 @@ function searchsettings() {
                       }
                   } //since there are "else if" and not their own else, we dont have to worry about "seconds" triggering when it should be on "hours"- while the seconds is technically over 0, it will stop if it reaches hours and that's true
                   else { //just countdown
-                      document.title = "Countdown";
+                      document.title = "Minutehand";
                   }
               }
           }
