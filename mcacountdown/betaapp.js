@@ -1416,6 +1416,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               
               // Generate countdown ID
               const countdownId = generateShortId();
+              console.log("uploading cd to db " + countdownId);
               
               // Save to database
               const { error } = await supabaseClient
