@@ -13,6 +13,61 @@ function debounce(func, wait) {
     };
 }
 
+async function getCountdownData(id) {
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('countdown')
+            .select('data')
+            .eq('id', id)
+            .single();
+        
+        if (error) {
+            console.error('Error fetching countdown data:', error);
+            return null;
+        }
+        
+        if (data && data.data) {
+            // Strip surrounding quotes if present
+            let queryString = data.data;
+            if (queryString.startsWith('"') && queryString.endsWith('"')) {
+                queryString = queryString.slice(1, -1);
+            }
+            return queryString;
+        } else {
+            console.warn('No data found for ID:', id);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error in getCountdownData:', error);
+        return null;
+    }
+}
+
+let obtaineddata = false;
+
+// Test the function (only run once)
+    (async function GetDataSource() {
+        if (!obtaineddata) {
+            if(parameter('id')){
+                const sourceCountdowndata = await getCountdownData(parameter('id'));
+                if (sourceCountdowndata) {
+                    window.CountdownDataSource = sourceCountdowndata;
+                    obtaineddata = true;
+                }
+            } else if(parameter('date') || parameter('schedule')){
+                window.CountdownDataSource = window.location.search;
+                obtaineddata = true;
+            }
+            else{
+                //need to init a new countdown, as there are no parameters
+            }
+            if(!parameter('cardmode')){
+            alert(window.CountdownDataSource);
+            alert("title param " + getParameterFromSource('title'));
+            }
+        }
+    })();
+
 function updateTitlePosition(fontSize) {
     // Calculate title positioning based on font size
     // Larger font sizes need the title positioned higher
@@ -331,24 +386,24 @@ function cardmodemanager(){
       //onload url parameter translation into the correlating customization settings
                  //confetti
                   var confettiType = "none"; //declaring confettitype to none at the very beginning so it's able to be changed anywhere
-      if(parameter("confettitype")){
-          confettiType = decodeURIComponent(parameter("confettitype")); //if the confetti type exists, set it
+      if(getParameterFromSource("confettitype")){
+          confettiType = decodeURIComponent(getParameterFromSource("confettitype")); //if the confetti type exists, set it
       }
       else{
           confettiType = "1";
       }
   
-  if(parameter('progress')){
-      document.querySelector('.progressdatepicker').value = parameter('progress');
+  if(getParameterFromSource('progress')){
+      document.querySelector('.progressdatepicker').value = getParameterFromSource('progress');
 // Check if progress date is before countdown end date
-const progressDate = new Date(parameter('progress')).getTime();
-const countdownDate = new Date(parameter('date')).getTime();
+const progressDate = new Date(getParameterFromSource('progress')).getTime();
+const countdownDate = new Date(getParameterFromSource('date')).getTime();
 
-if(parameter('progressposition') && parameter('progressposition') !== "null"){
-    if(parameter('progressposition') == 'bar'){
+if(getParameterFromSource('progressposition') && getParameterFromSource('progressposition') !== "null"){
+    if(getParameterFromSource('progressposition') == 'bar'){
         document.getElementById("progress-bar").classList.add("progress-bar");
         document.getElementById("progress-bar").classList.remove("progress-bar-fullscreen");
-    }else if(parameter('progressposition') == 'fs'){
+    }else if(getParameterFromSource('progressposition') == 'fs'){
         document.getElementById("progress-bar").classList.remove("progress-bar");
         document.getElementById("progress-bar").classList.add("progress-bar-fullscreen");
     }
@@ -358,7 +413,7 @@ if(parameter('progressposition') && parameter('progressposition') !== "null"){
 }
     
 
-if(!parameter('schedule')){
+if(!getParameterFromSource('schedule')){
     if ((progressDate > countdownDate) || progressDate == countdownDate) {
         // Progress date is after countdown date - hide progress bar
         document.getElementById("progress-bar").style.display = "none";
@@ -373,12 +428,12 @@ if(!parameter('schedule')){
   }
 }
 
-  progressbarposition = parameter('progressposition');
-        if(parameter('progressposition')){
-        if(parameter('progressposition') == 'bar'){
+  progressbarposition = getParameterFromSource('progressposition');
+        if(getParameterFromSource('progressposition')){
+        if(getParameterFromSource('progressposition') == 'bar'){
             ProgressPositionBar('auto');
         }
-        else if(parameter('progressposition') == 'fs'){
+        else if(getParameterFromSource('progressposition') == 'fs'){
             ProgressPositionFullscreen('auto');
         }
         else{
@@ -390,15 +445,15 @@ if(!parameter('schedule')){
   
       //backgrounds
       var bgstring = "none"; //declaring bgstring to none at the very beginning so it's able to be changed anywhere
-      if (parameter('atc')) {
-          bgstring = parameter('atc'); //if there is an animated text countdown background, set that to bg string
+      if (getParameterFromSource('atc')) {
+          bgstring = getParameterFromSource('atc'); //if there is an animated text countdown background, set that to bg string
       }
       else {
           bgstring = "none"; //hypothetically not necessary since that's already the value but there just in case
       }
   
-      if(parameter('endingsound')){
-          document.getElementById("audioLink").value = atob(parameter('endingsound'));
+      if(getParameterFromSource('endingsound')){
+          document.getElementById("audioLink").value = atob(getParameterFromSource('endingsound'));
       }
   
       
@@ -417,8 +472,8 @@ if(!parameter('schedule')){
   ];
   
   // Check if any color parameters exist
-  const hasAnyColorParams = legacyParams.some(({param}) => parameter(param)) || 
-      Array.from({length: 4}, (_, i) => i + 5).some(i => parameter(`color${i}`));
+  const hasAnyColorParams = legacyParams.some(({param}) => getParameterFromSource(param)) || 
+      Array.from({length: 4}, (_, i) => i + 5).some(i => getParameterFromSource(`color${i}`));
   
   if (!hasAnyColorParams) {
       // No color parameters found, set up default colors
@@ -433,8 +488,8 @@ if(!parameter('schedule')){
   } else {
       // Handle existing color parameters
       legacyParams.forEach(({param, id, cssVar}) => {
-        if (parameter(param)) {
-            if (parameter(param) === "null") {
+        if (getParameterFromSource(param)) {
+            if (getParameterFromSource(param) === "null") {
                 console.log(`Colors(${id.slice(-1)}) could not be imported properly.`);
             } else {
                 const picker = document.getElementById(id);
@@ -442,7 +497,7 @@ if(!parameter('schedule')){
                 picker.addEventListener('dragend', handleDragEnd);
                 picker.addEventListener('dragover', handleDragOver);
                 picker.addEventListener('drop', handleDrop);
-                const paramValue = parameter(param);
+                const paramValue = getParameterFromSource(param);
                 if (paramValue === 'fg') {
                     // This is a foreground color
                     if (!document.getElementById(id)) {
@@ -478,7 +533,7 @@ if(!parameter('schedule')){
   
       // Handle additional color parameters (color5 through color8)
       for (let i = 5; i <= 8; i++) {
-        const colorParam = parameter(`color${i}`);
+        const colorParam = getParameterFromSource(`color${i}`);
         if (colorParam && colorParam !== "null") {
             if (colorParam === 'fg') {
                 // This is a foreground color
@@ -513,7 +568,7 @@ if(!parameter('schedule')){
 }
   
       //set up countdown schedules
-      if(parameter("schedule") !== "null" && parameter("schedule")){  
+      if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("schedule")){  
           document.getElementById("clock").style.display = "none"; //hide clock
           document.getElementById("countdowntitle").style.display = "none"; //hide title
       document.getElementById("optionsdatecontainer").style.display = "none"; //hide end date area of options
@@ -527,7 +582,7 @@ if(!parameter('schedule')){
       document.querySelector(".schedule-editor").style.display = ""; //show editor
       document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
   
-          if(!parameter("date")){
+          if(!getParameterFromSource("date")){
               document.getElementById("autopilotpopup").remove(); //removes the Autopilot popup if a schedule exists
               document.getElementById("autopilotpopupmobile").remove(); //same with mobile Autopilot popup   
           }
@@ -540,23 +595,23 @@ if(!parameter('schedule')){
       }
   
       //fonts or typefaces
-      if (parameter('typeface')) {
-          if (decodeURIComponent(parameter('typeface')) == "Fredoka One") { //decode URI Component simply replaces %20 with a space, etc
+      if (getParameterFromSource('typeface')) {
+          if (decodeURIComponent(getParameterFromSource('typeface')) == "Fredoka One") { //decode URI Component simply replaces %20 with a space, etc
               FontFredoka('auto'); //calls the function for said font
           }
-          else if (decodeURIComponent(parameter('typeface')) == "Poppins") {
+          else if (decodeURIComponent(getParameterFromSource('typeface')) == "Poppins") {
               FontPoppins('auto');
           }
-          else if (decodeURIComponent(parameter('typeface')) == "Yeseva One") {
+          else if (decodeURIComponent(getParameterFromSource('typeface')) == "Yeseva One") {
               FontDMSerif('auto'); //fallback for old depreciated font option Yeseva, replaced by DM Serif Display
           }
-          else if (decodeURIComponent(parameter('typeface')) == "DM Serif Display") {
+          else if (decodeURIComponent(getParameterFromSource('typeface')) == "DM Serif Display") {
               FontDMSerif('auto');
           }
-          else if (decodeURIComponent(parameter('typeface')) == "Orbitron") {
+          else if (decodeURIComponent(getParameterFromSource('typeface')) == "Orbitron") {
               FontMichroma('auto');
           }
-          else if (decodeURIComponent(parameter('typeface')) == "Michroma") {
+          else if (decodeURIComponent(getParameterFromSource('typeface')) == "Michroma") {
             FontMichroma('auto');
         }
       }
@@ -567,12 +622,12 @@ if(!parameter('schedule')){
 
   
           //date
-          if (parameter('date')) {
-              if(parameter('date').includes('T') && parameter('date').includes(':') ){ //if there is an included time, it will be saved as 12/34/56T12:34, this is checking for the T and the :
-                 document.querySelector(".datepicker").value = parameter('date'); 
+          if (getParameterFromSource('date')) {
+              if(getParameterFromSource('date').includes('T') && getParameterFromSource('date').includes(':') ){ //if there is an included time, it will be saved as 12/34/56T12:34, this is checking for the T and the :
+                 document.querySelector(".datepicker").value = getParameterFromSource('date'); 
               }
               else{
-                  document.querySelector(".datepicker").value = parameter('date') + 'T00:00'; //if there is no included time, and it's just 12/34/56 for example, it adds the T00:00 for midnight. backwards compatibility for before time was supported
+                  document.querySelector(".datepicker").value = getParameterFromSource('date') + 'T00:00'; //if there is no included time, and it's just 12/34/56 for example, it adds the T00:00 for midnight. backwards compatibility for before time was supported
               }
               var countDownDate = new Date(document.querySelector(".datepicker").value); //sets the datepicker in settings to the correct date + time
       
@@ -583,7 +638,7 @@ if(!parameter('schedule')){
               const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
       
 
-    if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !parameter("createnew")) { // if countdowns have been saved
+    if ((savedLinks) && (savedLinks !== '[]' && savedLinks !== '' && savedLinks !== 'null') && !getParameterFromSource("createnew")) { // if countdowns have been saved
         const fullUrl = window.location.href;
         const urlParts = fullUrl.split('#');
         let hasMatchingCountdown = false;
@@ -629,11 +684,11 @@ if(!parameter('schedule')){
       }
       
   
-      if(parameter("schedule") !== "null" && parameter("schedule")){
+      if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("schedule")){
           document.querySelector(".datepicker").value = '9999-12-30T00:00';
       }
 
-      if ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || parameter("atc") !== "none") {
+      if ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || getParameterFromSource("atc") !== "none") {
         document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
         document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
     }
@@ -696,18 +751,18 @@ if(!parameter('schedule')){
       }
   
       //countdown title
-      if (parameter('title')) { 
-          document.getElementById("countdowntitle").value = decodeURIComponent(parameter('title')); //set the front-facing countdown title input to the parameter value, decoding all %20s and such
+      if (getParameterFromSource('title')) { 
+          document.getElementById("countdowntitle").value = decodeURIComponent(getParameterFromSource('title')); //set the front-facing countdown title input to the parameter value, decoding all %20s and such
           setcountdowntitle("front"); //tell the setcountdowntitle function to set the back (settings) to the same. sending which it came from the the function, not which to send it to
-          document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + decodeURIComponent(parameter('title')));
+          document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + decodeURIComponent(getParameterFromSource('title')));
       }
   
   
       //bg again this time to finish the job
       var bgstring = "none";
-      if (parameter('atc') && parameter('atc') != "none" && parameter('atc') != "undefined") { //checking it has a good value
-          setbg(parameter('atc'), 'auto'); //setbg function takes the number and sets it to that bg, auto tells it that it was run not from settings and not to setcountdowngeneral
-          bgstring = parameter('atc'); //set the var to the param
+      if (getParameterFromSource('atc') && getParameterFromSource('atc') != "none" && getParameterFromSource('atc') != "undefined") { //checking it has a good value
+          setbg(getParameterFromSource('atc'), 'auto'); //setbg function takes the number and sets it to that bg, auto tells it that it was run not from settings and not to setcountdowngeneral
+          bgstring = getParameterFromSource('atc'); //set the var to the param
       }
       else {
           bgstring = 'none';
@@ -720,7 +775,7 @@ if(!parameter('schedule')){
       }
   
           //countdown schedule styling
-          if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+          if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("atc") == "none"){
               document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
           }
           else{
@@ -736,7 +791,7 @@ if(!parameter('schedule')){
           ConfettiModeNone();
       }else{
           ConfettiModeEmoji();
-          document.getElementById("confettiEmojiPicker").value = decodeURIComponent(parameter("confettitype"));
+          document.getElementById("confettiEmojiPicker").value = decodeURIComponent(getParameterFromSource("confettitype"));
       }
   
   if(new Date(document.querySelector(".datepicker").value).getMonth() === 11 && new Date(document.querySelector(".datepicker").value).getDate() === 25) { // December is month 11 (0-based)
@@ -745,13 +800,13 @@ if(!parameter('schedule')){
       document.querySelector('meta[property="og:image"]').setAttribute('content', 'sharepanels/defaultshare.jpg');
   }
 
-  if(parameter('endingsound')){
+  if(getParameterFromSource('endingsound')){
   showToast('This Countdown has an ending sound- tap or click anywhere to allow', 'persistent');
 }
 
 
 function handleUserInteraction() {
-    if(parameter('endingsound')){
+    if(getParameterFromSource('endingsound')){
     if (!userInteracted) {
       userInteracted = true;
       setTimeout(() => removeToast(document.getElementById('enableaudiotoast')), 10);
@@ -765,6 +820,9 @@ function handleUserInteraction() {
   
   window.addEventListener('click', handleUserInteraction);
   window.addEventListener('keydown', handleUserInteraction);
+
+
+
 
 //confetti groundwork for snowflakes and emoji
 class ConfettiManager {
@@ -1091,7 +1149,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
     }
   
       function speed1() {
-          if (!isNaN(parameter("atc"))) {
+          if (!isNaN(getParameterFromSource("atc"))) {
               document.getElementById("clock").classList.add("staticclock");
               document.getElementById("bg1").classList.add("bg-color");
               document.getElementById("bg1").classList.remove("bg-color-slow");
@@ -1106,7 +1164,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               document.getElementById("clock").classList.add("clock");
           }
   
-          if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+          if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("atc") == "none"){
               document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
               document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredfast");
               document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredslow");
@@ -1118,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           }
       }
       function speed2() {
-          if (!isNaN(parameter("atc"))) {
+          if (!isNaN(getParameterFromSource("atc"))) {
               document.getElementById("clock").classList.add("staticclock");
               document.getElementById("bg1").classList.remove("bg-color");
               document.getElementById("bg1").classList.add("bg-color-slow");
@@ -1133,7 +1191,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               document.getElementById("clock").classList.remove("clock");
           }
   
-          if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+          if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("atc") == "none"){
               document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
               document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredfast");
               document.getElementById("schedule-currentClass").classList.add("schedulebgcoloredslow");
@@ -1145,7 +1203,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           }
       }
       function speed3() {
-          if (!isNaN(parameter("atc"))) {
+          if (!isNaN(getParameterFromSource("atc"))) {
               document.getElementById("clock").classList.add("staticclock");
               document.getElementById("bg1").classList.remove("bg-color");
               document.getElementById("bg1").classList.remove("bg-color-slow");
@@ -1160,7 +1218,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               document.getElementById("clock").classList.remove("clock");
           }
   
-          if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+          if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("atc") == "none"){
               document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
               document.getElementById("schedule-currentClass").classList.add("schedulebgcoloredfast");
               document.getElementById("schedule-currentClass").classList.remove("schedulebgcoloredslow");
@@ -1333,7 +1391,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
       '&progress=' + document.getElementById("progressdatepicker").value + 
       '&progressposition=' + progressbarposition + 
           '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
-          '&schedule=' + parameter('schedule');
+          '&schedule=' + getParameterFromSource('schedule');
 
           var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + parameterstring;
           // Only update URL if it's actually different to avoid unnecessary history entries
@@ -1453,6 +1511,18 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           }
           return null;
       }
+
+      function getParameterFromSource(name){
+        var query = window.CountdownDataSource.substring(1);
+        var parameters = query.split('&');
+        for (var i = 0; i < parameters.length; i++) {
+            var pair = parameters[i].split('=');
+            if (pair[0] == name) {
+                return pair[1];
+            }
+        }
+        return null;
+      }
   
       //memory saver 
       document.addEventListener('visibilitychange', function () { //when the tab changes focus state
@@ -1498,7 +1568,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               document.body.scrollTop = document.documentElement.scrollTop = 0; //scroll to top for good measure
           }
           else { //if settings is already opened (Being closed)
-              if(parameter("schedule") != "null"){ //if user is using Countdown Schedule
+              if(getParameterFromSource("schedule") != "null"){ //if user is using Countdown Schedule
                   document.getElementById("schedule").style.display = ""; //unhide schedule
                   document.getElementById("clock").style.display = "none"; //hide clock
                   document.getElementById("countdowntitle").style.display = "none"; //hide title
@@ -1520,7 +1590,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
           showToast('Some changes have not been saved to Dashboard', 'save');	
           }
-          if ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || parameter("atc") !== "none") {
+          if ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || getParameterFromSource("atc") !== "none") {
             document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
             document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
         }
@@ -1532,7 +1602,7 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
 
           if(document.getElementById("progressdatepicker").value && document.getElementById("progressdatepicker").value !== "null"){
             document.getElementById("progress-bar").style.display = "";
-            if(parameter("atc") !== "none"){
+            if(getParameterFromSource("atc") !== "none"){
                 document.getElementById('progress').classList.remove("progresscolored");
                 document.getElementById('progress').classList.add("progressblur");
             }
@@ -1606,7 +1676,7 @@ function searchsettings() {
 }
   
       //grey out color pickers and theme color for background
-      if (!isNaN(parameter("atc"))) { //if animated background is enabled
+      if (!isNaN(getParameterFromSource("atc"))) { //if animated background is enabled
           document.getElementById("animatedbackground").classList.remove("hidden"); //unhide background
           document.querySelector("meta[name=theme-color]").setAttribute("content", '#141414'); //sets the theme color to grey
           disablecolor(); //greys out color picker
@@ -1616,7 +1686,7 @@ function searchsettings() {
           if (document.getElementById("clock") && document.getElementById("clock").style.display !== "none") { //if the clock exists and settings is not open
               document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
           }
-          else if(parameter("schedule") !== "null" && parameter("schedule")){ //if using schedule instead of clock
+          else if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("schedule")){ //if using schedule instead of clock
               document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("schedule-currentClass")).getPropertyValue("background-color")); //sets the theme color to the current foreground color
           }
           else{ //should never be triggered(?) mostly a fallback
@@ -1654,7 +1724,7 @@ function searchsettings() {
         }
   
   
-          if (!isNaN(parameter("atc"))) {
+          if (!isNaN(getParameterFromSource("atc"))) {
               document.getElementById("clock").classList.remove("clock"); //remove colored normal clock
               document.getElementById("clock").classList.remove("clockslow"); //remove colored slow clock
               document.getElementById("clock").classList.remove("clockfast"); //remove colored fast clock
@@ -1673,7 +1743,7 @@ function searchsettings() {
               if (document.getElementById("clock") && document.getElementById("clock").style.display !== "none") { //if the clock exists and settings is not opened
                   document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("clock")).getPropertyValue("color")); //sets the theme color to the current foreground color
               }
-              else if(parameter("schedule") !== "null" && parameter("schedule")){ //if using schedule instead of clock
+              else if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("schedule")){ //if using schedule instead of clock
                   document.querySelector("meta[name=theme-color]").setAttribute("content", window.getComputedStyle(document.getElementById("schedule-currentClass")). getPropertyValue("background-color")); //sets the theme color to the current foreground color
               }
               else{ //should never be triggered(?) mostly a fallback
@@ -1686,7 +1756,7 @@ function searchsettings() {
           document.getElementById("preloader").classList.add("hidden"); //hide loading screen
 
           if(document.getElementById("progressdatepicker").value && document.getElementById("progressdatepicker").value !== "null"){
-            if(parameter("atc") !== "none"){
+            if(getParameterFromSource("atc") !== "none"){
                 document.getElementById('progress').classList.remove("progresscolored");
                 document.getElementById('progress').classList.add("progressblur");
             }
@@ -1712,7 +1782,7 @@ function searchsettings() {
           var seconds = Math.floor((distance % (1000 * 60)) / 1000);
   
   
-          if(parameter("schedule") == "null"){ //will only trigger when there is no schedule active. schedule titles are handled with the cdschedule code.
+          if(getParameterFromSource("schedule") == "null"){ //will only trigger when there is no schedule active. schedule titles are handled with the cdschedule code.
               if (document.getElementById("countdowntitle").value != "") { //if the countdown has a title
                   if (days > 0) { //if it's over 0 days, we use the days text with the title since there is a title
                       if(days == 1){
@@ -1926,12 +1996,12 @@ if(enablecardmode == "1"){
      cardmodemanager();
   }
   
-if(parameter('progressposition') && parameter('progressposition') !== "null"){ //if the user has their progress bar enabled
+if(getParameterFromSource('progressposition') && getParameterFromSource('progressposition') !== "null"){ //if the user has their progress bar enabled
 
-    if(parameter('progressposition') == 'bar'){
+    if(getParameterFromSource('progressposition') == 'bar'){
         document.getElementById("progress-bar").classList.add("progress-bar");
         document.getElementById("progress-bar").classList.remove("progress-bar-fullscreen");
-    }else if(parameter('progressposition') == 'fs'){
+    }else if(getParameterFromSource('progressposition') == 'fs'){
         document.getElementById("progress-bar").classList.remove("progress-bar");
         document.getElementById("progress-bar").classList.add("progress-bar-fullscreen");
     }
@@ -1994,7 +2064,7 @@ function stopConfettiManagerAnimation(){
     function startConfettiManagerAnimation(){
                       if (!getCookie('coce')) { //if disable confetti is not enabled, 
                   if(confettiType == "1"){ //default confetti
-                      if(parameter("atc") == "none"){
+                      if(getParameterFromSource("atc") == "none"){
                       const colorPickers = document.querySelectorAll('.colorpicker');
                       confetticolorstring = Array.from(colorPickers).map(picker => picker.value).join(', ');
                       }else{
@@ -2011,7 +2081,7 @@ function stopConfettiManagerAnimation(){
                           bg11colors = '[#3177FF, #0029FF, #00568D, #0069E4]';
                           bg12colors = '[#C931FF, #BD00FF, #60008D, #A200E4]';
   
-                          confetticolorstring = eval(`bg${parameter("atc")}colors`);
+                          confetticolorstring = eval(`bg${getParameterFromSource("atc")}colors`);
                       }
   
                       startConfetti(confetticolorstring); //START THE PARTY!!
@@ -2071,7 +2141,7 @@ function stopConfettiManagerAnimation(){
           }
 
 
-          if(!parameter('cardmode') == "1"){
+          if(!getParameterFromSource('cardmode') == "1"){
             // Use debounce to limit execution to once every 30 seconds
             const debouncedCookieSync = debounce(() => {
              syncCookiesToCloud();
@@ -2483,7 +2553,7 @@ function contrast(){ //increase contrast set or remove cookie
             window.bgTimeoutId = null;
         }
 
-        if ((method != "auto") && (parameter("atc") == bgint)) {
+        if ((method != "auto") && (getParameterFromSource("atc") == bgint)) {
             //the selected background is already the set background - turn off background
             enablecolor();
             showToast("Disabling the background enables foreground colors", 'info');
@@ -2503,7 +2573,7 @@ function contrast(){ //increase contrast set or remove cookie
                 }
             }, 1000); // Match this to your transition duration
         }
-        else if ((parameter("atc") == "none") && bgint != "none") {
+        else if ((getParameterFromSource("atc") == "none") && bgint != "none") {
             //param is none, but the selected background is not - turn on and set background
             disablecolor();
             showToast('Enabling a background disables the foreground colors', 'info');
@@ -2528,7 +2598,7 @@ function contrast(){ //increase contrast set or remove cookie
             bgstring = bgint;
             bggotdisabled = "false";
         }
-        else if ((parameter("atc") != "none") && (document.getElementById("bg1").src != "Backgrounds/enhancedbackground_" + bgint + ".png")) {
+        else if ((getParameterFromSource("atc") != "none") && (document.getElementById("bg1").src != "Backgrounds/enhancedbackground_" + bgint + ".png")) {
             //parameter is not none, but the selected and set backgrounds are different - change the bg w/o turning on or off
             document.getElementById("bg1").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
             document.getElementById("bg2").src = "Backgrounds/enhancedbackground_" + bgint + ".png";
@@ -2583,7 +2653,7 @@ function contrast(){ //increase contrast set or remove cookie
           updateSaveButtonText();
   
           //countdown schedule styling
-          if(parameter("schedule") !== "null" && parameter("atc") == "none"){
+          if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("atc") == "none"){
               document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
           }
           else{
@@ -2831,7 +2901,7 @@ function contrast(){ //increase contrast set or remove cookie
           const opacity = Math.max(0, 1 - distance / 300) / 3;
   
           // Set element opacity
-          if (((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) || parameter("atc") !== "none") {
+          if (((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) || getParameterFromSource("atc") !== "none") {
             document.getElementById("countdowntitle").style.border = `1px solid rgba(255, 255, 255, ${opacity})`;
         document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
         document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
@@ -2907,7 +2977,7 @@ function contrast(){ //increase contrast set or remove cookie
   
           const newColorPicker = document.createElement('input');
           newColorPicker.className = 'colorpicker';
-          if(parameter("atc")){
+          if(getParameterFromSource("atc")){
             newColorPicker.classList.add("disabledcolorpicker");
           }
           newColorPicker.id = `color${colorPickerCount}`;
@@ -3072,7 +3142,7 @@ function contrast(){ //increase contrast set or remove cookie
 
       document.getElementById("schedule-eventTitle").scrollIntoView();
 
-      if(parameter("atc") == "none"){
+      if(getParameterFromSource("atc") == "none"){
         document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
     }
     else{
@@ -3103,7 +3173,7 @@ function contrast(){ //increase contrast set or remove cookie
           }
   
           function schedule_loadScheduleFromURL() {
-              const encodedSchedule = parameter('schedule');
+              const encodedSchedule = getParameterFromSource('schedule');
               if (encodedSchedule && encodedSchedule !== "null") {
                   const decoded = schedule_decodeSchedule(encodedSchedule);
                   schedule_events = decoded.schedule_events;
@@ -3896,11 +3966,11 @@ document.addEventListener('DOMContentLoaded', function() {
                       const remainingTime = currentEvent.endTime - now;
                       const totalDuration = currentEvent.endTime - currentEvent.startTime;
                       const progress = 100 - (remainingTime / totalDuration * 100);
-                      if(parameter("progressposition") && parameter("progressposition") !== 'null'){
-                        if(parameter('progressposition') == 'bar'){
+                      if(getParameterFromSource("progressposition") && getParameterFromSource("progressposition") !== 'null'){
+                        if(getParameterFromSource('progressposition') == 'bar'){
                             document.getElementById("schedule-progress-bar").classList.add("schedule-progress-bar");
                             document.getElementById("schedule-progress-bar").classList.remove("schedule-progress-bar-fullscreen");
-                        }else if(parameter('progressposition') == 'fs'){
+                        }else if(getParameterFromSource('progressposition') == 'fs'){
                             document.getElementById("schedule-progress-bar").classList.remove("schedule-progress-bar");
                             document.getElementById("schedule-progress-bar").classList.add("schedule-progress-bar-fullscreen");
                         }
@@ -3963,7 +4033,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   document.getElementById('schedule-remainingText').textContent = '';
                   document.getElementById('schedule-progress').style.width = '0%';
                   document.getElementById('schedule-upcomingClasses').innerHTML = '';
-                  if(parameter("schedule") !== "null" && parameter("schedule")){
+                  if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("schedule")){
                       startConfettiManagerAnimation();
                   }
                   return;
@@ -4180,7 +4250,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
   
   function magictitle(){
-      if(parameter("schedule") !== "null" && parameter("schedule")){
+      if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("schedule")){
           document.getElementById("countdowntitle").value = "Schedule";
           document.getElementById("magictitle").classList.add("magictitle-success");
           setTimeout(function() {
@@ -4469,7 +4539,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.documentElement.style.setProperty('--collaborationcardbg', '#d3b3ff');
             document.documentElement.style.setProperty('--collaborationcardbuttonshadow', '#343434');
             document.documentElement.style.setProperty('--collaborationbuttonbg', '#000000');
-            if(parameter("atc")== "none"){
+            if(getParameterFromSource("atc")== "none"){
                 document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
                 document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
             }
@@ -4506,7 +4576,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
     }
 const countdownTitle = document.getElementById("countdowntitle");
 if (countdownTitle) {
-    if (((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) || parameter("atc") !== "none") {
+    if (((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) || getParameterFromSource("atc") !== "none") {
         countdownTitle.style.border = `1px solid rgba(255, 255, 255, 0)`;
         document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
         document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
