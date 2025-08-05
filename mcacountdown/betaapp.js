@@ -13,61 +13,6 @@ function debounce(func, wait) {
     };
 }
 
-async function getCountdownData(id) {
-    try {
-        const { data, error } = await window.supabaseClient
-            .from('countdown')
-            .select('data')
-            .eq('id', id)
-            .single();
-        
-        if (error) {
-            console.error('Error fetching countdown data:', error);
-            return null;
-        }
-        
-        if (data && data.data) {
-            // Strip surrounding quotes if present
-            let queryString = data.data;
-            if (queryString.startsWith('"') && queryString.endsWith('"')) {
-                queryString = queryString.slice(1, -1);
-            }
-            return queryString;
-        } else {
-            console.warn('No data found for ID:', id);
-            return null;
-        }
-    } catch (error) {
-        console.error('Error in getCountdownData:', error);
-        return null;
-    }
-}
-
-let obtaineddata = false;
-
-// Test the function (only run once)
-    (async function GetDataSource() {
-        if (!obtaineddata) {
-            if(parameter('id')){
-                const sourceCountdowndata = await getCountdownData(parameter('id'));
-                if (sourceCountdowndata) {
-                    window.CountdownDataSource = sourceCountdowndata;
-                    obtaineddata = true;
-                }
-            } else if(parameter('date') || parameter('schedule')){
-                window.CountdownDataSource = window.location.search;
-                obtaineddata = true;
-            }
-            else{
-                //need to init a new countdown, as there are no parameters
-            }
-            if(!parameter('cardmode')){
-            alert(window.CountdownDataSource);
-            alert("title param " + getParameterFromSource('title'));
-            }
-        }
-    })();
-
 function updateTitlePosition(fontSize) {
     // Calculate title positioning based on font size
     // Larger font sizes need the title positioned higher
@@ -357,7 +302,7 @@ function cardmodemanager(){
   };
   
   
-          document.addEventListener("DOMContentLoaded", function () {
+          document.addEventListener("data-ready", function () {
               updateColorAnimations();
           var cookieBanner = document.getElementById("cookie-banner");
           var acceptButton = document.getElementById("accept-cookies");
@@ -383,6 +328,7 @@ function cardmodemanager(){
       enablecardmode = "0";
   }
   
+
       //onload url parameter translation into the correlating customization settings
                  //confetti
                   var confettiType = "none"; //declaring confettitype to none at the very beginning so it's able to be changed anywhere
@@ -696,59 +642,7 @@ if(!getParameterFromSource('schedule')){
         document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
         document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
     } 
-  
-      //autopilot onclick animation
-      function autopilotsparkle(event) {
-          // Check if device is desktop (not touch device and window width > 768px)
-          if ('ontouchstart' in window || window.innerWidth <= 768) {
-              return; // Exit function if not on desktop
-          }
-  
-          const create_sparkle = (x, y) => {
-              const sparkle = document.createElement('div');
-              sparkle.innerHTML = `
-                  <svg viewBox="0 0 100 100" width="20" height="20">
-                      <path d="M50 0 L60 40 L100 50 L60 60 L50 100 L40 60 L0 50 L40 40 Z" 
-                            fill="url(#grad)" />
-                      <defs>
-                          <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" style="stop-color: #00FF5E; stop-opacity:1" />
-                              <stop offset="100%" style="stop-color: #03a662; stop-opacity:1" />
-                          </linearGradient>
-                      </defs>
-                  </svg>
-              `;
-              sparkle.style.position = 'absolute';
-              sparkle.style.pointerEvents = 'none';
-              sparkle.style.left = `${x - 10}px`;
-              sparkle.style.top = `${y - 10}px`;
-              sparkle.style.transform = 'scale(1)';
-              sparkle.style.opacity = '1';
-              sparkle.style.transition = 'transform 0.8s ease-out, opacity 0.8s ease-out';
-      
-              document.body.appendChild(sparkle);
-      
-              const angle = Math.random() * 2 * Math.PI;
-              const distance = 50 + Math.random() * 30;
-              const offsetX = Math.cos(angle) * distance;
-              const offsetY = Math.sin(angle) * distance;
-      
-              requestAnimationFrame(() => {
-                  sparkle.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(0.5)`;
-                  sparkle.style.opacity = '0';
-              });
-      
-              setTimeout(() => sparkle.remove(), 1000);
-          };
-  
-          // Only handle mouse events now (removed touch events)
-          const x = event.pageX;
-          const y = event.pageY;
-  
-          for (let i = 0; i < 5; i++) {
-              create_sparkle(x, y);
-          }
-      }
+
   
       //countdown title
       if (getParameterFromSource('title')) { 
@@ -802,6 +696,60 @@ if(!getParameterFromSource('schedule')){
 
   if(getParameterFromSource('endingsound')){
   showToast('This Countdown has an ending sound- tap or click anywhere to allow', 'persistent');
+}
+  
+
+   //autopilot onclick animation
+   function autopilotsparkle(event) {
+    // Check if device is desktop (not touch device and window width > 768px)
+    if ('ontouchstart' in window || window.innerWidth <= 768) {
+        return; // Exit function if not on desktop
+    }
+
+    const create_sparkle = (x, y) => {
+        const sparkle = document.createElement('div');
+        sparkle.innerHTML = `
+            <svg viewBox="0 0 100 100" width="20" height="20">
+                <path d="M50 0 L60 40 L100 50 L60 60 L50 100 L40 60 L0 50 L40 40 Z" 
+                      fill="url(#grad)" />
+                <defs>
+                    <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color: #00FF5E; stop-opacity:1" />
+                        <stop offset="100%" style="stop-color: #03a662; stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+            </svg>
+        `;
+        sparkle.style.position = 'absolute';
+        sparkle.style.pointerEvents = 'none';
+        sparkle.style.left = `${x - 10}px`;
+        sparkle.style.top = `${y - 10}px`;
+        sparkle.style.transform = 'scale(1)';
+        sparkle.style.opacity = '1';
+        sparkle.style.transition = 'transform 0.8s ease-out, opacity 0.8s ease-out';
+
+        document.body.appendChild(sparkle);
+
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = 50 + Math.random() * 30;
+        const offsetX = Math.cos(angle) * distance;
+        const offsetY = Math.sin(angle) * distance;
+
+        requestAnimationFrame(() => {
+            sparkle.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(0.5)`;
+            sparkle.style.opacity = '0';
+        });
+
+        setTimeout(() => sparkle.remove(), 1000);
+    };
+
+    // Only handle mouse events now (removed touch events)
+    const x = event.pageX;
+    const y = event.pageY;
+
+    for (let i = 0; i < 5; i++) {
+        create_sparkle(x, y);
+    }
 }
 
 
@@ -978,7 +926,7 @@ class ConfettiManager {
             }
           }
 
-          document.addEventListener('DOMContentLoaded', () => {
+          document.addEventListener('data-ready', () => {
             const input = document.getElementById('confettiEmojiPicker');
             if (!input) return;
             
@@ -1065,7 +1013,7 @@ function initFloatingIcons() {
       });
 }
 
-document.addEventListener('DOMContentLoaded', initFloatingIcons);
+document.addEventListener('data-ready', initFloatingIcons);
           
         
   
@@ -1393,18 +1341,31 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
           '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
           '&schedule=' + getParameterFromSource('schedule');
 
+          window.CountdownDataSource = parameterstring;
+
           var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + parameterstring;
           // Only update URL if it's actually different to avoid unnecessary history entries
-          if (window.location.href !== refresh) {
-            window.history.replaceState({ path: refresh }, '', refresh); //update current URL without creating new history entry
-          }
-  
-          document.getElementById("linkinput").value = refresh; //refresh the link
-          document.getElementById("previewiframe").src = refresh + "&cardmode=true";
-          document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(cdtitle);
-          if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
-            document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
+          if(window.CountdownDataSourceOrigin == "url"){
+            if (window.location.href !== refresh) {
+                window.history.replaceState({ path: refresh }, '', refresh); //update current URL without creating new history entry
             }
+  
+            document.getElementById("linkinput").value = refresh; //refresh the link
+            document.getElementById("previewiframe").src = refresh + "&cardmode=true";
+            document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(cdtitle);
+            if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
+                document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
+            }
+          }else if (window.CountdownDataSourceOrigin == "db"){
+            var dbrefresh = window.location.protocol + "//" + window.location.host + window.location.pathname + "?id=" + window.CountdownDataID;
+            window.history.replaceState({path: dbrefresh}, '', dbrefresh);
+            document.getElementById("linkinput").value = dbrefresh; //refresh the link
+            document.getElementById("previewiframe").src = refresh + "&cardmode=true";
+            document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(getParameterFromSource('title'));
+            if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
+                document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
+            }
+          }
           makeQR(); //refresh the QR code
           
           // Initialize title position based on current clock font size
@@ -1474,8 +1435,8 @@ document.addEventListener('DOMContentLoaded', initFloatingIcons);
               
               console.log("uploading cd to db " + countdownData);
               
-              // Generate countdown ID
-              const countdownId = generateShortId();
+              // Use existing ID if available, otherwise generate new one
+              const countdownId = window.CountdownDataID || generateShortId();
               console.log("uploading cd to db " + countdownId);
               
               // Save to database
@@ -3718,7 +3679,7 @@ function schedule_addExceptionDay() {
 }
 
 // Add event listeners for the exception day dropdown
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('data-ready', function() {
     const exceptionDayDropdown = document.getElementById('schedule-exceptionDay');
     if (exceptionDayDropdown) {
         const exceptionDayButton = exceptionDayDropdown.querySelector('.dropdown-button');
