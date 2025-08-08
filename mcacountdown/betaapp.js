@@ -1,6 +1,9 @@
 let userInteracted = false;
 
 // Debounce function for limiting how often a function can be called
+// Global variables for database sync cooldown
+let isInCooldown = false;
+
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -207,10 +210,16 @@ syncCookiesToCloud();
   //		return "Some of your changes have not been saved to Dashboard. Are you sure you want to close this page?";
   //	}
   //}
+
+  function unloadPage(){ 
+    if(isInCooldown){
+        return "Some of your changes have not been saved yet. Are you sure you want to close this page?";
+    }
+}
   
-  //if(enablecardmode !== "1"){
-  //window.onbeforeunload = unloadPage;
-  //}
+  if(parameter('cardmode') !== "1"){
+  window.onbeforeunload = unloadPage;
+  }
   
   if(parameter('cardmode')){
     cardmodemanager();
@@ -1401,6 +1410,11 @@ document.addEventListener('data-ready', initFloatingIcons);
           const now = Date.now();
           if (now - lastDatabaseSync < DATABASE_SYNC_COOLDOWN) {
             console.log("uploading cd to db - stopped via cooldown");
+              isInCooldown = true;
+              // Set a timeout to reset the cooldown flag after the cooldown period
+              setTimeout(() => {
+                  isInCooldown = false;
+              }, DATABASE_SYNC_COOLDOWN - (now - lastDatabaseSync));
               return;
           }
           
@@ -1455,6 +1469,7 @@ document.addEventListener('data-ready', initFloatingIcons);
               } else {
                   console.log('[syncCountdownToDatabase] Countdown synced to database');
                   lastDatabaseSync = now;
+                  isInCooldown = false;
               }
           } catch (error) {
               console.error('[syncCountdownToDatabase] Error during database sync:', error);
