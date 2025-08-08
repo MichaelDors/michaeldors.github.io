@@ -5183,23 +5183,41 @@ function searchsettings() {
         return cookieString;
     }
 
+let lastCookieSync = 0;
+let lastSyncedCookies = "";
+
 function syncCookiesToCloud() {
+    const now = Date.now();
+    // 10s cooldown
+    if (now - lastCookieSync < 10000) {
+        console.log('[betaapp] Skipping cookie sync: cooldown active');
+        return;
+    }
+
     if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
         window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
             if (session?.user) {
                 try {
                     // Get local cookies as the source of truth
                     const localCookies = getAllCookiesAsString();
-                    
+
+                    // Only sync if cookies have changed since last sync
+                    if (localCookies === lastSyncedCookies) {
+                        console.log('[betaapp] Skipping cookie sync: no changes detected');
+                        return;
+                    }
+
                     // Update cloud with local settings (no merging)
                     const { error: updateError } = await window.supabaseClient
                         .from('users')
                         .update({ settings: localCookies })
                         .eq('id', session.user.id);
-                    
+
                     if (updateError) {
                         console.error('[betaapp] Error updating settings:', updateError);
                     } else {
+                        lastCookieSync = Date.now();
+                        lastSyncedCookies = localCookies;
                         console.log('[betaapp] Settings synced to cloud successfully');
                     }
                 } catch (updateError) {
