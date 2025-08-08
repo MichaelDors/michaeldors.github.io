@@ -1440,7 +1440,7 @@ document.addEventListener('data-ready', initFloatingIcons);
               console.log("uploading cd to db " + countdownId);
               
               // Save to database
-              const { error } = await supabaseClient
+              const { error } = await window.supabaseClient
                   .from('countdown')
                   .upsert({
                       id: countdownId,
@@ -4181,7 +4181,7 @@ document.addEventListener('data-ready', function() {
   async function syncToCloud(links) {
     try {
         // Check if user is authenticated
-        const { data } = await supabaseClient.auth.getUser();
+        const { data } = await window.supabaseClient.auth.getUser();
         if (!data?.user) {
             console.log('[savetodash] User not authenticated, skipping cloud sync');
             return;
@@ -4190,7 +4190,7 @@ document.addEventListener('data-ready', function() {
         console.log('[savetodash] Syncing to cloud for user:', data.user.id);
         
         // Save to cloud
-        const { error } = await supabaseClient
+        const { error } = await window.supabaseClient
             .from('user_dashboards')
             .upsert({
                 user_id: data.user.id,
