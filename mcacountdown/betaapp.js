@@ -5187,9 +5187,13 @@ let lastCookieSync = 0;
 let lastSyncedCookies = "";
 
 function syncCookiesToCloud() {
+    // Ensure lastCookieSync and lastSyncedCookies are defined before use
+    if (typeof lastCookieSync === "undefined") window.lastCookieSync = 0;
+    if (typeof lastSyncedCookies === "undefined") window.lastSyncedCookies = "";
+
     const now = Date.now();
     // 10s cooldown
-    if (now - lastCookieSync < 10000) {
+    if (now - window.lastCookieSync < 10000) {
         console.log('[betaapp] Skipping cookie sync: cooldown active');
         return;
     }
@@ -5202,7 +5206,7 @@ function syncCookiesToCloud() {
                     const localCookies = getAllCookiesAsString();
 
                     // Only sync if cookies have changed since last sync
-                    if (localCookies === lastSyncedCookies) {
+                    if (localCookies === window.lastSyncedCookies) {
                         console.log('[betaapp] Skipping cookie sync: no changes detected');
                         return;
                     }
@@ -5216,8 +5220,8 @@ function syncCookiesToCloud() {
                     if (updateError) {
                         console.error('[betaapp] Error updating settings:', updateError);
                     } else {
-                        lastCookieSync = Date.now();
-                        lastSyncedCookies = localCookies;
+                        window.lastCookieSync = Date.now();
+                        window.lastSyncedCookies = localCookies;
                         console.log('[betaapp] Settings synced to cloud successfully');
                     }
                 } catch (updateError) {
