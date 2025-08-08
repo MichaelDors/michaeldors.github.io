@@ -5183,13 +5183,11 @@ function searchsettings() {
         return cookieString;
     }
 
-let lastCookieSync = 0;
-let lastSyncedCookies = "";
 
 function syncCookiesToCloud() {
-    // Ensure lastCookieSync and lastSyncedCookies are defined before use
-    if (typeof lastCookieSync === "undefined") window.lastCookieSync = 0;
-    if (typeof lastSyncedCookies === "undefined") window.lastSyncedCookies = "";
+    // Use window-scoped variables to avoid ReferenceError on first use
+    if (typeof window.lastCookieSync === "undefined") window.lastCookieSync = 0;
+    if (typeof window.lastSyncedCookies === "undefined") window.lastSyncedCookies = "";
 
     const now = Date.now();
     // 10s cooldown
