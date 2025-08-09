@@ -53,7 +53,6 @@ let obtaineddata = false;
                 if (window.supabaseClient && window.supabaseClient.auth) {
                     const { data: { session } } = await window.supabaseClient.auth.getSession();
                     if (session && session.user) {
-                        window.CountdownDataID = id;
                         window.CountdownDataSourceOrigin = "db";
                         obtaineddata = true;
 
