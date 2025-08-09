@@ -1384,7 +1384,9 @@ document.addEventListener('data-ready', initFloatingIcons);
             var testingrefresh = window.location.protocol + "//" + window.location.host + window.location.pathname;
             window.history.replaceState({path: testingrefresh}, '', testingrefresh);
             document.getElementById("linkinput").value = testingrefresh; //refresh the link
-            document.getElementById("previewiframe").style.display = "none";
+            const previewIframe = document.getElementById("previewiframe");
+            document.querySelector('.preview-label').style.display = "none";
+            previewIframe.style.background = "center / contain no-repeat url('Backgrounds/loginpreview.png')";
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer";
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
                 document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
