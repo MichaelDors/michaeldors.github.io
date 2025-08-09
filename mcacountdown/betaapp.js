@@ -212,9 +212,11 @@ syncCookiesToCloud();
   //}
 
   function unloadPage(){ 
-    if(isInCooldown){
+    if(window.CountdownDataSourceOrigin == "testing"){
+        return "You need to log in to save your countdown. Do you still want to leave this page?";
+    }else if(isInCooldown){
         return "Some of your changes have not been saved yet. Are you sure you want to close this page?";
-    }
+    } 
 }
   
   if(parameter('cardmode') !== "1"){
