@@ -48,6 +48,23 @@ let obtaineddata = false;
             }
             else{
                 //need to init a new countdown, as there are no parameters
+                window.CountdownDataSource = window.location.search;
+                // If the user is logged in, set CountdownDataSourceOrigin to "db", else "url"
+                if (window.supabaseClient && window.supabaseClient.auth) {
+                    const { data: { session } } = await window.supabaseClient.auth.getSession();
+                    if (session && session.user) {
+                        window.CountdownDataID = id;
+                        window.CountdownDataSourceOrigin = "db";
+                        obtaineddata = true;
+
+                    } else {
+                        window.CountdownDataSourceOrigin = "testing";
+                        obtaineddata = true;
+                    }
+                } else {
+                    window.CountdownDataSourceOrigin = "testing";
+                    obtaineddata = true;
+                }
             }
 
             const script = document.createElement("script");

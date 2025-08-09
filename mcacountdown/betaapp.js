@@ -1374,6 +1374,19 @@ document.addEventListener('data-ready', initFloatingIcons);
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
                 document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
             }
+
+            // Sync to database after all variables are defined
+            syncCountdownToDatabase(parameterstring);
+          }
+          else if (window.CountdownDataSourceOrigin == "testing"){
+            var testingrefresh = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: testingrefresh}, '', testingrefresh);
+            document.getElementById("linkinput").value = testingrefresh; //refresh the link
+            document.getElementById("previewiframe").style.display = "none";
+            document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer";
+            if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
+                document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
+            }
           }
           makeQR(); //refresh the QR code
           
@@ -1384,9 +1397,6 @@ document.addEventListener('data-ready', initFloatingIcons);
               const fontSize = parseInt(computedStyle.fontSize);
               updateTitlePosition(fontSize);
           }
-          
-          // Sync to database after all variables are defined
-          syncCountdownToDatabase(parameterstring);
       }
   
       
