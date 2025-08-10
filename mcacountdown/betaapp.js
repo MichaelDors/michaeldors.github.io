@@ -1368,7 +1368,11 @@ document.addEventListener('data-ready', initFloatingIcons);
                 document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
             }
           }else if (window.CountdownDataSourceOrigin == "db"){
-            var dbrefresh = window.location.protocol + "//" + window.location.host + window.location.pathname + "?id=" + window.CountdownDataID;
+            if(window.CountdownDataID){
+                var dbrefresh = window.location.protocol + "//" + window.location.host + window.location.pathname + "?id=" + window.CountdownDataID;
+            }else{
+                var dbrefresh = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            }
             window.history.replaceState({path: dbrefresh}, '', dbrefresh);
             document.getElementById("linkinput").value = dbrefresh; //refresh the link
             document.getElementById("previewiframe").src = refresh + "&cardmode=true";
@@ -1377,7 +1381,6 @@ document.addEventListener('data-ready', initFloatingIcons);
                 document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
             }
 
-            // Sync to database after all variables are defined
             syncCountdownToDatabase(parameterstring);
           }
           else if (window.CountdownDataSourceOrigin == "testing"){
