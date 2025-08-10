@@ -1368,10 +1368,12 @@ document.addEventListener('data-ready', initFloatingIcons);
                 document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
             }
           }else if (window.CountdownDataSourceOrigin == "db"){
+            console.log("333 db");
             if(window.CountdownDataID){
                 var dbrefresh = window.location.protocol + "//" + window.location.host + window.location.pathname + "?id=" + window.CountdownDataID;
             }else{
                 var dbrefresh = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                console.log("333 no id");
             }
             window.history.replaceState({path: dbrefresh}, '', dbrefresh);
             document.getElementById("linkinput").value = dbrefresh; //refresh the link
@@ -1381,6 +1383,7 @@ document.addEventListener('data-ready', initFloatingIcons);
                 document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
             }
 
+            console.log("333 sync");
             syncCountdownToDatabase(parameterstring);
           }
           else if (window.CountdownDataSourceOrigin == "testing"){
