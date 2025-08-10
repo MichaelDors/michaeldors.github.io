@@ -1469,6 +1469,7 @@ document.addEventListener('data-ready', initFloatingIcons);
               // Use existing ID if available, otherwise generate new one
               const countdownId = window.CountdownDataID || generateShortId();
               window.CountdownDataID = countdownId;
+              console.log("id" + window.CountdownDataID);
               console.log("uploading cd to db " + countdownId);
               
               // Save to database
