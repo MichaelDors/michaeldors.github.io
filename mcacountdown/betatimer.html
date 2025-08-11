@@ -379,6 +379,7 @@
                     Sharing
                 </h2>
 
+                <div id="sharingcenter">
                 <input id="linkinput" class="input" style="margin-bottom:30px;"/>
                 <button style="background:transparent; border:none; outline:none; cursor:pointer">
                     <i title="Copy link" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlink(); showToast('Shareable link copied', 'success');"></i>
@@ -397,8 +398,9 @@
 		<p id="qrcodelinkcautiontext" class="texttip" style="margin-bottom:50px;">
                     Be cautious of sharing personal information
                 </p>
+            </div>
 
-                <div class="shareeventcard">
+                <div class="shareeventcard" id="loginpromptcard">
                   <div class="share-pfp-stack" style="cursor:default; pointer-events: none; user-select: none;">
                     <div class="share-pfp"><img src="https://picsum.photos/600" alt=""></div>
                     <div class="share-pfp"><img src="https://picsum.photos/500" alt=""></div>
@@ -406,9 +408,9 @@
                     <div class="share-pfp"><img src="https://picsum.photos/300" alt=""></div>
                     <div class="share-pfp"><img src="https://picsum.photos/200" alt=""></div>
                   </div>
-                  <div class="share-card-title">Share the moment with your people</div>
+                  <div class="share-card-title">Log in to save and share your Countdown</div>
                   <a class="blackbtn">
-                    Invite Collaborators
+                    Log in or Sign up
                   </a>
                 </div>
 
