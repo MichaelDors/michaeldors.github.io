@@ -1390,7 +1390,7 @@ document.addEventListener('data-ready', initFloatingIcons);
             const previewIframe = document.getElementById("previewiframe");
             document.querySelector('.preview-label').style.display = "none";
             previewIframe.style.background = "center / contain no-repeat url('Backgrounds/loginpreview.png')";
-            document.getElementById("loginpromptcard").style.display = "block";
+            document.getElementById("loginpromptcard").style.display = "flex";
             document.getElementById("sharingcenter").style.display = "none";
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer";
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
