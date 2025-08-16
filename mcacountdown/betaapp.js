@@ -3010,14 +3010,15 @@ function contrast(){ //increase contrast set or remove cookie
         else{
             document.querySelector(".clraddfg").classList.remove("clraddoff");
         }
-          newColorPicker.focus();
-          newColorPicker.click();
+
   
           adjustHeightOfColorPickerContainer();
           updateColorAnimations();
   
           if(method !== "auto"){
               SetCountDowngeneral();
+              newColorPicker.focus();
+              newColorPicker.click();
           }
       }
   }
