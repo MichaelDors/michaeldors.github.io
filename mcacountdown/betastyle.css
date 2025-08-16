@@ -1298,6 +1298,30 @@ backdrop-filter: blur(12px);
             margin-bottom:10px;
         }
 
+        /* Info Pane Styling */
+        #infosidebar{
+            height:100vh;
+            padding:none;
+            position:fixed;
+            top: 0;
+            bottom: 0;
+            overflow-y: scroll;
+            scrollbar-width: none;  /* Firefox */
+            -ms-overflow-style: none;  /* Internet Explorer 10+ */
+            float:left;
+            width:calc(100vw * 0.35); /* Make it a bit bigger than settings sidebar */
+            left:-5px;
+            top:-5px;
+            padding-top:75px;
+            background-color:var(--sidebarcolor);
+            z-index:10000;
+            white-space:nowrap;
+        }
+        #infosidebar::-webkit-scrollbar {
+            width:0;
+            background:transparent;
+        }
+
 
 .hidden {
     display: none;
@@ -1965,6 +1989,10 @@ backdrop-filter: blur(12px);
         }
         #settingssidebar{
             display:none;
+        }
+        
+        #infosidebar{
+            width: 100vw; /* Full width on mobile */
         }
 
         a{
@@ -3075,6 +3103,10 @@ filter: blur(40px);
 #toast-container {
   right: 50%;
   transform: translateX(50%);
+}
+
+#infosidebar {
+  width: 100vw; /* Full width on mobile */
 }
 }
 

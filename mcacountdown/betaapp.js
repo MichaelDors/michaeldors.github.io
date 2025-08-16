@@ -310,6 +310,9 @@ function cardmodemanager(){
       if (document.getElementById('confettiEmojiPicker') && document.getElementById('emojiOverlay')) {
         updateOverlayVisibility();
       }
+      
+      // Check if user is editor and update gear icon accordingly
+      updateGearIconForUser();
   };
   
   
@@ -1543,53 +1546,96 @@ document.addEventListener('data-ready', initFloatingIcons);
               document.getElementById("autopilotpopupmobile").remove();
           } //same but autopilot mobile
   
-          if (document.getElementById("settings").classList.contains("hidden")) { //if settings is closed (Being opened)
-              document.getElementById("schedule").style.display = "none"; //hide schedule
-              document.getElementById("settings").classList.remove("hidden"); //unhide settings
-              document.getElementById("clock").style.display = "none"; //hide clock
-              document.getElementById("schedule").style.display = "none"; //hide schedule
-              document.getElementById("countdowntitle").style.display = "none"; //hide title
-              document.getElementById("gear").classList.add("hidden"); //hide settings icon
-              document.getElementById("toolbar-notch").style.display = "none"; //hide settings icon
-              document.getElementById("innergear").classList.add("hidden"); //hide inner settings icon
-              document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
-              document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
-            document.getElementById("progress-bar").classList.add("hidden"); //hide progress bar
-              document.getElementById("body").style.overflowY = ''; //allow scrolling
-              document.body.scrollTop = document.documentElement.scrollTop = 0; //scroll to top for good measure
-          }
-          else { //if settings is already opened (Being closed)
-              if(getParameterFromSource("schedule") != "null"){ //if user is using Countdown Schedule
-                  document.getElementById("schedule").style.display = ""; //unhide schedule
-                  document.getElementById("clock").style.display = "none"; //hide clock
-                  document.getElementById("countdowntitle").style.display = "none"; //hide title
-              }else{ //user is not using Countdown Schedule
-                  document.getElementById("clock").style.display = ""; //unhide clock
-                  document.getElementById("schedule").style.display = "none"; //hide schedule
-                  document.getElementById("countdowntitle").style.display = ""; //unhide title
-                  document.getElementById("schedule").style.display = "none"; //unhide schedule
+          // Check if user is an editor
+          isUserEditor().then(isEditor => {
+              if (isEditor) {
+                  // User is editor - show normal settings
+                  if (document.getElementById("settings").classList.contains("hidden")) { //if settings is closed (Being opened)
+                      document.getElementById("schedule").style.display = "none"; //hide schedule
+                      document.getElementById("settings").classList.remove("hidden"); //unhide settings
+                      document.getElementById("clock").style.display = "none"; //hide clock
+                      document.getElementById("schedule").style.display = "none"; //hide schedule
+                      document.getElementById("countdowntitle").style.display = "none"; //hide title
+                      document.getElementById("gear").classList.add("hidden"); //hide settings icon
+                      document.getElementById("toolbar-notch").style.display = "none"; //hide settings icon
+                      document.getElementById("innergear").classList.add("hidden"); //hide inner settings icon
+                      document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
+                      document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
+                    document.getElementById("progress-bar").classList.add("hidden"); //hide progress bar
+                      document.getElementById("body").style.overflowY = ''; //allow scrolling
+                      document.body.scrollTop = document.documentElement.scrollTop = 0; //scroll to top for good measure
+                  }
+                  else { //if settings is already opened (Being closed)
+                      if(getParameterFromSource("schedule") != "null"){ //if user is using Countdown Schedule
+                          document.getElementById("schedule").style.display = ""; //unhide schedule
+                          document.getElementById("clock").style.display = "none"; //hide clock
+                          document.getElementById("countdowntitle").style.display = "none"; //hide title
+                      }else{ //user is not using Countdown Schedule
+                          document.getElementById("clock").style.display = ""; //unhide clock
+                          document.getElementById("schedule").style.display = "none"; //hide schedule
+                          document.getElementById("countdowntitle").style.display = ""; //unhide title
+                          document.getElementById("schedule").style.display = "none"; //unhide schedule
+                      }
+                      document.getElementById("settings").classList.add("hidden"); //hide settings
+                      document.getElementById("gear").classList.remove("hidden"); //unhide gear icon
+                      document.getElementById("toolbar-notch").style.display = ""; //unhide gear icon
+                      document.getElementById("innergear").classList.remove("hidden"); //unhide inner settings icon
+                      document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
+                      document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
+                    document.getElementById("progress-bar").classList.remove("hidden"); //unhide progress bar
+                      document.getElementById("body").style.overflowY = 'hidden'; //don't allow scrolling
+                      document.body.scrollTop = document.documentElement.scrollTop = 0; //once again scroll to top for good measure
+                  if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
+                  showToast('Some changes have not been saved to Dashboard', 'save');	
+                  }
+                  if ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || getParameterFromSource("atc") !== "none") {
+                    document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+                    document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
+                }
+                else{
+                    document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
+                    document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
+                } 
+                  }
+              } else {
+                  // User is not editor - show info pane instead
+                  if (document.getElementById("infoPane").classList.contains("hidden")) { //if info pane is closed (Being opened)
+                      document.getElementById("infoPane").classList.remove("hidden"); //unhide info pane
+                      document.getElementById("clock").style.display = "none"; //hide clock
+                      document.getElementById("schedule").style.display = "none"; //hide schedule
+                      document.getElementById("countdowntitle").style.display = "none"; //hide title
+                      document.getElementById("gear").classList.add("hidden"); //hide settings icon
+                      document.getElementById("toolbar-notch").style.display = "none"; //hide settings icon
+                      document.getElementById("innergear").classList.add("hidden"); //hide inner settings icon
+                      document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
+                      document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
+                    document.getElementById("progress-bar").classList.add("hidden"); //hide progress bar
+                      document.getElementById("body").style.overflowY = ''; //allow scrolling
+                      document.body.scrollTop = document.documentElement.scrollTop = 0; //scroll to top for good measure
+                  }
+                  else { //if info pane is already opened (Being closed)
+                      if(getParameterFromSource("schedule") != "null"){ //if user is using Countdown Schedule
+                          document.getElementById("schedule").style.display = ""; //unhide schedule
+                          document.getElementById("clock").style.display = "none"; //hide clock
+                          document.getElementById("countdowntitle").style.display = "none"; //hide title
+                      }else{ //user is not using Countdown Schedule
+                          document.getElementById("clock").style.display = ""; //unhide clock
+                          document.getElementById("schedule").style.display = "none"; //hide schedule
+                          document.getElementById("countdowntitle").style.display = ""; //unhide title
+                          document.getElementById("schedule").style.display = "none"; //unhide schedule
+                      }
+                      document.getElementById("infoPane").classList.add("hidden"); //hide info pane
+                      document.getElementById("gear").classList.remove("hidden"); //unhide gear icon
+                      document.getElementById("toolbar-notch").style.display = ""; //unhide gear icon
+                      document.getElementById("innergear").classList.remove("hidden"); //unhide inner settings icon
+                      document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
+                      document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
+                    document.getElementById("progress-bar").classList.remove("hidden"); //unhide progress bar
+                      document.getElementById("body").style.overflowY = 'hidden'; //don't allow scrolling
+                      document.body.scrollTop = document.documentElement.scrollTop = 0; //once again scroll to top for good measure
+                  }
               }
-              document.getElementById("settings").classList.add("hidden"); //hide settings
-              document.getElementById("gear").classList.remove("hidden"); //unhide gear icon
-              document.getElementById("toolbar-notch").style.display = ""; //unhide gear icon
-              document.getElementById("innergear").classList.remove("hidden"); //unhide inner settings icon
-              document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
-              document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
-            document.getElementById("progress-bar").classList.remove("hidden"); //unhide progress bar
-              document.getElementById("body").style.overflowY = 'hidden'; //don't allow scrolling
-              document.body.scrollTop = document.documentElement.scrollTop = 0; //once again scroll to top for good measure
-          if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
-          showToast('Some changes have not been saved to Dashboard', 'save');	
-          }
-          if ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || getParameterFromSource("atc") !== "none") {
-            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
-            document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(255,255,255,1)');
-        }
-        else{
-            document.documentElement.style.setProperty('--titlergba', 'rgba(0,0,0,0)');
-            document.documentElement.style.setProperty('--titleforegroundcolor', 'rgba(0,0,0,1)');
-        } 
-          }
+          });
 
           if(document.getElementById("progressdatepicker").value && document.getElementById("progressdatepicker").value !== "null"){
             document.getElementById("progress-bar").style.display = "";
@@ -5287,5 +5333,76 @@ async function logoutUser() {
     setTimeout(() => {
         window.location.reload();
     }, 1000);
+}
+
+// Add this function after the existing functions, before the settings function
+async function isUserEditor() {
+    try {
+        // Check if user is authenticated
+        if (typeof window.supabaseClient === "undefined" || !window.supabaseClient.auth) {
+            return false;
+        }
+        
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (!session) {
+            return false;
+        }
+        
+        const user = session.user;
+        
+        // Check if user is the owner
+        if (window.CountdownDataID) {
+            const { data: countdownData, error } = await window.supabaseClient
+                .from('countdown')
+                .select('creator, collaborator_ids')
+                .eq('id', window.CountdownDataID)
+                .maybeSingle();
+                
+            if (countdownData && !error) {
+                // User is owner
+                if (countdownData.creator === user.id) {
+                    return true;
+                }
+                
+                // User is collaborator
+                if (countdownData.collaborator_ids && countdownData.collaborator_ids.includes(user.id)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('[isUserEditor] Error checking editor status:', error);
+        return false;
+    }
+}
+
+// Function to update gear icon based on user's editor status
+async function updateGearIconForUser() {
+    try {
+        const isEditor = await isUserEditor();
+        const gearIcon = document.getElementById('innergear');
+        const gearButton = document.getElementById('gear');
+        
+        if (gearIcon && gearButton) {
+            if (isEditor) {
+                // User is editor - show gear icon and normal settings behavior
+                gearIcon.className = 'fa-solid fa-gear';
+                gearButton.onclick = settings;
+            } else {
+                // User is not editor - show info icon and info pane behavior
+                gearIcon.className = 'fa-solid fa-info';
+                gearButton.onclick = settings; // The settings function now handles both cases
+            }
+        }
+    } catch (error) {
+        console.error('[updateGearIconForUser] Error updating gear icon:', error);
+        // Fallback to default gear icon
+        const gearIcon = document.getElementById('innergear');
+        if (gearIcon) {
+            gearIcon.className = 'fa-solid fa-gear';
+        }
+    }
 }
 
