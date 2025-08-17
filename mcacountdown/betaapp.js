@@ -5415,6 +5415,30 @@ async function updateGearIconForUser() {
             }
         }
 
+        // Check if user is logged in and show/hide appropriate divs
+        try {
+            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            const infosignupDiv = document.getElementById('infosignup');
+            const infoclonecdDiv = document.getElementById('infoclonecd');
+            
+            if (user) {
+                // User is logged in - hide infosignup, show infoclonecd
+                if (infosignupDiv) infosignupDiv.style.display = 'none';
+                if (infoclonecdDiv) infoclonecdDiv.style.display = '';
+            } else {
+                // User is not logged in - show infosignup, hide infoclonecd
+                if (infosignupDiv) infosignupDiv.style.display = '';
+                if (infoclonecdDiv) infoclonecdDiv.style.display = 'none';
+            }
+        } catch (authError) {
+            console.log('[updateGearIconForUser] User not authenticated or auth error:', authError);
+            // Default to showing signup and hiding clonecd when auth fails
+            const infosignupDiv = document.getElementById('infosignup');
+            const infoclonecdDiv = document.getElementById('infoclonecd');
+            if (infosignupDiv) infosignupDiv.style.display = '';
+            if (infoclonecdDiv) infoclonecdDiv.style.display = 'none';
+        }
+
         // Update info pane with countdown creator info
         if (window.CountdownDataID) {
             try {
