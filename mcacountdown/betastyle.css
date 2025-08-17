@@ -1308,14 +1308,16 @@ backdrop-filter: blur(12px);
             overflow-y: scroll;
             scrollbar-width: none;  /* Firefox */
             -ms-overflow-style: none;  /* Internet Explorer 10+ */
-            float:left;
-            width:calc(100vw * 0.35); /* Make it a bit bigger than settings sidebar */
+            max-width:calc(100vw * 0.20); /* Make it a bit bigger than settings sidebar */
+            min-width:fit-content;
             left:-5px;
             top:-5px;
-            padding-top:75px;
+            padding-top:25px;
             background-color:var(--sidebarcolor);
             z-index:10000;
             white-space:nowrap;
+            padding-left:20px;
+            pointer-events: auto; /* Ensure it can receive clicks */
         }
         #infosidebar::-webkit-scrollbar {
             width:0;
@@ -3610,3 +3612,22 @@ filter: blur(40px);
   #loginpromptcard{
     display: none;
   }
+
+
+  .shareeventcard {
+    border-radius: 20px;
+    background: var(--collaborationcardbg);
+    color: white;
+    padding: 40px 30px 15px 30px;
+    margin-bottom: 50px;
+    margin-top: 0;
+    width: 60%;
+    max-width: 420px;
+    min-width: 260px;
+    box-shadow: 0 2px 16px 0 rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+  

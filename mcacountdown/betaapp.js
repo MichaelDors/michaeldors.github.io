@@ -1365,6 +1365,7 @@ document.addEventListener('data-ready', initFloatingIcons);
             }
   
             document.getElementById("linkinput").value = refresh; //refresh the link
+            document.getElementById("linkinput-info").value = refresh; //refresh the info pane link
             document.getElementById("previewiframe").src = refresh + "&cardmode=true";
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(cdtitle);
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
@@ -1378,6 +1379,7 @@ document.addEventListener('data-ready', initFloatingIcons);
             }
             window.history.replaceState({path: dbrefresh}, '', dbrefresh);
             document.getElementById("linkinput").value = dbrefresh; //refresh the link
+            document.getElementById("linkinput-info").value = dbrefresh; //refresh the info pane link
             document.getElementById("previewiframe").src = refresh + "&cardmode=true";
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(getParameterFromSource('title'));
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
@@ -1390,6 +1392,7 @@ document.addEventListener('data-ready', initFloatingIcons);
             var testingrefresh = window.location.protocol + "//" + window.location.host + window.location.pathname;
             window.history.replaceState({path: testingrefresh}, '', testingrefresh);
             document.getElementById("linkinput").value = testingrefresh; //refresh the link
+            document.getElementById("linkinput-info").value = testingrefresh; //refresh the info pane link
             const previewIframe = document.getElementById("previewiframe");
             document.querySelector('.preview-label').style.display = "none";
             previewIframe.style.background = "center / contain no-repeat url('Backgrounds/loginpreview.png')";
@@ -1606,6 +1609,8 @@ document.addEventListener('data-ready', initFloatingIcons);
                       document.body.scrollTop = document.documentElement.scrollTop = 0; //scroll to top for good measure
                   }
                   else { //if info pane is already opened (Being closed)
+                    document.getElementById("infoPane").classList.add("hidden"); //unhide info pane
+
                     document.getElementById("progress-bar").classList.remove("hidden"); //unhide progress bar
                       document.getElementById("body").style.overflowY = 'hidden'; //don't allow scrolling
                       document.body.scrollTop = document.documentElement.scrollTop = 0; //once again scroll to top for good measure
@@ -2516,6 +2521,12 @@ function contrast(){ //increase contrast set or remove cookie
           navigator.clipboard.writeText(linkinputfield.value); //Save that value to clipboard
       }
 
+      //Info pane link copy button
+      function copyinputtextlinkInfo() {
+          let linkinputfield = document.getElementById("linkinput-info"); //Get the value of the info pane link input box
+          navigator.clipboard.writeText(linkinputfield.value); //Save that value to clipboard
+      }
+
       //Local Shortcut copy buttom
       function copyinputtextlocalshortcutlink() {
           let locallinkinputfield = document.getElementById("locallinkinput"); //Get the value of the link input box
@@ -2677,10 +2688,18 @@ function contrast(){ //increase contrast set or remove cookie
   
       function makeQR() {
           const qrcodeElement = document.getElementById("qrcode");
+          const qrcodeInfoElement = document.getElementById("qrcode-info");
           
           // Clear any existing content
           while (qrcodeElement.firstChild) {
               qrcodeElement.removeChild(qrcodeElement.firstChild);
+          }
+          
+          // Clear any existing content in info pane QR code
+          if (qrcodeInfoElement) {
+              while (qrcodeInfoElement.firstChild) {
+                  qrcodeInfoElement.removeChild(qrcodeInfoElement.firstChild);
+              }
           }
   
           function imgQR(qrCanvas, centerImage, factor) {
@@ -2709,6 +2728,23 @@ function contrast(){ //increase contrast set or remove cookie
                       imgQR(canvas, icon, 0.3);
                   }
               }
+              
+              // Generate QR code for info pane if it exists
+              if (qrcodeInfoElement && qrcodeInfoElement.children.length === 0) {
+                  new QRCode(qrcodeInfoElement, {
+                      text: document.getElementById("linkinput-info").value,
+                      width: 150,
+                      height: 150,
+                      colorDark: "#000000",
+                      colorLight: "#ffffff",
+                      correctLevel: QRCode.CorrectLevel.H
+                  });
+                  
+                  const canvasInfo = qrcodeInfoElement.querySelector('canvas');
+                  if (canvasInfo) {
+                      imgQR(canvasInfo, icon, 0.3);
+                  }
+              }
           }
           icon.src = 'icon.ico';
       }
@@ -2728,6 +2764,7 @@ function contrast(){ //increase contrast set or remove cookie
           downloadLink.click();
           document.body.removeChild(downloadLink);
       }
+
   
       //Autopilot animation
       const autocircle = document.querySelector('.autopilot-countdown-circle .progressbarr');
@@ -5375,6 +5412,59 @@ async function updateGearIconForUser() {
                 // User is not editor - show info icon and info pane behavior
                 gearIcon.className = 'fa-solid fa-info';
                 gearButton.onclick = settings; // The settings function now handles both cases
+            }
+        }
+
+        // Update info pane with countdown creator info
+        if (window.CountdownDataID) {
+            try {
+                // Fetch countdown data including creator and created_at
+                const { data: countdownData, error: countdownError } = await window.supabaseClient
+                    .from('countdown')
+                    .select('creator, created_at')
+                    .eq('id', window.CountdownDataID)
+                    .maybeSingle();
+
+                if (countdownData && !countdownError && countdownData.creator) {
+                    // Fetch creator's name and avatar from users table
+                    const { data: userData, error: userError } = await window.supabaseClient
+                        .from('users')
+                        .select('name, avatar_url')
+                        .eq('id', countdownData.creator)
+                        .maybeSingle();
+
+                    if (userData && !userError && userData.name) {
+                        // Update the creator name in the info pane
+                        const creatorNameElement = document.getElementById('infocreatorname');
+                        if (creatorNameElement) {
+                            creatorNameElement.textContent = userData.name;
+                        }
+
+                        // Update the creator's profile picture
+                        if (userData.avatar_url) {
+                            const creatorPfpElement = document.getElementById('infocreatorpfp');
+                            if (creatorPfpElement) {
+                                creatorPfpElement.src = userData.avatar_url;
+                            }
+                        }
+                    }
+
+                    // Update the creation date
+                    if (countdownData.created_at) {
+                        const creationDateElement = document.getElementById('infocreationdate');
+                        if (creationDateElement) {
+                            const createdDate = new Date(countdownData.created_at);
+                            const formattedDate = createdDate.toLocaleDateString('en-US', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                year: 'numeric'
+                            });
+                            creationDateElement.textContent = formattedDate;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('[updateGearIconForUser] Error updating info pane:', error);
             }
         }
     } catch (error) {
