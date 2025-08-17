@@ -5399,6 +5399,29 @@ async function isUserEditor() {
 // Function to update gear icon based on user's editor status
 async function updateGearIconForUser() {
     try {
+        document.getElementById('infopanecontent').style.display = 'none';
+        
+        // Show loading element (create if it doesn't exist)
+        let loadingElement = document.getElementById('infopreloader');
+        if (!loadingElement) {
+            loadingElement = document.createElement('div');
+            loadingElement.id = 'infopreloader';
+            loadingElement.style.cssText = 'text-align: center; padding: 20px;';
+            loadingElement.innerHTML = `
+                <video autoplay loop muted style="width: 60px; height: 60px;">
+                    <source src="Preloader.mp4" type="video/mp4">
+                </video>
+                <p style="margin-top: 10px; color: #666;">Loading...</p>
+            `;
+            
+            // Insert loading element into the info pane (assuming there's a container)
+            const infoPane = document.querySelector('.infopane') || document.querySelector('[id*="info"]');
+            if (infoPane) {
+                infoPane.appendChild(loadingElement);
+            }
+        }
+        loadingElement.style.display = 'block';
+
         const isEditor = await isUserEditor();
         const gearIcon = document.getElementById('innergear');
         const gearButton = document.getElementById('gear');
@@ -5520,12 +5543,25 @@ async function updateGearIconForUser() {
         } else {
             console.log('[updateGearIconForUser] No CountdownDataID available');
         }
+
+        // Hide loading element after all data is processed
+        if (loadingElement) {
+            document.getElementById('infopanecontent').style.display = '';
+            loadingElement.style.display = 'none';
+        }
+        
     } catch (error) {
         console.error('[updateGearIconForUser] Error updating gear icon:', error);
         // Fallback to default gear icon
         const gearIcon = document.getElementById('innergear');
         if (gearIcon) {
             gearIcon.className = 'fa-solid fa-gear';
+        }
+        
+        // Hide loading element on error
+        const loadingElement = document.getElementById('infopreloader');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
         }
     }
 }
