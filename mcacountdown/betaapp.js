@@ -5338,38 +5338,43 @@ async function logoutUser() {
 // Add this function after the existing functions, before the settings function
 async function isUserEditor() {
     try {
-        // Check if user is authenticated
-        if (typeof window.supabaseClient === "undefined" || !window.supabaseClient.auth) {
-            return false;
-        }
-        
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        if (!session) {
-            return false;
-        }
-        
-        const user = session.user;
-        
-        // Check if user is the owner
-        if (window.CountdownDataID) {
-            const { data: countdownData, error } = await window.supabaseClient
-                .from('countdown')
-                .select('creator, collaborator_ids')
-                .eq('id', window.CountdownDataID)
-                .maybeSingle();
-                
-            if (countdownData && !error) {
-                // User is owner
-                if (countdownData.creator === user.id) {
-                    return true;
-                }
-                
-                // User is collaborator
-                if (countdownData.collaborator_ids && countdownData.collaborator_ids.includes(user.id)) {
-                    return true;
+        if (parameter('id')) {
+            // Check if user is authenticated
+            if (typeof window.supabaseClient === "undefined" || !window.supabaseClient.auth) {
+                return false;
+            }
+
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
+            if (!session) {
+                return false;
+            }
+
+            const user = session.user;
+
+            // Check if user is the owner
+            if (window.CountdownDataID) {
+                const { data: countdownData, error } = await window.supabaseClient
+                    .from('countdown')
+                    .select('creator, collaborator_ids')
+                    .eq('id', window.CountdownDataID)
+                    .maybeSingle();
+
+                if (countdownData && !error) {
+                    // User is owner
+                    if (countdownData.creator === user.id) {
+                        return true;
+                    }
+
+                    // User is collaborator
+                    if (countdownData.collaborator_ids && countdownData.collaborator_ids.includes(user.id)) {
+                        return true;
+                    }
                 }
             }
+        }else{
+            return true;
         }
+
         
         return false;
     } catch (error) {
