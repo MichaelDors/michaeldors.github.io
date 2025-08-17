@@ -5530,7 +5530,7 @@ async function updateGearIconForUser() {
         }
 
         // Hide loading element after all data is processed
-        if (loadingElement) {
+        if (document.getElementById('infopreloader')) {
             document.getElementById('infopanecontent').style.display = '';
             loadingElement.style.display = 'none';
         }
