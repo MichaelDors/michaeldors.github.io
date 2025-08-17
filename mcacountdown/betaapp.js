@@ -5433,13 +5433,23 @@ async function updateGearIconForUser() {
                     console.log('[updateGearIconForUser] Creator UUID:', countdownData.creator);
                     
                     // Fetch creator's name and avatar from users table
+                    console.log('[updateGearIconForUser] Querying users table for ID:', countdownData.creator);
                     const { data: userData, error: userError } = await window.supabaseClient
                         .from('users')
                         .select('name, avatar_url')
                         .eq('id', countdownData.creator)
                         .maybeSingle();
 
-                    console.log('[updateGearIconForUser] User data:', userData, 'Error:', userError);
+                    console.log('[updateGearIconForUser] Users table query result - Data:', userData, 'Error:', userError);
+                    
+                    // Let's also try to see if the user exists at all
+                    const { data: userExists, error: existsError } = await window.supabaseClient
+                        .from('users')
+                        .select('id')
+                        .eq('id', countdownData.creator)
+                        .maybeSingle();
+                    
+                    console.log('[updateGearIconForUser] User exists check - Data:', userExists, 'Error:', existsError);
 
                     if (userData && !userError && userData.name) {
                         console.log('[updateGearIconForUser] Updating creator name to:', userData.name);
