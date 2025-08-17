@@ -5551,3 +5551,76 @@ async function updateGearIconForUser() {
     }
 }
 
+async function clonecountdown() {
+    try {
+        // Check if user is authenticated
+        if (typeof window.supabaseClient === "undefined" || !window.supabaseClient.auth) {
+            console.log('[clonecountdown] Supabase client not available');
+            return;
+        }
+
+        const { data: { session } } = await window.supabaseClient.auth.getSession();
+        if (!session) {
+            console.log('[clonecountdown] User not logged in');
+            return;
+        }
+
+        const user = session.user;
+        const currentCountdownId = window.CountdownDataID;
+
+        if (!currentCountdownId) {
+            console.log('[clonecountdown] No current countdown ID found');
+            return;
+        }
+
+        // Get the current countdown data
+        const { data: countdownData, error: fetchError } = await window.supabaseClient
+            .from('countdown')
+            .select('*')
+            .eq('id', currentCountdownId)
+            .maybeSingle();
+
+        if (fetchError || !countdownData) {
+            console.error('[clonecountdown] Error fetching countdown data:', fetchError);
+            return;
+        }
+
+        // Check if current user is the owner
+        if (countdownData.creator === user.id) {
+            console.log('[clonecountdown] User is the owner, cannot clone own countdown');
+            return;
+        }
+
+        // Generate new ID for the cloned countdown
+        const newCountdownId = generateShortId();
+
+        // Clone the countdown data but with new ID and current user as owner
+        const clonedCountdownData = {
+            id: newCountdownId,
+            data: countdownData.data, // Use the 'data' column as requested
+            creator: user.id,
+            collaborator_ids: [],
+            visibility: 1, // unlisted by default
+            clonedfrom: currentCountdownId // Set the clonedfrom column
+        };
+
+        // Insert the cloned countdown into the database
+        const { error: insertError } = await window.supabaseClient
+            .from('countdown')
+            .insert(clonedCountdownData);
+
+        if (insertError) {
+            console.error('[clonecountdown] Error inserting cloned countdown:', insertError);
+            return;
+        }
+
+        console.log('[clonecountdown] Countdown cloned successfully with ID:', newCountdownId);
+
+        // Redirect to the new countdown
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?id=" + newCountdownId;
+        window.location.href = newUrl;
+
+    } catch (error) {
+        console.error('[clonecountdown] Error during cloning:', error);
+    }
+}
