@@ -1601,35 +1601,11 @@ document.addEventListener('data-ready', initFloatingIcons);
                   // User is not editor - show info pane instead
                   if (document.getElementById("infoPane").classList.contains("hidden")) { //if info pane is closed (Being opened)
                       document.getElementById("infoPane").classList.remove("hidden"); //unhide info pane
-                      document.getElementById("clock").style.display = "none"; //hide clock
-                      document.getElementById("schedule").style.display = "none"; //hide schedule
-                      document.getElementById("countdowntitle").style.display = "none"; //hide title
-                      document.getElementById("gear").classList.add("hidden"); //hide settings icon
-                      document.getElementById("toolbar-notch").style.display = "none"; //hide settings icon
-                      document.getElementById("innergear").classList.add("hidden"); //hide inner settings icon
-                      document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
-                      document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
-                    document.getElementById("progress-bar").classList.add("hidden"); //hide progress bar
+                      
                       document.getElementById("body").style.overflowY = ''; //allow scrolling
                       document.body.scrollTop = document.documentElement.scrollTop = 0; //scroll to top for good measure
                   }
                   else { //if info pane is already opened (Being closed)
-                      if(getParameterFromSource("schedule") != "null"){ //if user is using Countdown Schedule
-                          document.getElementById("schedule").style.display = ""; //unhide schedule
-                          document.getElementById("clock").style.display = "none"; //hide clock
-                          document.getElementById("countdowntitle").style.display = "none"; //hide title
-                      }else{ //user is not using Countdown Schedule
-                          document.getElementById("clock").style.display = ""; //unhide clock
-                          document.getElementById("schedule").style.display = "none"; //hide schedule
-                          document.getElementById("countdowntitle").style.display = ""; //unhide title
-                          document.getElementById("schedule").style.display = "none"; //unhide schedule
-                      }
-                      document.getElementById("infoPane").classList.add("hidden"); //hide info pane
-                      document.getElementById("gear").classList.remove("hidden"); //unhide gear icon
-                      document.getElementById("toolbar-notch").style.display = ""; //unhide gear icon
-                      document.getElementById("innergear").classList.remove("hidden"); //unhide inner settings icon
-                      document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
-                      document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
                     document.getElementById("progress-bar").classList.remove("hidden"); //unhide progress bar
                       document.getElementById("body").style.overflowY = 'hidden'; //don't allow scrolling
                       document.body.scrollTop = document.documentElement.scrollTop = 0; //once again scroll to top for good measure
