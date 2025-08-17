@@ -1318,6 +1318,7 @@ backdrop-filter: blur(12px);
             white-space:nowrap;
             padding-left:20px;
             pointer-events: auto; /* Ensure it can receive clicks */
+            transition:0.3s all ease;
         }
         #infosidebar::-webkit-scrollbar {
             width:0;
