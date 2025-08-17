@@ -5401,26 +5401,11 @@ async function updateGearIconForUser() {
     try {
         document.getElementById('infopanecontent').style.display = 'none';
         
-        // Show loading element (create if it doesn't exist)
-        let loadingElement = document.getElementById('infopreloader');
-        if (!loadingElement) {
-            loadingElement = document.createElement('div');
-            loadingElement.id = 'infopreloader';
-            loadingElement.style.cssText = 'text-align: center; padding: 20px;';
-            loadingElement.innerHTML = `
-                <video autoplay loop muted style="width: 60px; height: 60px;">
-                    <source src="Preloader.mp4" type="video/mp4">
-                </video>
-                <p style="margin-top: 10px; color: #666;">Loading...</p>
-            `;
-            
-            // Insert loading element into the info pane (assuming there's a container)
-            const infoPane = document.querySelector('.infopane') || document.querySelector('[id*="info"]');
-            if (infoPane) {
-                infoPane.appendChild(loadingElement);
-            }
+        // Show loading element
+        const loadingElement = document.getElementById('infopreloader');
+        if (loadingElement) {
+            loadingElement.style.display = 'block';
         }
-        loadingElement.style.display = 'block';
 
         const isEditor = await isUserEditor();
         const gearIcon = document.getElementById('innergear');
