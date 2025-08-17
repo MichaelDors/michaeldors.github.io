@@ -5435,7 +5435,7 @@ async function updateGearIconForUser() {
                     // Fetch creator's name and avatar from users table
                     console.log('[updateGearIconForUser] Querying users table for ID:', countdownData.creator);
                     const { data: userData, error: userError } = await window.supabaseClient
-                        .from('users')
+                        .from('public_profiles')
                         .select('name, avatar_url')
                         .eq('id', countdownData.creator)
                         .maybeSingle();
@@ -5444,7 +5444,7 @@ async function updateGearIconForUser() {
                     
                     // Let's also try to see if the user exists at all
                     const { data: userExists, error: existsError } = await window.supabaseClient
-                        .from('users')
+                        .from('public_profiles')
                         .select('id')
                         .eq('id', countdownData.creator)
                         .maybeSingle();
