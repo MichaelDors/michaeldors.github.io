@@ -1314,7 +1314,7 @@ backdrop-filter: blur(12px);
             top:-5px;
             padding-top:25px;
             background-color:var(--sidebarcolor);
-            z-index:10000;
+            z-index:100000000;
             white-space:nowrap;
             padding-left:20px;
             pointer-events: auto; /* Ensure it can receive clicks */
