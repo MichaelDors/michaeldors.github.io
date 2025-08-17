@@ -5418,6 +5418,8 @@ async function updateGearIconForUser() {
         // Update info pane with countdown creator info
         if (window.CountdownDataID) {
             try {
+                console.log('[updateGearIconForUser] Updating info pane for countdown ID:', window.CountdownDataID);
+                
                 // Fetch countdown data including creator and created_at
                 const { data: countdownData, error: countdownError } = await window.supabaseClient
                     .from('countdown')
@@ -5425,7 +5427,11 @@ async function updateGearIconForUser() {
                     .eq('id', window.CountdownDataID)
                     .maybeSingle();
 
+                console.log('[updateGearIconForUser] Countdown data:', countdownData, 'Error:', countdownError);
+
                 if (countdownData && !countdownError && countdownData.creator) {
+                    console.log('[updateGearIconForUser] Creator UUID:', countdownData.creator);
+                    
                     // Fetch creator's name and avatar from users table
                     const { data: userData, error: userError } = await window.supabaseClient
                         .from('users')
@@ -5433,16 +5439,23 @@ async function updateGearIconForUser() {
                         .eq('id', countdownData.creator)
                         .maybeSingle();
 
+                    console.log('[updateGearIconForUser] User data:', userData, 'Error:', userError);
+
                     if (userData && !userError && userData.name) {
+                        console.log('[updateGearIconForUser] Updating creator name to:', userData.name);
+                        
                         // Update the creator name in the info pane
                         const creatorNameElement = document.getElementById('infocreatorname');
+                        console.log('[updateGearIconForUser] Creator name element found:', !!creatorNameElement);
                         if (creatorNameElement) {
                             creatorNameElement.textContent = userData.name;
                         }
 
                         // Update the creator's profile picture
                         if (userData.avatar_url) {
+                            console.log('[updateGearIconForUser] Updating creator avatar to:', userData.avatar_url);
                             const creatorPfpElement = document.getElementById('infocreatorpfp');
+                            console.log('[updateGearIconForUser] Creator avatar element found:', !!creatorPfpElement);
                             if (creatorPfpElement) {
                                 creatorPfpElement.src = userData.avatar_url;
                             }
@@ -5451,7 +5464,9 @@ async function updateGearIconForUser() {
 
                     // Update the creation date
                     if (countdownData.created_at) {
+                        console.log('[updateGearIconForUser] Updating creation date to:', countdownData.created_at);
                         const creationDateElement = document.getElementById('infocreationdate');
+                        console.log('[updateGearIconForUser] Creation date element found:', !!creationDateElement);
                         if (creationDateElement) {
                             const createdDate = new Date(countdownData.created_at);
                             const formattedDate = createdDate.toLocaleDateString('en-US', {
@@ -5462,10 +5477,14 @@ async function updateGearIconForUser() {
                             creationDateElement.textContent = formattedDate;
                         }
                     }
+                } else {
+                    console.log('[updateGearIconForUser] No countdown data or creator found');
                 }
             } catch (error) {
                 console.error('[updateGearIconForUser] Error updating info pane:', error);
             }
+        } else {
+            console.log('[updateGearIconForUser] No CountdownDataID available');
         }
     } catch (error) {
         console.error('[updateGearIconForUser] Error updating gear icon:', error);
