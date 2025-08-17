@@ -5396,17 +5396,17 @@ async function isUserEditor() {
     }
 }
 
+document.getElementById('infopanecontent').style.display = 'none';
+        
+// Show loading element
+const loadingElement = document.getElementById('infopreloader');
+if (loadingElement) {
+    loadingElement.style.display = 'block';
+}
+
 // Function to update gear icon based on user's editor status
 async function updateGearIconForUser() {
     try {
-        document.getElementById('infopanecontent').style.display = 'none';
-        
-        // Show loading element
-        const loadingElement = document.getElementById('infopreloader');
-        if (loadingElement) {
-            loadingElement.style.display = 'block';
-        }
-
         const isEditor = await isUserEditor();
         const gearIcon = document.getElementById('innergear');
         const gearButton = document.getElementById('gear');
