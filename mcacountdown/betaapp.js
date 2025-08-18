@@ -5452,10 +5452,10 @@ async function updateGearIconForUser() {
             try {
                 console.log('[updateGearIconForUser] Updating info pane for countdown ID:', window.CountdownDataID);
                 
-                // Fetch countdown data including creator and created_at
+                // Fetch countdown data including creator, created_at, and clonedfrom
                 const { data: countdownData, error: countdownError } = await window.supabaseClient
                     .from('countdown')
-                    .select('creator, created_at')
+                    .select('creator, created_at, clonedfrom')
                     .eq('id', window.CountdownDataID)
                     .maybeSingle();
 
@@ -5517,6 +5517,25 @@ async function updateGearIconForUser() {
                                 year: 'numeric'
                             });
                             creationDateElement.textContent = formattedDate;
+                        }
+                    }
+
+                    // Check if this countdown was cloned from another one
+                    if (countdownData.clonedfrom) {
+                        console.log('[updateGearIconForUser] Countdown was cloned from:', countdownData.clonedfrom);
+                        
+                        // Update the verb text to "adapted"
+                        const createdVerbElement = document.getElementById('infocreatedverb');
+                        if (createdVerbElement) {
+                            createdVerbElement.textContent = 'Adapted';
+                            
+                            // Make it clickable to go to the original countdown
+                            createdVerbElement.style.cursor = 'pointer';
+                            createdVerbElement.style.textDecoration = 'underline';
+                            createdVerbElement.onclick = function() {
+                                const originalUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?id=" + countdownData.clonedfrom;
+                                window.location.href = originalUrl;
+                            };
                         }
                     }
                 } else {
