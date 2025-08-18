@@ -3823,12 +3823,14 @@ document.addEventListener('data-ready', function() {
                 
                 if (!session) {
                     // User is not logged in, redirect to auth page
-                    window.location.href = 'auth';
+                    const authUrl = window.CountdownDataID ? `auth?id=${window.CountdownDataID}` : 'auth';
+                    window.location.href = authUrl;
                     return;
                 }
             } else {
                 // Supabase client not available, redirect to auth page
-                window.location.href = 'auth';
+                const authUrl = window.CountdownDataID ? `auth?id=${window.CountdownDataID}` : 'auth';
+                window.location.href = authUrl;
                 return;
             }
             

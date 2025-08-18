@@ -111,7 +111,10 @@
                 const { data } = await supabaseClient.auth.getUser();
                 if (data?.user) {
                     // User is already signed in, redirect to dashboard
-                    window.location.href = 'countdowndashboard.html';
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const countdownId = urlParams.get('id');
+                    const redirectUrl = countdownId ? `countdowndashboard.html?id=${countdownId}` : 'countdowndashboard.html';
+                    window.location.href = redirectUrl;
                 }
             } catch (error) {
                 console.error('Error checking auth status:', error);
@@ -123,10 +126,16 @@
             showLoading();
             
             try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const countdownId = urlParams.get('id');
+                const redirectUrl = countdownId 
+                    ? window.location.origin + '/mcacountdown/countdowndashboard.html?id=' + countdownId
+                    : window.location.origin + '/mcacountdown/countdowndashboard.html';
+                
                 const { error } = await supabaseClient.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                        redirectTo: window.location.origin + '/mcacountdown/countdowndashboard.html'
+                        redirectTo: redirectUrl
                     }
                 });
                 
@@ -165,7 +174,10 @@
                 // For now, just redirect to dashboard
                 // In the future, this will validate credentials with Supabase
                 hideLoading();
-                window.location.href = 'countdowndashboard.html';
+                const urlParams = new URLSearchParams(window.location.search);
+                const countdownId = urlParams.get('id');
+                const redirectUrl = countdownId ? `countdowndashboard.html?id=${countdownId}` : 'countdowndashboard.html';
+                window.location.href = redirectUrl;
                 
             } catch (error) {
                 hideLoading();
