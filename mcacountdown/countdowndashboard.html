@@ -1321,6 +1321,14 @@ async function saveDashboardToCloud() {
                         marqueeScroll.style.animation = 'none';
                         marqueeScroll.offsetHeight; // Trigger reflow
                         marqueeScroll.style.animation = `onthisday-marquee ${duration}s linear infinite`;
+                        
+                        // Add hover pause functionality back
+                        marqueeScroll.addEventListener('mouseenter', () => {
+                            marqueeScroll.style.animationPlayState = 'paused';
+                        });
+                        marqueeScroll.addEventListener('mouseleave', () => {
+                            marqueeScroll.style.animationPlayState = 'running';
+                        });
                     }
                 })
                 .catch((err) => {
