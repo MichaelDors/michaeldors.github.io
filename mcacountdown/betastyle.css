@@ -3583,7 +3583,6 @@ filter: blur(40px);
   .shareeventcard .share-pfp-container {
     position: relative;
     display: inline-block;
-    margin-bottom: 18px;
   }
 
   .shareeventcard .verification-badge {
