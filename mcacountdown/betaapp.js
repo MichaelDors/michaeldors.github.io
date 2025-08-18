@@ -5521,6 +5521,7 @@ async function updateGearIconForUser() {
                                 } else {
                                     // User is not official - hide verification badge
                                     console.log('[updateGearIconForUser] Creator is not official, hiding verification badge');
+                                    document.getElementById('officialtexttip').style.display = 'none';
                                     verifiedElement.style.display = 'none';
                                 }
                             } else {
