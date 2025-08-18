@@ -5471,11 +5471,11 @@ async function updateGearIconForUser() {
                 if (countdownData && !countdownError && countdownData.creator) {
                     console.log('[updateGearIconForUser] Creator UUID:', countdownData.creator);
                     
-                    // Fetch creator's name and avatar from users table
+                    // Fetch creator's name, avatar, and official status from users table
                     console.log('[updateGearIconForUser] Querying users table for ID:', countdownData.creator);
                     const { data: userData, error: userError } = await window.supabaseClient
                         .from('public_profiles')
-                        .select('name, avatar_url')
+                        .select('name, avatar_url, official')
                         .eq('id', countdownData.creator)
                         .maybeSingle();
 
@@ -5508,6 +5508,26 @@ async function updateGearIconForUser() {
                             if (creatorPfpElement) {
                                 creatorPfpElement.src = userData.avatar_url;
                             }
+                        }
+
+                        // Check official status and show/hide verification badge
+                        if (userData.official !== undefined) {
+                            console.log('[updateGearIconForUser] Creator official status:', userData.official);
+                            const verifiedElement = document.getElementById('infocreatorverified');
+                            if (verifiedElement) {
+                                if (userData.official === true) {
+                                    // User is official - do nothing (keep badge visible)
+                                    console.log('[updateGearIconForUser] Creator is official, keeping verification badge visible');
+                                } else {
+                                    // User is not official - hide verification badge
+                                    console.log('[updateGearIconForUser] Creator is not official, hiding verification badge');
+                                    verifiedElement.style.display = 'none';
+                                }
+                            } else {
+                                console.log('[updateGearIconForUser] Verification badge element not found');
+                            }
+                        } else {
+                            console.log('[updateGearIconForUser] No official status found for creator');
                         }
                     }
 
