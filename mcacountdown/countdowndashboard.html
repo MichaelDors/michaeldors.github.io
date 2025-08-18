@@ -1298,7 +1298,7 @@ async function saveDashboardToCloud() {
                     const line = events
                         .map((ev) => `${ev.year}: ${ev.text}`)
                         .join('       |       ');
-                    const fullText = `                     ${line}`;
+                    const fullText = `                     ${line}                                          `;
                     onThisDayElement.textContent = fullText;
                     onThisDayElement.setAttribute('data-content', fullText);
                 } catch (e) {
