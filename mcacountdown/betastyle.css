@@ -3590,19 +3590,19 @@ filter: blur(40px);
     position: absolute;
     bottom: -2px;
     right: -2px;
-    background: #00df52;
-    color: white;
+    background: #ffffff;
+    color: rgb(201, 0, 255);
     border-radius: 50%;
     width: 20px;
     height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    font-size: 15px;
+    border: 0px solid white;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
     z-index: 10;
-  }
+    }
   .shareeventcard .share-card-title {
     font-family: 'Dosis', 'Poppins', sans-serif;
     font-size: 1.5rem;
