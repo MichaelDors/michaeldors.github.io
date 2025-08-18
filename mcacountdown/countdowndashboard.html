@@ -1292,12 +1292,15 @@ async function saveDashboardToCloud() {
                 try {
                     if (!Array.isArray(events) || events.length === 0) {
                         onThisDayElement.textContent = `${formatOnThisDayDate(today)} — No events available.`;
+                        onThisDayElement.setAttribute('data-content', `${formatOnThisDayDate(today)} — No events available.`);
                         return;
                     }
                     const line = events
                         .map((ev) => `${ev.year}: ${ev.text}`)
                         .join(' • ');
-                    onThisDayElement.textContent = `${formatOnThisDayDate(today)} — ${line}`;
+                    const fullText = `${formatOnThisDayDate(today)} — ${line}`;
+                    onThisDayElement.textContent = fullText;
+                    onThisDayElement.setAttribute('data-content', fullText);
                 } catch (e) {
                     console.error('[onthisday] render error:', e);
                 }
@@ -1308,7 +1311,9 @@ async function saveDashboardToCloud() {
                 .then((events) => renderOnThisDayMarquee(events, today))
                 .catch((err) => {
                     console.error('[onthisday] Unexpected error:', err);
-                    onThisDayElement.textContent = `${formatOnThisDayDate(today)} — Unable to load today's historical events.`;
+                    const errorText = `${formatOnThisDayDate(today)} — Unable to load today's historical events.`;
+                    onThisDayElement.textContent = errorText;
+                    onThisDayElement.setAttribute('data-content', errorText);
                 });
         })();
     </script>
@@ -2073,9 +2078,11 @@ zoom:80%;
 
 .onthisday-marquee { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(0,0,0,0.08); overflow: hidden; }
         .onthisday-marquee .marquee-label { flex: 0 0 auto; font-family: 'Dosis', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-weight: 600; opacity: 0.85; }
-        .onthisday-marquee .marquee-viewport { position: relative; flex: 1 1 auto; overflow: hidden; min-height: 1.75em; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
-        .onthisday-marquee .marquee-scroll { display: inline-block; white-space: nowrap; animation: onthisday-marquee 240s linear infinite; will-change: transform; }
+        .onthisday-marquee .marquee-viewport { position: relative; flex: 1 1 auto; overflow: hidden; min-height: 1.75em; display: flex; align-items: center; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+        .onthisday-marquee .marquee-scroll { display: inline-block; white-space: nowrap; animation: onthisday-marquee 240s linear infinite; will-change: transform; line-height: 1.2; transform: translateY(2px); }
+        .onthisday-marquee .marquee-scroll::after { content: attr(data-content); position: absolute; left: 100%; margin-left: 50px; }
         .onthisday-marquee:hover .marquee-scroll { animation-play-state: paused; }
-        @keyframes onthisday-marquee { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+        #onthisday { display: flex; align-items: center; height: 100%; }
+        @keyframes onthisday-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 </style>
 </html>
