@@ -53,6 +53,14 @@
     <div class="container">
         <div id="linksContainer" class="links-container">
         </div>
+        <div class="onthisday-marquee">
+            <div class="marquee-label">On this day:</div>
+            <div class="marquee-viewport">
+                <div class="marquee-scroll">
+                    <div id="onthisday"></div>
+                </div>
+            </div>
+        </div>
         <div id="curated">
             <h1 class="textelement" style="font-family: 'Dosis';">
                 Curated Countdowns <span class="betatag">BETA</span>
@@ -1216,6 +1224,94 @@ async function saveDashboardToCloud() {
     }
 }
     </script>
+    <script>
+        (function () {
+            const onThisDayElement = document.getElementById('onthisday');
+            if (!onThisDayElement) return;
+
+            const formatOnThisDayDate = (date) => {
+                const months = [
+                    'January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'
+                ];
+                return `${months[date.getMonth()]} ${date.getDate()}`;
+            };
+
+            const isPositiveOnThisDayEvent = (text) => {
+                const negativeKeywords = [
+                    'died', 'death', 'killed', 'murdered', 'assassinated', 'executed', 'war', 'battle', 'bombing',
+                    'attack', 'invasion', 'siege', 'massacre', 'genocide', 'disaster', 'crash', 'sinking',
+                    'earthquake', 'hurricane', 'fire', 'explosion', 'plague', 'pandemic', 'disease', 'famine',
+                    'revolt', 'rebellion', 'coup', 'overthrow', 'prison', 'arrest', 'trial', 'sentenced',
+                    'defeat', 'surrender', 'retreat', 'casualties', 'victims', 'tragedy', 'accident'
+                ];
+                const lowerText = String(text || '').toLowerCase();
+                return !negativeKeywords.some((keyword) => lowerText.includes(keyword));
+            };
+
+            async function fetchOnThisDayEvents(month, day) {
+                try {
+                    const monthStr = String(month + 1).padStart(2, '0');
+                    const dayStr = String(day).padStart(2, '0');
+                    const response = await fetch(`https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/${monthStr}/${dayStr}`);
+                    if (!response.ok) throw new Error('Failed to fetch data');
+                    const data = await response.json();
+
+                    const events = [];
+
+                    if (Array.isArray(data.events)) {
+                        data.events
+                            .filter((ev) => ev && ev.year && ev.text && isPositiveOnThisDayEvent(ev.text))
+                            .slice(0, 10)
+                            .forEach((ev) => {
+                                events.push({ year: ev.year, text: ev.text, category: 'Historical Event' });
+                            });
+                    }
+
+                    if (Array.isArray(data.births)) {
+                        data.births
+                            .slice(0, 5)
+                            .forEach((birth) => {
+                                if (birth && birth.year && birth.text) {
+                                    events.push({ year: birth.year, text: `Born: ${birth.text}`, category: 'Birth' });
+                                }
+                            });
+                    }
+
+                    // Note: intentionally skipping deaths
+                    return events.sort((a, b) => a.year - b.year);
+                } catch (error) {
+                    console.error('[onthisday] Error fetching historical events:', error);
+                    return [
+                        { year: 1776, text: "Unable to load today's historical events. Please check your internet connection.", category: 'Error' }
+                    ];
+                }
+            }
+
+            function renderOnThisDayMarquee(events, today) {
+                try {
+                    if (!Array.isArray(events) || events.length === 0) {
+                        onThisDayElement.textContent = `${formatOnThisDayDate(today)} — No events available.`;
+                        return;
+                    }
+                    const line = events
+                        .map((ev) => `${ev.year}: ${ev.text}`)
+                        .join(' • ');
+                    onThisDayElement.textContent = `${formatOnThisDayDate(today)} — ${line}`;
+                } catch (e) {
+                    console.error('[onthisday] render error:', e);
+                }
+            }
+
+            const today = new Date();
+            fetchOnThisDayEvents(today.getMonth(), today.getDate())
+                .then((events) => renderOnThisDayMarquee(events, today))
+                .catch((err) => {
+                    console.error('[onthisday] Unexpected error:', err);
+                    onThisDayElement.textContent = `${formatOnThisDayDate(today)} — Unable to load today's historical events.`;
+                });
+        })();
+    </script>
 </body>
 <style>
 :root{
@@ -1974,5 +2070,12 @@ zoom:80%;
     padding: 13px 10px;
 }
 
+
+.onthisday-marquee { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(0,0,0,0.08); overflow: hidden; }
+        .onthisday-marquee .marquee-label { flex: 0 0 auto; font-family: 'Dosis', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-weight: 600; opacity: 0.85; }
+        .onthisday-marquee .marquee-viewport { position: relative; flex: 1 1 auto; overflow: hidden; min-height: 1.75em; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+        .onthisday-marquee .marquee-scroll { display: inline-block; white-space: nowrap; animation: onthisday-marquee 120s linear infinite; will-change: transform; }
+        .onthisday-marquee:hover .marquee-scroll { animation-play-state: paused; }
+        @keyframes onthisday-marquee { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
 </style>
 </html>
