@@ -5408,6 +5408,11 @@ if (loadingElement) {
 
 // Function to update gear icon based on user's editor status
 async function updateGearIconForUser() {
+    // Check if this function has already run
+    if (window.gearIconUpdated) {
+        return;
+    }
+    
     try {
         const isEditor = await isUserEditor();
         const gearIcon = document.getElementById('innergear');
@@ -5556,6 +5561,9 @@ async function updateGearIconForUser() {
             loadingElement.style.display = 'none';
         }
         
+        // Mark function as completed
+        window.gearIconUpdated = true;
+        
     } catch (error) {
         console.error('[updateGearIconForUser] Error updating gear icon:', error);
         // Fallback to default gear icon
@@ -5569,6 +5577,9 @@ async function updateGearIconForUser() {
         if (loadingElement) {
             loadingElement.style.display = 'none';
         }
+        
+        // Mark function as completed even on error
+        window.gearIconUpdated = true;
     }
 }
 
