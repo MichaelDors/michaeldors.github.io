@@ -1565,7 +1565,7 @@ document.addEventListener('data-ready', initFloatingIcons);
                       document.getElementById("innergear").classList.add("hidden"); //hide inner settings icon
                       document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
                       document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
-                    document.getElementById("progress-bar").classList.add("hidden"); //hide progress bar
+                      document.getElementById("progress-bar").style.display = "none"; //hide progress bar
                       document.getElementById("body").style.overflowY = ''; //allow scrolling
                       document.body.scrollTop = document.documentElement.scrollTop = 0; //scroll to top for good measure
                   }
@@ -1586,7 +1586,12 @@ document.addEventListener('data-ready', initFloatingIcons);
                       document.getElementById("innergear").classList.remove("hidden"); //unhide inner settings icon
                       document.getElementById("preloader").classList.add("hidden"); //hide loading screen?
                       document.getElementById("unfocused").classList.add("hidden"); //hide memsave popup
-                    document.getElementById("progress-bar").classList.remove("hidden"); //unhide progress bar
+                      // Show progress bar if it should be visible
+                      if(document.getElementById("progressdatepicker").value && document.getElementById("progressdatepicker").value !== "null"){
+                          document.getElementById("progress-bar").style.display = "";
+                      } else {
+                          document.getElementById("progress-bar").style.display = "none";
+                      }
                       document.getElementById("body").style.overflowY = 'hidden'; //don't allow scrolling
                       document.body.scrollTop = document.documentElement.scrollTop = 0; //once again scroll to top for good measure
                   if(document.getElementById('savedash').innerHTML == '<i class="fa-solid fa-star"></i> Update'){
@@ -1610,9 +1615,15 @@ document.addEventListener('data-ready', initFloatingIcons);
                       document.body.scrollTop = document.documentElement.scrollTop = 0; //scroll to top for good measure
                   }
                   else { //if info pane is already opened (Being closed)
-                    document.getElementById("infoPane").classList.add("hidden"); //unhide info pane
-
-                    document.getElementById("progress-bar").classList.remove("hidden"); //unhide progress bar
+                      document.getElementById("infoPane").classList.add("hidden"); //hide info pane
+                      
+                      // Show progress bar if it should be visible
+                      if(document.getElementById("progressdatepicker").value && document.getElementById("progressdatepicker").value !== "null"){
+                          document.getElementById("progress-bar").style.display = "";
+                      } else {
+                          document.getElementById("progress-bar").style.display = "none";
+                      }
+                      
                       document.getElementById("body").style.overflowY = 'hidden'; //don't allow scrolling
                       document.body.scrollTop = document.documentElement.scrollTop = 0; //once again scroll to top for good measure
                   }
@@ -5327,16 +5338,17 @@ async function logoutUser() {
     console.log('[betaapp] Logout function called');
     
     try {
-        const { data: { user } } = await window.supabaseClient.auth.getUser();
+        const { data, error } = await window.supabaseClient.auth.getUser();
         
-        if (!user) {
+        if (!data || !data.user || error) {
             return;
         }
+        const user = data.user;
                 
-        const { error } = await window.supabaseClient.auth.signOut();
+        const { error: signOutError } = await window.supabaseClient.auth.signOut();
         
-        if (error) {
-            showToast('Logout failed: ' + error.message, 'error');
+        if (signOutError) {
+            showToast('Logout failed: ' + signOutError.message, 'error');
         } else {
             showToast('Logged out successfully', 'success');
         }
@@ -5360,22 +5372,22 @@ async function isUserEditor() {
                 return false;
             }
 
-            const { data: { session } } = await window.supabaseClient.auth.getSession();
-            if (!session) {
+            const { data, error } = await window.supabaseClient.auth.getSession();
+            if (!data || !data.session || error) {
                 return false;
             }
-
+            const session = data.session;
             const user = session.user;
 
             // Check if user is the owner
             if (window.CountdownDataID) {
-                const { data: countdownData, error } = await window.supabaseClient
+                const { data: countdownData, error: countdownError } = await window.supabaseClient
                     .from('countdown')
                     .select('creator, collaborator_ids')
                     .eq('id', window.CountdownDataID)
                     .maybeSingle();
 
-                if (countdownData && !error) {
+                if (countdownData && !countdownError) {
                     // User is owner
                     if (countdownData.creator === user.id) {
                         return true;
@@ -5614,12 +5626,12 @@ async function clonecountdown() {
             return;
         }
 
-        const { data: { session } } = await window.supabaseClient.auth.getSession();
-        if (!session) {
+        const { data, error } = await window.supabaseClient.auth.getSession();
+        if (!data || !data.session || error) {
             console.log('[clonecountdown] User not logged in');
             return;
         }
-
+        const session = data.session;
         const user = session.user;
         const currentCountdownId = window.CountdownDataID;
 
