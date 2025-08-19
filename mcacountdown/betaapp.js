@@ -301,6 +301,10 @@ function cardmodemanager(){
       and so on until 1s. This is to ensure the image is the same size as the banner even if the first
       couple iterations mess with the text wrapping and cange the size of the banner
       */
+
+      // Check if user is editor and update gear icon accordingly
+      updateGearIconForUser();
+      
       updateSaveButtonText();
 
       SetCountDowngeneral();
@@ -310,9 +314,6 @@ function cardmodemanager(){
       if (document.getElementById('confettiEmojiPicker') && document.getElementById('emojiOverlay')) {
         updateOverlayVisibility();
       }
-      
-      // Check if user is editor and update gear icon accordingly
-      updateGearIconForUser();
   };
   
   
@@ -5432,11 +5433,12 @@ async function updateGearIconForUser() {
 
         // Check if user is logged in and show/hide appropriate divs
         try {
-            const { data: { user } } = await window.supabaseClient.auth.getUser();
+            const { data, error } = await window.supabaseClient.auth.getUser();
             const infosignupDiv = document.getElementById('infosignup');
             const infoclonecdDiv = document.getElementById('infoclonecd');
             
-            if (user) {
+            // Check if data exists and has a user property
+            if (data && data.user && !error) {
                 // User is logged in - hide infosignup, show infoclonecd
                 if (infosignupDiv) infosignupDiv.style.display = 'none';
                 if (infoclonecdDiv) infoclonecdDiv.style.display = '';
