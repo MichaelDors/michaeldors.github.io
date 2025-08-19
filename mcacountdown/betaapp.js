@@ -5126,78 +5126,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     console.log('[betaapp] Profile picture generated successfully');
                   }
 
-                  // Set up authentication state listener (only once globally)
-                  if (!parameter('cardmode')) {
-                    if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth && !window.authListenerSetup) {
-                      window.authListenerSetup = true;
-                      console.log('[betaapp] Setting up auth listener');
-                      
-                      // First check current session
-                      window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
-                          console.log('[betaapp] Initial session check:', session ? 'Logged in' : 'Not logged in');
-                          
-                          // Set up auth state change listener
-                          window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
-                              console.log('[betaapp] Auth state changed:', event, session);
-                              if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-                                // Create/update user in database
-                                const user = session.user;
-                                const userId = user.id;
-                                const email = user.email;
-                                const name = user.user_metadata?.full_name;
-                                const avatar_url = user.user_metadata?.avatar_url;
-                                
-                                console.log('[betaapp] User signed in:', { userId, email, name, avatar_url });
-                                
-                                if (userId && email && name) {
-                                    try {
-                                        const { error } = await window.supabaseClient
-                                            .from("users")
-                                            .upsert({
-                                                id: userId,
-                                                email,
-                                                name,
-                                                avatar_url,
-                                            }, { onConflict: 'id' });
-                                        
-                                        if (error) {
-                                            console.error('[betaapp] User upsert error:', error.message);
-                                        } else {
-                                            console.log('[betaapp] User upserted successfully');
-                                            // Only generate profile pic after successful upsert
-                                            generateProfilePic();
-                                            // Load cookies from cloud when user logs in
-                                            await loadCookiesFromCloud();
-                                        }
-                                    } catch (upsertError) {
-                                        console.error('[betaapp] User upsert failed:', upsertError);
-                                    }
-                                } else {
-                                    console.warn('[betaapp] Missing user info for upsert:', { userId, email, name });
-                                }
-                              } else if (event === 'SIGNED_OUT') {
-                                  console.log('[betaapp] User signed out');
-                                  // User signed out, use default name
-                                  const localName = 'Sign In';
-                                  generateProfilePicWithName(localName);
-                                  const usrdetail = document.getElementById('usrdetail');
-                                  if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
-                              }
-                          });
-                          
-                          // If we have a session, trigger initial profile pic generation
-                          if (session) {
-                              generateProfilePic();
-                          }
-                      });
-                    } else {
-                      console.log('[betaapp] Auth listener setup skipped:', {
-                          supabaseClientExists: typeof window.supabaseClient !== "undefined",
-                          authExists: typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth,
-                          alreadySetup: window.authListenerSetup
-                      });
-                    }
-                  }
+                  // Note: Authentication listener setup moved to separate function to prevent multiple setups
 
                   // Initialize profile picture on page load
                   if (parameter('cardmode')) {
@@ -5296,7 +5225,6 @@ function syncCookiesToCloud() {
     const now = Date.now();
     // 10s cooldown
     if (now - window.lastCookieSync < 10000) {
-        console.log('[betaapp] Skipping cookie sync: cooldown active');
         return;
     }
 
@@ -5309,7 +5237,6 @@ function syncCookiesToCloud() {
 
                     // Only sync if cookies have changed since last sync
                     if (localCookies === window.lastSyncedCookies) {
-                        console.log('[betaapp] Skipping cookie sync: no changes detected');
                         return;
                     }
 
@@ -5689,5 +5616,103 @@ async function clonecountdown() {
 
     } catch (error) {
         console.error('[clonecountdown] Error during cloning:', error);
+    }
+}
+
+// Set up authentication state listener (only once globally)
+function setupAuthListener() {
+    if (window.authListenerSetup) {
+        console.log('[betaapp] Auth listener already set up, skipping');
+        return;
+    }
+    
+    if (parameter('cardmode')) {
+        console.log('[betaapp] Card mode, skipping auth listener setup');
+        return;
+    }
+    
+    if (typeof window.supabaseClient === "undefined" || !window.supabaseClient.auth) {
+        console.log('[betaapp] Supabase client not available, skipping auth listener setup');
+        return;
+    }
+    
+    window.authListenerSetup = true;
+    console.log('[betaapp] Setting up auth listener');
+    
+    // First check current session
+    window.supabaseClient.auth.getSession().then(({ data, error }) => {
+        if (error || !data) {
+            console.log('[betaapp] Initial session check: Error getting session');
+            return;
+        }
+        
+        const session = data.session;
+        console.log('[betaapp] Initial session check:', session ? 'Logged in' : 'Not logged in');
+        
+        // Set up auth state change listener
+        window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+            console.log('[betaapp] Auth state changed:', event, session);
+            if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+                // Create/update user in database
+                const user = session.user;
+                const userId = user.id;
+                const email = user.email;
+                const name = user.user_metadata?.full_name;
+                const avatar_url = user.user_metadata?.avatar_url;
+                
+                console.log('[betaapp] User signed in:', { userId, email, name, avatar_url });
+                
+                if (userId && email && name) {
+                    try {
+                        const { error: upsertError } = await window.supabaseClient
+                            .from("users")
+                            .upsert({
+                                id: userId,
+                                email,
+                                name,
+                                avatar_url,
+                            }, { onConflict: 'id' });
+                        
+                        if (upsertError) {
+                            console.error('[betaapp] User upsert error:', upsertError.message);
+                        } else {
+                            console.log('[betaapp] User upserted successfully');
+                            // Only generate profile pic after successful upsert
+                            generateProfilePic();
+                            // Load cookies from cloud when user logs in
+                            await loadCookiesFromCloud();
+                        }
+                    } catch (upsertError) {
+                        console.error('[betaapp] User upsert failed:', upsertError);
+                    }
+                } else {
+                    console.warn('[betaapp] Missing user info for upsert:', { userId, email, name });
+                }
+            } else if (event === 'SIGNED_OUT') {
+                console.log('[betaapp] User signed out');
+                // User signed out, use default name
+                const localName = 'Sign In';
+                generateProfilePicWithName(localName);
+                const usrdetail = document.getElementById('usrdetail');
+                if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
+            }
+        });
+        
+        // If we have a session, trigger initial profile pic generation
+        if (session) {
+            generateProfilePic();
+        }
+    }).catch(error => {
+        console.error('[betaapp] Error setting up auth listener:', error);
+    });
+}
+
+// Call the auth listener setup function once when the page loads
+if (typeof window !== "undefined" && !window.authListenerSetup) {
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupAuthListener);
+    } else {
+        setupAuthListener();
     }
 }
