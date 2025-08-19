@@ -5455,7 +5455,7 @@ async function updateGearIconForUser() {
         }
 
         // Update info pane with countdown creator info
-        if (window.CountdownDataID) {
+        if (window.CountdownDataID || parameter('id')) {
             try {
                 console.log('[updateGearIconForUser] Updating info pane for countdown ID:', window.CountdownDataID);
                 
