@@ -49,7 +49,6 @@ function updateTitlePosition(fontSize) {
     document.documentElement.style.setProperty('--title-top-percentage', titlePercentage + '%');
 }
 
-syncCookiesToCloud();
 
   function handleTitleNavigation() {
       const fullUrl = window.location.href;
@@ -5651,7 +5650,7 @@ function setupAuthListener() {
                             // Only generate profile pic after successful upsert
                             generateProfilePic();
                             // Load cookies from cloud when user logs in
-                            await loadCookiesFromCloud();
+                            syncCookiesToCloud();
                         }
                     } catch (upsertError) {
                         console.error('[betaapp] User upsert failed:', upsertError);
