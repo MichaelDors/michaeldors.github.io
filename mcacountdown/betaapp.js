@@ -5338,44 +5338,80 @@ if (loadingElement) {
 
 // Function to update gear icon based on user's editor status
 async function updateGearIconForUser() {
-    console.log('[updateGearIconForUser] ID ' + window.CountdownDataID);
+    console.log('[updateGearIconForUser] === FUNCTION START ===');
+    console.log('[updateGearIconForUser] CountdownDataID:', window.CountdownDataID);
+    console.log('[updateGearIconForUser] gearIconUpdated flag:', window.gearIconUpdated);
+    
     // Check if this function has already run
     if (window.gearIconUpdated) {
+        console.log('[updateGearIconForUser] Function already run, returning early');
         return;
     }
     
     try {
+        console.log('[updateGearIconForUser] Calling isUserEditor()...');
         const isEditor = await isUserEditor();
+        console.log('[updateGearIconForUser] isUserEditor result:', isEditor);
+        
         const gearIcon = document.getElementById('innergear');
         const gearButton = document.getElementById('gear');
+        
+        console.log('[updateGearIconForUser] Gear icon element found:', !!gearIcon);
+        console.log('[updateGearIconForUser] Gear button element found:', !!gearButton);
         
         if (gearIcon && gearButton) {
             if (isEditor) {
                 // User is editor - show gear icon and normal settings behavior
+                console.log('[updateGearIconForUser] User is editor - setting gear icon');
                 gearIcon.className = 'fa-solid fa-gear';
                 gearButton.onclick = settings;
+                console.log('[updateGearIconForUser] Gear icon updated to gear, onclick set to settings');
             } else {
                 // User is not editor - show info icon and info pane behavior
+                console.log('[updateGearIconForUser] User is not editor - setting info icon');
                 gearIcon.className = 'fa-solid fa-info';
                 gearButton.onclick = settings; // The settings function now handles both cases
+                console.log('[updateGearIconForUser] Gear icon updated to info, onclick set to settings');
             }
+        } else {
+            console.error('[updateGearIconForUser] Missing required elements - gearIcon:', !!gearIcon, 'gearButton:', !!gearButton);
         }
 
         // Check if user is logged in and show/hide appropriate divs
+        console.log('[updateGearIconForUser] Checking user authentication...');
         try {
             const { data, error } = await window.supabaseClient.auth.getUser();
+            console.log('[updateGearIconForUser] Auth result - data:', data, 'error:', error);
+            
             const infosignupDiv = document.getElementById('infosignup');
             const infoclonecdDiv = document.getElementById('infoclonecd');
+            
+            console.log('[updateGearIconForUser] infosignup div found:', !!infosignupDiv);
+            console.log('[updateGearIconForUser] infoclonecd div found:', !!infoclonecdDiv);
             
             // Check if data exists and has a user property
             if (data && data.user && !error) {
                 // User is logged in - hide infosignup, show infoclonecd
-                if (infosignupDiv) infosignupDiv.style.display = 'none';
-                if (infoclonecdDiv) infoclonecdDiv.style.display = '';
+                console.log('[updateGearIconForUser] User is logged in, updating div visibility');
+                if (infosignupDiv) {
+                    infosignupDiv.style.display = 'none';
+                    console.log('[updateGearIconForUser] Hidden infosignup div');
+                }
+                if (infoclonecdDiv) {
+                    infoclonecdDiv.style.display = '';
+                    console.log('[updateGearIconForUser] Shown infoclonecd div');
+                }
             } else {
                 // User is not logged in - show infosignup, hide infoclonecd
-                if (infosignupDiv) infosignupDiv.style.display = '';
-                if (infoclonecdDiv) infoclonecdDiv.style.display = 'none';
+                console.log('[updateGearIconForUser] User is not logged in, updating div visibility');
+                if (infosignupDiv) {
+                    infosignupDiv.style.display = '';
+                    console.log('[updateGearIconForUser] Shown infosignup div');
+                }
+                if (infoclonecdDiv) {
+                    infoclonecdDiv.style.display = 'none';
+                    console.log('[updateGearIconForUser] Hidden infoclonecd div');
+                }
             }
         } catch (authError) {
             console.log('[updateGearIconForUser] User not authenticated or auth error:', authError);
@@ -5384,10 +5420,14 @@ async function updateGearIconForUser() {
             const infoclonecdDiv = document.getElementById('infoclonecd');
             if (infosignupDiv) infosignupDiv.style.display = '';
             if (infoclonecdDiv) infoclonecdDiv.style.display = 'none';
+            console.log('[updateGearIconForUser] Applied fallback div visibility due to auth error');
         }
 
         // Update info pane with countdown creator info
         if (window.CountdownDataID) {
+            console.log('[updateGearIconForUser] === UPDATING INFO PANE ===');
+            console.log('[updateGearIconForUser] CountdownDataID exists:', window.CountdownDataID);
+            
             try {
                 console.log('[updateGearIconForUser] Updating info pane for countdown ID:', window.CountdownDataID);
                 
@@ -5397,16 +5437,19 @@ async function updateGearIconForUser() {
                 if (window.CountdownUserData && window.CountdownUserData.countdown) {
                     countdownData = window.CountdownUserData.countdown;
                     userData = window.CountdownUserData.user;
-                    console.log('[updateGearIconForUser] Using pre-fetched data:', countdownData, userData);
+                    console.log('[updateGearIconForUser] Using pre-fetched data - countdown:', countdownData, 'user:', userData);
                 } else {
                     // Fallback to database queries if pre-fetched data not available
                     console.log('[updateGearIconForUser] Pre-fetched data not available, falling back to database queries');
+                    console.log('[updateGearIconForUser] window.CountdownUserData:', window.CountdownUserData);
                     
                     const { data: countdownDataResult, error: countdownError } = await window.supabaseClient
                         .from('countdown')
                         .select('creator, created_at, clonedfrom')
                         .eq('id', window.CountdownDataID)
                         .maybeSingle();
+
+                    console.log('[updateGearIconForUser] Countdown query result:', countdownDataResult, 'error:', countdownError);
 
                     if (countdownError || !countdownDataResult) {
                         console.log('[updateGearIconForUser] No countdown data found');
@@ -5416,17 +5459,20 @@ async function updateGearIconForUser() {
                     countdownData = countdownDataResult;
                     
                     if (countdownData.creator) {
+                        console.log('[updateGearIconForUser] Querying user data for creator:', countdownData.creator);
                         const { data: userDataResult, error: userError } = await window.supabaseClient
                             .from('public_profiles')
                             .select('name, avatar_url, official')
                             .eq('id', countdownData.creator)
                             .maybeSingle();
                         
+                        console.log('[updateGearIconForUser] User query result:', userDataResult, 'error:', userError);
                         userData = userDataResult;
                     }
                 }
 
                 if (countdownData && countdownData.creator) {
+                    console.log('[updateGearIconForUser] === PROCESSING CREATOR DATA ===');
                     console.log('[updateGearIconForUser] Creator UUID:', countdownData.creator);
                     
                     if (userData && userData.name) {
@@ -5437,6 +5483,9 @@ async function updateGearIconForUser() {
                         console.log('[updateGearIconForUser] Creator name element found:', !!creatorNameElement);
                         if (creatorNameElement) {
                             creatorNameElement.textContent = userData.name;
+                            console.log('[updateGearIconForUser] Creator name updated successfully');
+                        } else {
+                            console.error('[updateGearIconForUser] Creator name element not found!');
                         }
 
                         // Update the creator's profile picture
@@ -5446,6 +5495,9 @@ async function updateGearIconForUser() {
                             console.log('[updateGearIconForUser] Creator avatar element found:', !!creatorPfpElement);
                             if (creatorPfpElement) {
                                 creatorPfpElement.src = userData.avatar_url;
+                                console.log('[updateGearIconForUser] Creator avatar updated successfully');
+                            } else {
+                                console.error('[updateGearIconForUser] Creator avatar element not found!');
                             }
                         }
 
@@ -5453,6 +5505,10 @@ async function updateGearIconForUser() {
                         if (userData.official !== undefined) {
                             console.log('[updateGearIconForUser] Creator official status:', userData.official);
                             const verifiedElement = document.getElementById('infocreatorverified');
+                            const officialTextTip = document.getElementById('officialtexttip');
+                            console.log('[updateGearIconForUser] Verified element found:', !!verifiedElement);
+                            console.log('[updateGearIconForUser] Official text tip found:', !!officialTextTip);
+                            
                             if (verifiedElement) {
                                 if (userData.official === true) {
                                     // User is official - do nothing (keep badge visible)
@@ -5460,15 +5516,21 @@ async function updateGearIconForUser() {
                                 } else {
                                     // User is not official - hide verification badge
                                     console.log('[updateGearIconForUser] Creator is not official, hiding verification badge');
-                                    document.getElementById('officialtexttip').style.display = 'none';
+                                    if (officialTextTip) {
+                                        officialTextTip.style.display = 'none';
+                                        console.log('[updateGearIconForUser] Hidden official text tip');
+                                    }
                                     verifiedElement.style.display = 'none';
+                                    console.log('[updateGearIconForUser] Hidden verification badge');
                                 }
                             } else {
-                                console.log('[updateGearIconForUser] Verification badge element not found');
+                                console.error('[updateGearIconForUser] Verification badge element not found!');
                             }
                         } else {
                             console.log('[updateGearIconForUser] No official status found for creator');
                         }
+                    } else {
+                        console.log('[updateGearIconForUser] No user data or name found:', userData);
                     }
 
                     // Update the creation date
@@ -5484,6 +5546,9 @@ async function updateGearIconForUser() {
                                 year: 'numeric'
                             });
                             creationDateElement.textContent = formattedDate;
+                            console.log('[updateGearIconForUser] Creation date updated to:', formattedDate);
+                        } else {
+                            console.error('[updateGearIconForUser] Creation date element not found!');
                         }
                     }
 
@@ -5493,6 +5558,7 @@ async function updateGearIconForUser() {
                         
                         // Update the verb text to "adapted"
                         const createdVerbElement = document.getElementById('infocreatedverb');
+                        console.log('[updateGearIconForUser] Created verb element found:', !!createdVerbElement);
                         if (createdVerbElement) {
                             createdVerbElement.textContent = 'Adapted';
                             
@@ -5503,6 +5569,9 @@ async function updateGearIconForUser() {
                                 const originalUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?id=" + countdownData.clonedfrom;
                                 window.location.href = originalUrl;
                             };
+                            console.log('[updateGearIconForUser] Updated created verb to "Adapted" and made clickable');
+                        } else {
+                            console.error('[updateGearIconForUser] Created verb element not found!');
                         }
                     }
                 } else {
@@ -5516,30 +5585,46 @@ async function updateGearIconForUser() {
         }
 
         // Hide loading element after all data is processed
-        if (document.getElementById('infopreloader')) {
-            document.getElementById('infopanecontent').style.display = '';
+        const loadingElement = document.getElementById('infopreloader');
+        const infoPaneContent = document.getElementById('infopanecontent');
+        
+        console.log('[updateGearIconForUser] Loading element found:', !!loadingElement);
+        console.log('[updateGearIconForUser] Info pane content found:', !!infoPaneContent);
+        
+        if (loadingElement && infoPaneContent) {
+            infoPaneContent.style.display = '';
             loadingElement.style.display = 'none';
+            console.log('[updateGearIconForUser] Loading element hidden, info pane content shown');
+        } else {
+            console.error('[updateGearIconForUser] Missing loading or content elements!');
         }
         
         // Mark function as completed
         window.gearIconUpdated = true;
+        console.log('[updateGearIconForUser] === FUNCTION COMPLETED SUCCESSFULLY ===');
         
     } catch (error) {
+        console.error('[updateGearIconForUser] === FUNCTION FAILED WITH ERROR ===');
         console.error('[updateGearIconForUser] Error updating gear icon:', error);
+        console.error('[updateGearIconForUser] Error stack:', error.stack);
+        
         // Fallback to default gear icon
         const gearIcon = document.getElementById('innergear');
         if (gearIcon) {
             gearIcon.className = 'fa-solid fa-gear';
+            console.log('[updateGearIconForUser] Applied fallback gear icon due to error');
         }
         
         // Hide loading element on error
         const loadingElement = document.getElementById('infopreloader');
         if (loadingElement) {
             loadingElement.style.display = 'none';
+            console.log('[updateGearIconForUser] Hidden loading element due to error');
         }
         
         // Mark function as completed even on error
         window.gearIconUpdated = true;
+        console.log('[updateGearIconForUser] === FUNCTION MARKED AS COMPLETED DUE TO ERROR ===');
     }
 }
 
