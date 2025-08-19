@@ -308,7 +308,7 @@ function cardmodemanager(){
       updateSaveButtonText();
 
       SetCountDowngeneral();
-      generateProfilePic();
+      // Profile picture generation moved to auth listener to prevent duplicate calls
 
       // Initialize overlay visibility if elements exist
       if (document.getElementById('confettiEmojiPicker') && document.getElementById('emojiOverlay')) {
@@ -4983,10 +4983,8 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                   }
                   
                   function generateProfilePic() {
-    console.log('[betaapp] generateProfilePic called');
     // Prevent concurrent calls and redundant calls
     if (window.generatingProfile || window.lastProfileGeneration && Date.now() - window.lastProfileGeneration < 1000) {
-        console.log('[betaapp] Profile generation skipped - too soon or already in progress');
         return;
     }
     window.generatingProfile = true;
@@ -4995,7 +4993,6 @@ SetCountDowngeneral(); // Update any theme-colored pickers
     // Skip database features in card mode
     if (parameter('cardmode')) {
         const localName = 'Sign In'; // Use default name instead of localStorage
-        console.log('[betaapp] Card mode, using default name:', localName);
         generateProfilePicWithName(localName);
         const usrdetail = document.getElementById('usrdetail');
         if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
@@ -5016,11 +5013,8 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     .eq('id', session.user.id)
                     .maybeSingle();
                 
-                console.log('[betaapp] Database query result:', { userData, error });
-                
                 if (userData) {
                     if (userData.has_plus && userData.avatar_url) {
-                        console.log('[betaapp] Using avatar from database');
                         document.getElementById('userpfp').src = userData.avatar_url;
                         document.getElementById('settingsuserpfp').src = userData.avatar_url;
                         document.getElementById('usrname').textContent = userData.name || 'User';
@@ -5029,7 +5023,6 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     }
                     
                     if (userData.name && !error) {
-                        console.log('[betaapp] Using name from database:', userData.name);
                         generateProfilePicWithName(userData.name);
                         return;
                     }
@@ -5037,7 +5030,6 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                 
                 // Fallback to user metadata if no database entry
                 const fallbackName = session.user.user_metadata?.full_name || 'Sign In';
-                console.log('[betaapp] Using fallback name:', fallbackName);
                 generateProfilePicWithName(fallbackName);
                 if (fallbackName === 'Sign In') {
                   const usrdetail = document.getElementById('usrdetail');
@@ -5055,7 +5047,6 @@ SetCountDowngeneral(); // Update any theme-colored pickers
         } else {
             // Not logged in, use default name
             const localName = 'Sign In';
-            console.log('[betaapp] Not logged in, using default name:', localName);
             generateProfilePicWithName(localName);
             const usrdetail = document.getElementById('usrdetail');
             if (usrdetail) usrdetail.innerHTML = 'Save, share, sync, and more';
@@ -5072,21 +5063,11 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                   }
 
                   function generateProfilePicWithName(name) {
-                    console.log('[betaapp] generateProfilePicWithName called with:', name);
-                    
                     const usrnameElement = document.getElementById('usrname');
                     const settingsusrnameElement = document.getElementById('settingsusrname');
                     const userpfpElement = document.getElementById('userpfp');
                     const settingsuserpfpElement = document.getElementById('settingsuserpfp');
                     const profileCanvasElement = document.getElementById('profileCanvas');
-                    
-                    console.log('[betaapp] DOM elements found:', {
-                        usrname: !!usrnameElement,
-                        settingsusrname: !!settingsusrnameElement,
-                        userpfp: !!userpfpElement,
-                        settingsuserpfp: !!settingsuserpfpElement,
-                        profileCanvas: !!profileCanvasElement
-                    });
                     
                     if (!usrnameElement || !userpfpElement || !profileCanvasElement || !settingsusrnameElement || !settingsuserpfpElement) {
                         console.error('[betaapp] Missing required DOM elements');
@@ -5123,7 +5104,6 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                     const dataURL = canvas.toDataURL('image/png');
                     userpfpElement.src = dataURL;
                     settingsuserpfpElement.src = dataURL;
-                    console.log('[betaapp] Profile picture generated successfully');
                   }
 
                   // Note: Authentication listener setup moved to separate function to prevent multiple setups
@@ -5131,7 +5111,6 @@ SetCountDowngeneral(); // Update any theme-colored pickers
                   // Initialize profile picture on page load
                   if (parameter('cardmode')) {
                     // In card mode, just generate once with default data
-                    console.log('[betaapp] Card mode - generating with default data');
                     const localName = 'Sign In';
                     generateProfilePicWithName(localName);
                   } else if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
@@ -5348,6 +5327,7 @@ if (loadingElement) {
 
 // Function to update gear icon based on user's editor status
 async function updateGearIconForUser() {
+    console.log('[updateGearIconForUser] ID ' + window.CountdownDataID);
     // Check if this function has already run
     if (window.gearIconUpdated) {
         return;
@@ -5622,36 +5602,30 @@ async function clonecountdown() {
 // Set up authentication state listener (only once globally)
 function setupAuthListener() {
     if (window.authListenerSetup) {
-        console.log('[betaapp] Auth listener already set up, skipping');
         return;
     }
     
     if (parameter('cardmode')) {
-        console.log('[betaapp] Card mode, skipping auth listener setup');
         return;
     }
     
     if (typeof window.supabaseClient === "undefined" || !window.supabaseClient.auth) {
-        console.log('[betaapp] Supabase client not available, skipping auth listener setup');
         return;
     }
     
     window.authListenerSetup = true;
-    console.log('[betaapp] Setting up auth listener');
     
     // First check current session
     window.supabaseClient.auth.getSession().then(({ data, error }) => {
         if (error || !data) {
-            console.log('[betaapp] Initial session check: Error getting session');
+            console.error('[betaapp] Initial session check: Error getting session:', error);
             return;
         }
         
         const session = data.session;
-        console.log('[betaapp] Initial session check:', session ? 'Logged in' : 'Not logged in');
         
         // Set up auth state change listener
         window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
-            console.log('[betaapp] Auth state changed:', event, session);
             if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
                 // Create/update user in database
                 const user = session.user;
@@ -5659,8 +5633,6 @@ function setupAuthListener() {
                 const email = user.email;
                 const name = user.user_metadata?.full_name;
                 const avatar_url = user.user_metadata?.avatar_url;
-                
-                console.log('[betaapp] User signed in:', { userId, email, name, avatar_url });
                 
                 if (userId && email && name) {
                     try {
@@ -5676,7 +5648,6 @@ function setupAuthListener() {
                         if (upsertError) {
                             console.error('[betaapp] User upsert error:', upsertError.message);
                         } else {
-                            console.log('[betaapp] User upserted successfully');
                             // Only generate profile pic after successful upsert
                             generateProfilePic();
                             // Load cookies from cloud when user logs in
@@ -5689,7 +5660,6 @@ function setupAuthListener() {
                     console.warn('[betaapp] Missing user info for upsert:', { userId, email, name });
                 }
             } else if (event === 'SIGNED_OUT') {
-                console.log('[betaapp] User signed out');
                 // User signed out, use default name
                 const localName = 'Sign In';
                 generateProfilePicWithName(localName);
