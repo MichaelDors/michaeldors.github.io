@@ -3,6 +3,8 @@ let userInteracted = false;
 // Debounce function for limiting how often a function can be called
 // Global variables for database sync cooldown
 let isInCooldown = false;
+let lastDatabaseSync = 0;
+const DATABASE_SYNC_COOLDOWN = 5000; // 5 seconds
 
 function debounce(func, wait) {
     let timeout;
@@ -1424,10 +1426,6 @@ document.addEventListener('data-ready', initFloatingIcons);
           }
           return result;
       }
-
-            // Database sync cooldown
-            let lastDatabaseSync = 0;
-            const DATABASE_SYNC_COOLDOWN = 5000; // 5 seconds
       
       async function syncCountdownToDatabase(countdownData) {
         console.log("uploading cd to db - init");
@@ -5268,7 +5266,6 @@ async function logoutUser() {
     }, 1000);
 }
 
-// Add this function after the existing functions, before the settings function
 async function isUserEditor() {
     try {
         if (parameter('id')) {
@@ -5284,27 +5281,42 @@ async function isUserEditor() {
             const session = data.session;
             const user = session.user;
 
-            // Check if user is the owner
-            if (window.CountdownDataID) {
-                const { data: countdownData, error: countdownError } = await window.supabaseClient
-                    .from('countdown')
-                    .select('creator, collaborator_ids')
-                    .eq('id', window.CountdownDataID)
-                    .maybeSingle();
+            // Check if user is the owner using pre-fetched data
+            if (window.CountdownDataID && window.CountdownUserData && window.CountdownUserData.countdown) {
+                const countdownData = window.CountdownUserData.countdown;
+                
+                // User is owner
+                if (countdownData.creator === user.id) {
+                    return true;
+                }
 
-                if (countdownData && !countdownError) {
-                    // User is owner
-                    if (countdownData.creator === user.id) {
-                        return true;
-                    }
+                // User is collaborator
+                if (countdownData.collaborator_ids && countdownData.collaborator_ids.includes(user.id)) {
+                    return true;
+                }
+            } else {
+                // Fallback to database query if pre-fetched data not available
+                if (window.CountdownDataID) {
+                    const { data: countdownData, error: countdownError } = await window.supabaseClient
+                        .from('countdown')
+                        .select('creator, collaborator_ids')
+                        .eq('id', window.CountdownDataID)
+                        .maybeSingle();
 
-                    // User is collaborator
-                    if (countdownData.collaborator_ids && countdownData.collaborator_ids.includes(user.id)) {
-                        return true;
+                    if (countdownData && !countdownError) {
+                        // User is owner
+                        if (countdownData.creator === user.id) {
+                            return true;
+                        }
+
+                        // User is collaborator
+                        if (countdownData.collaborator_ids && countdownData.collaborator_ids.includes(user.id)) {
+                            return true;
+                        }
                     }
                 }
             }
-        }else{
+        } else {
             return true;
         }
 
@@ -5379,38 +5391,45 @@ async function updateGearIconForUser() {
             try {
                 console.log('[updateGearIconForUser] Updating info pane for countdown ID:', window.CountdownDataID);
                 
-                // Fetch countdown data including creator, created_at, and clonedfrom
-                const { data: countdownData, error: countdownError } = await window.supabaseClient
-                    .from('countdown')
-                    .select('creator, created_at, clonedfrom')
-                    .eq('id', window.CountdownDataID)
-                    .maybeSingle();
+                // Use pre-fetched data if available, otherwise fall back to database queries
+                let countdownData, userData;
+                
+                if (window.CountdownUserData && window.CountdownUserData.countdown) {
+                    countdownData = window.CountdownUserData.countdown;
+                    userData = window.CountdownUserData.user;
+                    console.log('[updateGearIconForUser] Using pre-fetched data:', countdownData, userData);
+                } else {
+                    // Fallback to database queries if pre-fetched data not available
+                    console.log('[updateGearIconForUser] Pre-fetched data not available, falling back to database queries');
+                    
+                    const { data: countdownDataResult, error: countdownError } = await window.supabaseClient
+                        .from('countdown')
+                        .select('creator, created_at, clonedfrom')
+                        .eq('id', window.CountdownDataID)
+                        .maybeSingle();
 
-                console.log('[updateGearIconForUser] Countdown data:', countdownData, 'Error:', countdownError);
+                    if (countdownError || !countdownDataResult) {
+                        console.log('[updateGearIconForUser] No countdown data found');
+                        return;
+                    }
+                    
+                    countdownData = countdownDataResult;
+                    
+                    if (countdownData.creator) {
+                        const { data: userDataResult, error: userError } = await window.supabaseClient
+                            .from('public_profiles')
+                            .select('name, avatar_url, official')
+                            .eq('id', countdownData.creator)
+                            .maybeSingle();
+                        
+                        userData = userDataResult;
+                    }
+                }
 
-                if (countdownData && !countdownError && countdownData.creator) {
+                if (countdownData && countdownData.creator) {
                     console.log('[updateGearIconForUser] Creator UUID:', countdownData.creator);
                     
-                    // Fetch creator's name, avatar, and official status from users table
-                    console.log('[updateGearIconForUser] Querying users table for ID:', countdownData.creator);
-                    const { data: userData, error: userError } = await window.supabaseClient
-                        .from('public_profiles')
-                        .select('name, avatar_url, official')
-                        .eq('id', countdownData.creator)
-                        .maybeSingle();
-
-                    console.log('[updateGearIconForUser] Users table query result - Data:', userData, 'Error:', userError);
-                    
-                    // Let's also try to see if the user exists at all
-                    const { data: userExists, error: existsError } = await window.supabaseClient
-                        .from('public_profiles')
-                        .select('id')
-                        .eq('id', countdownData.creator)
-                        .maybeSingle();
-                    
-                    console.log('[updateGearIconForUser] User exists check - Data:', userExists, 'Error:', existsError);
-
-                    if (userData && !userError && userData.name) {
+                    if (userData && userData.name) {
                         console.log('[updateGearIconForUser] Updating creator name to:', userData.name);
                         
                         // Update the creator name in the info pane

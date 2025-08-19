@@ -29,6 +29,47 @@ async function getCountdownData(id) {
     }
 }
 
+// New function to fetch all user-related data in one consolidated request
+async function getUserRelatedData(id) {
+    try {
+        // Fetch countdown data including creator, created_at, clonedfrom, and collaborator_ids
+        const { data: countdownData, error: countdownError } = await window.supabaseClient
+            .from('countdown')
+            .select('creator, created_at, clonedfrom, collaborator_ids')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (countdownError || !countdownData || !countdownData.creator) {
+            console.warn('No countdown data or creator found for ID:', id);
+            return null;
+        }
+
+        // Fetch creator's profile data from public_profiles table
+        const { data: userData, error: userError } = await window.supabaseClient
+            .from('public_profiles')
+            .select('name, avatar_url, official')
+            .eq('id', countdownData.creator)
+            .maybeSingle();
+
+        if (userError) {
+            console.warn('Error fetching user profile data:', userError);
+            // Return countdown data even if user profile fetch fails
+            return {
+                countdown: countdownData,
+                user: null
+            };
+        }
+
+        return {
+            countdown: countdownData,
+            user: userData
+        };
+    } catch (error) {
+        console.error('Error in getUserRelatedData:', error);
+        return null;
+    }
+}
+
 let obtaineddata = false;
 
 // Test the function (only run once)
@@ -40,6 +81,12 @@ let obtaineddata = false;
                     window.CountdownDataSource = sourceCountdowndata;
                     window.CountdownDataSourceOrigin = "db";
                     obtaineddata = true;
+                    
+                    // Also fetch user-related data for this countdown
+                    const userRelatedData = await getUserRelatedData(parameter('id'));
+                    if (userRelatedData) {
+                        window.CountdownUserData = userRelatedData;
+                    }
                 }
             } else if(parameter('date') || parameter('schedule')){
                 window.CountdownDataSource = window.location.search;
