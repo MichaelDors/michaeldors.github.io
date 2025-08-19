@@ -304,7 +304,7 @@ function cardmodemanager(){
 
       // Check if user is editor and update gear icon accordingly
       updateGearIconForUser();
-      
+
       updateSaveButtonText();
 
       SetCountDowngeneral();
@@ -5457,7 +5457,7 @@ async function updateGearIconForUser() {
         }
 
         // Update info pane with countdown creator info
-        if (window.CountdownDataID || parameter('id')) {
+        if (window.CountdownDataID) {
             try {
                 console.log('[updateGearIconForUser] Updating info pane for countdown ID:', window.CountdownDataID);
                 
