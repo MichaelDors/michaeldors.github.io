@@ -1572,13 +1572,6 @@ document.addEventListener('data-ready', initFloatingIcons);
       }
 
       function getParameterFromSource(name){
-        // Debug logging for schedule parameter issues
-        if (name === 'schedule') {
-          console.log("[getParameterFromSource] Debug for schedule parameter:");
-          console.log("  - window.CountdownDataSource:", window.CountdownDataSource);
-          console.log("  - window.location.search:", window.location.search);
-          console.log("  - window.location.href:", window.location.href);
-        }
         
         var query = window.CountdownDataSource.substring(1);
         var parameters = query.split('&');
