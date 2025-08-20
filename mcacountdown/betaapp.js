@@ -12,12 +12,6 @@ window.gearIconUpdated = false;
 // Global variable to store user editor status
 window.userEditorStatus = null;
 
-// Schedule variables - declared globally to ensure availability
-let schedule_events = [];
-let schedule_exceptions = {};
-let schedule_editingEvent = null;
-let schedule_editingExceptionDay = null;
-
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -1372,9 +1366,7 @@ document.addEventListener('data-ready', initFloatingIcons);
       '&progress=' + document.getElementById("progressdatepicker").value + 
       '&progressposition=' + progressbarposition + 
           '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
-          '&schedule=' + (typeof schedule_encodeSchedule === 'function' ? schedule_encodeSchedule() : (getParameterFromSource('schedule') || parameter('schedule') || 'null'));
-
-
+          '&schedule=' + (getParameterFromSource('schedule') || parameter('schedule') || 'null');
 
           window.CountdownDataSource = parameterstring;
 
@@ -3265,7 +3257,11 @@ function contrast(){ //increase contrast set or remove cookie
       container.style.height = `${numRows * maxHeight}px`;
   }
   
-  //Countdown Schedule
+  //Countdown Schedule 
+  let schedule_events = [];
+          let schedule_exceptions = {};
+          let schedule_editingEvent = null;
+          let schedule_editingExceptionDay = null;
   
           function schedule_encodeSchedule() {
               return btoa(JSON.stringify({ schedule_events, schedule_exceptions }));
@@ -3285,11 +3281,9 @@ function contrast(){ //increase contrast set or remove cookie
           }
   
           function schedule_updateURL() {
-              // Don't manually update the URL here - let SetCountDowngeneral() handle it
-              // This ensures the schedule data is properly included in the database sync
-              
-              // SetCountDowngeneral() will handle both URL updates and database syncing
-              SetCountDowngeneral();
+              const encoded = schedule_encodeSchedule();
+              history.replaceState(null, '', `?schedule=${encoded}`);
+          SetCountDowngeneral();
           }
   
       function startCountdownSchedule(){
@@ -3340,20 +3334,8 @@ function contrast(){ //increase contrast set or remove cookie
         }
   
           function schedule_resetAll(){
-              // Clear local schedule data
-              schedule_events = [];
-              schedule_exceptions = {};
-              
-              // Update the URL to reflect the cleared state
               history.replaceState(null, '', `?schedule=null`);
-              
-              // Update the UI to reflect the cleared state
-              schedule_updateEventList();
-              schedule_updateExceptionList();
-              schedule_updateScheduleViewer();
-              
-              // Show feedback to user
-              showToast('Schedule cleared successfully', 'success');
+              schedule_loadScheduleFromURL();
           }
   
           function schedule_loadScheduleFromURL() {
@@ -3370,23 +3352,9 @@ function contrast(){ //increase contrast set or remove cookie
                       schedule_updateExceptionList();
                   } catch (error) {
                       console.error("[schedule_loadScheduleFromURL] Error processing schedule:", error);
-                      // If decoding fails, clear the schedule to prevent corruption
-                      schedule_events = [];
-                      schedule_exceptions = {};
-                      schedule_updateEventList();
-                      schedule_updateExceptionList();
                   }
-              } else if (encodedSchedule === "null") {
-                  // Explicitly handle "null" case - clear the schedule
-                  console.log("[schedule_loadScheduleFromURL] Schedule parameter is 'null', clearing schedule");
-                  schedule_events = [];
-                  schedule_exceptions = {};
-                  schedule_updateEventList();
-                  schedule_updateExceptionList();
               } else {
                   console.log("[schedule_loadScheduleFromURL] No schedule parameter found");
-                  // Don't modify existing schedule data if no parameter is present
-                  // This allows ID-based loading to work properly
               }
           }
 
@@ -4306,15 +4274,7 @@ document.addEventListener('data-ready', function() {
           // Load schedule from URL when the data is ready
           document.addEventListener('data-ready', () => {
               console.log("[Schedule] Data ready event fired, loading schedule");
-              
-              // Only load from URL if we're in URL-based mode, not database mode
-              if (window.CountdownDataSourceOrigin === "url") {
-                  console.log("[Schedule] URL-based mode detected, loading schedule from URL");
-                  schedule_loadScheduleFromURL();
-              } else {
-                  console.log("[Schedule] Database mode detected, skipping URL-based schedule loading");
-              }
-              
+              schedule_loadScheduleFromURL();
               schedule_updateScheduleViewer();
               setInterval(schedule_updateScheduleViewer, 1000);
           });
@@ -4324,15 +4284,7 @@ document.addEventListener('data-ready', function() {
               console.log("[Schedule] Window load event fired, checking if data is ready");
               if (window.CountdownDataSource) {
                   console.log("[Schedule] CountdownDataSource available on load, loading schedule");
-                  
-                  // Only load from URL if we're in URL-based mode, not database mode
-                  if (window.CountdownDataSourceOrigin === "url") {
-                      console.log("[Schedule] URL-based mode detected, loading schedule from URL");
-                      schedule_loadScheduleFromURL();
-                  } else {
-                      console.log("[Schedule] Database mode detected, skipping URL-based schedule loading");
-                  }
-                  
+                  schedule_loadScheduleFromURL();
                   schedule_updateScheduleViewer();
                   setInterval(schedule_updateScheduleViewer, 1000);
               } else {
