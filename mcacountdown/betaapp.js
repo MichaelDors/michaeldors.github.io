@@ -6,6 +6,8 @@ let isInCooldown = false;
 let lastDatabaseSync = 0;
 const DATABASE_SYNC_COOLDOWN = 5000; // 5 seconds
 
+updateGearIconForUser();
+
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -304,7 +306,6 @@ function cardmodemanager(){
       */
 
       // Check if user is editor and update gear icon accordingly
-      updateGearIconForUser();
 
       updateSaveButtonText();
 
