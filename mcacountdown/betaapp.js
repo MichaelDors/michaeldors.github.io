@@ -3346,13 +3346,22 @@ function contrast(){ //increase contrast set or remove cookie
           }
   
           function schedule_loadScheduleFromURL() {
-              const encodedSchedule = getParameterFromSource('schedule');
+              const encodedSchedule = getParameterFromSource('schedule') || parameter('schedule');
+              console.log("[schedule_loadScheduleFromURL] Loading schedule:", encodedSchedule);
+              
               if (encodedSchedule && encodedSchedule !== "null") {
-                  const decoded = schedule_decodeSchedule(encodedSchedule);
-                  schedule_events = decoded.schedule_events;
-                  schedule_exceptions = decoded.schedule_exceptions;
-                  schedule_updateEventList();
-                  schedule_updateExceptionList();
+                  try {
+                      const decoded = schedule_decodeSchedule(encodedSchedule);
+                      console.log("[schedule_loadScheduleFromURL] Decoded schedule:", decoded);
+                      schedule_events = decoded.schedule_events;
+                      schedule_exceptions = decoded.schedule_exceptions;
+                      schedule_updateEventList();
+                      schedule_updateExceptionList();
+                  } catch (error) {
+                      console.error("[schedule_loadScheduleFromURL] Error processing schedule:", error);
+                  }
+              } else {
+                  console.log("[schedule_loadScheduleFromURL] No schedule parameter found");
               }
           }
 
@@ -4269,11 +4278,25 @@ document.addEventListener('data-ready', function() {
           document.getElementById('schedule-addOrUpdateEventBtn').addEventListener('click', schedule_addOrUpdateEvent);
           document.getElementById('schedule-addExceptionBtn').addEventListener('click', schedule_addExceptionDay);
   
-          // Load schedule from URL when the page loads
-          window.addEventListener('load', () => {
+          // Load schedule from URL when the data is ready
+          document.addEventListener('data-ready', () => {
+              console.log("[Schedule] Data ready event fired, loading schedule");
               schedule_loadScheduleFromURL();
               schedule_updateScheduleViewer();
               setInterval(schedule_updateScheduleViewer, 1000);
+          });
+          
+          // Fallback: also try to load on window load in case data-ready doesn't fire
+          window.addEventListener('load', () => {
+              console.log("[Schedule] Window load event fired, checking if data is ready");
+              if (window.CountdownDataSource) {
+                  console.log("[Schedule] CountdownDataSource available on load, loading schedule");
+                  schedule_loadScheduleFromURL();
+                  schedule_updateScheduleViewer();
+                  setInterval(schedule_updateScheduleViewer, 1000);
+              } else {
+                  console.log("[Schedule] CountdownDataSource not ready on load, waiting for data-ready event");
+              }
           });
   
   
