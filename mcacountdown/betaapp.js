@@ -1366,7 +1366,7 @@ document.addEventListener('data-ready', initFloatingIcons);
       '&progress=' + document.getElementById("progressdatepicker").value + 
       '&progressposition=' + progressbarposition + 
           '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
-          '&schedule=' + getParameterFromSource('schedule');
+          '&schedule=' + (getParameterFromSource('schedule') || parameter('schedule') || 'null');
 
           window.CountdownDataSource = parameterstring;
 
