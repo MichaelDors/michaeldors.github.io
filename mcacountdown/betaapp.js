@@ -2804,9 +2804,8 @@ function contrast(){ //increase contrast set or remove cookie
                   
                   // Check if text is too long for QR code library to handle
                   if (textValue && textValue.length > 800) {
-                      console.warn("[makeQR] Text too long for QR code generation:", textValue.length, "characters");
                       // Create a fallback message instead of QR code
-                      qrcodeElement.innerHTML = '<div style="text-align:center;padding:20px;color:#666;">QR code too long to generate<br><small>URL has ' + textValue.length + ' characters</small></div>';
+                      qrcodeElement.innerHTML = '<div style="text-align:center;padding:20px;color:#ff6e6e;">URL exceeds QR limit</div>';
                       return;
                   }
                   
@@ -2826,7 +2825,7 @@ function contrast(){ //increase contrast set or remove cookie
                       }
                   } catch (error) {
                       // Fallback: show error message
-                      qrcodeInfoElement.innerHTML = '<div style="text-align:center;padding:20px;color:#ff6e6e;">URL exceeds QR limit</div>';
+                      qrcodeElement.innerHTML = '<div style="text-align:center;padding:20px;color:#ff6e6e;">URL exceeds QR limit</div>';
                   }
               }
               
