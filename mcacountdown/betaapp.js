@@ -6,7 +6,8 @@ let isInCooldown = false;
 let lastDatabaseSync = 0;
 const DATABASE_SYNC_COOLDOWN = 5000; // 5 seconds
 
-updateGearIconForUser();
+// Initialize the gear icon update flag
+window.gearIconUpdated = false;
 
 function debounce(func, wait) {
     let timeout;
@@ -321,6 +322,12 @@ function cardmodemanager(){
   
           document.addEventListener("data-ready", function () {
               updateColorAnimations();
+              
+              // Update gear icon after countdown data is loaded
+              if (window.CountdownDataID) {
+                  updateGearIconForUser();
+              }
+              
           var cookieBanner = document.getElementById("cookie-banner");
           var acceptButton = document.getElementById("accept-cookies");
   
@@ -5339,13 +5346,8 @@ if (loadingElement) {
 
 // Function to update gear icon based on user's editor status
 async function updateGearIconForUser() {
-    console.log('[updateGearIconForUser] === FUNCTION START ===');
-    console.log('[updateGearIconForUser] CountdownDataID:', window.CountdownDataID);
-    console.log('[updateGearIconForUser] gearIconUpdated flag:', window.gearIconUpdated);
-    
     // Check if this function has already run
     if (window.gearIconUpdated) {
-        console.log('[updateGearIconForUser] Function already run, returning early');
         return;
     }
     
