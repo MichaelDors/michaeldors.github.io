@@ -2825,7 +2825,6 @@ function contrast(){ //increase contrast set or remove cookie
                           imgQR(canvas, icon, 0.3);
                       }
                   } catch (error) {
-                      console.error("[makeQR] Error generating QR code:", error);
                       // Fallback: show error message
                       qrcodeInfoElement.innerHTML = '<div style="text-align:center;padding:20px;color:#ff6e6e;">URL exceeds QR limit</div>';
                   }
@@ -2837,9 +2836,8 @@ function contrast(){ //increase contrast set or remove cookie
                   
                   // Check if text is too long for QR code library to handle
                   if (textValueInfo && textValueInfo.length > 800) {
-                      console.warn("[makeQR] Info pane text too long for QR code generation:", textValueInfo.length, "characters");
                       // Create a fallback message instead of QR code
-                      qrcodeInfoElement.innerHTML = '<div style="text-align:center;padding:20px;color:#666;">QR code too long to generate<br><small>URL has ' + textValueInfo.length + ' characters</small></div>';
+                      qrcodeInfoElement.innerHTML = '<div style="text-align:center;padding:20px;color:#ff6e6e;">URL exceeds QR limit</div>';
                       return;
                   }
                   
@@ -2858,7 +2856,6 @@ function contrast(){ //increase contrast set or remove cookie
                           imgQR(canvasInfo, icon, 0.3);
                       }
                   } catch (error) {
-                      console.error("[makeQR] Error generating info pane QR code:", error);
                       // Fallback: show error message
                       qrcodeInfoElement.innerHTML = '<div style="text-align:center;padding:20px;color:#ff6e6e;">URL exceeds QR limit</div>';
                   }
