@@ -1,5 +1,7 @@
 async function getCountdownData(id) {
     window.CountdownDataID = id;
+    // Reset gear icon update flag when countdown ID changes
+    window.gearIconUpdated = false;
     try {
         const { data, error } = await window.supabaseClient
             .from('countdown')
