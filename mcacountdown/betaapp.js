@@ -2800,35 +2800,67 @@ function contrast(){ //increase contrast set or remove cookie
           const icon = new Image();
           icon.onload = function generateQR() {
               if (qrcodeElement.children.length === 0) {
-                  new QRCode(qrcodeElement, {
-                      text: document.getElementById("linkinput").value,
-                      width: 150,
-                      height: 150,
-                      colorDark: "#000000",
-                      colorLight: "#ffffff",
-                      correctLevel: QRCode.CorrectLevel.H
-                  });
+                  const textValue = document.getElementById("linkinput").value;
                   
-                  const canvas = qrcodeElement.querySelector('canvas');
-                  if (canvas) {
-                      imgQR(canvas, icon, 0.3);
+                  // Check if text is too long for QR code library to handle
+                  if (textValue && textValue.length > 800) {
+                      console.warn("[makeQR] Text too long for QR code generation:", textValue.length, "characters");
+                      // Create a fallback message instead of QR code
+                      qrcodeElement.innerHTML = '<div style="text-align:center;padding:20px;color:#666;">QR code too long to generate<br><small>URL has ' + textValue.length + ' characters</small></div>';
+                      return;
+                  }
+                  
+                  try {
+                      new QRCode(qrcodeElement, {
+                          text: textValue,
+                          width: 150,
+                          height: 150,
+                          colorDark: "#000000",
+                          colorLight: "#ffffff",
+                          correctLevel: QRCode.CorrectLevel.H
+                      });
+                      
+                      const canvas = qrcodeElement.querySelector('canvas');
+                      if (canvas) {
+                          imgQR(canvas, icon, 0.3);
+                      }
+                  } catch (error) {
+                      console.error("[makeQR] Error generating QR code:", error);
+                      // Fallback: show error message
+                      qrcodeInfoElement.innerHTML = '<div style="text-align:center;padding:20px;color:#ff6e6e;">URL exceeds QR limit</div>';
                   }
               }
               
               // Generate QR code for info pane if it exists
               if (qrcodeInfoElement && qrcodeInfoElement.children.length === 0) {
-                  new QRCode(qrcodeInfoElement, {
-                      text: document.getElementById("linkinput-info").value,
-                      width: 150,
-                      height: 150,
-                      colorDark: "#000000",
-                      colorLight: "#ffffff",
-                      correctLevel: QRCode.CorrectLevel.H
-                  });
+                  const textValueInfo = document.getElementById("linkinput-info").value;
                   
-                  const canvasInfo = qrcodeInfoElement.querySelector('canvas');
-                  if (canvasInfo) {
-                      imgQR(canvasInfo, icon, 0.3);
+                  // Check if text is too long for QR code library to handle
+                  if (textValueInfo && textValueInfo.length > 800) {
+                      console.warn("[makeQR] Info pane text too long for QR code generation:", textValueInfo.length, "characters");
+                      // Create a fallback message instead of QR code
+                      qrcodeInfoElement.innerHTML = '<div style="text-align:center;padding:20px;color:#666;">QR code too long to generate<br><small>URL has ' + textValueInfo.length + ' characters</small></div>';
+                      return;
+                  }
+                  
+                  try {
+                      new QRCode(qrcodeInfoElement, {
+                          text: textValueInfo,
+                          width: 150,
+                          height: 150,
+                          colorDark: "#000000",
+                          colorLight: "#ffffff",
+                          correctLevel: QRCode.CorrectLevel.H
+                      });
+                      
+                      const canvasInfo = qrcodeInfoElement.querySelector('canvas');
+                      if (canvasInfo) {
+                          imgQR(canvasInfo, icon, 0.3);
+                      }
+                  } catch (error) {
+                      console.error("[makeQR] Error generating info pane QR code:", error);
+                      // Fallback: show error message
+                      qrcodeInfoElement.innerHTML = '<div style="text-align:center;padding:20px;color:#ff6e6e;">URL exceeds QR limit</div>';
                   }
               }
           }
