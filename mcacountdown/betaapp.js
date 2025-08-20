@@ -1475,6 +1475,57 @@ document.addEventListener('data-ready', initFloatingIcons);
               const user = session.user;
               console.log("uploading cd to db - user found:", user.id);
               
+              // Check if user has permission to edit this countdown
+              if (window.CountdownDataID) {
+                  // Check if user is the owner using pre-fetched data
+                  if (window.CountdownUserData && window.CountdownUserData.countdown) {
+                      const countdownData = window.CountdownUserData.countdown;
+                      
+                      // User is owner
+                      if (countdownData.creator === user.id) {
+                          console.log("uploading cd to db - user is owner, proceeding with sync");
+                      }
+                      // User is collaborator
+                      else if (countdownData.collaborator_ids && countdownData.collaborator_ids.includes(user.id)) {
+                          console.log("uploading cd to db - user is collaborator, proceeding with sync");
+                      }
+                      // User has no permission
+                      else {
+                          console.log("uploading cd to db - user has no permission to edit this countdown, skipping sync");
+                          return;
+                      }
+                  } else {
+                      // Fallback to database query if pre-fetched data not available
+                      const { data: countdownData, error: countdownError } = await window.supabaseClient
+                          .from('countdown')
+                          .select('creator, collaborator_ids')
+                          .eq('id', window.CountdownDataID)
+                          .maybeSingle();
+
+                      if (countdownError || !countdownData) {
+                          console.log("uploading cd to db - could not verify permissions, skipping sync");
+                          return;
+                      }
+
+                      // User is owner
+                      if (countdownData.creator === user.id) {
+                          console.log("uploading cd to db - user is owner, proceeding with sync");
+                      }
+                      // User is collaborator
+                      else if (countdownData.collaborator_ids && countdownData.collaborator_ids.includes(user.id)) {
+                          console.log("uploading cd to db - user is collaborator, proceeding with sync");
+                      }
+                      // User has no permission
+                      else {
+                          console.log("uploading cd to db - user has no permission to edit this countdown, skipping sync");
+                          return;
+                      }
+                  }
+              } else {
+                  // New countdown - user can always create new ones
+                  console.log("uploading cd to db - new countdown, user can create");
+              }
+              
               console.log("uploading cd to db " + countdownData);
               
               // Use existing ID if available, otherwise generate new one
