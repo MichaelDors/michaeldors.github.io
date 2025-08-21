@@ -114,13 +114,15 @@ let obtaineddata = false;
                     obtaineddata = true;
                 }
             }
-
-            const script = document.createElement("script");
-            script.src = "betaapp.js";
-            script.onload = function() {
-                // Dispatch the event after betaapp.js has loaded and set up its event listener
-                document.dispatchEvent(new Event("data-ready"));
-            };
-            document.body.appendChild(script);
+            
+            if(obtaineddata){
+                const script = document.createElement("script");
+                script.src = "betaapp.js";
+                script.onload = function() {
+                    // Dispatch the event after betaapp.js has loaded and set up its event listener
+                    document.dispatchEvent(new Event("data-ready"));
+                };
+                document.body.appendChild(script);
+            }
         }
     })();
