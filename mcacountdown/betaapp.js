@@ -1503,6 +1503,12 @@ function initFloatingIcons() {
           window.CountdownDataSource = parameterstring;
 
           var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + parameterstring;
+          
+          // Check if parameters have actually changed to avoid unnecessary iframe reloads
+          var previewUrl = refresh + "&cardmode=true";
+          var currentPreviewSrc = document.getElementById("previewiframe").src;
+          var shouldReloadPreview = currentPreviewSrc !== previewUrl;
+          
           // Only update URL if it's actually different to avoid unnecessary history entries
           if(window.CountdownDataSourceOrigin == "url"){
             if (window.location.href !== refresh) {
@@ -1511,7 +1517,10 @@ function initFloatingIcons() {
   
             document.getElementById("linkinput").value = refresh; //refresh the link
             document.getElementById("linkinput-info").value = refresh; //refresh the info pane link
-            document.getElementById("previewiframe").src = refresh + "&cardmode=true";
+            // Only reload preview iframe if parameters have changed
+            if (shouldReloadPreview) {
+                document.getElementById("previewiframe").src = previewUrl;
+            }
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(cdtitle);
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
                 document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
@@ -1525,7 +1534,10 @@ function initFloatingIcons() {
             window.history.replaceState({path: dbrefresh}, '', dbrefresh);
             document.getElementById("linkinput").value = dbrefresh; //refresh the link
             document.getElementById("linkinput-info").value = dbrefresh; //refresh the info pane link
-            document.getElementById("previewiframe").src = refresh + "&cardmode=true";
+            // Only reload preview iframe if parameters have changed
+            if (shouldReloadPreview) {
+                document.getElementById("previewiframe").src = previewUrl;
+            }
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(getParameterFromSource('title'));
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
                 document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
