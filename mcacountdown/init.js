@@ -1,3 +1,13 @@
+console.log(">>> init.js EXECUTED at", new Date().toISOString(), Math.random());
+
+(function() {
+    if (sessionStorage.getItem("initLoaded")) {
+        console.log("init.js already loaded (sessionStorage), exiting immediately");
+        return;
+    }
+    sessionStorage.setItem("initLoaded", "true");
+    window._initJsLoaded = true;
+
 async function getCountdownData(id) {
     window.CountdownDataID = id;
     // Reset gear icon update flag when countdown ID changes
@@ -141,16 +151,15 @@ window._betaAppAppended = window._betaAppAppended || false;
                     document.body.appendChild(script);
                     window._betaAppAppended = true; // Mark as appended
                     console.log('betaapp.js script appended successfully');
-                    const currentScript = document.currentScript;
-                    if (currentScript) {
-                        currentScript.remove();
-                    }
+                    return;
                 } else {
                     // Script already exists or is loaded, just dispatch the event
                     console.log('betaapp.js script already exists, skipping append');
                     document.dispatchEvent(new Event("data-ready"));
                     window._betaAppAppended = true;
+                    return;
                 }
             }
         }
     })();
+})();
