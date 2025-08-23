@@ -31,6 +31,7 @@
         window.CountdownDataSource = window.location.search;
         window.CountdownDataSourceOrigin = "url";
         window._obtainedData = true;
+        window._initJsLoaded = true;
         return;
     }
 
