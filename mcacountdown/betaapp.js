@@ -957,8 +957,12 @@ class ConfettiManager {
           }
 
           document.addEventListener('data-ready', () => {
+            if(dataReadyExecuted){
+              return;
+            }
+            dataReadyExecuted = true;
+
             const input = document.getElementById('confettiEmojiPicker');
-            if (!input) return;
             
             // Initialize overlay visibility (this will start the cycle if appropriate)
             updateOverlayVisibility();
@@ -967,6 +971,122 @@ class ConfettiManager {
             input.addEventListener('focus', updateOverlayVisibility);
             input.addEventListener('blur', updateOverlayVisibility);
             input.addEventListener('input', updateOverlayVisibility);
+
+            initFloatingIcons();
+
+            console.log("[Schedule] Data ready event fired, loading schedule");
+            schedule_loadScheduleFromURL();
+            schedule_updateScheduleViewer();
+            setInterval(schedule_updateScheduleViewer, 1000);
+
+
+            const exceptionDayDropdown = document.getElementById('schedule-exceptionDay');
+    if (exceptionDayDropdown) {
+        const exceptionDayButton = exceptionDayDropdown.querySelector('.dropdown-button');
+        const exceptionDayMenu = document.getElementById('exceptionDayMenu');
+        const exceptionDayItems = exceptionDayMenu.querySelectorAll('.dropdown-item');
+        
+        exceptionDayButton.addEventListener('click', () => {
+            if (!exceptionDayMenu.classList.contains('visible')) {
+                exceptionDayMenu.classList.add('visible', 'animate-open');
+                exceptionDayMenu.addEventListener('animationend', () => {
+                    exceptionDayMenu.classList.remove('animate-open');
+                    exceptionDayMenu.classList.add('opened');
+                }, { once: true });
+            } else {
+                exceptionDayMenu.classList.remove('visible', 'opened');
+            }
+        });
+
+        exceptionDayItems.forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove selected class from all items
+                exceptionDayItems.forEach(i => i.classList.remove('selected'));
+                // Add selected class to clicked item
+                this.classList.add('selected');
+                // Update button text
+                exceptionDayButton.innerHTML = this.innerHTML;
+                // Close dropdown
+                exceptionDayMenu.classList.remove('visible', 'opened');
+            });
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!exceptionDayDropdown.contains(event.target)) {
+                exceptionDayMenu.classList.remove('visible', 'opened');
+            }
+        });
+    }
+
+
+    const accountDropdown = document.getElementById('accountDropdown');
+    if (accountDropdown) {
+        const accountButton = document.getElementById('accountDropdownButton');
+        const accountMenu = document.getElementById('accountMenu');
+        const accountItems = accountMenu.querySelectorAll('.dropdown-item');
+        
+        accountButton.addEventListener('click', async () => {
+            // Check if user is logged in
+            if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
+                const { data: { session } } = await window.supabaseClient.auth.getSession();
+                
+                if (!session) {
+                    // User is not logged in, redirect to auth page
+                    const authUrl = window.CountdownDataID ? `auth?id=${window.CountdownDataID}` : 'auth';
+                    window.location.href = authUrl;
+                    return;
+                }
+            } else {
+                // Supabase client not available, redirect to auth page
+                const authUrl = window.CountdownDataID ? `auth?id=${window.CountdownDataID}` : 'auth';
+                window.location.href = authUrl;
+                return;
+            }
+            
+            // User is logged in, show dropdown menu
+            
+            if (!accountMenu.classList.contains('visible')) {
+                accountMenu.classList.add('visible', 'animate-open');
+                accountMenu.addEventListener('animationend', () => {
+                    accountMenu.classList.remove('animate-open');
+                    accountMenu.classList.add('opened');
+                }, { once: true });
+            } else {
+                accountMenu.classList.remove('visible', 'opened');
+            }
+        });
+
+        accountItems.forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove selected class from all items
+                accountItems.forEach(i => i.classList.remove('selected'));
+                // Add selected class to clicked item
+                this.classList.add('selected');
+                // Close dropdown
+                accountMenu.classList.remove('visible', 'opened');
+            });
+        });
+    }
+
+    const resetDropdown = document.getElementById('resetDropdown');
+    if (resetDropdown) {
+      const resetButton = resetDropdown.querySelector('.dropdown-button');
+      const resetMenu = document.getElementById('resetMenu');
+      const resetItems = resetMenu.querySelectorAll('.dropdown-item');
+      
+      resetButton.addEventListener('click', () => {
+          if (!resetMenu.classList.contains('visible')) {
+              resetMenu.classList.add('visible', 'animate-open');
+              resetMenu.addEventListener('animationend', () => {
+                  resetMenu.classList.remove('animate-open');
+                  resetMenu.classList.add('opened');
+              }, { once: true });
+          } else {
+              resetMenu.classList.remove('visible', 'opened');
+          }
+      });
+    }
           });
           
 
@@ -1043,7 +1163,6 @@ function initFloatingIcons() {
       });
 }
 
-document.addEventListener('data-ready', initFloatingIcons);
           
         
   
@@ -3894,117 +4013,6 @@ function schedule_addExceptionDay() {
     schedule_updateURL();
     schedule_updateScheduleViewer();
 }
-
-// Add event listeners for the exception day dropdown
-document.addEventListener('data-ready', function() {
-    const exceptionDayDropdown = document.getElementById('schedule-exceptionDay');
-    if (exceptionDayDropdown) {
-        const exceptionDayButton = exceptionDayDropdown.querySelector('.dropdown-button');
-        const exceptionDayMenu = document.getElementById('exceptionDayMenu');
-        const exceptionDayItems = exceptionDayMenu.querySelectorAll('.dropdown-item');
-        
-        exceptionDayButton.addEventListener('click', () => {
-            if (!exceptionDayMenu.classList.contains('visible')) {
-                exceptionDayMenu.classList.add('visible', 'animate-open');
-                exceptionDayMenu.addEventListener('animationend', () => {
-                    exceptionDayMenu.classList.remove('animate-open');
-                    exceptionDayMenu.classList.add('opened');
-                }, { once: true });
-            } else {
-                exceptionDayMenu.classList.remove('visible', 'opened');
-            }
-        });
-
-        exceptionDayItems.forEach(item => {
-            item.addEventListener('click', function() {
-                // Remove selected class from all items
-                exceptionDayItems.forEach(i => i.classList.remove('selected'));
-                // Add selected class to clicked item
-                this.classList.add('selected');
-                // Update button text
-                exceptionDayButton.innerHTML = this.innerHTML;
-                // Close dropdown
-                exceptionDayMenu.classList.remove('visible', 'opened');
-            });
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            if (!exceptionDayDropdown.contains(event.target)) {
-                exceptionDayMenu.classList.remove('visible', 'opened');
-            }
-        });
-    }
-
-
-    const accountDropdown = document.getElementById('accountDropdown');
-    if (accountDropdown) {
-        const accountButton = document.getElementById('accountDropdownButton');
-        const accountMenu = document.getElementById('accountMenu');
-        const accountItems = accountMenu.querySelectorAll('.dropdown-item');
-        
-        accountButton.addEventListener('click', async () => {
-            // Check if user is logged in
-            if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
-                const { data: { session } } = await window.supabaseClient.auth.getSession();
-                
-                if (!session) {
-                    // User is not logged in, redirect to auth page
-                    const authUrl = window.CountdownDataID ? `auth?id=${window.CountdownDataID}` : 'auth';
-                    window.location.href = authUrl;
-                    return;
-                }
-            } else {
-                // Supabase client not available, redirect to auth page
-                const authUrl = window.CountdownDataID ? `auth?id=${window.CountdownDataID}` : 'auth';
-                window.location.href = authUrl;
-                return;
-            }
-            
-            // User is logged in, show dropdown menu
-            
-            if (!accountMenu.classList.contains('visible')) {
-                accountMenu.classList.add('visible', 'animate-open');
-                accountMenu.addEventListener('animationend', () => {
-                    accountMenu.classList.remove('animate-open');
-                    accountMenu.classList.add('opened');
-                }, { once: true });
-            } else {
-                accountMenu.classList.remove('visible', 'opened');
-            }
-        });
-
-        accountItems.forEach(item => {
-            item.addEventListener('click', function() {
-                // Remove selected class from all items
-                accountItems.forEach(i => i.classList.remove('selected'));
-                // Add selected class to clicked item
-                this.classList.add('selected');
-                // Close dropdown
-                accountMenu.classList.remove('visible', 'opened');
-            });
-        });
-    }
-
-    const resetDropdown = document.getElementById('resetDropdown');
-    if (resetDropdown) {
-      const resetButton = resetDropdown.querySelector('.dropdown-button');
-      const resetMenu = document.getElementById('resetMenu');
-      const resetItems = resetMenu.querySelectorAll('.dropdown-item');
-      
-      resetButton.addEventListener('click', () => {
-          if (!resetMenu.classList.contains('visible')) {
-              resetMenu.classList.add('visible', 'animate-open');
-              resetMenu.addEventListener('animationend', () => {
-                  resetMenu.classList.remove('animate-open');
-                  resetMenu.classList.add('opened');
-              }, { once: true });
-          } else {
-              resetMenu.classList.remove('visible', 'opened');
-          }
-      });
-    }
-});
   
           function schedule_removeExceptionDay(day) {
               delete schedule_exceptions[day];
@@ -4274,26 +4282,6 @@ document.addEventListener('data-ready', function() {
           document.getElementById('schedule-addOrUpdateEventBtn').addEventListener('click', schedule_addOrUpdateEvent);
           document.getElementById('schedule-addExceptionBtn').addEventListener('click', schedule_addExceptionDay);
   
-          // Load schedule from URL when the data is ready
-          document.addEventListener('data-ready', () => {
-              console.log("[Schedule] Data ready event fired, loading schedule");
-              schedule_loadScheduleFromURL();
-              schedule_updateScheduleViewer();
-              setInterval(schedule_updateScheduleViewer, 1000);
-          });
-          
-          // Fallback: also try to load on window load in case data-ready doesn't fire
-          window.addEventListener('load', () => {
-              console.log("[Schedule] Window load event fired, checking if data is ready");
-              if (window.CountdownDataSource) {
-                  console.log("[Schedule] CountdownDataSource available on load, loading schedule");
-                  schedule_loadScheduleFromURL();
-                  schedule_updateScheduleViewer();
-                  setInterval(schedule_updateScheduleViewer, 1000);
-              } else {
-                  console.log("[Schedule] CountdownDataSource not ready on load, waiting for data-ready event");
-              }
-          });
   
   
           //ending sound
