@@ -2,6 +2,15 @@ console.log(">>> init.js EXECUTED at", new Date().toISOString(), Math.random());
 
 (function() {
     if(parameter('cardmode')){
+        const script = document.createElement("script");
+        script.src = "betaapp.js";
+        script.onload = function() {
+            // Dispatch the event after betaapp.js has loaded and set up its event listener
+            document.dispatchEvent(new Event("data-ready"));
+        };
+        document.body.appendChild(script);
+        window._betaAppAppended = true; // Mark as appended
+        console.log('betaapp.js script appended on card');
         return;
     }
 
