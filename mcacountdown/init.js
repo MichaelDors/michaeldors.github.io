@@ -1,11 +1,10 @@
 console.log(">>> init.js EXECUTED at", new Date().toISOString(), Math.random());
 
 (function() {
-    if (sessionStorage.getItem("initLoaded")) {
-        console.log("init.js already loaded (sessionStorage), exiting immediately");
-        return;
+    if (window._initJsLoaded) {
+        console.log("init.js already loaded, exiting immediately");
+        return; // this return is valid, because we're inside a function now
     }
-    sessionStorage.setItem("initLoaded", "true");
     window._initJsLoaded = true;
 
 async function getCountdownData(id) {
