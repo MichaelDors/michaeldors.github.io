@@ -1,3 +1,6 @@
+console.log("app.js loaded at", new Date().toISOString());
+
+
 let userInteracted = false;
 
 // Debounce function for limiting how often a function can be called
