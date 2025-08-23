@@ -1,6 +1,12 @@
 console.log(">>> init.js EXECUTED at", new Date().toISOString(), Math.random());
 
 (function() {
+    if (window._initJsLoaded) {
+        console.log("init.js already loaded, exiting immediately");
+        return; // this return is valid, because we're inside a function now
+    }
+    window._initJsLoaded = true;
+    
     if(parameter('cardmode')){
         const script = document.createElement("script");
         script.src = "betaapp.js";
@@ -14,11 +20,6 @@ console.log(">>> init.js EXECUTED at", new Date().toISOString(), Math.random());
         return;
     }
 
-    if (window._initJsLoaded) {
-        console.log("init.js already loaded, exiting immediately");
-        return; // this return is valid, because we're inside a function now
-    }
-    window._initJsLoaded = true;
 
 async function getCountdownData(id) {
     window.CountdownDataID = id;
