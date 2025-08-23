@@ -117,9 +117,21 @@ let scriptAppended = false; // Add flag to track if script has been appended
             }
             
             if(obtaineddata && !scriptAppended){
-                // Check if script already exists in DOM
+                // Additional protection: Check if script already exists in DOM
                 const existingScript = document.querySelector('script[src="betaapp.js"]');
-                if (!existingScript) {
+                
+                // Also check if the script is already loaded by looking for any script with this src
+                const allScripts = document.querySelectorAll('script[src]');
+                let scriptAlreadyLoaded = false;
+                
+                for (let script of allScripts) {
+                    if (script.src && script.src.includes('betaapp.js')) {
+                        scriptAlreadyLoaded = true;
+                        break;
+                    }
+                }
+                
+                if (!existingScript && !scriptAlreadyLoaded) {
                     const script = document.createElement("script");
                     script.src = "betaapp.js";
                     script.onload = function() {
@@ -128,8 +140,14 @@ let scriptAppended = false; // Add flag to track if script has been appended
                     };
                     document.body.appendChild(script);
                     scriptAppended = true; // Mark as appended
+                    console.log('betaapp.js script appended successfully');
+                    const currentScript = document.currentScript;
+                    if (currentScript) {
+                        currentScript.remove();
+                    }
                 } else {
-                    // Script already exists, just dispatch the event
+                    // Script already exists or is loaded, just dispatch the event
+                    console.log('betaapp.js script already exists, skipping append');
                     document.dispatchEvent(new Event("data-ready"));
                     scriptAppended = true;
                 }
