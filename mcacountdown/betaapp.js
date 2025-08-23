@@ -1509,6 +1509,12 @@ function initFloatingIcons() {
           var currentPreviewSrc = document.getElementById("previewiframe").src;
           var shouldReloadPreview = currentPreviewSrc !== previewUrl;
           
+          // Add 5-second cooldown for preview iframe updates
+          var now = Date.now();
+          var lastPreviewUpdate = window.lastPreviewUpdate || 0;
+          var previewCooldown = 5000; // 5 seconds in milliseconds
+          var shouldReloadPreview = shouldReloadPreview && (now - lastPreviewUpdate >= previewCooldown);
+          
           // Only update URL if it's actually different to avoid unnecessary history entries
           if(window.CountdownDataSourceOrigin == "url"){
             if (window.location.href !== refresh) {
@@ -1517,9 +1523,10 @@ function initFloatingIcons() {
   
             document.getElementById("linkinput").value = refresh; //refresh the link
             document.getElementById("linkinput-info").value = refresh; //refresh the info pane link
-            // Only reload preview iframe if parameters have changed
+            // Only reload preview iframe if parameters have changed and cooldown has passed
             if (shouldReloadPreview) {
                 document.getElementById("previewiframe").src = previewUrl;
+                window.lastPreviewUpdate = now; // Update the timestamp when iframe is reloaded
             }
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(cdtitle);
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
@@ -1534,9 +1541,10 @@ function initFloatingIcons() {
             window.history.replaceState({path: dbrefresh}, '', dbrefresh);
             document.getElementById("linkinput").value = dbrefresh; //refresh the link
             document.getElementById("linkinput-info").value = dbrefresh; //refresh the info pane link
-            // Only reload preview iframe if parameters have changed
+            // Only reload preview iframe if parameters have changed and cooldown has passed
             if (shouldReloadPreview) {
                 document.getElementById("previewiframe").src = previewUrl;
+                window.lastPreviewUpdate = now; // Update the timestamp when iframe is reloaded
             }
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(getParameterFromSource('title'));
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
