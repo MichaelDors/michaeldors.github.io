@@ -18,7 +18,12 @@
             break;
         }
     }
+
     if(parameter('cardmode') && !existingScript && !scriptAlreadyLoaded){
+        window.CountdownDataSource = window.location.search;
+        window.CountdownDataSourceOrigin = "url";
+        window._obtainedData = true;
+        window._initJsLoaded = true;
         const script = document.createElement("script");
         script.src = "betaapp.js";
         script.onload = function() {
@@ -28,10 +33,6 @@
         document.body.appendChild(script);
         window._betaAppAppended = true; // Mark as appended
         console.log('betaapp.js script appended on card');
-        window.CountdownDataSource = window.location.search;
-        window.CountdownDataSourceOrigin = "url";
-        window._obtainedData = true;
-        window._initJsLoaded = true;
         return;
     }
 
