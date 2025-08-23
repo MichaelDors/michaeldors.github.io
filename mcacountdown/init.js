@@ -1,5 +1,3 @@
-console.log(">>> init.js EXECUTED at", new Date().toISOString(), Math.random());
-
 (function() {
     if (window._initJsLoaded) {
         console.log("init.js already loaded, exiting immediately");
@@ -7,7 +5,20 @@ console.log(">>> init.js EXECUTED at", new Date().toISOString(), Math.random());
     }
     window._initJsLoaded = true;
     
-    if(parameter('cardmode')){
+    // Additional protection: Check if script already exists in DOM
+    const existingScript = document.querySelector('script[src="betaapp.js"]');
+
+    // Also check if the script is already loaded by looking for any script with this src
+    const allScripts = document.querySelectorAll('script[src]');
+    let scriptAlreadyLoaded = false;
+
+    for (let script of allScripts) {
+        if (script.src && script.src.includes('betaapp.js')) {
+            scriptAlreadyLoaded = true;
+            break;
+        }
+    }
+    if(parameter('cardmode') && !existingScript && !scriptAlreadyLoaded){
         const script = document.createElement("script");
         script.src = "betaapp.js";
         script.onload = function() {
