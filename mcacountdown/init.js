@@ -72,132 +72,57 @@ async function getUserRelatedData(id) {
     }
 }
 
-// Global flag to prevent multiple executions
 let obtaineddata = false;
-let initCompleted = false;
 
 // Test the function (only run once)
-(async function GetDataSource() {
-    // Global protection against duplicate data-ready events
-    if (window.dataReadyProtected) {
-        console.log('init.js: Data-ready protection already active, skipping execution');
-        initCompleted = true;
-        return;
-    }
-    window.dataReadyProtected = true;
-    // Prevent multiple executions
-    if (obtaineddata || initCompleted) {
-        return;
-    }
-    
-    try {
-        if(parameter('id')){
-            const sourceCountdowndata = await getCountdownData(parameter('id'));
-            if (sourceCountdowndata) {
-                window.CountdownDataSource = sourceCountdowndata;
-                window.CountdownDataSourceOrigin = "db";
-                obtaineddata = true;
-                
-                // Also fetch user-related data for this countdown
-                const userRelatedData = await getUserRelatedData(parameter('id'));
-                if (userRelatedData) {
-                    window.CountdownUserData = userRelatedData;
-                }
-            }
-        } else if(parameter('date') || parameter('schedule')){
-            window.CountdownDataSource = window.location.search;
-            window.CountdownDataSourceOrigin = "url";
-            obtaineddata = true;
-        }
-        else{
-            //need to init a new countdown, as there are no parameters
-            window.CountdownDataSource = window.location.search;
-            // If the user is logged in, set CountdownDataSourceOrigin to "db", else "url"
-            if (window.supabaseClient && window.supabaseClient.auth) {
-                const { data: { session } } = await window.supabaseClient.auth.getSession();
-                if (session && session.user) {
+    (async function GetDataSource() {
+        if (!obtaineddata) {
+            if(parameter('id')){
+                const sourceCountdowndata = await getCountdownData(parameter('id'));
+                if (sourceCountdowndata) {
+                    window.CountdownDataSource = sourceCountdowndata;
                     window.CountdownDataSourceOrigin = "db";
                     obtaineddata = true;
+                    
+                    // Also fetch user-related data for this countdown
+                    const userRelatedData = await getUserRelatedData(parameter('id'));
+                    if (userRelatedData) {
+                        window.CountdownUserData = userRelatedData;
+                    }
+                }
+            } else if(parameter('date') || parameter('schedule')){
+                window.CountdownDataSource = window.location.search;
+                window.CountdownDataSourceOrigin = "url";
+                obtaineddata = true;
+            }
+            else{
+                //need to init a new countdown, as there are no parameters
+                window.CountdownDataSource = window.location.search;
+                // If the user is logged in, set CountdownDataSourceOrigin to "db", else "url"
+                if (window.supabaseClient && window.supabaseClient.auth) {
+                    const { data: { session } } = await window.supabaseClient.auth.getSession();
+                    if (session && session.user) {
+                        window.CountdownDataSourceOrigin = "db";
+                        obtaineddata = true;
 
+                    } else {
+                        window.CountdownDataSourceOrigin = "testing";
+                        obtaineddata = true;
+                    }
                 } else {
                     window.CountdownDataSourceOrigin = "testing";
                     obtaineddata = true;
                 }
-            } else {
-                window.CountdownDataSourceOrigin = "testing";
-                obtaineddata = true;
             }
-        }
-        
-        if(obtaineddata){
-            // Mark as completed to prevent re-execution
-            initCompleted = true;
             
-            const script = document.createElement("script");
-            script.src = "betaapp.js";
-            script.onload = function() {
-                // Dispatch the event only once after betaapp.js has loaded
-                if (!window.dataReadyDispatched && !window.dataReadyEventFired) {
-                    window.dataReadyDispatched = true;
-                    window.dataReadyEventFired = true;
-                    
-                    // Use a custom event with more control
-                    const dataReadyEvent = new CustomEvent("data-ready", {
-                        detail: { 
-                            timestamp: Date.now(),
-                            source: 'init.js'
-                        }
-                    });
-                    
-                    document.dispatchEvent(dataReadyEvent);
-                    
-                    // Clean up init.js completely
-                    cleanupInitJS();
-                }
-            };
-            document.body.appendChild(script);
-        }
-    } catch (error) {
-        console.error('Error in GetDataSource:', error);
-        // Mark as completed even on error to prevent retries
-        initCompleted = true;
-    }
-})();
-
-// Function to completely clean up init.js
-function cleanupInitJS() {
-    try {
-        // Remove all event listeners that might have been added
-        document.removeEventListener("data-ready", GetDataSource);
-        
-        // Clear any timers or intervals that might be running
-        if (window.initTimers) {
-            window.initTimers.forEach(timerId => {
-                clearTimeout(timerId);
-                clearInterval(timerId);
-            });
-            delete window.initTimers;
-        }
-        
-        // Remove the init.js script tag from the DOM
-        const scripts = document.querySelectorAll('script[src*="init.js"]');
-        scripts.forEach(script => {
-            if (script.parentNode) {
-                script.parentNode.removeChild(script);
+            if(obtaineddata){
+                const script = document.createElement("script");
+                script.src = "betaapp.js";
+                script.onload = function() {
+                    // Dispatch the event after betaapp.js has loaded and set up its event listener
+                    document.dispatchEvent(new Event("data-ready"));
+                };
+                document.body.appendChild(script);
             }
-        });
-        
-        // Clear any global variables or functions that might cause issues
-        delete window.GetDataSource;
-        delete window.getCountdownData;
-        delete window.getUserRelatedData;
-        delete window.cleanupInitJS;
-        
-        // Mark the cleanup as complete
-        window.initJSCleanedUp = true;
-        
-        console.log('init.js has been completely cleaned up');
-    } catch (error) {
-        console.error('Error during init.js cleanup:', error);
-    }
-}
+        }
+    })();

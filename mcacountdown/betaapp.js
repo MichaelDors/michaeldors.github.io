@@ -326,33 +326,30 @@ function cardmodemanager(){
   };
   
   
-                    if (!window.dataReadyListenersAdded.mainListener) {
-              window.dataReadyListenersAdded.mainListener = true;
-              document.addEventListener("data-ready", function () {
-                  updateColorAnimations();
-                  
-                  // Update gear icon after countdown data is loaded
-                  if (window.CountdownDataID) {
-                      updateGearIconForUser();
-                  }
-                  
-              var cookieBanner = document.getElementById("cookie-banner");
-              var acceptButton = document.getElementById("accept-cookies");
-
-              if (!getCookie("cookiesAccepted")) {
-                  cookieBanner.style.display = "";
+          document.addEventListener("data-ready", function () {
+              updateColorAnimations();
+              
+              // Update gear icon after countdown data is loaded
+              if (window.CountdownDataID) {
+                  updateGearIconForUser();
               }
-              else{
-                  cookieBanner.style.display = "none";
-              }
-
-              acceptButton.addEventListener("click", function () {
-                  setCookie("cookiesAccepted", "True", "70")
-                  cookieBanner.style.display = "none";
-                  location.reload();
-              });
-          });
+              
+          var cookieBanner = document.getElementById("cookie-banner");
+          var acceptButton = document.getElementById("accept-cookies");
+  
+          if (!getCookie("cookiesAccepted")) {
+              cookieBanner.style.display = "";
           }
+          else{
+              cookieBanner.style.display = "none";
+          }
+  
+          acceptButton.addEventListener("click", function () {
+              setCookie("cookiesAccepted", "True", "70")
+              cookieBanner.style.display = "none";
+              location.reload();
+          });
+      });
   
   var enablecardmode = "0";
   if (parameter("cardmode")){
@@ -959,21 +956,18 @@ class ConfettiManager {
             }
           }
 
-          if (!window.dataReadyListenersAdded.confettiListener) {
-              window.dataReadyListenersAdded.confettiListener = true;
-              document.addEventListener('data-ready', () => {
-                const input = document.getElementById('confettiEmojiPicker');
-                if (!input) return;
-                
-                // Initialize overlay visibility (this will start the cycle if appropriate)
-                updateOverlayVisibility();
-              
-                // Event listeners
-                input.addEventListener('focus', updateOverlayVisibility);
-                input.addEventListener('blur', updateOverlayVisibility);
-                input.addEventListener('input', updateOverlayVisibility);
-              });
-          }
+          document.addEventListener('data-ready', () => {
+            const input = document.getElementById('confettiEmojiPicker');
+            if (!input) return;
+            
+            // Initialize overlay visibility (this will start the cycle if appropriate)
+            updateOverlayVisibility();
+          
+            // Event listeners
+            input.addEventListener('focus', updateOverlayVisibility);
+            input.addEventListener('blur', updateOverlayVisibility);
+            input.addEventListener('input', updateOverlayVisibility);
+          });
           
 
           function updateActiveSection() {
@@ -1049,10 +1043,7 @@ function initFloatingIcons() {
       });
 }
 
-if (!window.dataReadyListenersAdded.floatingIconsListener) {
-    window.dataReadyListenersAdded.floatingIconsListener = true;
-    document.addEventListener('data-ready', initFloatingIcons);
-}
+document.addEventListener('data-ready', initFloatingIcons);
           
         
   
@@ -3905,13 +3896,7 @@ function schedule_addExceptionDay() {
 }
 
 // Add event listeners for the exception day dropdown
-if (!window.dataReadyListenersAdded) {
-    window.dataReadyListenersAdded = {};
-}
-
-if (!window.dataReadyListenersAdded.exceptionDayListener) {
-    window.dataReadyListenersAdded.exceptionDayListener = true;
-    document.addEventListener('data-ready', function() {
+document.addEventListener('data-ready', function() {
     const exceptionDayDropdown = document.getElementById('schedule-exceptionDay');
     if (exceptionDayDropdown) {
         const exceptionDayButton = exceptionDayDropdown.querySelector('.dropdown-button');
@@ -4019,8 +4004,7 @@ if (!window.dataReadyListenersAdded.exceptionDayListener) {
           }
       });
     }
-    }); // Close the data-ready event listener function
-    } // Close the if statement for exceptionDayListener
+});
   
           function schedule_removeExceptionDay(day) {
               delete schedule_exceptions[day];
@@ -4290,24 +4274,13 @@ if (!window.dataReadyListenersAdded.exceptionDayListener) {
           document.getElementById('schedule-addOrUpdateEventBtn').addEventListener('click', schedule_addOrUpdateEvent);
           document.getElementById('schedule-addExceptionBtn').addEventListener('click', schedule_addExceptionDay);
   
-          // Global variable to track if schedule interval is already running
-          let scheduleIntervalRunning = false;
-          
           // Load schedule from URL when the data is ready
-          if (!window.dataReadyListenersAdded.scheduleListener) {
-              window.dataReadyListenersAdded.scheduleListener = true;
-              document.addEventListener('data-ready', () => {
-                  console.log("[Schedule] Data ready event fired, loading schedule");
-                  schedule_loadScheduleFromURL();
-                  schedule_updateScheduleViewer();
-                  
-                  // Only start interval if it's not already running
-                  if (!scheduleIntervalRunning) {
-                      scheduleIntervalRunning = true;
-                      setInterval(schedule_updateScheduleViewer, 1000);
-                  }
-              });
-          }
+          document.addEventListener('data-ready', () => {
+              console.log("[Schedule] Data ready event fired, loading schedule");
+              schedule_loadScheduleFromURL();
+              schedule_updateScheduleViewer();
+              setInterval(schedule_updateScheduleViewer, 1000);
+          });
           
           // Fallback: also try to load on window load in case data-ready doesn't fire
           window.addEventListener('load', () => {
@@ -4316,12 +4289,7 @@ if (!window.dataReadyListenersAdded.exceptionDayListener) {
                   console.log("[Schedule] CountdownDataSource available on load, loading schedule");
                   schedule_loadScheduleFromURL();
                   schedule_updateScheduleViewer();
-                  
-                  // Only start interval if it's not already running
-                  if (!scheduleIntervalRunning) {
-                      scheduleIntervalRunning = true;
-                      setInterval(schedule_updateScheduleViewer, 1000);
-                  }
+                  setInterval(schedule_updateScheduleViewer, 1000);
               } else {
                   console.log("[Schedule] CountdownDataSource not ready on load, waiting for data-ready event");
               }
