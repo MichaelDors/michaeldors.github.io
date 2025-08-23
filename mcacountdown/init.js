@@ -17,6 +17,9 @@ console.log(">>> init.js EXECUTED at", new Date().toISOString(), Math.random());
         document.body.appendChild(script);
         window._betaAppAppended = true; // Mark as appended
         console.log('betaapp.js script appended on card');
+        window.CountdownDataSource = window.location.search;
+        window.CountdownDataSourceOrigin = "url";
+        window._obtainedData = true;
         return;
     }
 

@@ -22,6 +22,9 @@ window.gearIconUpdated = false;
 // Global variable to store user editor status
 window.userEditorStatus = null;
 
+// Global variable for progress bar position
+let progressbarposition = "null";
+
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -1701,6 +1704,10 @@ function initFloatingIcons() {
       }
 
       function getParameterFromSource(name){
+        
+        if (!window.CountdownDataSource) {
+            return null;
+        }
         
         var query = window.CountdownDataSource.substring(1);
         var parameters = query.split('&');
