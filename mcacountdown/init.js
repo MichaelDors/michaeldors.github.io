@@ -24,7 +24,7 @@
         }
     }
 
-    if(parameter('cardmode') && !existingScript && !scriptAlreadyLoaded){
+    if(parameter('cardmode') && !existingScript && !scriptAlreadyLoaded && !window._betaAppAppended){
         window.CountdownDataSource = window.location.search;
         window.CountdownDataSourceOrigin = "url";
         window._obtainedData = true;
