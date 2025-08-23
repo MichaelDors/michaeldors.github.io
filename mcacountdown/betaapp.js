@@ -2,6 +2,7 @@ console.log("app.js loaded at", new Date().toISOString());
 
 
 let userInteracted = false;
+let dataReadyExecuted = false;
 
 // Debounce function for limiting how often a function can be called
 // Global variables for database sync cooldown
