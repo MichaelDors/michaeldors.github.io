@@ -72,18 +72,18 @@ async function getUserRelatedData(id) {
     }
 }
 
-let obtaineddata = false;
-let scriptAppended = false; // Add flag to track if script has been appended
+window._obtainedData = window._obtainedData || false;
+window._betaAppAppended = window._betaAppAppended || false;
 
 // Test the function (only run once)
     (async function GetDataSource() {
-        if (!obtaineddata && !scriptAppended) {
+        if (!window._obtainedData && !window._betaAppAppended) {
             if(parameter('id')){
                 const sourceCountdowndata = await getCountdownData(parameter('id'));
                 if (sourceCountdowndata) {
                     window.CountdownDataSource = sourceCountdowndata;
                     window.CountdownDataSourceOrigin = "db";
-                    obtaineddata = true;
+                    window._obtainedData = true;
                     
                     // Also fetch user-related data for this countdown
                     const userRelatedData = await getUserRelatedData(parameter('id'));
@@ -94,7 +94,7 @@ let scriptAppended = false; // Add flag to track if script has been appended
             } else if(parameter('date') || parameter('schedule')){
                 window.CountdownDataSource = window.location.search;
                 window.CountdownDataSourceOrigin = "url";
-                obtaineddata = true;
+                window._obtainedData = true;
             }
             else{
                 //need to init a new countdown, as there are no parameters
@@ -104,19 +104,19 @@ let scriptAppended = false; // Add flag to track if script has been appended
                     const { data: { session } } = await window.supabaseClient.auth.getSession();
                     if (session && session.user) {
                         window.CountdownDataSourceOrigin = "db";
-                        obtaineddata = true;
+                        window._obtainedData = true;
 
                     } else {
                         window.CountdownDataSourceOrigin = "testing";
-                        obtaineddata = true;
+                        window._obtainedData = true;
                     }
                 } else {
                     window.CountdownDataSourceOrigin = "testing";
-                    obtaineddata = true;
+                    window._obtainedData = true;
                 }
             }
             
-            if(obtaineddata && !scriptAppended){
+            if(window._obtainedData && !window._betaAppAppended){
                 // Additional protection: Check if script already exists in DOM
                 const existingScript = document.querySelector('script[src="betaapp.js"]');
                 
@@ -139,7 +139,7 @@ let scriptAppended = false; // Add flag to track if script has been appended
                         document.dispatchEvent(new Event("data-ready"));
                     };
                     document.body.appendChild(script);
-                    scriptAppended = true; // Mark as appended
+                    window._betaAppAppended = true; // Mark as appended
                     console.log('betaapp.js script appended successfully');
                     const currentScript = document.currentScript;
                     if (currentScript) {
@@ -149,7 +149,7 @@ let scriptAppended = false; // Add flag to track if script has been appended
                     // Script already exists or is loaded, just dispatch the event
                     console.log('betaapp.js script already exists, skipping append');
                     document.dispatchEvent(new Event("data-ready"));
-                    scriptAppended = true;
+                    window._betaAppAppended = true;
                 }
             }
         }
