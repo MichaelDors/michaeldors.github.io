@@ -4,6 +4,11 @@
         return; // this return is valid, because we're inside a function now
     }
     window._initJsLoaded = true;
+
+    if (window._betaAppAppended) {
+        console.log("betaapp.js already loaded, exiting immediately");
+        return;
+    }
     
     // Additional protection: Check if script already exists in DOM
     const existingScript = document.querySelector('script[src="betaapp.js"]');

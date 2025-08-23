@@ -1,9 +1,7 @@
-console.log("app.js loaded at", new Date().toISOString());
 (function removeInitScript() {
     const initScript = document.querySelector('script[src*="init.js"]');
     if (initScript) {
         initScript.remove();
-        console.log("init.js removed from DOM");
     }
 })();
 
