@@ -1,6 +1,10 @@
 console.log(">>> init.js EXECUTED at", new Date().toISOString(), Math.random());
 
 (function() {
+    if(parameter('cardmode')){
+        return;
+    }
+
     if (window._initJsLoaded) {
         console.log("init.js already loaded, exiting immediately");
         return; // this return is valid, because we're inside a function now
