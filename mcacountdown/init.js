@@ -73,10 +73,11 @@ async function getUserRelatedData(id) {
 }
 
 let obtaineddata = false;
+let scriptAppended = false; // Add flag to track if script has been appended
 
 // Test the function (only run once)
     (async function GetDataSource() {
-        if (!obtaineddata) {
+        if (!obtaineddata && !scriptAppended) {
             if(parameter('id')){
                 const sourceCountdowndata = await getCountdownData(parameter('id'));
                 if (sourceCountdowndata) {
@@ -115,14 +116,23 @@ let obtaineddata = false;
                 }
             }
             
-            if(obtaineddata){
-                const script = document.createElement("script");
-                script.src = "betaapp.js";
-                script.onload = function() {
-                    // Dispatch the event after betaapp.js has loaded and set up its event listener
+            if(obtaineddata && !scriptAppended){
+                // Check if script already exists in DOM
+                const existingScript = document.querySelector('script[src="betaapp.js"]');
+                if (!existingScript) {
+                    const script = document.createElement("script");
+                    script.src = "betaapp.js";
+                    script.onload = function() {
+                        // Dispatch the event after betaapp.js has loaded and set up its event listener
+                        document.dispatchEvent(new Event("data-ready"));
+                    };
+                    document.body.appendChild(script);
+                    scriptAppended = true; // Mark as appended
+                } else {
+                    // Script already exists, just dispatch the event
                     document.dispatchEvent(new Event("data-ready"));
-                };
-                document.body.appendChild(script);
+                    scriptAppended = true;
+                }
             }
         }
     })();
