@@ -76,16 +76,15 @@ async function getUserRelatedData(id) {
 let obtaineddata = false;
 let initCompleted = false;
 
-// Global protection against duplicate data-ready events
-if (window.dataReadyProtected) {
-    console.log('init.js: Data-ready protection already active, skipping execution');
-    initCompleted = true;
-    return;
-}
-window.dataReadyProtected = true;
-
 // Test the function (only run once)
 (async function GetDataSource() {
+    // Global protection against duplicate data-ready events
+    if (window.dataReadyProtected) {
+        console.log('init.js: Data-ready protection already active, skipping execution');
+        initCompleted = true;
+        return;
+    }
+    window.dataReadyProtected = true;
     // Prevent multiple executions
     if (obtaineddata || initCompleted) {
         return;
