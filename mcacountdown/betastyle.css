@@ -3657,7 +3657,7 @@ filter: blur(40px);
     position: relative;
   }
 
-.share-pfp-container .share-pfp::after {
+.infocreatorpfp::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -3668,7 +3668,7 @@ filter: blur(40px);
   z-index:10000000;
 }
 
-.share-pfp-container .share-pfp::before {
+.infocreatorpfp::before {
   content: "";
   position: absolute;
   inset: 0;
