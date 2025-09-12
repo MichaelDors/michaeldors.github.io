@@ -1,6 +1,6 @@
 (function() {
     if(parameter('cardmode')){
-        return;
+        console.log('cardmode is true, initializing for local use');
     }
     
     if (window._initJsLoaded) {
@@ -212,4 +212,8 @@ function parameter(name) { //returns the value of the parameter it's sent
         }
     }
     return null;
+}
+
+function initforlocaluse() {
+    
 }

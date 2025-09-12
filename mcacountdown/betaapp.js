@@ -1523,7 +1523,9 @@ function initFloatingIcons() {
             document.getElementById("linkinput-info").value = refresh; //refresh the info pane link
             // Only reload preview iframe if parameters have changed and cooldown has passed
             if (shouldReloadPreview) {
+                if(!parameter('cardmode')){
                 document.getElementById("previewiframe").src = previewUrl;
+                }
                 window.lastPreviewUpdate = now; // Update the timestamp when iframe is reloaded
             }
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(cdtitle);
@@ -1541,7 +1543,9 @@ function initFloatingIcons() {
             document.getElementById("linkinput-info").value = dbrefresh; //refresh the info pane link
             // Only reload preview iframe if parameters have changed and cooldown has passed
             if (shouldReloadPreview) {
+                if(!parameter('cardmode')){
                 document.getElementById("previewiframe").src = previewUrl;
+                }
                 window.lastPreviewUpdate = now; // Update the timestamp when iframe is reloaded
             }
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(getParameterFromSource('title'));
