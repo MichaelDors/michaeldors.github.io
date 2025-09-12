@@ -201,3 +201,15 @@ window._betaAppAppended = window._betaAppAppended || false;
         }
     })();
 })();
+
+function parameter(name) { //returns the value of the parameter it's sent
+    var query = window.location.search.substring(1);
+    var parameters = query.split('&');
+    for (var i = 0; i < parameters.length; i++) {
+        var pair = parameters[i].split('=');
+        if (pair[0] == name) {
+            return pair[1];
+        }
+    }
+    return null;
+}
