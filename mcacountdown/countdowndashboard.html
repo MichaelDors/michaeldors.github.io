@@ -184,6 +184,7 @@ updateStyles();
         let links = [];
         let placeholder = null;
         let dragCounter = 0;
+        let deletedItems = new Set(); // Initialize deletedItems here
 
 
 async function loadLinks() {
@@ -948,10 +949,59 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
     }
 });
 
+// Load countdowns created by the current user and render using same card format
+async function loadUserCountdowns(userId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('countdown')
+            .select('id, data, creator')
+            .eq('creator', userId);
+        if (error) {
+            console.error('[your-countdowns] Fetch error:', error);
+            return;
+        }
+        const container = document.getElementById('yourLinksContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        (data || []).forEach((row, index) => {
+            // Expect countdown page to be at betatimer with id param
+            const url = `https://michaeldors.com/mcacountdown/betatimer?id=${encodeURIComponent(row.id)}`;
+            const title = extractTitleFromCountdown(row);
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.setAttribute('data-index', index);
+            card.setAttribute('data-url', encodeURIComponent(url));
+            card.innerHTML = `
+            \t<iframe src="${url}${url.includes('?') ? '&' : '?'}cardmode=true" title="${title}" sandbox="allow-scripts allow-same-origin"></iframe>
+                <div class="card-content">
+                    <h3>${title}</h3>
+                    <i class="remove-button fa-solid fa-up-right-from-square" style="cursor:pointer;" onclick="event.stopPropagation(); window.open('${url}', '_blank');"></i>
+                </div>
+            `;
+            card.addEventListener('mousedown', dragStart);
+            container.appendChild(card);
+        });
+    } catch (e) {
+        console.error('[your-countdowns] Unexpected error:', e);
+    }
+}
+
+function extractTitleFromCountdown(row) {
+    try {
+        // Row may store JSON string or object in data column
+        const payload = typeof row.data === 'string' ? JSON.parse(row.data) : row.data || {};
+        // Try common title fields
+        const title = payload.title || payload.eventName || payload.name || payload.countdownTitle;
+        if (title && String(title).trim()) return String(title).trim();
+    } catch (e) {
+        // ignore
+    }
+    return 'Untitled Countdown';
+}
+
 loadLinks().catch(console.error);
 // Set up Supabase login and dashboard sync
 let isInitialLoad = true;
-let deletedItems = new Set(); // Track manually deleted items to prevent re-sync
 
 // Set up dashboard-specific auth handling
 supabaseClient.auth.onAuthStateChange(async (_event, session) => {
@@ -1202,56 +1252,6 @@ async function saveDashboardToCloud() {
             console.warn('[dashboard] No user, aborting cloud save');
             return;
         }
-        
-// Load countdowns created by the current user and render using same card format
-async function loadUserCountdowns(userId) {
-    try {
-        const { data, error } = await supabaseClient
-            .from('countdown')
-            .select('id, data, creator')
-            .eq('creator', userId);
-        if (error) {
-            console.error('[your-countdowns] Fetch error:', error);
-            return;
-        }
-        const container = document.getElementById('yourLinksContainer');
-        if (!container) return;
-        container.innerHTML = '';
-        (data || []).forEach((row, index) => {
-            // Expect countdown page to be at betatimer with id param
-            const url = `https://michaeldors.com/mcacountdown/betatimer?id=${encodeURIComponent(row.id)}`;
-            const title = extractTitleFromCountdown(row);
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.setAttribute('data-index', index);
-            card.setAttribute('data-url', encodeURIComponent(url));
-            card.innerHTML = `
-            \t<iframe src="${url}${url.includes('?') ? '&' : '?'}cardmode=true" title="${title}" sandbox="allow-scripts allow-same-origin"></iframe>
-                <div class="card-content">
-                    <h3>${title}</h3>
-                    <i class="remove-button fa-solid fa-up-right-from-square" style="cursor:pointer;" onclick="event.stopPropagation(); window.open('${url}', '_blank');"></i>
-                </div>
-            `;
-            card.addEventListener('mousedown', dragStart);
-            container.appendChild(card);
-        });
-    } catch (e) {
-        console.error('[your-countdowns] Unexpected error:', e);
-    }
-}
-
-function extractTitleFromCountdown(row) {
-    try {
-        // Row may store JSON string or object in data column
-        const payload = typeof row.data === 'string' ? JSON.parse(row.data) : row.data || {};
-        // Try common title fields
-        const title = payload.title || payload.eventName || payload.name || payload.countdownTitle;
-        if (title && String(title).trim()) return String(title).trim();
-    } catch (e) {
-        // ignore
-    }
-    return 'Untitled Countdown';
-}
         const userId = user.id;
         const email = user.email;
         const name = user.user_metadata?.full_name;
