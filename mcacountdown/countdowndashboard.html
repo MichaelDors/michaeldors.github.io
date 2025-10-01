@@ -319,6 +319,11 @@ function importLinks() {
 
 function renderLinks() {
     const linksContainer = document.getElementById('linksContainer');
+    if (!linksContainer) {
+        console.warn('[dashboard] linksContainer not found');
+        return;
+    }
+    console.log('[dashboard] renderLinks called. links count =', Array.isArray(links) ? links.length : 'n/a');
     linksContainer.innerHTML = '';
 
     links.forEach((link, index) => {
@@ -338,6 +343,7 @@ function renderLinks() {
         card.addEventListener('mousedown', dragStart);
         linksContainer.appendChild(card);
     });
+    console.log('[dashboard] renderLinks finished. cards rendered =', document.querySelectorAll('#linksContainer .card').length);
 }
 
 function resetall() { //remove all saved cookies
@@ -962,6 +968,7 @@ async function loadUserCountdowns(userId) {
         }
         const container = document.getElementById('yourLinksContainer');
         if (!container) return;
+        console.log('[your-countdowns] rendering', (data||[]).length, 'items');
         container.innerHTML = '';
         (data || []).forEach((row, index) => {
             // Expect countdown page to be at betatimer with id param
@@ -981,6 +988,7 @@ async function loadUserCountdowns(userId) {
             card.addEventListener('mousedown', dragStart);
             container.appendChild(card);
         });
+        console.log('[your-countdowns] cards rendered =', document.querySelectorAll('#yourLinksContainer .card').length);
     } catch (e) {
         console.error('[your-countdowns] Unexpected error:', e);
     }
@@ -1080,7 +1088,9 @@ supabaseClient.auth.onAuthStateChange(async (_event, session) => {
         });
                 // Also load user's own countdowns
                 try {
+                    console.log('[dashboard] Loading user countdowns for', session.user.id);
                     await loadUserCountdowns(session.user.id);
+                    console.log('[dashboard] Finished loading user countdowns');
                 } catch (e) {
                     console.error('[dashboard] Failed to load user countdowns:', e);
                 }
