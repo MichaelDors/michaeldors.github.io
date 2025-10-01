@@ -958,17 +958,24 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
 // Load countdowns created by the current user and render using same card format
 async function loadUserCountdowns(userId) {
     try {
-        const { data, error } = await supabaseClient
+        console.log('[your-countdowns] start for userId =', userId);
+        const query = supabaseClient
             .from('countdown')
             .select('id, data, creator')
             .eq('creator', userId);
+        console.log('[your-countdowns] executing query...');
+        const { data, error } = await query;
+        console.log('[your-countdowns] query returned. error =', error || null);
         if (error) {
             console.error('[your-countdowns] Fetch error:', error);
             return;
         }
         const container = document.getElementById('yourLinksContainer');
-        if (!container) return;
-        console.log('[your-countdowns] rendering', (data||[]).length, 'items');
+        if (!container) {
+            console.warn('[your-countdowns] yourLinksContainer not found');
+            return;
+        }
+        console.log('[your-countdowns] rendering', (Array.isArray(data) ? data.length : 0), 'items');
         container.innerHTML = '';
         (data || []).forEach((row, index) => {
             // Expect countdown page to be at betatimer with id param
