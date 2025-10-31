@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en" style="touch-action: none;">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Strands</title>
+  <style>
+    :root {
+      --bg: #f7f7fb;
+      --card: #ffffff;
+      --accent: #9dc522;
+      --text: #111827;
+      --muted: #6b7280; /* gray-500 */
+      --border: #b5d57a66;
+      --borderhover: #b5d57a;
+      --line: #b5d57a; /* slate-400 */
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.06), 0 1px 1px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Explicit theme overrides via [data-theme] take precedence */
+    :root[data-theme="dark"] {
+      --bg: #0b1220; /* slightly deeper slate */
+      --card: #232a0f; /* slate-900 */
+      --accent: #d3fa60;
+      --text: #e5e7eb;
+      --muted: #9ca3af; /* gray-400 */
+      --border: #b5d57a66;
+      --borderhover: #b5d57a;
+      --line: #b5d57a; /* slate-600 for better contrast on dark bg */
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.4), 0 1px 1px rgba(0,0,0,0.25);
+      --shadow-md: 0 6px 16px rgba(0,0,0,0.35);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #141414;
+        --card: #232a0f;
+        --accent: #d3fa60;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --border: #b5d57a66;
+        --borderhover: #b5d57a;
+        --line: #b5d57a;
+        --shadow-sm: 0 1px 2px rgba(0,0,0,0.4), 0 1px 1px rgba(0,0,0,0.25);
+        --shadow-md: 0 6px 16px rgba(0,0,0,0.35);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+        sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 1rem;
+    }
+
+    #home,
+    #editor {
+      padding: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .card {
+      background: var(--card);
+      padding: 1.5rem;
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border: 1px solid var(--borderhover);
+    }
+
+    #editor {
+      display: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #toolbar {
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    #canvas {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: calc(100vh - 8rem); /* fill remaining space below toolbar */
+      overflow: visible;
+    }
+    #canvas {
+      transform-origin: 0 0;
+      transition: transform 0.2s ease;
+    }
+
+    button {
+      background: var(--accent);
+      color: black;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: var(--shadow-sm);
+      transition: filter 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+    }
+
+    button:focus-visible {
+      outline: 2px solid color-mix(in oklab, var(--accent), white 20%);
+      outline-offset: 2px;
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .node {
+      position: absolute;
+      padding: 0.75rem 1rem;
+      background: var(--card);
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      min-width: 120px;
+      color: var(--text);
+      cursor: grab;
+      user-select: none;
+      z-index: 2;
+      transition: all 0.5s ease;
+    }
+
+    .node.selected {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      z-index: 100000;
+    }
+
+    .node:hover {
+      border: 1px solid var(--borderhover);
+    }
+
+    .handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 2px var(--card) inset, 0 1px 2px rgba(0,0,0,0.2);
+      bottom: 6px;
+      right: 6px;
+      cursor: crosshair;
+      opacity: 0;
+      transition:0.5s all ease;
+    }
+
+    .node:hover .handle{
+        opacity:1;
+    }
+
+    /* smooth fade for nodes and connectors */
+    .node,
+    svg#lineLayer path {
+      transition: opacity 0.25s ease;
+    }
+
+    svg#lineLayer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 1;
+    }
+    svg#lineLayer path {
+      stroke: var(--line);
+      stroke-width: 2;
+      stroke-dasharray: 6 4;
+      fill: none;
+    }
+
+    #recenterBtn {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      font-size: 1.25rem;
+      padding: 0;
+      z-index: 10000;
+    }
+  </style>
+</head>
+<body>
+  <!-- Homepage (Spools) -->
+  <div id="home">
+    <h1>Spools</h1>
+    <div id="homeToolbar" style="margin: 0 0 1rem 0; display: flex; gap: 0.5rem;">
+      <button id="newSpoolBtn">+ New Spool</button>
+      <div style="flex:1"></div>
+      <button id="exportBtn" class="secondary" title="Export all as .strand">Export</button>
+      <button id="importBtn" class="secondary" title="Import .strand">Import</button>
+      <input id="importInput" type="file" accept=".strand,application/json" style="display:none" />
+    </div>
+    <div class="grid" id="spoolGrid"></div>
+  </div>
+
+  <!-- Editor View (Strands) -->
+  <div id="editor">
+    <div id="toolbar">
+      <button id="backBtn" class="secondary">&larr; Spools</button>
+      <button id="addTextBtn">+ Text Strand</button>
+      <button id="addImageBtn">+ Image Strand</button>
+    </div>
+    <div style="overflow: hidden; width: 100%; height: 100%;">
+      <div id="canvas">
+        <svg id="lineLayer" style="z-index: 0;"></svg>
+      </div>
+    </div>
+  </div>
+
+  <button id="recenterBtn" title="Recenter canvas">⌂</button>
+
+  <script>
+    // --- Persistence Layer (localStorage) ----------------------------------
+    const STORAGE_KEYS = {
+      spools: "thread.spools",
+      spoolData: (id) => `thread.spool.${id}`,
+    };
+
+    function loadSpools() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.spools);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveSpools(spools) {
+      localStorage.setItem(STORAGE_KEYS.spools, JSON.stringify(spools));
+    }
+
+    function loadSpoolData(spoolId) {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.spoolData(spoolId));
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (!parsed) return { nodes: [], connections: [], view: { zoom: 1, panX: 0, panY: 0 } };
+        const view = parsed.view || { zoom: 1, panX: 0, panY: 0 };
+        return {
+          nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
+          connections: Array.isArray(parsed.connections) ? parsed.connections : [],
+          view: {
+            zoom: typeof view.zoom === "number" ? view.zoom : 1,
+            panX: typeof view.panX === "number" ? view.panX : 0,
+            panY: typeof view.panY === "number" ? view.panY : 0,
+          },
+        };
+      } catch {
+        return { nodes: [], connections: [], view: { zoom: 1, panX: 0, panY: 0 } };
+      }
+    }
+
+    function saveSpoolData(spoolId, data) {
+      const payload = {
+        nodes: data.nodes || [],
+        connections: data.connections || [],
+        view: data.view || { zoom: 1, panX: 0, panY: 0 },
+      };
+      localStorage.setItem(STORAGE_KEYS.spoolData(spoolId), JSON.stringify(payload));
+    }
+
+    // --- Theme: auto via prefers-color-scheme (no toggle) ------------------
+    // No JS theme persistence; CSS media query drives theme.
+
+    // --- DOM ---------------------------------------------------------------
+    const grid = document.getElementById("spoolGrid");
+    const home = document.getElementById("home");
+    const editor = document.getElementById("editor");
+    const canvas = document.getElementById("canvas");
+    let lineLayer = document.getElementById("lineLayer");
+    const recenterBtn = document.getElementById("recenterBtn");
+    recenterBtn.style.display = "none";
+    const newSpoolBtn = document.getElementById("newSpoolBtn");
+    const exportBtn = document.getElementById("exportBtn");
+    const importBtn = document.getElementById("importBtn");
+    const importInput = document.getElementById("importInput");
+
+    let currentSpoolId = null;
+
+    function renderSpools() {
+      grid.innerHTML = "";
+      const spools = loadSpools();
+      spools.forEach((s) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.textContent = s.title;
+        card.dataset.id = s.id;
+        card.addEventListener("click", () => openEditor(s));
+        grid.appendChild(card);
+      });
+    }
+
+    newSpoolBtn?.addEventListener("click", () => {
+      const title = prompt("Spool title?")?.trim();
+      if (!title) return;
+      const spools = loadSpools();
+      const id = Date.now();
+      spools.push({ id, title });
+      saveSpools(spools);
+      renderSpools();
+    });
+
+    // --- Debug Export / Import --------------------------------------------
+    function buildExportPayload() {
+      const spools = loadSpools();
+      const spoolsData = {};
+      spools.forEach(s => {
+        const data = loadSpoolData(s.id);
+        spoolsData[s.id] = data;
+      });
+      return {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        spools,
+        spoolsData,
+      };
+    }
+
+    function downloadStrandFile(obj) {
+      const json = JSON.stringify(obj);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const date = new Date().toISOString().replace(/[:.]/g, "-");
+      a.href = url;
+      a.download = `thread-export-${date}.strand`;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
+    }
+
+    exportBtn?.addEventListener("click", () => {
+      try {
+        const payload = buildExportPayload();
+        downloadStrandFile(payload);
+      } catch (e) {
+        alert("Export failed. Check console for details.");
+        console.error(e);
+      }
+    });
+
+    importBtn?.addEventListener("click", () => {
+      importInput?.click();
+    });
+
+    importInput?.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data || typeof data !== "object" || data.version !== 1) {
+          throw new Error("Invalid .strand file format");
+        }
+        if (!Array.isArray(data.spools) || typeof data.spoolsData !== "object") {
+          throw new Error("Missing spools or spoolsData in file");
+        }
+
+        // Clear existing thread data
+        const keysToDelete = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k === STORAGE_KEYS.spools || k.startsWith("thread.spool."))) {
+            keysToDelete.push(k);
+          }
+        }
+        keysToDelete.forEach(k => localStorage.removeItem(k));
+
+        // Write imported data
+        saveSpools(data.spools);
+        Object.entries(data.spoolsData).forEach(([id, spoolData]) => {
+          localStorage.setItem(STORAGE_KEYS.spoolData(id), JSON.stringify(spoolData));
+        });
+
+        // Refresh UI
+        renderSpools();
+        home.style.display = "block";
+        editor.style.display = "none";
+        recenterBtn.style.display = "none";
+        currentSpoolId = null;
+        alert("Import complete.");
+      } catch (err) {
+        alert("Import failed. Check console for details.");
+        console.error(err);
+      } finally {
+        // Reset input so the same file can be selected again if needed
+        e.target.value = "";
+      }
+    });
+
+    // --- Initial Render of Spools ------------------------------------------
+    renderSpools();
+
+    // --- Navigation ---------------------------------------------------------
+    function openEditor(spool) {
+      home.style.display = "none";
+      editor.style.display = "block";
+      recenterBtn.style.display = "block";
+      canvas.innerHTML = "<svg id='lineLayer' style='z-index: 0;'></svg>";
+      canvas.prepend(document.getElementById("lineLayer"));
+      lineLayer = document.getElementById("lineLayer");
+      lineLayer.innerHTML = "";
+      nodes = [];
+      connections = [];
+      currentSpoolId = spool.id;
+
+      // Load persisted data for this spool
+      const data = loadSpoolData(currentSpoolId);
+
+      // Recreate nodes
+      const idToNode = new Map();
+      data.nodes.forEach(n => {
+        const node = createNode(n.x, n.y, n.content, n.type, n.id);
+        idToNode.set(n.id, node);
+      });
+
+      // Recreate connections
+      data.connections.forEach(c => {
+        const fromNode = idToNode.get(c.fromId);
+        const toNode = idToNode.get(c.toId);
+        if (fromNode && toNode) connectNodes(fromNode, toNode);
+      });
+
+      // Restore view; if default and nodes exist, auto-fit via recenter
+      zoom = data.view.zoom;
+      panX = data.view.panX;
+      panY = data.view.panY;
+      const isDefaultView = (zoom === 1 && panX === 0 && panY === 0);
+      if (isDefaultView && nodes.length > 0) {
+        recenterCanvas();
+      } else {
+        applyTransform();
+      }
+    }
+
+    document.getElementById("backBtn").onclick = () => {
+      saveCurrentSpool();
+      editor.style.display = "none";
+      home.style.display = "block";
+      recenterBtn.style.display = "none";
+      currentSpoolId = null;
+    };
+
+    // --- Node & Connection Logic -------------------------------------------
+    let nodes = [],
+      connections = [],
+      selectedNode = null,
+      connectOrigin = null,
+      tempPath = null,
+      zoom = 1,
+      panX = 0,
+      panY = 0,
+      isPanning = false,
+      panStartX = 0,
+      panStartY = 0,
+      rafScheduled = false;
+
+    function createNode(x, y, content, type = "text", idOverride = null) {
+      const node = document.createElement("div");
+      node.className = "node";
+      node.style.left = x + "px";
+      node.style.top = y + "px";
+      node.dataset.id = idOverride || Date.now();
+
+      if (type === "text") {
+        node.contentEditable = true;
+        node.textContent = content || "New strand";
+      } else {
+        const img = document.createElement("img");
+        img.src = content || prompt("Image URL");
+        img.style.maxWidth = "140px";
+        img.style.display = "block";
+        node.appendChild(img);
+      }
+
+      canvas.appendChild(node);
+      nodes.push(node);
+      makeDraggable(node);
+
+      // connection handle
+      const handle = document.createElement("div");
+      handle.className = "handle";
+      node.appendChild(handle);
+
+      handle.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        startConnection(node, e);
+      });
+
+      node.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (selectedNode && selectedNode !== node) {
+          selectedNode.classList.remove("selected");
+          // Check if the previously selected node should be deleted
+          setTimeout(() => {
+            checkAndDeleteEmptyNode(selectedNode);
+          }, 100);
+        }
+        node.classList.toggle("selected");
+        selectedNode = node.classList.contains("selected") ? node : null;
+        node.style.zIndex = Date.now();
+      });
+
+      // Add blur event listener to check for empty content
+      node.addEventListener("blur", () => {
+        // Small delay to ensure content is updated
+        setTimeout(() => {
+          checkAndDeleteEmptyNode(node);
+          saveCurrentSpool();
+        }, 100);
+      });
+      return node;
+    }
+
+    function makeDraggable(el) {
+      let offsetX,
+        offsetY,
+        isDown = false;
+
+      el.addEventListener("pointerdown", (e) => {
+        isDown = true;
+        el.style.cursor = "grabbing";
+        
+        // Get the canvas rect to convert coordinates
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        // Convert viewport coordinates to canvas-local coordinates
+        const canvasLocalX = (e.clientX - canvasRect.left - panX) / zoom;
+        const canvasLocalY = (e.clientY - canvasRect.top - panY) / zoom;
+        
+        offsetX = canvasLocalX - parseFloat(el.style.left);
+        offsetY = canvasLocalY - parseFloat(el.style.top);
+        
+        el.setPointerCapture(e.pointerId);
+      });
+
+      el.addEventListener("pointermove", (e) => {
+        if (!isDown) return;
+        
+        // Get the canvas rect to convert coordinates
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        // Convert viewport coordinates to canvas-local coordinates
+        const canvasLocalX = (e.clientX - canvasRect.left - panX) / zoom;
+        const canvasLocalY = (e.clientY - canvasRect.top - panY) / zoom;
+        
+        el.style.left = (canvasLocalX - offsetX) + "px";
+        el.style.top = (canvasLocalY - offsetY) + "px";
+        scheduleLineUpdate();
+      });
+
+      el.addEventListener("pointerup", (e) => {
+        isDown = false;
+        el.style.cursor = "grab";
+        el.releasePointerCapture(e.pointerId);
+        updateLines();
+        saveCurrentSpool();
+      });
+    }
+
+    function connectNodes(a, b) {
+      // Prevent duplicate or reverse connections
+      if (connections.some(c => 
+        (c.from === a && c.to === b) || (c.from === b && c.to === a)
+      )) return;
+      const conn = { from: a, to: b };
+      connections.push(conn);
+
+      const path = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path"
+      );
+      lineLayer.appendChild(path);
+      conn.path = path;
+      updateLines();
+      saveCurrentSpool();
+    }
+
+    function updateLines() {
+      connections.forEach((c) => {
+        if (c.from.style.opacity === "0" || c.to.style.opacity === "0") {
+          c.path.setAttribute("d", "");
+          return;
+        }
+
+        const aRect = c.from.getBoundingClientRect();
+        const bRect = c.to.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+
+        // Convert from viewport coordinates to SVG coordinate system
+        // SVG is inside canvas, but SVG coordinate system is untransformed
+        const startX = (aRect.left + aRect.width / 2 - canvasRect.left) / zoom;
+        const startY = (aRect.top + aRect.height / 2 - canvasRect.top) / zoom;
+        const endX = (bRect.left + bRect.width / 2 - canvasRect.left) / zoom;
+        const endY = (bRect.top + bRect.height / 2 - canvasRect.top) / zoom;
+
+        const midX = (startX + endX) / 2;
+        const midY = (startY + endY) / 2;
+
+        // Cubic Bézier for a smooth, natural curve
+        const path = `M${startX},${startY} C${midX},${startY} ${midX},${endY} ${endX},${endY}`;
+        c.path.setAttribute("d", path);
+      });
+    }
+
+    function scheduleLineUpdate() {
+      if (!rafScheduled) {
+        rafScheduled = true;
+        requestAnimationFrame(() => {
+          updateLines();
+          rafScheduled = false;
+        });
+      }
+    }
+
+    let clusterUpdateScheduled = false;
+    function scheduleClusterDisplay() {
+      if (!clusterUpdateScheduled) {
+        clusterUpdateScheduled = true;
+        requestAnimationFrame(() => {
+          updateClusterDisplay();
+          clusterUpdateScheduled = false;
+        });
+      }
+    }
+
+    // --- Cluster Display at Low Zoom ---------------------------------------
+    function updateClusterDisplay() {
+      const threshold = 0.6; // Zoom threshold to begin clustering
+      const radius = 100; // Area to check for overlapping nodes
+
+      nodes.forEach(node => node.style.opacity = 1); // Reset all
+
+      if (zoom > threshold) return;
+
+      const nodeRects = nodes.map((node) => {
+        const rect = node.getBoundingClientRect();
+        return {
+          node,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          connections: connections.filter(c => c.from === node || c.to === node).length
+        };
+      });
+
+      const hidden = new Set();
+
+      for (let i = 0; i < nodeRects.length; i++) {
+        const a = nodeRects[i];
+        if (hidden.has(a.node)) continue;
+
+        for (let j = i + 1; j < nodeRects.length; j++) {
+          const b = nodeRects[j];
+          if (hidden.has(b.node)) continue;
+
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < radius) {
+            if (a.connections >= b.connections) {
+              hidden.add(b.node);
+            } else {
+              hidden.add(a.node);
+            }
+          }
+        }
+      }
+
+      hidden.forEach(n => n.style.opacity = 0);
+
+      // fade connectors that link to hidden nodes
+      connections.forEach(c => {
+        const visible = c.from.style.opacity != 0 && c.to.style.opacity != 0;
+        c.path.style.opacity = visible ? 1 : 0;
+      });
+
+      updateLines();
+    }
+
+    function startConnection(origin, evt) {
+      connectOrigin = origin;
+
+      const rect = origin.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const startX = (rect.left + rect.width / 2 - canvasRect.left) / zoom;
+      const startY = (rect.top + rect.height / 2 - canvasRect.top) / zoom;
+
+      tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      lineLayer.appendChild(tempPath);
+
+      const nodeZ = parseInt(origin.style.zIndex || 0);
+      tempPath.style.zIndex = nodeZ + 1;
+
+      const onMove = (e) => {
+        const canvasRect = canvas.getBoundingClientRect();
+        const endX = (e.clientX - canvasRect.left) / zoom;
+        const endY = (e.clientY - canvasRect.top) / zoom;
+        const midX = (startX + endX) / 2;
+        const pathD = `M${startX},${startY} C${midX},${startY} ${midX},${endY} ${endX},${endY}`;
+        tempPath.setAttribute("d", pathD);
+      };
+
+      const onUp = (e) => {
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        let target = el;
+        while (target && !target.classList?.contains("node")) {
+          target = target.parentElement;
+        }
+
+        if (target && target !== origin) {
+          connectNodes(origin, target);
+        }
+
+        if (tempPath) tempPath.remove();
+        connectOrigin = null;
+        tempPath = null;
+      };
+
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+    }
+
+    // --- Toolbar Actions ----------------------------------------------------
+    document.getElementById("addTextBtn").onclick = () => {
+      const rect = canvas.getBoundingClientRect();
+      createNode(
+        Math.round(rect.width * 0.5 + (Math.random() - 0.5) * 120),
+        Math.round(rect.height * 0.5 + (Math.random() - 0.5) * 120),
+        ""
+      );
+      saveCurrentSpool();
+    };
+
+    document.getElementById("addImageBtn").onclick = () => {
+      const rect = canvas.getBoundingClientRect();
+      createNode(
+        Math.round(rect.width * 0.5 + (Math.random() - 0.5) * 120),
+        Math.round(rect.height * 0.5 + (Math.random() - 0.5) * 120),
+        "",
+        "image"
+      );
+      saveCurrentSpool();
+    };
+
+    // Deselect node when tapping empty canvas
+    canvas.addEventListener("click", () => {
+      if (selectedNode) {
+        selectedNode.classList.remove("selected");
+        // Check if the deselected node should be deleted
+        setTimeout(() => {
+          checkAndDeleteEmptyNode(selectedNode);
+        }, 100);
+        selectedNode = null;
+      }
+    });
+
+    // Check and delete empty nodes when they lose focus
+    function checkAndDeleteEmptyNode(node) {
+      // Don't delete if node is currently selected/focused
+      if (node.classList.contains("selected") || document.activeElement === node) {
+        return;
+      }
+
+      // Check if node is empty
+      let isEmpty = false;
+      if (node.contentEditable) {
+        // Text node - check if content is empty or just whitespace
+        isEmpty = !node.textContent.trim();
+      } else {
+        // Image node - check if it has an image
+        const img = node.querySelector("img");
+        isEmpty = !img || !img.src || img.src === "";
+      }
+
+      if (isEmpty) {
+        // Remove connections to this node
+        connections = connections.filter(conn => {
+          if (conn.from === node || conn.to === node) {
+            if (conn.path) {
+              conn.path.remove();
+            }
+            return false;
+          }
+          return true;
+        });
+
+        // Remove node from nodes array
+        const nodeIndex = nodes.indexOf(node);
+        if (nodeIndex > -1) {
+          nodes.splice(nodeIndex, 1);
+        }
+
+        // Remove node from DOM
+        node.remove();
+        
+        // Update remaining connections
+        updateLines();
+        saveCurrentSpool();
+      }
+    }
+
+    window.addEventListener("resize", updateLines);
+
+    function isAnyNodeVisible() {
+      if (nodes.length === 0) return true; // No nodes, so no constraint
+      
+      const canvasRect = canvas.getBoundingClientRect();
+      const viewportLeft = -panX / zoom;
+      const viewportTop = -panY / zoom;
+      const viewportRight = viewportLeft + canvasRect.width / zoom;
+      const viewportBottom = viewportTop + canvasRect.height / zoom;
+      
+      // Check if any node is visible (with some padding)
+      for (let node of nodes) {
+        const left = parseFloat(node.style.left);
+        const top = parseFloat(node.style.top);
+        const rect = node.getBoundingClientRect();
+        const nodeWidth = rect.width;
+        const nodeHeight = rect.height;
+        
+        // Check if node overlaps with viewport
+        if (left + nodeWidth > viewportLeft && 
+            left < viewportRight &&
+            top + nodeHeight > viewportTop && 
+            top < viewportBottom) {
+          return true;
+        }
+      }
+      return false;
+    }
+    
+    function constrainViewToKeepNodeVisible() {
+      if (nodes.length === 0 || isAnyNodeVisible()) return;
+      
+      // No nodes visible - pan to center on the middle node
+      if (nodes.length === 1) {
+        const node = nodes[0];
+        const left = parseFloat(node.style.left);
+        const top = parseFloat(node.style.top);
+        const canvasRect = canvas.getBoundingClientRect();
+        panX = (canvasRect.width / 2) - left * zoom;
+        panY = (canvasRect.height / 2) - top * zoom;
+      } else {
+        // Pan to show the first node
+        const node = nodes[0];
+        const left = parseFloat(node.style.left);
+        const top = parseFloat(node.style.top);
+        const rect = node.getBoundingClientRect();
+        const nodeWidth = rect.width;
+        const nodeHeight = rect.height;
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        // Ensure at least part of the node is visible
+        const padding = 20; // Show at least 20px of the node
+        if (left < -panX / zoom + padding) {
+          panX = -left * zoom + padding;
+        }
+        if (top < -panY / zoom + padding) {
+          panY = -top * zoom + padding;
+        }
+        if (left > (-panX + canvasRect.width) / zoom - padding) {
+          panX = canvasRect.width - left * zoom - padding;
+        }
+        if (top > (-panY + canvasRect.height) / zoom - padding) {
+          panY = canvasRect.height - top * zoom - padding;
+        }
+      }
+    }
+
+    function applyTransform() {
+      constrainViewToKeepNodeVisible();
+      canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+      updateLines();
+    }
+
+    canvas.addEventListener('pointerdown', e => {
+      // start panning when touching empty space (canvas itself or svg)
+      const isCanvasBackground = e.target === canvas || e.target === lineLayer;
+      if (isCanvasBackground && e.target !== lineLayer && e.target.closest('.node')) {
+        return; // Clicked on a node
+      }
+      if (isCanvasBackground) {
+        isPanning = true;
+        panStartX = e.clientX - panX;
+        panStartY = e.clientY - panY;
+        canvas.style.cursor = 'move';
+        canvas.setPointerCapture(e.pointerId);
+      }
+    });
+
+    canvas.addEventListener('pointermove', e => {
+      if (isPanning) {
+        panX = e.clientX - panStartX;
+        panY = e.clientY - panStartY;
+        applyTransform();
+      }
+    });
+
+    canvas.addEventListener('pointerup', e => {
+      if (isPanning) {
+        isPanning = false;
+        canvas.style.cursor = 'default';
+        canvas.releasePointerCapture(e.pointerId);
+        saveCurrentSpool();
+      }
+    });
+
+    // --- Pinch-to-Zoom Handling --------------------------------------------
+    let pinchStartDist = null;
+    let initialZoom = 1;
+
+    function getDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    let pinchCenterX = 0;
+    let pinchCenterY = 0;
+    
+    canvas.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 2) {
+        pinchStartDist = getDistance(e.touches);
+        initialZoom = zoom;
+        
+        // Calculate center point of pinch (in viewport coordinates)
+        const canvasRect = canvas.getBoundingClientRect();
+        pinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - canvasRect.left;
+        pinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - canvasRect.top;
+      }
+    });
+
+    canvas.addEventListener("touchmove", (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const currentDist = getDistance(e.touches);
+        const scaleChange = currentDist / pinchStartDist;
+        let newZoom = Math.min(Math.max(initialZoom * scaleChange, 0.5), 2);
+        
+        // Adjust pan so that the content under the pinch center stays in place
+        // Content at canvas position (c) appears at viewport position (c * zoom + pan)
+        // Pinch center at (pinchCenterX, pinchCenterY) is over canvas content at (pinchCenterX - pan) / zoom
+        // After zoom, we want (pinchCenterX - newPan) / newZoom to equal (pinchCenterX - pan) / initialZoom
+        // Solving: newPan = pinchCenterX - (pinchCenterX - pan) * (newZoom / initialZoom)
+        const testPanX = pinchCenterX - (pinchCenterX - panX) * (newZoom / initialZoom);
+        const testPanY = pinchCenterY - (pinchCenterY - panY) * (newZoom / initialZoom);
+        
+        // Check if this zoom would hide all nodes - if so, limit zoom
+        const tempPanX = panX;
+        const tempPanY = panY;
+        const tempZoom = zoom;
+        panX = testPanX;
+        panY = testPanY;
+        zoom = newZoom;
+        
+        if (!isAnyNodeVisible()) {
+          // Zoom out too far - revert
+          zoom = tempZoom;
+          panX = tempPanX;
+          panY = tempPanY;
+          return;
+        }
+        
+        scheduleLineUpdate();
+        scheduleClusterDisplay();
+        applyTransform();
+        saveCurrentSpool();
+      }
+    });
+
+    canvas.addEventListener("touchend", (e) => {
+      if (pinchStartDist !== null) {
+        scheduleLineUpdate();
+        scheduleClusterDisplay();
+        pinchStartDist = null;
+      }
+    });
+
+    canvas.addEventListener("wheel", (e) => {
+      if (!e.ctrlKey) return;
+
+      e.preventDefault();
+      
+      // Get the point where user is hovering (in viewport coordinates relative to canvas)
+      const canvasRect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - canvasRect.left;
+      const mouseY = e.clientY - canvasRect.top;
+      
+      const delta = -e.deltaY;
+      const scaleChange = delta > 0 ? 1.05 : 0.95;
+      let newZoom = Math.min(Math.max(zoom * scaleChange, 0.5), 2);
+      
+      // Keep content under cursor fixed during zoom
+      // Formula: newPan = mousePos - (mousePos - oldPan) * (newZoom / oldZoom)
+      const testPanX = mouseX - (mouseX - panX) * (newZoom / zoom);
+      const testPanY = mouseY - (mouseY - panY) * (newZoom / zoom);
+      
+      // Check if this zoom would hide all nodes - if so, limit zoom
+      const tempPanX = panX;
+      const tempPanY = panY;
+      const tempZoom = zoom;
+      panX = testPanX;
+      panY = testPanY;
+      zoom = newZoom;
+      
+      if (!isAnyNodeVisible()) {
+        // Zoom out too far - revert
+        zoom = tempZoom;
+        panX = tempPanX;
+        panY = tempPanY;
+        return;
+      }
+      
+      scheduleLineUpdate();
+      scheduleClusterDisplay();
+      applyTransform();
+      saveCurrentSpool();
+    }, { passive: false });
+
+    // when the canvas transform transition ends, recalc connectors
+    canvas.addEventListener('transitionend', e => {
+      if (e.propertyName === 'transform') updateLines();
+    });
+
+    // --- Recenter Button Logic ------------------------------------------------
+    function recenterCanvas() {
+      if (nodes.length === 0) return;
+
+      // Calculate bounding box of all nodes in canvas-local coordinates
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+
+      nodes.forEach(node => {
+        const left = parseFloat(node.style.left);
+        const top = parseFloat(node.style.top);
+        const rect = node.getBoundingClientRect();
+        
+        minX = Math.min(minX, left);
+        maxX = Math.max(maxX, left + rect.width);
+        minY = Math.min(minY, top);
+        maxY = Math.max(maxY, top + rect.height);
+      });
+
+      // Calculate content dimensions
+      const contentWidth = maxX - minX;
+      const contentHeight = maxY - minY;
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+
+      // Get canvas dimensions
+      const canvasRect = canvas.parentElement.getBoundingClientRect();
+      const canvasWidth = canvasRect.width;
+      const canvasHeight = canvasRect.height;
+
+      // Calculate zoom to fit with padding (20% on each side)
+      const padding = 40; // pixels of padding
+      const zoomX = (canvasWidth - padding * 2) / contentWidth;
+      const zoomY = (canvasHeight - padding * 2) / contentHeight;
+      
+      // Use smaller zoom to ensure everything fits, with min/max constraints
+      const newZoom = Math.max(0.5, Math.min(2, Math.min(zoomX, zoomY)));
+
+      // Center the content
+      // We want to pan so that the center of the content ends up at the center of the viewport
+      const targetCenterX = canvasWidth / 2;
+      const targetCenterY = canvasHeight / 2;
+      
+      // Adjust for the actual scaled center position
+      const newPanX = targetCenterX - centerX * newZoom;
+      const newPanY = targetCenterY - centerY * newZoom;
+
+      // Update with smooth transition
+      zoom = newZoom;
+      panX = newPanX;
+      panY = newPanY;
+      
+      // Disable transition temporarily to apply the transform
+      canvas.style.transition = 'transform 0.4s ease';
+      applyTransform();
+      
+      // Re-enable after transition completes
+      setTimeout(() => {
+        canvas.style.transition = 'transform 0.2s ease';
+        updateLines();
+        updateClusterDisplay();
+        saveCurrentSpool();
+      }, 400);
+    }
+    // --- Save current spool state ------------------------------------------
+    function serializeNodes() {
+      return nodes.map(n => {
+        const id = Number(n.dataset.id);
+        const x = parseFloat(n.style.left);
+        const y = parseFloat(n.style.top);
+        const isText = n.isContentEditable;
+        const type = isText ? "text" : "image";
+        const content = isText ? (n.textContent || "") : (n.querySelector("img")?.src || "");
+        return { id, x, y, type, content };
+      });
+    }
+
+    function serializeConnections() {
+      return connections.map(c => ({
+        fromId: Number(c.from.dataset.id),
+        toId: Number(c.to.dataset.id),
+      }));
+    }
+
+    function saveCurrentSpool() {
+      if (!currentSpoolId) return;
+      const data = {
+        nodes: serializeNodes(),
+        connections: serializeConnections(),
+        view: { zoom, panX, panY },
+      };
+      saveSpoolData(currentSpoolId, data);
+    }
+
+    document.getElementById("recenterBtn").addEventListener("click", recenterCanvas);
+
+    // Ensure current view is persisted on page unload
+    window.addEventListener("beforeunload", () => {
+      saveCurrentSpool();
+    });
+  </script>
+</body>
+</html>
