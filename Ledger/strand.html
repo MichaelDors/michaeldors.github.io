@@ -136,6 +136,24 @@
       padding-left: 2rem;
     }
 
+    /* Checklist styling */
+    #markdownEditor ul.checklist {
+      list-style: none;
+      padding-left: 0;
+      margin-left: 0;
+    }
+    #markdownEditor ul.checklist li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.375rem 0;
+      line-height: 1.6;
+    }
+    #markdownEditor ul.checklist input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+    }
+
     #markdownEditor li {
       margin: 0.375rem 0;
       line-height: 1.6;
@@ -532,6 +550,9 @@
       <div style="width: 1px; height: 24px; background: var(--border); margin: 0 0.25rem;"></div>
       <button id="unorderedListBtn" class="toolbar-btn" title="Bullet List">• List</button>
       <button id="orderedListBtn" class="toolbar-btn" title="Numbered List">1. List</button>
+      <button id="outdentBtn" class="toolbar-btn" title="Outdent (Shift+Tab)">◀</button>
+      <button id="indentBtn" class="toolbar-btn" title="Indent (Tab)">▶</button>
+      <button id="checklistBtn" class="toolbar-btn" title="Checklist">☑︎</button>
       <div style="width: 1px; height: 24px; background: var(--border); margin: 0 0.25rem;"></div>
       <button id="linkBtn" class="toolbar-btn" title="Link">🔗</button>
       <button id="codeBtn" class="toolbar-btn" title="Code">&lt;/&gt;</button>
@@ -1059,61 +1080,438 @@
 
     // Convert HTML back to markdown for storage
     function htmlToMarkdown(html) {
-      let md = html;
-      // Convert headings
-      md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
-      md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
-      md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
-      // Convert bold and italic
-      md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
-      md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
-      md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
-      md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
-      // Convert code
-      md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
-      md = md.replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis, '```\n$1\n```\n\n');
-      // Convert links
-      md = md.replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)');
-      // Convert lists
-      md = md.replace(/<ul[^>]*>/gi, '');
-      md = md.replace(/<\/ul>/gi, '\n');
-      md = md.replace(/<ol[^>]*>/gi, '');
-      md = md.replace(/<\/ol>/gi, '\n');
-      md = md.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n');
-      // Convert blockquotes
-      md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, '> $1\n\n');
-      // Convert paragraphs
-      md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
-      // Remove any remaining HTML tags
-      md = md.replace(/<[^>]+>/g, '');
-      // Clean up extra newlines
-      md = md.replace(/\n{3,}/g, '\n\n');
-      // Decode HTML entities
+      if (!html || !html.trim()) return '';
+      
+      // Create a temporary container to parse the HTML
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = md;
-      md = tempDiv.textContent || tempDiv.innerText || '';
-      return md.trim();
+      tempDiv.innerHTML = html;
+      
+      // Helper function to extract text content from a node, preserving inline formatting
+      // skipLists: if true, skip processing nested lists (they're handled separately)
+      function extractTextWithFormatting(node, skipLists = false) {
+        if (!node) return '';
+        if (node.nodeType === Node.TEXT_NODE) {
+          return node.textContent || '';
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return '';
+        
+        let result = '';
+        const tagName = node.tagName?.toLowerCase();
+        
+        // Skip nested lists if requested (they're handled separately)
+        if (skipLists && (tagName === 'ul' || tagName === 'ol')) {
+          return '';
+        }
+        
+        // Handle inline formatting
+        if (tagName === 'strong' || tagName === 'b') {
+          result = '**' + extractTextWithFormatting(node, skipLists) + '**';
+        } else if (tagName === 'em' || tagName === 'i') {
+          result = '*' + extractTextWithFormatting(node, skipLists) + '*';
+        } else if (tagName === 'code' && node.parentElement?.tagName?.toLowerCase() !== 'pre') {
+          result = '`' + extractTextWithFormatting(node, skipLists) + '`';
+        } else if (tagName === 'a') {
+          const href = node.getAttribute('href') || '';
+          const text = extractTextWithFormatting(node, skipLists);
+          result = '[' + text + '](' + href + ')';
+        } else if (tagName === 'u') {
+          // Underline isn't standard markdown, but preserve it as HTML for now
+          result = '<u>' + extractTextWithFormatting(node, skipLists) + '</u>';
+        } else if (tagName === 'input' && node.getAttribute('type') === 'checkbox') {
+          // Skip checkbox inputs - they're handled separately in listToMarkdown
+          return '';
+        } else if (tagName === 'label') {
+          // For labels in checklists, extract text but skip the checkbox
+          return extractTextWithFormatting(node, skipLists);
+        } else {
+          // Recurse through child nodes
+          for (let child of Array.from(node.childNodes)) {
+            result += extractTextWithFormatting(child, skipLists);
+          }
+        }
+        
+        return result;
+      }
+      
+      // Helper function to convert a list element to markdown
+      function listToMarkdown(listElement, depth = 0) {
+        const isOrdered = listElement.tagName?.toLowerCase() === 'ol';
+        const isChecklist = listElement.classList?.contains('checklist');
+        const indent = '  '.repeat(depth);
+        let result = '';
+        
+        const items = Array.from(listElement.querySelectorAll(':scope > li'));
+        items.forEach((item, index) => {
+          // Check if this is a checklist item
+          const checkbox = item.querySelector('input[type="checkbox"]');
+          const isChecked = checkbox && checkbox.checked;
+          
+          // Extract text from the list item (excluding the checkbox and nested lists)
+          let itemText = '';
+          if (isChecklist && checkbox) {
+            // Get text after checkbox
+            const label = checkbox.closest('label');
+            if (label) {
+              itemText = extractTextWithFormatting(label, true); // skipLists = true to avoid processing nested lists
+              // Remove checkbox text but keep the rest
+              itemText = itemText.replace(/^\s*/, '');
+            } else {
+              // Fallback: get all text from item (excluding nested lists)
+              itemText = extractTextWithFormatting(item, true); // skipLists = true
+              itemText = itemText.replace(/^\s*/, '');
+            }
+          } else {
+            // For regular lists, extract text but skip nested lists (they'll be handled recursively)
+            itemText = extractTextWithFormatting(item, true); // skipLists = true
+          }
+          
+          // Check for nested lists
+          const nestedLists = Array.from(item.querySelectorAll(':scope > ul, :scope > ol'));
+          
+          // Build the list item prefix
+          let prefix = '';
+          if (isChecklist) {
+            prefix = indent + '- [' + (isChecked ? 'x' : ' ') + '] ';
+          } else if (isOrdered) {
+            prefix = indent + (index + 1) + '. ';
+          } else {
+            prefix = indent + '- ';
+          }
+          
+          result += prefix + itemText.trim();
+          
+          // Add nested lists
+          nestedLists.forEach(nestedList => {
+            result += '\n' + listToMarkdown(nestedList, depth + 1);
+          });
+          
+          result += '\n';
+        });
+        
+        return result;
+      }
+      
+      // Convert the document to markdown line by line
+      let markdown = '';
+      
+      function processNode(node) {
+        if (!node) return;
+        
+        const tagName = node.tagName?.toLowerCase();
+        
+        // Skip script and style tags
+        if (tagName === 'script' || tagName === 'style') return;
+        
+        // Handle headings
+        if (tagName === 'h1') {
+          markdown += '# ' + extractTextWithFormatting(node) + '\n\n';
+        } else if (tagName === 'h2') {
+          markdown += '## ' + extractTextWithFormatting(node) + '\n\n';
+        } else if (tagName === 'h3') {
+          markdown += '### ' + extractTextWithFormatting(node) + '\n\n';
+        }
+        // Handle lists (ul, ol)
+        else if (tagName === 'ul' || tagName === 'ol') {
+          // Only process top-level lists (not nested ones, as they're handled recursively)
+          if (!node.parentElement || 
+              (node.parentElement.tagName?.toLowerCase() !== 'li' && 
+               node.parentElement.tagName?.toLowerCase() !== 'ul' && 
+               node.parentElement.tagName?.toLowerCase() !== 'ol')) {
+            markdown += listToMarkdown(node, 0) + '\n';
+          }
+        }
+        // Handle blockquotes
+        else if (tagName === 'blockquote') {
+          const text = extractTextWithFormatting(node);
+          const lines = text.split('\n').filter(l => l.trim());
+          lines.forEach(line => {
+            markdown += '> ' + line.trim() + '\n';
+          });
+          markdown += '\n';
+        }
+        // Handle code blocks
+        else if (tagName === 'pre') {
+          const code = node.querySelector('code');
+          if (code) {
+            markdown += '```\n' + extractTextWithFormatting(code) + '\n```\n\n';
+          } else {
+            markdown += '```\n' + extractTextWithFormatting(node) + '\n```\n\n';
+          }
+        }
+        // Handle paragraphs
+        else if (tagName === 'p') {
+          const text = extractTextWithFormatting(node).trim();
+          if (text) {
+            markdown += text + '\n\n';
+          }
+        }
+        // Handle text nodes
+        else if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent?.trim();
+          if (text && !node.parentElement || 
+              (node.parentElement.tagName?.toLowerCase() !== 'p' && 
+               node.parentElement.tagName?.toLowerCase() !== 'li' &&
+               node.parentElement.tagName?.toLowerCase() !== 'h1' &&
+               node.parentElement.tagName?.toLowerCase() !== 'h2' &&
+               node.parentElement.tagName?.toLowerCase() !== 'h3')) {
+            markdown += text + '\n\n';
+          }
+        }
+        // Recurse for other elements
+        else {
+          for (let child of Array.from(node.childNodes)) {
+            processNode(child);
+          }
+        }
+      }
+      
+      // Process all child nodes
+      for (let child of Array.from(tempDiv.childNodes)) {
+        processNode(child);
+      }
+      
+      // Clean up extra newlines
+      markdown = markdown.replace(/\n{3,}/g, '\n\n');
+      
+      // Clean up any remaining HTML tags that weren't handled
+      markdown = markdown.replace(/<[^>]+>/g, '');
+      
+      return markdown.trim();
     }
 
     // Render markdown to HTML (WYSIWYG)
     function renderMarkdown(md) {
       if (!md) return '';
       if (typeof marked !== 'undefined') {
-        return marked.parse(md);
+        try {
+          if (marked && marked.setOptions) {
+            marked.setOptions({ 
+              gfm: true, 
+              breaks: true,
+              pedantic: false,
+              smartLists: true,
+              smartypants: false
+            });
+          }
+          let html = marked.parse(md);
+          
+          // Ensure checklist checkboxes are interactive (remove disabled if present)
+          html = html.replace(/<input([^>]*type=["']checkbox["'][^>]*)\sdisabled([^>]*)>/gi, '<input$1$2>');
+          
+          // Add checklist class to ULs containing task items
+          // This regex handles nested checklists too
+          const checklistRegex = /<ul>([\s\S]*?<li>\s*<input[^>]*type=["']checkbox["'][^>]*>)/gi;
+          let lastIndex = 0;
+          let result = '';
+          let match;
+          
+          while ((match = checklistRegex.exec(html)) !== null) {
+            // Add everything before the match
+            result += html.substring(lastIndex, match.index);
+            
+            // Find the closing </ul> for this list
+            const ulStart = match.index;
+            let depth = 1;
+            let ulEnd = match.index + match[0].length;
+            
+            // Find the matching closing tag
+            while (depth > 0 && ulEnd < html.length) {
+              const nextUl = html.indexOf('<ul', ulEnd);
+              const nextOl = html.indexOf('<ol', ulEnd);
+              const nextCloseUl = html.indexOf('</ul>', ulEnd);
+              const nextCloseOl = html.indexOf('</ol>', ulEnd);
+              
+              let nextOpen = -1;
+              if (nextUl !== -1 && (nextOl === -1 || nextUl < nextOl)) nextOpen = nextUl;
+              else if (nextOl !== -1) nextOpen = nextOl;
+              
+              let nextClose = -1;
+              if (nextCloseUl !== -1 && (nextCloseOl === -1 || nextCloseUl < nextCloseOl)) nextClose = nextCloseUl;
+              else if (nextCloseOl !== -1) nextClose = nextCloseOl;
+              
+              if (nextOpen !== -1 && (nextClose === -1 || nextOpen < nextClose)) {
+                depth++;
+                ulEnd = nextOpen + 3;
+              } else if (nextClose !== -1) {
+                depth--;
+                if (depth === 0) {
+                  ulEnd = nextClose + 5;
+                } else {
+                  ulEnd = nextClose + 5;
+                }
+              } else {
+                break;
+              }
+            }
+            
+            // Replace the <ul> with <ul class="checklist">
+            const fullList = html.substring(ulStart, ulEnd);
+            result += fullList.replace(/<ul>/i, '<ul class="checklist">');
+            
+            lastIndex = ulEnd;
+          }
+          
+          // Add remaining content
+          result += html.substring(lastIndex);
+          
+          return result;
+        } catch (e) {
+          console.error('Error parsing markdown with marked:', e);
+          // fall through to simple renderer
+        }
       }
-      // Fallback simple renderer
+      
+      // Fallback simple renderer with better list handling
       let html = md;
+      
+      // First, handle code blocks to preserve them
+      html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+      
+      // Handle headings
       html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
       html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
       html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+      
+      // Handle inline formatting
       html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
       html = html.replace(/`(.*?)`/g, '<code>$1</code>');
       html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
       html = html.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
-      html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
-      html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+      
+      // Handle lists with proper nesting
+      const lines = html.split('\n');
+      const result = [];
+      let inList = false;
+      let listType = null; // 'ul', 'ol', or 'checklist'
+      let listDepth = 0;
+      const listStack = [];
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        
+        // Check for checklist items
+        const checklistMatch = trimmed.match(/^(\s*)- \[([x\s])\] (.*)$/);
+        if (checklistMatch) {
+          const indent = checklistMatch[1].length;
+          const checked = checklistMatch[2].toLowerCase() === 'x';
+          const text = checklistMatch[3];
+          
+          // Close lists if needed
+          while (listStack.length > 0 && listStack[listStack.length - 1].indent >= indent) {
+            const closed = listStack.pop();
+            result.push('  '.repeat(closed.indent / 2) + '</' + closed.type + '>');
+            listDepth--;
+          }
+          
+          // Open checklist if needed
+          if (listStack.length === 0 || listStack[listStack.length - 1].type !== 'ul' || 
+              !listStack[listStack.length - 1].isChecklist) {
+            if (listStack.length > 0) {
+              result.push('  '.repeat(listStack.length - 1) + '</' + listStack[listStack.length - 1].type + '>');
+              listStack.pop();
+              listDepth--;
+            }
+            result.push('  '.repeat(indent / 2) + '<ul class="checklist">');
+            listStack.push({ type: 'ul', indent: indent, isChecklist: true });
+            listDepth++;
+          }
+          
+          result.push('  '.repeat(indent / 2 + 1) + '<li><input type="checkbox"' + 
+                     (checked ? ' checked' : '') + '> ' + text + '</li>');
+          continue;
+        }
+        
+        // Check for ordered list items
+        const orderedMatch = trimmed.match(/^(\s*)(\d+)\. (.*)$/);
+        if (orderedMatch) {
+          const indent = orderedMatch[1].length;
+          const text = orderedMatch[3];
+          
+          // Close lists if needed
+          while (listStack.length > 0 && listStack[listStack.length - 1].indent >= indent) {
+            const closed = listStack.pop();
+            result.push('  '.repeat(closed.indent / 2) + '</' + closed.type + '>');
+            listDepth--;
+          }
+          
+          // Open ordered list if needed
+          if (listStack.length === 0 || listStack[listStack.length - 1].type !== 'ol' ||
+              listStack[listStack.length - 1].indent !== indent) {
+            if (listStack.length > 0 && listStack[listStack.length - 1].indent !== indent) {
+              result.push('  '.repeat(listStack.length - 1) + '</' + listStack[listStack.length - 1].type + '>');
+              listStack.pop();
+              listDepth--;
+            }
+            result.push('  '.repeat(indent / 2) + '<ol>');
+            listStack.push({ type: 'ol', indent: indent });
+            listDepth++;
+          }
+          
+          result.push('  '.repeat(indent / 2 + 1) + '<li>' + text + '</li>');
+          continue;
+        }
+        
+        // Check for unordered list items
+        const unorderedMatch = trimmed.match(/^(\s*)- (.*)$/);
+        if (unorderedMatch) {
+          const indent = unorderedMatch[1].length;
+          const text = unorderedMatch[2];
+          
+          // Close lists if needed
+          while (listStack.length > 0 && listStack[listStack.length - 1].indent >= indent) {
+            const closed = listStack.pop();
+            result.push('  '.repeat(closed.indent / 2) + '</' + closed.type + '>');
+            listDepth--;
+          }
+          
+          // Open unordered list if needed
+          if (listStack.length === 0 || listStack[listStack.length - 1].type !== 'ul' ||
+              listStack[listStack.length - 1].indent !== indent ||
+              listStack[listStack.length - 1].isChecklist) {
+            if (listStack.length > 0) {
+              result.push('  '.repeat(listStack.length - 1) + '</' + listStack[listStack.length - 1].type + '>');
+              listStack.pop();
+              listDepth--;
+            }
+            result.push('  '.repeat(indent / 2) + '<ul>');
+            listStack.push({ type: 'ul', indent: indent, isChecklist: false });
+            listDepth++;
+          }
+          
+          result.push('  '.repeat(indent / 2 + 1) + '<li>' + text + '</li>');
+          continue;
+        }
+        
+        // Close all lists if line doesn't match any list pattern
+        if (trimmed && listStack.length > 0) {
+          while (listStack.length > 0) {
+            const closed = listStack.pop();
+            result.push('  '.repeat(closed.indent / 2) + '</' + closed.type + '>');
+            listDepth--;
+          }
+        }
+        
+        // Add non-list content
+        if (trimmed) {
+          result.push(line);
+        } else {
+          result.push('');
+        }
+      }
+      
+      // Close any remaining lists
+      while (listStack.length > 0) {
+        const closed = listStack.pop();
+        result.push('  '.repeat(closed.indent / 2) + '</' + closed.type + '>');
+      }
+      
+      html = result.join('\n');
+      
+      // Convert remaining newlines to breaks (but not inside pre/code)
       html = html.replace(/\n/g, '<br>');
+      
       return html;
     }
 
@@ -1180,6 +1578,13 @@
 
     // Auto-save document content
     markdownEditor.addEventListener("input", autoSave);
+    // Ensure checkbox changes are saved too
+    markdownEditor.addEventListener("change", (e) => {
+      const target = e.target;
+      if (target && target.matches && target.matches('input[type="checkbox"]')) {
+        autoSave();
+      }
+    });
     markdownEditor.addEventListener("paste", (e) => {
       e.preventDefault();
       const text = (e.clipboardData || window.clipboardData).getData('text/plain');
@@ -1259,6 +1664,84 @@
       applyFormatting('insertOrderedList');
     };
 
+    // Indentation controls
+    document.getElementById("indentBtn").onclick = () => {
+      applyFormatting('indent');
+    };
+    document.getElementById("outdentBtn").onclick = () => {
+      applyFormatting('outdent');
+    };
+
+    // Checklist support: toggle or insert at selection
+    function getAncestor(node, tagName) {
+      tagName = tagName.toUpperCase();
+      while (node && node !== markdownEditor) {
+        if (node.nodeName === tagName) return node;
+        node = node.parentNode;
+      }
+      return null;
+    }
+
+    function getListDepth(listItem) {
+      let depth = 0;
+      let currentLi = listItem;
+      while (currentLi) {
+        const parentList = currentLi.closest('ul,ol');
+        if (!parentList) break;
+        depth++;
+        const parentLi = parentList.parentElement ? parentList.parentElement.closest('li') : null;
+        currentLi = parentLi;
+      }
+      return depth; // 1 = top-level, 2+ = nested
+    }
+
+    document.getElementById("checklistBtn").onclick = () => {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      const li = getAncestor(range.startContainer, 'LI');
+      if (li) {
+        const list = getAncestor(li, 'UL') || getAncestor(li, 'OL');
+        if (list) {
+          // Toggle checklist class on the parent list
+          if (list.classList.contains('checklist')) {
+            list.classList.remove('checklist');
+          } else {
+            list.classList.add('checklist');
+            // Ensure each li has a checkbox input at the start
+            list.querySelectorAll('li').forEach((item) => {
+              if (!item.querySelector('input[type="checkbox"]')) {
+                const label = document.createElement('label');
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(' ' + (item.textContent || '').trim()));
+                item.textContent = '';
+                item.appendChild(label);
+              }
+            });
+          }
+        }
+      } else {
+        // Insert a new one-item checklist at cursor
+        const ul = document.createElement('ul');
+        ul.className = 'checklist';
+        const liEl = document.createElement('li');
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(' Task'));
+        liEl.appendChild(label);
+        ul.appendChild(liEl);
+        range.insertNode(ul);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      markdownEditor.focus();
+      autoSave();
+    };
+
     document.getElementById("linkBtn").onclick = async () => {
       const selection = window.getSelection();
       if (selection.rangeCount === 0) return;
@@ -1291,6 +1774,34 @@
 
     // Keyboard shortcuts
     markdownEditor.addEventListener('keydown', (e) => {
+      // Tab / Shift+Tab for indent / outdent
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          applyFormatting('outdent');
+        } else {
+          applyFormatting('indent');
+        }
+        return;
+      }
+      // Enter in lists: if current item is empty and nested, outdent instead of adding another blank
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+          const li = getAncestor(sel.anchorNode, 'LI');
+          if (li) {
+            const text = (li.textContent || '').replace(/\u200B/g, '').trim();
+            if (text.length === 0) {
+              const depth = getListDepth(li);
+              if (depth > 1) {
+                e.preventDefault();
+                applyFormatting('outdent');
+                return;
+              }
+            }
+          }
+        }
+      }
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'b') {
           e.preventDefault();
