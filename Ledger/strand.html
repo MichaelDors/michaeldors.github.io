@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light dark" />
-  <title>Strands</title>
+  <title>Ledger BETA</title>
   <style>
     :root {
       --bg: #f7f7fb;
@@ -68,8 +68,119 @@
     }
 
     #home,
-    #editor {
+    #editor,
+    #documentEditor {
       padding: 2rem;
+    }
+
+    #documentEditor {
+      display: none;
+    }
+
+    .toolbar-btn {
+      background: transparent;
+      color: var(--text);
+      border: none;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      min-width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+
+    .toolbar-btn:hover {
+      background: var(--border);
+    }
+
+    .toolbar-btn:active {
+      background: var(--borderhover);
+    }
+
+    #markdownEditor:focus {
+      outline: none;
+    }
+
+    #markdownEditor h1 {
+      font-size: 2rem;
+      margin: 1.5rem 0 0.75rem 0;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    #markdownEditor h2 {
+      font-size: 1.5rem;
+      margin: 1.25rem 0 0.5rem 0;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    #markdownEditor h3 {
+      font-size: 1.25rem;
+      margin: 1rem 0 0.5rem 0;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    #markdownEditor p {
+      margin: 0.75rem 0;
+      line-height: 1.6;
+    }
+
+    #markdownEditor ul, #markdownEditor ol {
+      margin: 0.75rem 0;
+      padding-left: 2rem;
+    }
+
+    #markdownEditor li {
+      margin: 0.375rem 0;
+      line-height: 1.6;
+    }
+
+    #markdownEditor code {
+      background: var(--border);
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.9em;
+    }
+
+    #markdownEditor pre {
+      background: var(--border);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      margin: 1rem 0;
+    }
+
+    #markdownEditor pre code {
+      background: transparent;
+      padding: 0;
+    }
+
+    #markdownEditor blockquote {
+      border-left: 4px solid var(--accent);
+      padding-left: 1rem;
+      margin: 1rem 0;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    #markdownEditor a {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    #markdownEditor strong {
+      font-weight: 700;
+    }
+
+    #markdownEditor em {
+      font-style: italic;
     }
 
     .grid {
@@ -222,13 +333,167 @@
       padding: 0;
       z-index: 10000;
     }
+
+    /* Modal System */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal {
+      background: var(--card);
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+      padding: 2rem;
+      min-width: 320px;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.2s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal-header {
+      margin-bottom: 1rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .modal-body {
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: var(--borderhover);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .modal-actions button {
+      min-width: 80px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title {
+      flex: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: left;
+      text-align: left;
+      font-size: 1rem;
+      min-height: 1.5rem;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+
+    .card-delete,
+    .card-rename {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 1rem;
+      line-height: 1;
+      opacity: 0;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card:hover .card-delete,
+    .card:hover .card-rename {
+      opacity: 1;
+    }
+
+    .card-delete {
+      font-size: 1.25rem;
+    }
+
+    .card-delete:hover {
+      background: rgba(220, 38, 38, 0.1);
+      color: #dc2626;
+    }
+
+    .card-delete:active {
+      background: rgba(220, 38, 38, 0.2);
+    }
+
+    .card-rename:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .card-rename:active {
+      background: var(--borderhover);
+    }
   </style>
 </head>
 <body>
   <!-- Homepage (Spools) -->
   <div id="home">
-    <h1>Spools</h1>
+    <h1>Ledger</h1>
     <div id="homeToolbar" style="margin: 0 0 1rem 0; display: flex; gap: 0.5rem;">
+      <button id="newDocumentBtn">+ New Document</button>
       <button id="newSpoolBtn">+ New Spool</button>
       <div style="flex:1"></div>
       <button id="exportBtn" class="secondary" title="Export all as .strand">Export</button>
@@ -252,13 +517,48 @@
     </div>
   </div>
 
+  <!-- Document Editor View -->
+  <div id="documentEditor">
+    <div id="documentToolbar" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border-bottom: 1px solid var(--border); flex-wrap: wrap;">
+      <button id="documentBackBtn" class="secondary">&larr; Dashboard</button>
+      <div style="width: 1px; height: 24px; background: var(--border); margin: 0 0.25rem;"></div>
+      <button id="boldBtn" class="toolbar-btn" title="Bold (Ctrl+B)"><b>B</b></button>
+      <button id="italicBtn" class="toolbar-btn" title="Italic (Ctrl+I)"><i>I</i></button>
+      <button id="underlineBtn" class="toolbar-btn" title="Underline (Ctrl+U)"><u>U</u></button>
+      <div style="width: 1px; height: 24px; background: var(--border); margin: 0 0.25rem;"></div>
+      <button id="heading1Btn" class="toolbar-btn" title="Heading 1">H1</button>
+      <button id="heading2Btn" class="toolbar-btn" title="Heading 2">H2</button>
+      <button id="heading3Btn" class="toolbar-btn" title="Heading 3">H3</button>
+      <div style="width: 1px; height: 24px; background: var(--border); margin: 0 0.25rem;"></div>
+      <button id="unorderedListBtn" class="toolbar-btn" title="Bullet List">• List</button>
+      <button id="orderedListBtn" class="toolbar-btn" title="Numbered List">1. List</button>
+      <div style="width: 1px; height: 24px; background: var(--border); margin: 0 0.25rem;"></div>
+      <button id="linkBtn" class="toolbar-btn" title="Link">🔗</button>
+      <button id="codeBtn" class="toolbar-btn" title="Code">&lt;/&gt;</button>
+      <button id="quoteBtn" class="toolbar-btn" title="Quote">"</button>
+    </div>
+    <div id="markdownEditor" contenteditable="true" style="padding: 2rem; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 1rem; background: var(--bg); color: var(--text); min-height: calc(100vh - 8rem); outline: none; overflow-y: auto;"></div>
+  </div>
+
   <button id="recenterBtn" title="Recenter canvas">⌂</button>
 
+  <!-- Modal System -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header" id="modalHeader"></div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     // --- Persistence Layer (localStorage) ----------------------------------
     const STORAGE_KEYS = {
       spools: "thread.spools",
       spoolData: (id) => `thread.spool.${id}`,
+      documents: "thread.documents",
+      documentData: (id) => `thread.document.${id}`,
     };
 
     function loadSpools() {
@@ -302,46 +602,315 @@
         view: data.view || { zoom: 1, panX: 0, panY: 0 },
       };
       localStorage.setItem(STORAGE_KEYS.spoolData(spoolId), JSON.stringify(payload));
+      
+      // Update lastEdited timestamp in spools array
+      const spools = loadSpools();
+      const spool = spools.find(s => s.id === spoolId);
+      if (spool) {
+        spool.lastEdited = Date.now();
+        saveSpools(spools);
+      }
     }
 
     // --- Theme: auto via prefers-color-scheme (no toggle) ------------------
     // No JS theme persistence; CSS media query drives theme.
 
+    // --- Document Functions ------------------------------------------------
+    function loadDocuments() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.documents);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveDocuments(documents) {
+      localStorage.setItem(STORAGE_KEYS.documents, JSON.stringify(documents));
+    }
+
+    function loadDocumentData(documentId) {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.documentData(documentId));
+        return raw || "";
+      } catch {
+        return "";
+      }
+    }
+
+    function saveDocumentData(documentId, content) {
+      localStorage.setItem(STORAGE_KEYS.documentData(documentId), content);
+      
+      // Update lastEdited timestamp in documents array
+      const documents = loadDocuments();
+      const document = documents.find(d => d.id === documentId);
+      if (document) {
+        document.lastEdited = Date.now();
+        saveDocuments(documents);
+      }
+    }
+
     // --- DOM ---------------------------------------------------------------
     const grid = document.getElementById("spoolGrid");
     const home = document.getElementById("home");
     const editor = document.getElementById("editor");
+    const documentEditor = document.getElementById("documentEditor");
+    const markdownEditor = document.getElementById("markdownEditor");
     const canvas = document.getElementById("canvas");
     let lineLayer = document.getElementById("lineLayer");
     const recenterBtn = document.getElementById("recenterBtn");
     recenterBtn.style.display = "none";
     const newSpoolBtn = document.getElementById("newSpoolBtn");
+    const newDocumentBtn = document.getElementById("newDocumentBtn");
     const exportBtn = document.getElementById("exportBtn");
     const importBtn = document.getElementById("importBtn");
     const importInput = document.getElementById("importInput");
 
     let currentSpoolId = null;
+    let currentDocumentId = null;
+
+    // --- Modal System ---------------------------------------------------------
+    const modalOverlay = document.getElementById("modalOverlay");
+    const modalHeader = document.getElementById("modalHeader");
+    const modalBody = document.getElementById("modalBody");
+    const modalActions = document.getElementById("modalActions");
+
+    function showModal(header, body, actions) {
+      modalHeader.innerHTML = header;
+      modalBody.innerHTML = body;
+      modalActions.innerHTML = "";
+      
+      actions.forEach(action => {
+        const btn = document.createElement("button");
+        btn.textContent = action.label;
+        btn.className = action.class || "";
+        btn.onclick = () => {
+          action.callback();
+          closeModal();
+        };
+        modalActions.appendChild(btn);
+      });
+      
+      modalOverlay.classList.add("show");
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove("show");
+    }
+
+    function promptModal(title, message, defaultValue = "", placeholder = "") {
+      return new Promise((resolve) => {
+        let resolved = false;
+        const resolveValue = (value) => {
+          if (!resolved) {
+            resolved = true;
+            resolve(value);
+          }
+        };
+        
+        let bodyHTML = "";
+        if (message) {
+          bodyHTML += `<div style="margin-bottom: 0.5rem;">${message}</div>`;
+        }
+        bodyHTML += `<input type="text" class="modal-input" value="${defaultValue}" placeholder="${placeholder}" />`;
+        
+        showModal(title, bodyHTML, [
+          {
+            label: "Cancel",
+            class: "secondary",
+            callback: () => resolveValue(null)
+          },
+          {
+            label: "OK",
+            callback: () => {
+              const inputValue = document.querySelector(".modal-input")?.value?.trim();
+              resolveValue(inputValue || null);
+            }
+          }
+        ]);
+        
+        // Focus input after modal is shown
+        setTimeout(() => {
+          const inputEl = document.querySelector(".modal-input");
+          if (inputEl) {
+            inputEl.focus();
+            inputEl.select();
+            // Handle Enter key
+            const handleKeyDown = (e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const inputValue = inputEl.value?.trim();
+                resolveValue(inputValue || null);
+                closeModal();
+                inputEl.removeEventListener("keydown", handleKeyDown);
+              } else if (e.key === "Escape") {
+                resolveValue(null);
+                closeModal();
+                inputEl.removeEventListener("keydown", handleKeyDown);
+              }
+            };
+            inputEl.addEventListener("keydown", handleKeyDown);
+          }
+        }, 100);
+      });
+    }
+
+    // Close modal when clicking overlay
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) {
+        closeModal();
+      }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modalOverlay.classList.contains("show")) {
+        closeModal();
+      }
+    });
 
     function renderSpools() {
       grid.innerHTML = "";
       const spools = loadSpools();
-      spools.forEach((s) => {
+      const documents = loadDocuments();
+      
+      // Combine spools and documents with their types
+      const allItems = [
+        ...spools.map(s => ({ ...s, type: "strand" })),
+        ...documents.map(d => ({ ...d, type: "document" }))
+      ];
+      
+      // Sort by lastEdited (most recent first), default to 0 if missing
+      allItems.sort((a, b) => {
+        const aTime = a.lastEdited || 0;
+        const bTime = b.lastEdited || 0;
+        return bTime - aTime;
+      });
+      
+      // Render sorted items
+      allItems.forEach((item) => {
         const card = document.createElement("div");
         card.className = "card";
-        card.textContent = s.title;
-        card.dataset.id = s.id;
-        card.addEventListener("click", () => openEditor(s));
+        
+        const cardHeader = document.createElement("div");
+        cardHeader.className = "card-header";
+        
+        const cardTitle = document.createElement("div");
+        cardTitle.className = "card-title";
+        cardTitle.textContent = item.title;
+        cardTitle.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (item.type === "strand") {
+            openEditor(item);
+          } else {
+            openDocumentEditor(item);
+          }
+        });
+        
+        const cardActions = document.createElement("div");
+        cardActions.className = "card-actions";
+        
+        const renameBtn = document.createElement("button");
+        renameBtn.className = "card-rename";
+        renameBtn.innerHTML = "✎";
+        renameBtn.title = "Rename";
+        renameBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const itemName = item.type === "strand" ? "Spool" : "Document";
+          const newTitle = await promptModal(`Rename ${itemName}`, `Enter a new name:`, item.title, "Name");
+          if (newTitle && newTitle.trim() && newTitle.trim() !== item.title) {
+            if (item.type === "strand") {
+              const spools = loadSpools();
+              const spool = spools.find(s => s.id === item.id);
+              if (spool) {
+                spool.title = newTitle.trim();
+                spool.lastEdited = Date.now();
+                saveSpools(spools);
+              }
+            } else {
+              const documents = loadDocuments();
+              const document = documents.find(d => d.id === item.id);
+              if (document) {
+                document.title = newTitle.trim();
+                document.lastEdited = Date.now();
+                saveDocuments(documents);
+              }
+            }
+            renderSpools();
+          }
+        });
+        
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "card-delete";
+        deleteBtn.innerHTML = "×";
+        deleteBtn.title = "Delete";
+        deleteBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const itemName = item.type === "strand" ? "Spool" : "Document";
+          showModal(
+            `Delete ${itemName}`,
+            `Are you sure you want to delete "${item.title}"? This action cannot be undone.`,
+            [
+              {
+                label: "Cancel",
+                class: "secondary",
+                callback: () => {}
+              },
+              {
+                label: "Delete",
+                callback: () => {
+                  if (item.type === "strand") {
+                    // Delete spool
+                    const spools = loadSpools();
+                    const filtered = spools.filter(s => s.id !== item.id);
+                    saveSpools(filtered);
+                    // Delete spool data
+                    localStorage.removeItem(STORAGE_KEYS.spoolData(item.id));
+                  } else {
+                    // Delete document
+                    const documents = loadDocuments();
+                    const filtered = documents.filter(d => d.id !== item.id);
+                    saveDocuments(filtered);
+                    // Delete document data
+                    localStorage.removeItem(STORAGE_KEYS.documentData(item.id));
+                  }
+                  renderSpools();
+                }
+              }
+            ]
+          );
+        });
+        
+        cardActions.appendChild(renameBtn);
+        cardActions.appendChild(deleteBtn);
+        cardHeader.appendChild(cardTitle);
+        cardHeader.appendChild(cardActions);
+        card.appendChild(cardHeader);
+        
+        card.dataset.id = item.id;
+        card.dataset.type = item.type;
         grid.appendChild(card);
       });
     }
 
-    newSpoolBtn?.addEventListener("click", () => {
-      const title = prompt("Spool title?")?.trim();
+    newSpoolBtn?.addEventListener("click", async () => {
+      const title = await promptModal("New Spool", "Enter a title for your spool:", "", "Spool title");
       if (!title) return;
       const spools = loadSpools();
       const id = Date.now();
-      spools.push({ id, title });
+      spools.push({ id, title, lastEdited: Date.now() });
       saveSpools(spools);
+      renderSpools();
+    });
+
+    newDocumentBtn?.addEventListener("click", async () => {
+      const title = await promptModal("New Document", "Enter a title for your document:", "", "Document title");
+      if (!title) return;
+      const documents = loadDocuments();
+      const id = Date.now();
+      documents.push({ id, title, lastEdited: Date.now() });
+      saveDocuments(documents);
       renderSpools();
     });
 
@@ -485,7 +1054,256 @@
       home.style.display = "block";
       recenterBtn.style.display = "none";
       currentSpoolId = null;
+      renderSpools(); // Re-render to show updated sorting
     };
+
+    // Convert HTML back to markdown for storage
+    function htmlToMarkdown(html) {
+      let md = html;
+      // Convert headings
+      md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
+      md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
+      md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
+      // Convert bold and italic
+      md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+      md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+      md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+      md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+      // Convert code
+      md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+      md = md.replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis, '```\n$1\n```\n\n');
+      // Convert links
+      md = md.replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+      // Convert lists
+      md = md.replace(/<ul[^>]*>/gi, '');
+      md = md.replace(/<\/ul>/gi, '\n');
+      md = md.replace(/<ol[^>]*>/gi, '');
+      md = md.replace(/<\/ol>/gi, '\n');
+      md = md.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n');
+      // Convert blockquotes
+      md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, '> $1\n\n');
+      // Convert paragraphs
+      md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
+      // Remove any remaining HTML tags
+      md = md.replace(/<[^>]+>/g, '');
+      // Clean up extra newlines
+      md = md.replace(/\n{3,}/g, '\n\n');
+      // Decode HTML entities
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = md;
+      md = tempDiv.textContent || tempDiv.innerText || '';
+      return md.trim();
+    }
+
+    // Render markdown to HTML (WYSIWYG)
+    function renderMarkdown(md) {
+      if (!md) return '';
+      if (typeof marked !== 'undefined') {
+        return marked.parse(md);
+      }
+      // Fallback simple renderer
+      let html = md;
+      html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+      html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+      html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+      html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
+      html = html.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
+      html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
+      html = html.replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+      html = html.replace(/\n/g, '<br>');
+      return html;
+    }
+
+    function openDocumentEditor(document) {
+      home.style.display = "none";
+      editor.style.display = "none";
+      documentEditor.style.display = "block";
+      recenterBtn.style.display = "none";
+      currentDocumentId = document.id;
+      const content = loadDocumentData(currentDocumentId);
+      markdownEditor.innerHTML = renderMarkdown(content);
+    }
+
+    document.getElementById("documentBackBtn").onclick = () => {
+      if (currentDocumentId) {
+        const markdown = htmlToMarkdown(markdownEditor.innerHTML);
+        saveDocumentData(currentDocumentId, markdown);
+      }
+      documentEditor.style.display = "none";
+      home.style.display = "block";
+      currentDocumentId = null;
+      renderSpools(); // Re-render to show updated sorting
+    };
+
+    // Debounce function for auto-save
+    let saveTimeout = null;
+    function autoSave() {
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        if (currentDocumentId) {
+          const markdown = htmlToMarkdown(markdownEditor.innerHTML);
+          saveDocumentData(currentDocumentId, markdown);
+        }
+      }, 1000);
+    }
+
+    // Save and restore cursor position
+    function saveCursorPosition() {
+      const selection = window.getSelection();
+      if (selection.rangeCount === 0) return null;
+      const range = selection.getRangeAt(0);
+      return {
+        startContainer: range.startContainer,
+        startOffset: range.startOffset,
+        endContainer: range.endContainer,
+        endOffset: range.endOffset
+      };
+    }
+
+    function restoreCursorPosition(pos) {
+      if (!pos) return;
+      try {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.setStart(pos.startContainer, pos.startOffset);
+        range.setEnd(pos.endContainer || pos.startContainer, pos.endOffset || pos.startOffset);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } catch (e) {
+        // If restoration fails, just focus the editor
+        markdownEditor.focus();
+      }
+    }
+
+    // Auto-save document content
+    markdownEditor.addEventListener("input", autoSave);
+    markdownEditor.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+      autoSave();
+    });
+
+    // Toolbar button functions - use document.execCommand for WYSIWYG
+    function applyFormatting(command, value = null) {
+      document.execCommand(command, false, value);
+      markdownEditor.focus();
+      autoSave();
+    }
+
+    function wrapWithTag(tag, attributes = {}) {
+      const selection = window.getSelection();
+      if (selection.rangeCount === 0) return;
+      
+      const range = selection.getRangeAt(0);
+      const element = document.createElement(tag);
+      if (attributes && Object.keys(attributes).length > 0) {
+        Object.entries(attributes).forEach(([key, val]) => {
+          element.setAttribute(key, val);
+        });
+      }
+      
+      if (range.collapsed) {
+        // No selection, just insert the tag
+        element.textContent = '\u200B'; // Zero-width space for empty element
+        range.insertNode(element);
+        range.setStart(element, 0);
+        range.setEnd(element, 1);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        // Wrap selection
+        const contents = range.extractContents();
+        element.appendChild(contents);
+        range.deleteContents();
+        range.insertNode(element);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      markdownEditor.focus();
+      autoSave();
+    }
+
+    document.getElementById("boldBtn").onclick = () => {
+      applyFormatting('bold');
+    };
+
+    document.getElementById("italicBtn").onclick = () => {
+      applyFormatting('italic');
+    };
+
+    document.getElementById("underlineBtn").onclick = () => {
+      applyFormatting('underline');
+    };
+
+    document.getElementById("heading1Btn").onclick = () => {
+      wrapWithTag('h1');
+    };
+
+    document.getElementById("heading2Btn").onclick = () => {
+      wrapWithTag('h2');
+    };
+
+    document.getElementById("heading3Btn").onclick = () => {
+      wrapWithTag('h3');
+    };
+
+    document.getElementById("unorderedListBtn").onclick = () => {
+      applyFormatting('insertUnorderedList');
+    };
+
+    document.getElementById("orderedListBtn").onclick = () => {
+      applyFormatting('insertOrderedList');
+    };
+
+    document.getElementById("linkBtn").onclick = async () => {
+      const selection = window.getSelection();
+      if (selection.rangeCount === 0) return;
+      
+      const range = selection.getRangeAt(0);
+      const selectedText = range.toString();
+      const url = await promptModal('Add Link', 'Enter the URL:', 'https://', 'https://example.com');
+      if (url) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.textContent = selectedText || url;
+        if (range.collapsed) {
+          range.insertNode(link);
+        } else {
+          range.deleteContents();
+          range.insertNode(link);
+        }
+        markdownEditor.focus();
+        autoSave();
+      }
+    };
+
+    document.getElementById("codeBtn").onclick = () => {
+      wrapWithTag('code');
+    };
+
+    document.getElementById("quoteBtn").onclick = () => {
+      wrapWithTag('blockquote');
+    };
+
+    // Keyboard shortcuts
+    markdownEditor.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'b') {
+          e.preventDefault();
+          applyFormatting('bold');
+        } else if (e.key === 'i') {
+          e.preventDefault();
+          applyFormatting('italic');
+        } else if (e.key === 'u') {
+          e.preventDefault();
+          applyFormatting('underline');
+        }
+      }
+    });
 
     // --- Node & Connection Logic -------------------------------------------
     let nodes = [],
@@ -513,7 +1331,7 @@
         node.textContent = content || "New strand";
       } else {
         const img = document.createElement("img");
-        img.src = content || prompt("Image URL");
+        img.src = content || "";
         img.style.maxWidth = "140px";
         img.style.display = "block";
         node.appendChild(img);
@@ -624,9 +1442,19 @@
 
     function updateLines() {
       connections.forEach((c) => {
-        if (c.from.style.opacity === "0" || c.to.style.opacity === "0") {
+        // Check if nodes are visible (opacity check)
+        const fromOpacity = parseFloat(c.from.style.opacity || "1");
+        const toOpacity = parseFloat(c.to.style.opacity || "1");
+        const areNodesVisible = fromOpacity > 0 && toOpacity > 0;
+        
+        // Update connector opacity based on node visibility
+        if (!areNodesVisible) {
+          c.path.style.opacity = "0";
           c.path.setAttribute("d", "");
           return;
+        } else {
+          // Restore connector visibility when nodes become visible
+          c.path.style.opacity = "1";
         }
 
         const aRect = c.from.getBoundingClientRect();
@@ -677,7 +1505,14 @@
 
       nodes.forEach(node => node.style.opacity = 1); // Reset all
 
-      if (zoom > threshold) return;
+      if (zoom > threshold) {
+        // Above threshold - ensure all connectors are visible
+        connections.forEach(c => {
+          c.path.style.opacity = "1";
+        });
+        updateLines();
+        return;
+      }
 
       const nodeRects = nodes.map((node) => {
         const rect = node.getBoundingClientRect();
@@ -715,10 +1550,12 @@
 
       hidden.forEach(n => n.style.opacity = 0);
 
-      // fade connectors that link to hidden nodes
+      // Update connector visibility based on node visibility
       connections.forEach(c => {
-        const visible = c.from.style.opacity != 0 && c.to.style.opacity != 0;
-        c.path.style.opacity = visible ? 1 : 0;
+        const fromOpacity = parseFloat(c.from.style.opacity || "1");
+        const toOpacity = parseFloat(c.to.style.opacity || "1");
+        const visible = fromOpacity > 0 && toOpacity > 0;
+        c.path.style.opacity = visible ? "1" : "0";
       });
 
       updateLines();
@@ -773,20 +1610,31 @@
     // --- Toolbar Actions ----------------------------------------------------
     document.getElementById("addTextBtn").onclick = () => {
       const rect = canvas.getBoundingClientRect();
+      // Calculate position in canvas-local coordinates based on current viewport
+      // Viewport center in canvas-local coordinates: (-panX / zoom) + (rect.width / 2 / zoom)
+      const viewportCenterX = (-panX / zoom) + (rect.width / 2 / zoom);
+      const viewportCenterY = (-panY / zoom) + (rect.height / 2 / zoom);
       createNode(
-        Math.round(rect.width * 0.5 + (Math.random() - 0.5) * 120),
-        Math.round(rect.height * 0.5 + (Math.random() - 0.5) * 120),
+        Math.round(viewportCenterX + (Math.random() - 0.5) * 120),
+        Math.round(viewportCenterY + (Math.random() - 0.5) * 120),
         ""
       );
       saveCurrentSpool();
     };
 
-    document.getElementById("addImageBtn").onclick = () => {
+    document.getElementById("addImageBtn").onclick = async () => {
+      const url = await promptModal("Add Image", "Enter the image URL:", "", "https://example.com/image.jpg");
+      if (!url) return;
+      
       const rect = canvas.getBoundingClientRect();
+      // Calculate position in canvas-local coordinates based on current viewport
+      // Viewport center in canvas-local coordinates: (-panX / zoom) + (rect.width / 2 / zoom)
+      const viewportCenterX = (-panX / zoom) + (rect.width / 2 / zoom);
+      const viewportCenterY = (-panY / zoom) + (rect.height / 2 / zoom);
       createNode(
-        Math.round(rect.width * 0.5 + (Math.random() - 0.5) * 120),
-        Math.round(rect.height * 0.5 + (Math.random() - 0.5) * 120),
-        "",
+        Math.round(viewportCenterX + (Math.random() - 0.5) * 120),
+        Math.round(viewportCenterY + (Math.random() - 0.5) * 120),
+        url,
         "image"
       );
       saveCurrentSpool();
