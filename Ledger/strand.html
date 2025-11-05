@@ -1515,6 +1515,56 @@
       return html;
     }
 
+    // Normalize HTML structure to ensure consistent formatting
+    function normalizeHTML(html) {
+      if (!html) return '';
+      
+      // Create a temporary container to parse and normalize
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      
+      // Ensure checklist class is preserved/added on lists with checkboxes
+      // This is the most critical fix - contenteditable may lose the class
+      tempDiv.querySelectorAll('ul').forEach(ul => {
+        const hasCheckbox = ul.querySelector('li input[type="checkbox"]');
+        if (hasCheckbox) {
+          ul.classList.add('checklist');
+        }
+      });
+      
+      // Recursively normalize nested lists
+      function normalizeList(listElement) {
+        if (!listElement || (listElement.tagName !== 'UL' && listElement.tagName !== 'OL')) {
+          return;
+        }
+        
+        // Process all list items and their nested lists
+        const items = Array.from(listElement.querySelectorAll(':scope > li'));
+        items.forEach(item => {
+          // Normalize nested lists within this item
+          const nestedLists = Array.from(item.querySelectorAll(':scope > ul, :scope > ol'));
+          nestedLists.forEach(nestedList => {
+            normalizeList(nestedList);
+            // Ensure checklist class on nested lists too
+            if (nestedList.tagName === 'UL') {
+              const hasCheckbox = nestedList.querySelector('li input[type="checkbox"]');
+              if (hasCheckbox && !nestedList.classList.contains('checklist')) {
+                nestedList.classList.add('checklist');
+              }
+            }
+          });
+        });
+      }
+      
+      // Find and normalize all top-level lists
+      const allLists = tempDiv.querySelectorAll(':scope > ul, :scope > ol');
+      allLists.forEach(list => {
+        normalizeList(list);
+      });
+      
+      return tempDiv.innerHTML;
+    }
+
     function openDocumentEditor(document) {
       home.style.display = "none";
       editor.style.display = "none";
@@ -1522,13 +1572,22 @@
       recenterBtn.style.display = "none";
       currentDocumentId = document.id;
       const content = loadDocumentData(currentDocumentId);
-      markdownEditor.innerHTML = renderMarkdown(content);
+      
+      // If content is empty or looks like markdown (starts with #, -, etc.), render it
+      // Otherwise, assume it's HTML and use it directly
+      if (content && (content.trim().startsWith('#') || content.trim().startsWith('-') || content.trim().startsWith('*') || content.trim().startsWith('```') || !content.includes('<')) && !content.includes('<ul') && !content.includes('<ol') && !content.includes('<li')) {
+        markdownEditor.innerHTML = renderMarkdown(content);
+      } else {
+        // It's HTML - normalize it and use it directly to preserve formatting
+        markdownEditor.innerHTML = normalizeHTML(content || '');
+      }
     }
 
     document.getElementById("documentBackBtn").onclick = () => {
       if (currentDocumentId) {
-        const markdown = htmlToMarkdown(markdownEditor.innerHTML);
-        saveDocumentData(currentDocumentId, markdown);
+        // Normalize and save HTML directly to preserve all formatting
+        const normalized = normalizeHTML(markdownEditor.innerHTML);
+        saveDocumentData(currentDocumentId, normalized);
       }
       documentEditor.style.display = "none";
       home.style.display = "block";
@@ -1542,8 +1601,9 @@
       if (saveTimeout) clearTimeout(saveTimeout);
       saveTimeout = setTimeout(() => {
         if (currentDocumentId) {
-          const markdown = htmlToMarkdown(markdownEditor.innerHTML);
-          saveDocumentData(currentDocumentId, markdown);
+          // Normalize and save HTML directly to preserve all formatting
+          const normalized = normalizeHTML(markdownEditor.innerHTML);
+          saveDocumentData(currentDocumentId, normalized);
         }
       }, 1000);
     }
