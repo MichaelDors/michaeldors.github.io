@@ -2229,7 +2229,9 @@
 
       if (type === "text") {
         node.contentEditable = true;
-        node.textContent = content || "New strand";
+        // Clean any × characters from saved content
+        const cleanedContent = (content || "New strand").replace(/×/g, "").trim();
+        node.textContent = cleanedContent || "New strand";
       } else if (type === "image") {
         const img = document.createElement("img");
         img.src = content || "";
@@ -3207,7 +3209,16 @@
         let type, content;
         if (n.isContentEditable) {
           type = "text";
-          content = n.textContent || "";
+          // Get text content but exclude the delete button's × character
+          // Clone the node to get text without the button
+          const clone = n.cloneNode(true);
+          const deleteBtn = clone.querySelector('.node-delete');
+          if (deleteBtn) {
+            deleteBtn.remove();
+          }
+          content = clone.textContent || "";
+          // Also clean any × characters that might have gotten in
+          content = content.replace(/×/g, "").trim();
         } else if (n.classList.contains("embed")) {
           type = "embed";
           // Extract embed data from the node
