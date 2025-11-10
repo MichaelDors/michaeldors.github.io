@@ -298,6 +298,102 @@
       border: 1px solid var(--borderhover);
     }
 
+    .node.embed {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem;
+      min-width: 200px;
+      max-width: 300px;
+      cursor: pointer;
+    }
+
+    .node.embed .embed-icon {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      border-radius: 4px;
+      object-fit: contain;
+    }
+
+    .node.embed .embed-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .node.embed .embed-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      line-height: 1.3;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .node.embed .embed-domain {
+      font-size: 0.75rem;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .node.embed .embed-icon-loading {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      border-radius: 4px;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .node.embed .embed-icon-loading::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .node.embed .embed-title-loading {
+      height: 1rem;
+      background: var(--border);
+      border-radius: 4px;
+      margin-bottom: 0.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .node.embed .embed-title-loading::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      animation: shimmer 1.5s infinite;
+    }
+
+    .node.embed .embed-title-loading:nth-child(2) {
+      width: 80%;
+    }
+
     .handle {
       position: absolute;
       width: 12px;
@@ -314,6 +410,44 @@
 
     .node:hover .handle{
         opacity:1;
+    }
+
+    .node-delete {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: var(--card);
+      color: var(--muted);
+      border: 1.5px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1;
+      opacity: 0;
+      transition: all 0.2s ease;
+      z-index: 10;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .node-delete:hover {
+      background: rgba(220, 38, 38, 0.1);
+      border-color: rgba(220, 38, 38, 0.5);
+      color: #dc2626;
+      transform: scale(1.05);
+    }
+
+    .node-delete:active {
+      transform: scale(0.95);
+    }
+
+    .node.selected .node-delete {
+      opacity: 1;
     }
 
     /* smooth fade for nodes and connectors */
@@ -527,6 +661,7 @@
       <button id="backBtn" class="secondary">&larr; Spools</button>
       <button id="addTextBtn">+ Text Strand</button>
       <button id="addImageBtn">+ Image Strand</button>
+      <button id="addEmbedBtn">+ Embed Strand</button>
     </div>
     <div style="overflow: hidden; width: 100%; height: 100%;">
       <div id="canvas">
@@ -1890,6 +2025,196 @@
       panStartY = 0,
       rafScheduled = false;
 
+    // Extract domain from URL
+    function extractDomain(url) {
+      try {
+        const urlObj = new URL(url);
+        return urlObj.hostname.replace(/^www\./, '');
+      } catch (e) {
+        return url;
+      }
+    }
+
+    // Update embed node with fetched data
+    function updateEmbedNode(node, metadata) {
+      if (!node || !node.classList.contains('embed')) return;
+
+      // Update favicon - remove all loading placeholders
+      const iconLoadingEls = node.querySelectorAll('.embed-icon-loading');
+      if (iconLoadingEls.length > 0 && metadata.faviconUrl) {
+        // Replace all loading placeholders with actual icon
+        const newIcon = document.createElement('img');
+        newIcon.className = 'embed-icon';
+        newIcon.src = metadata.faviconUrl;
+        newIcon.alt = '';
+        newIcon.onerror = function() {
+          this.style.display = 'none';
+        };
+        // Replace the first one, remove the rest
+        iconLoadingEls[0].replaceWith(newIcon);
+        iconLoadingEls.forEach((el, index) => {
+          if (index > 0) el.remove();
+        });
+      } else {
+        // Update existing icon if present
+        const iconEl = node.querySelector('.embed-icon');
+        if (iconEl && metadata.faviconUrl) {
+          iconEl.src = metadata.faviconUrl;
+        }
+      }
+
+      // Update title - remove ALL loading placeholders
+      const titleLoadingEls = node.querySelectorAll('.embed-title-loading');
+      if (titleLoadingEls.length > 0) {
+        if (metadata.title && metadata.title.trim()) {
+          // Replace all loading placeholders with actual title
+          const newTitle = document.createElement('div');
+          newTitle.className = 'embed-title';
+          newTitle.textContent = metadata.title.trim();
+          // Replace the first one, remove the rest
+          titleLoadingEls[0].replaceWith(newTitle);
+          titleLoadingEls.forEach((el, index) => {
+            if (index > 0) el.remove();
+          });
+        }
+        // If title is empty/missing, keep the loading placeholders (do nothing)
+      } else {
+        // Update existing title if present
+        const titleEl = node.querySelector('.embed-title');
+        if (titleEl && metadata.title && metadata.title.trim()) {
+          titleEl.textContent = metadata.title.trim();
+        }
+      }
+
+      // Update domain (should already be set, but update if needed)
+      const domainEl = node.querySelector('.embed-domain');
+      if (domainEl && metadata.domain) {
+        domainEl.textContent = metadata.domain;
+      }
+
+      // Update stored data
+      node.dataset.embedUrl = metadata.url;
+    }
+
+    // Fetch URL metadata (title, favicon, domain)
+    async function fetchURLMetadata(url, node = null) {
+      // Extract domain immediately (available right away)
+      const domain = extractDomain(url);
+      const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+
+      // If node is provided, update it with domain and favicon immediately (keep title loading)
+      if (node) {
+        // Use updateEmbedNode to ensure all loading placeholders are properly handled
+        // Pass domain as title temporarily to keep title loading state
+        updateEmbedNode(node, { domain, faviconUrl, url, title: '' });
+      }
+
+      // Try to fetch page title using CORS proxies with fallbacks
+      let title = domain; // Default to domain
+      
+      // List of proxy services to try (in order)
+      const proxyServices = [
+        {
+          name: 'allorigins',
+          url: (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+          parse: (data) => data?.contents || null
+        },
+        {
+          name: 'corsproxy',
+          url: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+          parse: (data) => typeof data === 'string' ? data : null
+        },
+        {
+          name: 'api-cors',
+          url: (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+          parse: (data) => typeof data === 'string' ? data : null
+        }
+      ];
+      
+      for (let i = 0; i < proxyServices.length; i++) {
+        const proxy = proxyServices[i];
+        try {
+          // Add a small delay between proxy attempts to avoid rate limiting
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+          
+          const proxyUrl = proxy.url(url);
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout per attempt
+          
+          const response = await fetch(proxyUrl, {
+            method: 'GET',
+            headers: {
+              'Accept': 'text/html,application/json',
+            },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            // If we get a rate limit or forbidden, try next proxy
+            if (response.status === 429 || response.status === 403 || response.status === 503) {
+              console.warn(`Rate limited or unavailable on ${proxy.name} (${response.status}), trying next proxy...`);
+              continue;
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          // Try to parse as JSON first (for allorigins), then as text
+          let htmlContent = null;
+          const contentType = response.headers.get('content-type') || '';
+          
+          if (contentType.includes('application/json')) {
+            const data = await response.json();
+            htmlContent = proxy.parse(data);
+          } else {
+            htmlContent = await response.text();
+          }
+          
+          if (htmlContent && htmlContent.length > 100) { // Make sure we got actual content
+            // Parse HTML to extract title
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlContent, 'text/html');
+            const titleTag = doc.querySelector('title');
+            if (titleTag && titleTag.textContent) {
+              const extractedTitle = titleTag.textContent.trim();
+              // Only use the title if it's different from the domain and not empty
+              if (extractedTitle && extractedTitle !== domain && extractedTitle.length > 0) {
+                title = extractedTitle;
+                console.log(`Successfully fetched title using ${proxy.name}:`, title);
+                break; // Success! Exit the loop
+              }
+            }
+          }
+        } catch (e) {
+          // If this proxy fails, try the next one
+          if (e.name === 'AbortError') {
+            console.warn(`Timeout on ${proxy.name}, trying next proxy...`);
+          } else if (e.name !== 'AbortError') {
+            console.warn(`Error with ${proxy.name}:`, e.message);
+          }
+          // Continue to next proxy
+          continue;
+        }
+      }
+
+      // Ensure title is never empty - use domain as fallback
+      if (!title || !title.trim()) {
+        title = domain;
+      }
+
+      const metadata = { title: title.trim(), domain, faviconUrl, url };
+      
+      // Update node with final data (including title) - this will remove loading placeholders
+      if (node) {
+        updateEmbedNode(node, metadata);
+      }
+
+      return metadata;
+    }
+
     function createNode(x, y, content, type = "text", idOverride = null) {
       const node = document.createElement("div");
       node.className = "node";
@@ -1900,12 +2225,78 @@
       if (type === "text") {
         node.contentEditable = true;
         node.textContent = content || "New strand";
-      } else {
+      } else if (type === "image") {
         const img = document.createElement("img");
         img.src = content || "";
         img.style.maxWidth = "140px";
         img.style.display = "block";
         node.appendChild(img);
+      } else if (type === "embed") {
+        // Embed node structure
+        node.classList.add("embed");
+        
+        // Parse content (should be JSON string with {url, title, domain, faviconUrl})
+        // or a URL string for loading state
+        let embedData;
+        let isLoading = false;
+        
+        if (typeof content === 'string' && !content.startsWith('{')) {
+          // It's a URL string, create loading state
+          isLoading = true;
+          embedData = { url: content, title: '', domain: extractDomain(content), faviconUrl: '' };
+        } else {
+          try {
+            embedData = JSON.parse(content || '{}');
+          } catch {
+            embedData = { url: content || '', title: '', domain: '', faviconUrl: '' };
+          }
+        }
+
+        // Favicon/icon - show loading placeholder if loading
+        if (isLoading || !embedData.faviconUrl) {
+          const iconLoading = document.createElement("div");
+          iconLoading.className = "embed-icon-loading";
+          node.appendChild(iconLoading);
+        } else {
+          const icon = document.createElement("img");
+          icon.className = "embed-icon";
+          icon.src = embedData.faviconUrl;
+          icon.alt = "";
+          icon.onerror = function() {
+            this.style.display = 'none';
+          };
+          node.appendChild(icon);
+        }
+
+        // Content container
+        const contentDiv = document.createElement("div");
+        contentDiv.className = "embed-content";
+
+        // Title - show loading placeholder if loading or no title
+        if (isLoading || !embedData.title) {
+          const titleLoading1 = document.createElement("div");
+          titleLoading1.className = "embed-title-loading";
+          contentDiv.appendChild(titleLoading1);
+          const titleLoading2 = document.createElement("div");
+          titleLoading2.className = "embed-title-loading";
+          contentDiv.appendChild(titleLoading2);
+        } else {
+          const titleDiv = document.createElement("div");
+          titleDiv.className = "embed-title";
+          titleDiv.textContent = embedData.title;
+          contentDiv.appendChild(titleDiv);
+        }
+
+        // Domain (always available, even during loading)
+        const domainDiv = document.createElement("div");
+        domainDiv.className = "embed-domain";
+        domainDiv.textContent = embedData.domain || "";
+        contentDiv.appendChild(domainDiv);
+
+        node.appendChild(contentDiv);
+
+        // Store the URL in dataset for potential future use
+        node.dataset.embedUrl = embedData.url || content;
       }
 
       canvas.appendChild(node);
@@ -1922,8 +2313,64 @@
         startConnection(node, e);
       });
 
+      // Delete button
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "node-delete";
+      deleteBtn.innerHTML = "×";
+      deleteBtn.title = "Delete (Delete/Backspace)";
+      deleteBtn.type = "button"; // Prevent form submission
+      let deleteClicked = false;
+      
+      deleteBtn.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        deleteClicked = true;
+      });
+      
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        deleteClicked = true;
+        deleteNode(node);
+        // Reset after a short delay
+        setTimeout(() => { deleteClicked = false; }, 100);
+      });
+      
+      node.appendChild(deleteBtn);
+
       node.addEventListener("click", (e) => {
         e.stopPropagation();
+        
+        // Don't process click if delete was just clicked
+        if (deleteClicked) {
+          return;
+        }
+        
+        // Don't process click if it was on the delete button or handle
+        // Check both the target and if it's inside these elements
+        const target = e.target;
+        if (target === deleteBtn || 
+            target === handle ||
+            target.classList.contains("node-delete") || 
+            target.classList.contains("handle") ||
+            deleteBtn.contains(target) ||
+            handle.contains(target)) {
+          return;
+        }
+        
+        // Check if this was a drag (not a click)
+        const wasDragging = node.dataset.wasDragging === "true";
+        node.dataset.wasDragging = "false"; // Reset for next interaction
+        
+        // For embed nodes, open URL if it was a click (not a drag)
+        if (node.classList.contains("embed") && !wasDragging) {
+          const url = node.dataset.embedUrl;
+          if (url && url.trim()) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+            return; // Don't toggle selection when opening URL
+          }
+        }
+        
         if (selectedNode && selectedNode !== node) {
           selectedNode.classList.remove("selected");
           // Check if the previously selected node should be deleted
@@ -1950,11 +2397,20 @@
     function makeDraggable(el) {
       let offsetX,
         offsetY,
-        isDown = false;
+        isDown = false,
+        hasMoved = false,
+        startX = 0,
+        startY = 0,
+        dragThreshold = 5; // pixels of movement before considering it a drag
 
       el.addEventListener("pointerdown", (e) => {
         isDown = true;
+        hasMoved = false;
         el.style.cursor = "grabbing";
+        
+        // Store initial position to detect movement
+        startX = e.clientX;
+        startY = e.clientY;
         
         // Get the canvas rect to convert coordinates
         const canvasRect = canvas.getBoundingClientRect();
@@ -1972,6 +2428,13 @@
       el.addEventListener("pointermove", (e) => {
         if (!isDown) return;
         
+        // Check if we've moved enough to consider it a drag
+        const deltaX = Math.abs(e.clientX - startX);
+        const deltaY = Math.abs(e.clientY - startY);
+        if (deltaX > dragThreshold || deltaY > dragThreshold) {
+          hasMoved = true;
+        }
+        
         // Get the canvas rect to convert coordinates
         const canvasRect = canvas.getBoundingClientRect();
         
@@ -1985,9 +2448,15 @@
       });
 
       el.addEventListener("pointerup", (e) => {
+        const wasDragging = hasMoved;
         isDown = false;
+        hasMoved = false;
         el.style.cursor = "grab";
         el.releasePointerCapture(e.pointerId);
+        
+        // Store whether this was a drag on the element for click handler
+        el.dataset.wasDragging = wasDragging ? "true" : "false";
+        
         updateLines();
         saveCurrentSpool();
       });
@@ -2211,6 +2680,42 @@
       saveCurrentSpool();
     };
 
+    document.getElementById("addEmbedBtn").onclick = async () => {
+      let url = await promptModal("Add Embed", "Enter the URL to embed:", "", "https://example.com");
+      if (!url) return;
+      
+      // Ensure URL has a protocol
+      url = url.trim();
+      if (!url.match(/^https?:\/\//i)) {
+        url = 'https://' + url;
+      }
+      
+      // Calculate position
+      const rect = canvas.getBoundingClientRect();
+      const viewportCenterX = (-panX / zoom) + (rect.width / 2 / zoom);
+      const viewportCenterY = (-panY / zoom) + (rect.height / 2 / zoom);
+      
+      // Create embed node immediately with loading state (pass URL as string to trigger loading)
+      const node = createNode(
+        Math.round(viewportCenterX + (Math.random() - 0.5) * 120),
+        Math.round(viewportCenterY + (Math.random() - 0.5) * 120),
+        url, // Pass URL string to create loading state
+        "embed"
+      );
+      
+      // Save immediately with loading state
+      saveCurrentSpool();
+      
+      // Fetch metadata in background and update node
+      fetchURLMetadata(url, node).then(() => {
+        // Save again after metadata is loaded
+        saveCurrentSpool();
+      }).catch(err => {
+        console.error('Error fetching embed metadata:', err);
+        // Node will still show domain, just without title/favicon
+      });
+    };
+
     // Deselect node when tapping empty canvas
     canvas.addEventListener("click", () => {
       if (selectedNode) {
@@ -2222,6 +2727,72 @@
         selectedNode = null;
       }
     });
+
+    // Keyboard shortcut to delete selected node
+    document.addEventListener("keydown", (e) => {
+      // Only delete if a node is selected
+      if (!selectedNode || (e.key !== "Delete" && e.key !== "Backspace")) {
+        return;
+      }
+
+      // Don't delete if we're typing in a modal input or textarea
+      const activeEl = document.activeElement;
+      if (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA") {
+        return;
+      }
+
+      // For text nodes, only delete if the node is empty or if we're not actively editing
+      // (i.e., the active element is not the node itself or its content is selected)
+      if (selectedNode.contentEditable) {
+        const selection = window.getSelection();
+        // If there's a selection range and it's not collapsed (text is selected), allow normal deletion
+        if (selection.rangeCount > 0 && !selection.getRangeAt(0).collapsed) {
+          return; // Let normal text deletion happen
+        }
+        // If the node has content and we're editing it, don't delete the node
+        if (selectedNode.textContent.trim() && activeEl === selectedNode) {
+          return; // Allow normal text editing
+        }
+      }
+
+      // Delete the node
+      e.preventDefault();
+      deleteNode(selectedNode);
+    });
+
+    // Delete a node (used for manual deletion)
+    function deleteNode(node) {
+      if (!node) return;
+
+      // Remove connections to this node
+      connections = connections.filter(conn => {
+        if (conn.from === node || conn.to === node) {
+          if (conn.path) {
+            conn.path.remove();
+          }
+          return false;
+        }
+        return true;
+      });
+
+      // Remove node from nodes array
+      const nodeIndex = nodes.indexOf(node);
+      if (nodeIndex > -1) {
+        nodes.splice(nodeIndex, 1);
+      }
+
+      // Clear selection if this was the selected node
+      if (selectedNode === node) {
+        selectedNode = null;
+      }
+
+      // Remove node from DOM
+      node.remove();
+      
+      // Update remaining connections
+      updateLines();
+      saveCurrentSpool();
+    }
 
     // Check and delete empty nodes when they lose focus
     function checkAndDeleteEmptyNode(node) {
@@ -2235,6 +2806,10 @@
       if (node.contentEditable) {
         // Text node - check if content is empty or just whitespace
         isEmpty = !node.textContent.trim();
+      } else if (node.classList.contains("embed")) {
+        // Embed node - check if it has a valid URL
+        const url = node.dataset.embedUrl || "";
+        isEmpty = !url || url.trim() === "";
       } else {
         // Image node - check if it has an image
         const img = node.querySelector("img");
@@ -2242,29 +2817,7 @@
       }
 
       if (isEmpty) {
-        // Remove connections to this node
-        connections = connections.filter(conn => {
-          if (conn.from === node || conn.to === node) {
-            if (conn.path) {
-              conn.path.remove();
-            }
-            return false;
-          }
-          return true;
-        });
-
-        // Remove node from nodes array
-        const nodeIndex = nodes.indexOf(node);
-        if (nodeIndex > -1) {
-          nodes.splice(nodeIndex, 1);
-        }
-
-        // Remove node from DOM
-        node.remove();
-        
-        // Update remaining connections
-        updateLines();
-        saveCurrentSpool();
+        deleteNode(node);
       }
     }
 
@@ -2561,9 +3114,29 @@
         const id = Number(n.dataset.id);
         const x = parseFloat(n.style.left);
         const y = parseFloat(n.style.top);
-        const isText = n.isContentEditable;
-        const type = isText ? "text" : "image";
-        const content = isText ? (n.textContent || "") : (n.querySelector("img")?.src || "");
+        
+        let type, content;
+        if (n.isContentEditable) {
+          type = "text";
+          content = n.textContent || "";
+        } else if (n.classList.contains("embed")) {
+          type = "embed";
+          // Extract embed data from the node
+          const titleEl = n.querySelector(".embed-title");
+          const domainEl = n.querySelector(".embed-domain");
+          const iconEl = n.querySelector(".embed-icon");
+          const embedData = {
+            url: n.dataset.embedUrl || "",
+            title: titleEl ? titleEl.textContent : "",
+            domain: domainEl ? domainEl.textContent : "",
+            faviconUrl: iconEl ? iconEl.src : ""
+          };
+          content = JSON.stringify(embedData);
+        } else {
+          type = "image";
+          content = n.querySelector("img")?.src || "";
+        }
+        
         return { id, x, y, type, content };
       });
     }
