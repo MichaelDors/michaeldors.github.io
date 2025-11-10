@@ -433,6 +433,11 @@
       transition: all 0.2s ease;
       z-index: 10;
       box-shadow: var(--shadow-sm);
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      pointer-events: auto;
     }
 
     .node-delete:hover {
@@ -2319,6 +2324,9 @@
       deleteBtn.innerHTML = "×";
       deleteBtn.title = "Delete (Delete/Backspace)";
       deleteBtn.type = "button"; // Prevent form submission
+      deleteBtn.contentEditable = false; // Make it non-editable
+      deleteBtn.style.userSelect = "none"; // Prevent text selection
+      deleteBtn.setAttribute("contenteditable", "false"); // Extra protection
       let deleteClicked = false;
       
       deleteBtn.addEventListener("pointerdown", (e) => {
@@ -2337,6 +2345,87 @@
       });
       
       node.appendChild(deleteBtn);
+      
+      // For text nodes, prevent the × character from being inserted and protect delete button
+      if (type === "text") {
+        // Monitor for changes to ensure delete button stays in place
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            // If delete button was removed, re-add it
+            if (!node.contains(deleteBtn)) {
+              node.appendChild(deleteBtn);
+            }
+            // If delete button content was changed, restore it
+            if (deleteBtn.textContent !== "×") {
+              deleteBtn.innerHTML = "×";
+            }
+            // Remove × from text content
+            if (node.textContent.includes("×")) {
+              const selection = window.getSelection();
+              const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+              const cursorPos = range ? range.startOffset : node.textContent.length;
+              node.textContent = node.textContent.replace(/×/g, "");
+              // Restore cursor position if possible
+              if (range && node.firstChild) {
+                try {
+                  const newRange = document.createRange();
+                  const textNode = node.firstChild;
+                  const newPos = Math.min(cursorPos, textNode.textContent.length);
+                  newRange.setStart(textNode, newPos);
+                  newRange.setEnd(textNode, newPos);
+                  selection.removeAllRanges();
+                  selection.addRange(newRange);
+                } catch (e) {
+                  // Ignore cursor restoration errors
+                }
+              }
+            }
+          });
+        });
+        
+        observer.observe(node, {
+          childList: true,
+          characterData: true,
+          subtree: true
+        });
+        
+        node.addEventListener("input", (e) => {
+          // Remove × character if it somehow got inserted
+          if (node.textContent.includes("×")) {
+            const cursorPos = window.getSelection().getRangeAt(0).startOffset;
+            node.textContent = node.textContent.replace(/×/g, "");
+            // Try to restore cursor
+            setTimeout(() => {
+              const range = document.createRange();
+              const textNode = node.firstChild;
+              if (textNode) {
+                const newPos = Math.min(cursorPos, textNode.textContent.length);
+                range.setStart(textNode, newPos);
+                range.setEnd(textNode, newPos);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+              }
+            }, 0);
+          }
+        });
+        
+        node.addEventListener("paste", (e) => {
+          // Remove × from pasted content
+          const paste = (e.clipboardData || window.clipboardData).getData('text');
+          if (paste.includes("×")) {
+            e.preventDefault();
+            const cleaned = paste.replace(/×/g, "");
+            document.execCommand('insertText', false, cleaned);
+          }
+        });
+        
+        node.addEventListener("keydown", (e) => {
+          // Prevent typing × (Alt+Shift+X or other combinations)
+          if (e.key === "×" || e.keyCode === 215) { // × is keyCode 215
+            e.preventDefault();
+          }
+        });
+      }
 
       node.addEventListener("click", (e) => {
         e.stopPropagation();
