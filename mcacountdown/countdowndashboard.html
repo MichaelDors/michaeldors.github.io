@@ -1103,7 +1103,7 @@ async function loadUserCountdowns(userId) {
             \t<iframe src="${url}${url.includes('?') ? '&' : '?'}cardmode=true" title="${title}" sandbox="allow-scripts allow-same-origin"></iframe>
                 <div class="card-content">
                     <h3>${title}</h3>
-                    <i class="remove-button fa-solid fa-trash" style="cursor:pointer; color: #ff5353;" onclick="event.stopPropagation(); showDeleteConfirmation('${row.id}', '${escapedTitle}');"></i>
+                    <i class="remove-button fa-solid fa-trash" style="cursor:pointer;" onclick="event.stopPropagation(); showDeleteConfirmation('${row.id}', '${escapedTitle}');"></i>
                 </div>
             `;
             card.addEventListener('mousedown', dragStart);
