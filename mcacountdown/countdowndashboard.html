@@ -958,29 +958,58 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
 // Load countdowns created by the current user and render using same card format
 async function loadUserCountdowns(userId) {
     try {
-        console.log('[your-countdowns] start for userId =', userId);
+        console.log('[your-countdowns] ===== START loadUserCountdowns =====');
+        console.log('[your-countdowns] userId =', userId);
+        console.log('[your-countdowns] supabaseClient available?', !!supabaseClient);
+        
+        if (!userId) {
+            console.error('[your-countdowns] No userId provided, aborting');
+            return;
+        }
+        
         const query = supabaseClient
             .from('countdown')
             .select('id, data, creator')
             .eq('creator', userId);
-        console.log('[your-countdowns] executing query...');
+        console.log('[your-countdowns] Query constructed, executing...');
+        
         const { data, error } = await query;
-        console.log('[your-countdowns] query returned. error =', error || null);
+        console.log('[your-countdowns] Query completed');
+        console.log('[your-countdowns] error =', error || null);
+        console.log('[your-countdowns] data type =', Array.isArray(data) ? 'array' : typeof data);
+        console.log('[your-countdowns] data length =', Array.isArray(data) ? data.length : 'N/A');
+        console.log('[your-countdowns] data =', data);
+        
         if (error) {
             console.error('[your-countdowns] Fetch error:', error);
+            console.error('[your-countdowns] Error details:', JSON.stringify(error, null, 2));
             return;
         }
+        
         const container = document.getElementById('yourLinksContainer');
+        console.log('[your-countdowns] Container element:', container);
         if (!container) {
-            console.warn('[your-countdowns] yourLinksContainer not found');
+            console.error('[your-countdowns] yourLinksContainer not found in DOM');
+            console.error('[your-countdowns] Available elements with "your" in id:', 
+                Array.from(document.querySelectorAll('[id*="your"]')).map(el => el.id));
             return;
         }
-        console.log('[your-countdowns] rendering', (Array.isArray(data) ? data.length : 0), 'items');
+        
+        const dataArray = Array.isArray(data) ? data : [];
+        console.log('[your-countdowns] Rendering', dataArray.length, 'items');
         container.innerHTML = '';
-        (data || []).forEach((row, index) => {
+        
+        if (dataArray.length === 0) {
+            console.warn('[your-countdowns] No countdowns found for user');
+        }
+        
+        dataArray.forEach((row, index) => {
+            console.log(`[your-countdowns] Processing row ${index}:`, row);
             // Expect countdown page to be at betatimer with id param
             const url = `https://michaeldors.com/mcacountdown/betatimer?id=${encodeURIComponent(row.id)}`;
             const title = extractTitleFromCountdown(row);
+            console.log(`[your-countdowns] Row ${index} - url: ${url}, title: ${title}`);
+            
             const card = document.createElement('div');
             card.className = 'card';
             card.setAttribute('data-index', index);
@@ -994,22 +1023,79 @@ async function loadUserCountdowns(userId) {
             `;
             card.addEventListener('mousedown', dragStart);
             container.appendChild(card);
+            console.log(`[your-countdowns] Card ${index} appended to container`);
         });
-        console.log('[your-countdowns] cards rendered =', document.querySelectorAll('#yourLinksContainer .card').length);
+        
+        const renderedCards = document.querySelectorAll('#yourLinksContainer .card');
+        console.log('[your-countdowns] Total cards rendered =', renderedCards.length);
+        console.log('[your-countdowns] ===== END loadUserCountdowns =====');
     } catch (e) {
         console.error('[your-countdowns] Unexpected error:', e);
+        console.error('[your-countdowns] Error stack:', e.stack);
     }
+}
+
+// Helper function to parse query string parameters
+function parseQueryString(queryString) {
+    const params = {};
+    if (!queryString) return params;
+    
+    // Remove leading ? if present
+    const cleanQuery = queryString.startsWith('?') ? queryString.slice(1) : queryString;
+    
+    // Handle case where data might be wrapped in quotes (from database)
+    let processedQuery = cleanQuery;
+    if (processedQuery.startsWith('"') && processedQuery.endsWith('"')) {
+        processedQuery = processedQuery.slice(1, -1);
+    }
+    
+    const pairs = processedQuery.split('&');
+    for (const pair of pairs) {
+        const equalIndex = pair.indexOf('=');
+        if (equalIndex === -1) continue; // Skip if no = found
+        
+        const key = pair.substring(0, equalIndex);
+        const value = pair.substring(equalIndex + 1);
+        
+        if (key) {
+            try {
+                params[key] = decodeURIComponent(value);
+            } catch (e) {
+                // If decoding fails, use the raw value
+                params[key] = value;
+            }
+        }
+    }
+    return params;
 }
 
 function extractTitleFromCountdown(row) {
     try {
-        // Row may store JSON string or object in data column
-        const payload = typeof row.data === 'string' ? JSON.parse(row.data) : row.data || {};
-        // Try common title fields
-        const title = payload.title || payload.eventName || payload.name || payload.countdownTitle;
-        if (title && String(title).trim()) return String(title).trim();
+        console.log('[extractTitle] Processing row.data:', row.data, 'type:', typeof row.data);
+        
+        if (!row.data) {
+            console.warn('[extractTitle] No data field in row');
+            return 'Untitled Countdown';
+        }
+        
+        // The data column stores a query string, not JSON
+        // Parse it as a query string
+        const params = parseQueryString(row.data);
+        console.log('[extractTitle] Parsed params:', params);
+        
+        // Try to get title from query string parameters
+        // Note: parseQueryString already decodes the values
+        const title = params.title || params.eventName || params.name || params.countdownTitle;
+        
+        if (title && String(title).trim()) {
+            const cleanTitle = String(title).trim();
+            console.log('[extractTitle] Found title:', cleanTitle);
+            return cleanTitle;
+        }
+        
+        console.warn('[extractTitle] No title found in params');
     } catch (e) {
-        // ignore
+        console.error('[extractTitle] Error extracting title:', e);
     }
     return 'Untitled Countdown';
 }
@@ -1093,15 +1179,15 @@ supabaseClient.auth.onAuthStateChange(async (_event, session) => {
         }).catch((err) => {
             console.error('[dashboard] AuthStateChange error:', err);
         });
-                // Also load user's own countdowns
-                try {
-                    console.log('[dashboard] Loading user countdowns for', session.user.id);
-                    await loadUserCountdowns(session.user.id);
-                    console.log('[dashboard] Finished loading user countdowns');
-                } catch (e) {
-                    console.error('[dashboard] Failed to load user countdowns:', e);
-                }
-            } else {
+        
+        // Also load user's own countdowns - call this independently
+        console.log('[dashboard] Attempting to load user countdowns for', session.user.id);
+        loadUserCountdowns(session.user.id).then(() => {
+            console.log('[dashboard] Finished loading user countdowns');
+        }).catch((e) => {
+            console.error('[dashboard] Failed to load user countdowns:', e);
+        });
+    } else {
         // User signed out
         console.log('[dashboard] User signed out');
         isInitialLoad = true; // Reset for next sign in
