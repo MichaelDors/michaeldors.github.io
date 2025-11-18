@@ -333,6 +333,240 @@ function cardmodemanager(){
       }
   };
   
+  // Function to update countdown from new data source (when cloud data arrives after cache load)
+  function updateCountdownFromNewData() {
+      if (!window.CountdownDataSource) {
+          console.warn('[Update] No CountdownDataSource available');
+          return;
+      }
+      
+      console.log('[Update] Updating countdown from new data source');
+      
+      // Update date
+      if (getParameterFromSource('date')) {
+          if(getParameterFromSource('date').includes('T') && getParameterFromSource('date').includes(':')) {
+              document.querySelector(".datepicker").value = getParameterFromSource('date');
+          } else {
+              document.querySelector(".datepicker").value = getParameterFromSource('date') + 'T00:00';
+          }
+      }
+      
+      // Update title
+      if (getParameterFromSource('title')) {
+          document.getElementById("countdowntitle").value = decodeURIComponent(getParameterFromSource('title'));
+          setcountdowntitle("front");
+          document.querySelector('meta[property="og:title"]').setAttribute('content', 'Countdown to ' + decodeURIComponent(getParameterFromSource('title')));
+      }
+      
+      // Update typeface
+      var css = document.querySelector(':root');
+      if (getParameterFromSource('typeface')) {
+          const typeface = decodeURIComponent(getParameterFromSource('typeface'));
+          if (typeface == "Fredoka One") {
+              FontFredoka('auto');
+          } else if (typeface == "Poppins") {
+              FontPoppins('auto');
+          } else if (typeface == "Yeseva One" || typeface == "DM Serif Display") {
+              FontDMSerif('auto');
+          } else if (typeface == "Orbitron" || typeface == "Michroma") {
+              FontMichroma('auto');
+          }
+      } else {
+          css.style.setProperty('--typeface', "Fredoka One");
+      }
+      
+      // Update colors
+      const legacyParams = [
+          { param: 'colorone', id: 'color1', cssVar: '--one', defaultColor: '#8426ff' },
+          { param: 'colortwo', id: 'color2', cssVar: '--two', defaultColor: '#3ab6ff' },
+          { param: 'colorthree', id: 'color3', cssVar: '--three', defaultColor: '#00df52' },
+          { param: 'colorfour', id: 'color4', cssVar: '--four', defaultColor: '#ff9900' }
+      ];
+      
+      // Check if any color parameters exist
+      const hasAnyColorParams = legacyParams.some(({param}) => getParameterFromSource(param)) || 
+          Array.from({length: 4}, (_, i) => i + 5).some(i => getParameterFromSource(`color${i}`));
+      
+      if (hasAnyColorParams) {
+          legacyParams.forEach(({param, id, cssVar}) => {
+              if (getParameterFromSource(param)) {
+                  const paramValue = getParameterFromSource(param);
+                  if (paramValue === 'fg') {
+                      if (!document.getElementById(id)) {
+                          addForegroundColorPicker("auto");
+                      } else {
+                          const picker = document.getElementById(id);
+                          picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
+                          picker.dataset.useThemeColor = 'true';
+                          picker.classList.add("fgcolorpicker");
+                          picker.disabled = true;
+                          picker.style.cursor = "default";
+                      }
+                  } else {
+                      const colorToUse = '#' + paramValue;
+                      if (!document.getElementById(id)) {
+                          addColorPicker("auto");
+                      }
+                      const picker = document.getElementById(id);
+                      if (picker) {
+                          picker.value = colorToUse;
+                          css.style.setProperty(cssVar, colorToUse);
+                          css.style.setProperty(`--color${id.slice(-1)}`, colorToUse);
+                      }
+                  }
+              }
+          });
+          
+          // Handle additional color parameters (color5 through color8)
+          for (let i = 5; i <= 8; i++) {
+              const colorParam = getParameterFromSource(`color${i}`);
+              if (colorParam && colorParam !== "null") {
+                  if (colorParam === 'fg') {
+                      if (!document.getElementById(`color${i}`)) {
+                          addForegroundColorPicker("auto");
+                      }
+                      const picker = document.getElementById(`color${i}`);
+                      if (picker) {
+                          picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
+                          picker.dataset.useThemeColor = 'true';
+                          css.style.setProperty(`--color${i}`, 'var(--mainforegroundcolor)');
+                          picker.classList.add("fgcolorpicker");
+                          picker.disabled = true;
+                          picker.style.cursor = "default";
+                      }
+                  } else {
+                      const colorToUse = '#' + colorParam;
+                      if (!document.getElementById(`color${i}`)) {
+                          addColorPicker("auto");
+                      }
+                      const picker = document.getElementById(`color${i}`);
+                      if (picker) {
+                          picker.value = colorToUse;
+                          css.style.setProperty(`--color${i}`, colorToUse);
+                      }
+                  }
+              }
+          }
+          
+          // Adjust height of color picker container after updates
+          adjustHeightOfColorPickerContainer();
+      }
+      
+      // Update background
+      var bgstring = "none";
+      if (getParameterFromSource('atc') && getParameterFromSource('atc') != "none" && getParameterFromSource('atc') != "undefined") {
+          setbg(getParameterFromSource('atc'), 'auto');
+          bgstring = getParameterFromSource('atc');
+      } else {
+          bgstring = 'none';
+          enablecolor();
+          document.getElementById("animatedbackground").style.display = "none";
+          void document.getElementById("clock").offsetWidth;
+          document.getElementById("clock").classList.add("clock");
+          updateColorAnimations();
+          document.getElementById("clock").classList.remove("staticclock");
+      }
+      
+      // Update confetti type
+      var confettiType = "none";
+      if(getParameterFromSource("confettitype")){
+          confettiType = decodeURIComponent(getParameterFromSource("confettitype"));
+      } else {
+          confettiType = "1";
+      }
+      
+      // Update confetti mode based on type
+      if (confettiType === "1" || confettiType === "default") {
+          ConfettiModeDefault();
+      } else if (confettiType === "emoji") {
+          ConfettiModeEmoji();
+      } else if (confettiType === "snow") {
+          ConfettiModeSnow();
+      } else if (confettiType === "none") {
+          ConfettiModeNone();
+      }
+      
+      // Update progress
+      if(getParameterFromSource('progress')){
+          document.querySelector('.progressdatepicker').value = getParameterFromSource('progress');
+          const progressDate = new Date(getParameterFromSource('progress')).getTime();
+          const countdownDate = new Date(getParameterFromSource('date')).getTime();
+          
+          if(getParameterFromSource('progressposition') && getParameterFromSource('progressposition') !== "null"){
+              if(getParameterFromSource('progressposition') == 'bar'){
+                  document.getElementById("progress-bar").classList.add("progress-bar");
+                  document.getElementById("progress-bar").classList.remove("progress-bar-fullscreen");
+              } else if(getParameterFromSource('progressposition') == 'fs'){
+                  document.getElementById("progress-bar").classList.remove("progress-bar");
+                  document.getElementById("progress-bar").classList.add("progress-bar-fullscreen");
+              } else {
+                  document.getElementById("progress-bar").style.display = "none";
+              }
+          }
+          
+          if(!getParameterFromSource('schedule')){
+              if ((progressDate > countdownDate) || progressDate == countdownDate) {
+                  document.getElementById("progress-bar").style.display = "none";
+              } else {
+                  document.getElementById("progress-bar").style.display = "";
+              }
+          } else {
+              document.getElementById("progress-bar").style.display = "none";
+          }
+      }
+      
+      progressbarposition = getParameterFromSource('progressposition');
+      if(getParameterFromSource('progressposition')){
+          if(getParameterFromSource('progressposition') == 'bar'){
+              ProgressPositionBar('auto');
+          } else if(getParameterFromSource('progressposition') == 'fs'){
+              ProgressPositionFullscreen('auto');
+          } else {
+              ProgressPositionNone('auto');
+          }
+      } else {
+          ProgressPositionNone('auto');
+      }
+      
+      // Update ending sound
+      if(getParameterFromSource('endingsound')){
+          document.getElementById("audioLink").value = atob(getParameterFromSource('endingsound'));
+      }
+      
+      // Update schedule
+      if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("schedule")){
+          document.getElementById("clock").style.display = "none";
+          document.getElementById("countdowntitle").style.display = "none";
+          document.getElementById("optionsdatecontainer").style.display = "none";
+          document.getElementById("optionsendingcontainer").style.display = "none";
+          document.getElementById("optionsendinganchor").style.opacity = "0.3";
+          document.getElementById("progressdatepickercontainer").style.display = "none";
+          document.getElementById("cdscheduledisclaimer").style.display = "";
+          document.getElementById("schedule").style.display = "";
+          document.querySelector(".schedule-editor").style.display = "";
+          document.getElementById("presetupScheduleContent").style.display = "none";
+          
+          // Load schedule from URL
+          schedule_loadScheduleFromURL();
+          schedule_updateScheduleViewer();
+      } else {
+          document.getElementById("schedule").style.display = "none";
+          document.querySelector(".schedule-editor").style.display = "none";
+          document.getElementById("countdowntitle").style.display = "";
+          document.getElementById("clock").style.display = "";
+      }
+      
+      // Refresh countdown state
+      SetCountDowngeneral();
+      
+      console.log('[Update] Countdown updated from new data source');
+  }
+  
+  // Listen for countdown data updates (when cloud data arrives after cache load)
+  document.addEventListener('countdown-data-updated', function() {
+      updateCountdownFromNewData();
+  });
+  
   
           document.addEventListener("data-ready", function () {
               updateColorAnimations();
