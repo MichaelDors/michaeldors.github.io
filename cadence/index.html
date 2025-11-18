@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadence</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>Cadence</h1>
+      </div>
+      <div class="header-actions">
+        <div id="user-info" class="user-info hidden">
+          <span id="user-name"></span>
+          <button id="btn-logout" class="btn ghost">Sign out</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="auth-gate" class="card">
+        <h2>Login</h2>
+        <p>Enter your email to get a magic link to sign in.</p>
+        <form id="otp-form" class="auth-form">
+          <label>
+            Email
+            <input type="email" id="login-email" placeholder="name@school.org" required />
+          </label>
+          <button type="submit" id="send-link-btn" class="btn primary">
+            Send magic link
+          </button>
+        </form>
+        <p class="muted small-text" id="auth-message">We'll email you a one-time sign-in link.</p>
+      </section>
+
+      <section id="dashboard" class="hidden">
+        <div class="dashboard-header">
+          <div>
+            <h2>Upcoming Sets</h2>
+            <p class="muted">Everyone can see these. Managers can edit.</p>
+          </div>
+          <button id="btn-create-set" class="btn primary hidden">New Set</button>
+        </div>
+        <div id="sets-list" class="sets-grid"></div>
+      </section>
+    </main>
+
+    <div id="set-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3 id="set-modal-title">New Set</h3>
+          <button class="icon-btn" id="close-set-modal" aria-label="Close modal">
+            ✕
+          </button>
+        </header>
+        <form id="set-form">
+          <label>
+            Title
+            <input type="text" id="set-title" required />
+          </label>
+          <label>
+            Date
+            <input type="date" id="set-date" required />
+          </label>
+          <label>
+            Description
+            <textarea id="set-description" rows="3"></textarea>
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-set">Cancel</button>
+            <button type="submit" class="btn primary">Save</button>
+          </div>
+        </form>
+        <section id="set-songs-section" class="hidden">
+          <div class="section-header">
+            <h4>Songs in this set</h4>
+            <button id="btn-add-song" type="button" class="btn secondary">Add Song</button>
+          </div>
+          <div id="set-songs-list" class="song-list"></div>
+        </section>
+      </div>
+    </div>
+
+    <div id="song-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Add Song to Set</h3>
+          <button class="icon-btn" id="close-song-modal" aria-label="Close modal">
+            ✕
+          </button>
+        </header>
+        <form id="song-form">
+          <label>
+            Song
+            <select id="song-select"></select>
+          </label>
+          <label>
+            Notes
+            <textarea id="song-notes" rows="2"></textarea>
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-song">Cancel</button>
+            <button type="submit" class="btn primary">Add</button>
+          </div>
+        </form>
+        <div class="assignment-section">
+          <div class="section-header">
+            <h4>Assignments</h4>
+            <button id="btn-add-assignment" type="button" class="btn secondary">
+              Add Assignment
+            </button>
+          </div>
+          <div id="assignments-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <template id="set-card-template">
+      <article class="card set-card">
+        <div class="card-header">
+          <div>
+            <h3 class="set-title"></h3>
+            <p class="set-date"></p>
+          </div>
+          <button class="btn small ghost edit-set-btn hidden">Edit</button>
+        </div>
+        <p class="set-description"></p>
+        <div class="set-song-list"></div>
+      </article>
+    </template>
+
+    <template id="song-item-template">
+      <div class="set-song-card">
+        <div class="set-song-header">
+          <div>
+            <h4 class="song-title"></h4>
+            <p class="song-meta"></p>
+          </div>
+          <p class="song-notes"></p>
+        </div>
+        <div class="assignments"></div>
+      </div>
+    </template>
+
+    <template id="assignment-pill-template">
+      <span class="assignment-pill">
+        <span class="assignment-role"></span>
+        <span class="assignment-person"></span>
+      </span>
+    </template>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
