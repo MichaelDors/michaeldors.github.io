@@ -955,6 +955,46 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
     }
 });
 
+// Cache management functions
+function getCountdownCache(userId) {
+    try {
+        const cacheKey = `countdown_titles_cache_${userId}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            return JSON.parse(cached);
+        }
+    } catch (e) {
+        console.error('[cache] Error reading cache:', e);
+    }
+    return {};
+}
+
+function setCountdownCache(userId, cacheData) {
+    try {
+        const cacheKey = `countdown_titles_cache_${userId}`;
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        console.log('[cache] Cache updated for user:', userId);
+    } catch (e) {
+        console.error('[cache] Error writing cache:', e);
+    }
+}
+
+function updateCountdownCache(userId, countdowns) {
+    const cache = getCountdownCache(userId);
+    countdowns.forEach(row => {
+        if (row.id) {
+            const title = extractTitleFromCountdown(row);
+            cache[row.id] = {
+                title: title,
+                data: row.data,
+                lastUpdated: new Date().toISOString()
+            };
+        }
+    });
+    setCountdownCache(userId, cache);
+    return cache;
+}
+
 // Load countdowns created by the current user and render using same card format
 async function loadUserCountdowns(userId) {
     try {
@@ -967,25 +1007,6 @@ async function loadUserCountdowns(userId) {
             return;
         }
         
-        const query = supabaseClient
-            .from('countdown')
-            .select('id, data, creator')
-            .eq('creator', userId);
-        console.log('[your-countdowns] Query constructed, executing...');
-        
-        const { data, error } = await query;
-        console.log('[your-countdowns] Query completed');
-        console.log('[your-countdowns] error =', error || null);
-        console.log('[your-countdowns] data type =', Array.isArray(data) ? 'array' : typeof data);
-        console.log('[your-countdowns] data length =', Array.isArray(data) ? data.length : 'N/A');
-        console.log('[your-countdowns] data =', data);
-        
-        if (error) {
-            console.error('[your-countdowns] Fetch error:', error);
-            console.error('[your-countdowns] Error details:', JSON.stringify(error, null, 2));
-            return;
-        }
-        
         const container = document.getElementById('yourLinksContainer');
         console.log('[your-countdowns] Container element:', container);
         if (!container) {
@@ -995,8 +1016,56 @@ async function loadUserCountdowns(userId) {
             return;
         }
         
-        const dataArray = Array.isArray(data) ? data : [];
-        console.log('[your-countdowns] Rendering', dataArray.length, 'items');
+        let dataArray = [];
+        let usingCache = false;
+        
+        // Try to fetch from database first
+        try {
+            const query = supabaseClient
+                .from('countdown')
+                .select('id, data, creator')
+                .eq('creator', userId);
+            console.log('[your-countdowns] Query constructed, executing...');
+            
+            const { data, error } = await query;
+            console.log('[your-countdowns] Query completed');
+            console.log('[your-countdowns] error =', error || null);
+            console.log('[your-countdowns] data type =', Array.isArray(data) ? 'array' : typeof data);
+            console.log('[your-countdowns] data length =', Array.isArray(data) ? data.length : 'N/A');
+            
+            if (error) {
+                throw error; // Will be caught by outer catch to try cache
+            }
+            
+            if (Array.isArray(data)) {
+                dataArray = data;
+                // Successfully fetched from DB - update cache
+                console.log('[your-countdowns] Successfully fetched from DB, updating cache');
+                updateCountdownCache(userId, dataArray);
+            }
+        } catch (dbError) {
+            console.warn('[your-countdowns] Database fetch failed:', dbError);
+            console.log('[your-countdowns] Attempting to use cached data...');
+            
+            // Fall back to cache
+            const cache = getCountdownCache(userId);
+            const cachedIds = Object.keys(cache);
+            
+            if (cachedIds.length > 0) {
+                console.log('[your-countdowns] Found', cachedIds.length, 'cached countdowns');
+                // Reconstruct data array from cache
+                dataArray = cachedIds.map(id => ({
+                    id: id,
+                    data: cache[id].data,
+                    creator: userId
+                }));
+                usingCache = true;
+            } else {
+                console.warn('[your-countdowns] No cached data available');
+            }
+        }
+        
+        console.log('[your-countdowns] Rendering', dataArray.length, 'items', usingCache ? '(from cache)' : '(from DB)');
         container.innerHTML = '';
         
         if (dataArray.length === 0) {
@@ -1028,10 +1097,52 @@ async function loadUserCountdowns(userId) {
         
         const renderedCards = document.querySelectorAll('#yourLinksContainer .card');
         console.log('[your-countdowns] Total cards rendered =', renderedCards.length);
+        if (usingCache) {
+            console.warn('[your-countdowns] Rendered from cache - DB was unavailable');
+        }
         console.log('[your-countdowns] ===== END loadUserCountdowns =====');
     } catch (e) {
         console.error('[your-countdowns] Unexpected error:', e);
         console.error('[your-countdowns] Error stack:', e.stack);
+        
+        // Last resort: try to render from cache even if there was an unexpected error
+        try {
+            const container = document.getElementById('yourLinksContainer');
+            if (container) {
+                const cache = getCountdownCache(userId);
+                const cachedIds = Object.keys(cache);
+                if (cachedIds.length > 0) {
+                    console.log('[your-countdowns] Attempting emergency cache fallback...');
+                    const dataArray = cachedIds.map(id => ({
+                        id: id,
+                        data: cache[id].data,
+                        creator: userId
+                    }));
+                    
+                    container.innerHTML = '';
+                    dataArray.forEach((row, index) => {
+                        const url = `https://michaeldors.com/mcacountdown/betatimer?id=${encodeURIComponent(row.id)}`;
+                        const title = extractTitleFromCountdown(row);
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        card.setAttribute('data-index', index);
+                        card.setAttribute('data-url', encodeURIComponent(url));
+                        card.innerHTML = `
+                        \t<iframe src="${url}${url.includes('?') ? '&' : '?'}cardmode=true" title="${title}" sandbox="allow-scripts allow-same-origin"></iframe>
+                            <div class="card-content">
+                                <h3>${title}</h3>
+                                <i class="remove-button fa-solid fa-up-right-from-square" style="cursor:pointer;" onclick="event.stopPropagation(); window.open('${url}', '_blank');"></i>
+                            </div>
+                        `;
+                        card.addEventListener('mousedown', dragStart);
+                        container.appendChild(card);
+                    });
+                    console.log('[your-countdowns] Emergency cache fallback completed');
+                }
+            }
+        } catch (fallbackError) {
+            console.error('[your-countdowns] Emergency cache fallback also failed:', fallbackError);
+        }
     }
 }
 
