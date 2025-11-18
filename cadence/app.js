@@ -39,7 +39,14 @@ const authMessage = el("auth-message");
 const sendLinkBtn = el("send-link-btn");
 
 async function init() {
-  supabase.auth.onAuthStateChange(async (_event, session) => {
+  // Handle magic link redirect - clear hash after processing
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  if (hashParams.get('type') === 'recovery' || hashParams.get('access_token')) {
+    // Supabase will handle this via detectSessionInUrl, but we'll clean up the URL
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+
+  supabase.auth.onAuthStateChange(async (event, session) => {
     state.session = session;
     if (session) {
       await fetchProfile();
@@ -51,8 +58,13 @@ async function init() {
     }
   });
 
-  const { data: session } = await supabase.auth.getSession();
-  state.session = session.session;
+  // Check for existing session
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error('Session error:', error);
+  }
+  console.log('Initial session check:', session ? 'Found session' : 'No session');
+  state.session = session;
   if (state.session) {
     await fetchProfile();
     await Promise.all([loadSongs(), loadSets()]);
@@ -119,19 +131,22 @@ async function handleMagicLink(event) {
   toggleSendButton(true);
   setAuthMessage("Sending magic link…");
 
+  const redirectUrl = window.location.origin;
+  console.log('Requesting magic link with redirect to:', redirectUrl);
+
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: window.location.origin,
+      emailRedirectTo: redirectUrl,
     },
   });
 
   if (error) {
-    console.error(error);
+    console.error('Magic link error:', error);
     setAuthMessage("Unable to send link. Please try again.", true);
   } else {
     setAuthMessage(
-      "Check your inbox for a one-time link. Click it on this device to finish signing in."
+      `Check your inbox for a one-time link. Click it on this device to finish signing in. (Link will redirect to ${redirectUrl})`
     );
     otpForm?.reset();
   }
