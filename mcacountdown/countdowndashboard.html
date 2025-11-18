@@ -109,6 +109,19 @@
 
     <div id="toast-container"></div>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmationModal" class="delete-modal" style="display: none;" onclick="if(event.target === this) closeDeleteConfirmation();">
+        <div class="delete-modal-content" onclick="event.stopPropagation();">
+            <h2><i class="fa-solid fa-triangle-exclamation" style="color: #ff5353;"></i> Delete Countdown</h2>
+            <p>This action is permanent andcannot be undone.</p>
+            <p style="font-weight: bold; margin: 20px 0;">To confirm, please type <span id="deleteModalTitle" style="color: #8426ff; font-size: 18px; font-weight: bold;"></span>:</p>
+            <input type="text" id="deleteConfirmationInput" placeholder="Type the countdown title here" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: 2px solid var(--cardborder); background: var(--blurbackground); color: var(--mainforegroundcolor); font-family: 'Dosis', sans-serif; font-size: 16px;">
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button onclick="closeDeleteConfirmation()" style="padding: 10px 20px; border-radius: 8px; border: none; background: var(--blurbackground); color: var(--mainforegroundcolor); cursor: pointer; font-family: 'Dosis', sans-serif; font-size: 16px;">Cancel</button>
+                <button id="deleteConfirmButton" onclick="confirmDeleteCountdown()" disabled style="padding: 10px 20px; border-radius: 8px; border: none; background: #ff5353; color: white; cursor: not-allowed; font-family: 'Dosis', sans-serif; font-size: 16px; opacity: 0.5;">Delete</button>
+            </div>
+        </div>
+    </div>
 
     <script>
     if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
@@ -1083,11 +1096,15 @@ async function loadUserCountdowns(userId) {
             card.className = 'card';
             card.setAttribute('data-index', index);
             card.setAttribute('data-url', encodeURIComponent(url));
+            card.setAttribute('data-countdown-id', row.id);
+            card.setAttribute('data-countdown-title', title);
+            const escapedTitle = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             card.innerHTML = `
             \t<iframe src="${url}${url.includes('?') ? '&' : '?'}cardmode=true" title="${title}" sandbox="allow-scripts allow-same-origin"></iframe>
                 <div class="card-content">
                     <h3>${title}</h3>
-                    <i class="remove-button fa-solid fa-up-right-from-square" style="cursor:pointer;" onclick="event.stopPropagation(); window.open('${url}', '_blank');"></i>
+                    <i class="remove-button fa-solid fa-up-right-from-square" style="cursor:pointer; margin-right: 10px;" onclick="event.stopPropagation(); window.open('${url}', '_blank');"></i>
+                    <i class="remove-button fa-solid fa-trash" style="cursor:pointer; color: #ff5353;" onclick="event.stopPropagation(); showDeleteConfirmation('${row.id}', '${escapedTitle}');"></i>
                 </div>
             `;
             card.addEventListener('mousedown', dragStart);
@@ -1127,11 +1144,15 @@ async function loadUserCountdowns(userId) {
                         card.className = 'card';
                         card.setAttribute('data-index', index);
                         card.setAttribute('data-url', encodeURIComponent(url));
+                        card.setAttribute('data-countdown-id', row.id);
+                        card.setAttribute('data-countdown-title', title);
+                        const escapedTitle = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                         card.innerHTML = `
                         \t<iframe src="${url}${url.includes('?') ? '&' : '?'}cardmode=true" title="${title}" sandbox="allow-scripts allow-same-origin"></iframe>
                             <div class="card-content">
                                 <h3>${title}</h3>
-                                <i class="remove-button fa-solid fa-up-right-from-square" style="cursor:pointer;" onclick="event.stopPropagation(); window.open('${url}', '_blank');"></i>
+                                <i class="remove-button fa-solid fa-up-right-from-square" style="cursor:pointer; margin-right: 10px;" onclick="event.stopPropagation(); window.open('${url}', '_blank');"></i>
+                                <i class="remove-button fa-solid fa-trash" style="cursor:pointer; color: #ff5353;" onclick="event.stopPropagation(); showDeleteConfirmation('${row.id}', '${escapedTitle}');"></i>
                             </div>
                         `;
                         card.addEventListener('mousedown', dragStart);
@@ -1209,6 +1230,120 @@ function extractTitleFromCountdown(row) {
         console.error('[extractTitle] Error extracting title:', e);
     }
     return 'Untitled Countdown';
+}
+
+// Delete countdown functionality
+let pendingDeleteCountdownId = null;
+let pendingDeleteCountdownTitle = null;
+
+function showDeleteConfirmation(countdownId, countdownTitle) {
+    console.log('[delete] Showing confirmation for countdown:', countdownId, countdownTitle);
+    pendingDeleteCountdownId = countdownId;
+    pendingDeleteCountdownTitle = countdownTitle;
+    
+    const modal = document.getElementById('deleteConfirmationModal');
+    const titleElement = document.getElementById('deleteModalTitle');
+    const input = document.getElementById('deleteConfirmationInput');
+    const confirmButton = document.getElementById('deleteConfirmButton');
+    
+    titleElement.textContent = `"${countdownTitle}"`;
+    input.value = '';
+    confirmButton.disabled = true;
+    confirmButton.style.opacity = '0.5';
+    confirmButton.style.cursor = 'not-allowed';
+    
+    modal.style.display = 'flex';
+    
+    // Focus the input and add event listener for validation
+    input.focus();
+    input.oninput = function() {
+        const inputValue = input.value.trim();
+        const matches = inputValue === countdownTitle;
+        
+        if (matches) {
+            confirmButton.disabled = false;
+            confirmButton.style.opacity = '1';
+            confirmButton.style.cursor = 'pointer';
+        } else {
+            confirmButton.disabled = true;
+            confirmButton.style.opacity = '0.5';
+            confirmButton.style.cursor = 'not-allowed';
+        }
+    };
+    
+    // Allow Enter key to confirm if title matches
+    input.onkeydown = function(e) {
+        if (e.key === 'Enter' && !confirmButton.disabled) {
+            confirmDeleteCountdown();
+        } else if (e.key === 'Escape') {
+            closeDeleteConfirmation();
+        }
+    };
+}
+
+function closeDeleteConfirmation() {
+    const modal = document.getElementById('deleteConfirmationModal');
+    const input = document.getElementById('deleteConfirmationInput');
+    modal.style.display = 'none';
+    input.value = '';
+    pendingDeleteCountdownId = null;
+    pendingDeleteCountdownTitle = null;
+}
+
+async function confirmDeleteCountdown() {
+    if (!pendingDeleteCountdownId) {
+        console.error('[delete] No pending delete countdown ID');
+        return;
+    }
+    
+    const countdownId = pendingDeleteCountdownId;
+    const countdownTitle = pendingDeleteCountdownTitle;
+    
+    console.log('[delete] Confirming deletion of countdown:', countdownId);
+    
+    try {
+        // Get current user to verify ownership (RLS will also check this)
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+            showToast('You must be logged in to delete countdowns', 'error');
+            closeDeleteConfirmation();
+            return;
+        }
+        
+        // Delete from database (RLS will prevent if user is not owner)
+        const { error } = await supabaseClient
+            .from('countdown')
+            .delete()
+            .eq('id', countdownId);
+        
+        if (error) {
+            console.error('[delete] Error deleting countdown:', error);
+            showToast('Failed to delete countdown: ' + error.message, 'error');
+            closeDeleteConfirmation();
+            return;
+        }
+        
+        console.log('[delete] Successfully deleted countdown from database');
+        
+        // Remove from cache
+        const cache = getCountdownCache(user.id);
+        if (cache[countdownId]) {
+            delete cache[countdownId];
+            setCountdownCache(user.id, cache);
+            console.log('[delete] Removed from cache');
+        }
+        
+        showToast(`Countdown "${countdownTitle}" deleted successfully`, 'success');
+        closeDeleteConfirmation();
+        
+        // Reload the countdowns to reflect the deletion
+        await loadUserCountdowns(user.id);
+        
+    } catch (e) {
+        console.error('[delete] Unexpected error during deletion:', e);
+        showToast('An error occurred while deleting the countdown', 'error');
+        closeDeleteConfirmation();
+    }
 }
 
 loadLinks().catch(console.error);
@@ -2378,5 +2513,82 @@ zoom:80%;
         .onthisday-marquee:hover .marquee-scroll { animation-play-state: paused; }
         #onthisday { display: flex; align-items: center; height: 100%; white-space: pre; }
         @keyframes onthisday-marquee { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+
+/* Delete Confirmation Modal Styles */
+.delete-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000000000000000;
+    animation: fadeIn 0.2s ease;
+}
+
+.delete-modal-content {
+    background: var(--blurbackground);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: var(--blurbackgroundshadow);
+    border: var(--cardborder);
+    color: var(--mainforegroundcolor);
+    animation: slideUp 0.3s ease;
+}
+
+.delete-modal-content h2 {
+    font-family: 'Dosis', sans-serif;
+    margin: 0 0 15px 0;
+    font-size: 24px;
+}
+
+.delete-modal-content p {
+    font-family: 'Dosis', sans-serif;
+    margin: 10px 0;
+    line-height: 1.5;
+}
+
+.delete-modal-content input:focus {
+    outline: none;
+    border-color: #8426ff;
+}
+
+.delete-modal-content button:hover:not(:disabled) {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}
+
+.delete-modal-content button:disabled:hover {
+    transform: none;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
 </style>
 </html>
