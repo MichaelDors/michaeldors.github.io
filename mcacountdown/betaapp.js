@@ -15,7 +15,7 @@ const countdownConsoleStyle = [
     'border:2px solid #8426ff',
     'border-radius:999px',
     'text-transform:uppercase',
-    'text-shadow:0 0 6px rgba(132,38,255,0.55)',
+    'text-shadow:0 0 6px rgba(132,38,255,0.35)',
     'background:linear-gradient(120deg, rgba(132,38,255,0.15), rgba(132,38,255,0.05))'
 ].join(';');
 console.log('%cMinutehand', countdownConsoleStyle);
