@@ -167,6 +167,16 @@ main {
   font-size: 0.85rem;
 }
 
+.link {
+  color: #1d3ab8;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
 .modal {
   position: fixed;
   inset: 0;

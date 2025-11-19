@@ -33,13 +33,16 @@ const createSetBtn = el("btn-create-set");
 const setsList = el("sets-list");
 const setModal = el("set-modal");
 const songModal = el("song-modal");
-const otpForm = el("otp-form");
+const authForm = el("auth-form");
 const loginEmailInput = el("login-email");
+const loginPasswordInput = el("login-password");
 const authMessage = el("auth-message");
-const sendLinkBtn = el("send-link-btn");
+const authSubmitBtn = el("auth-submit-btn");
+const toggleSignup = el("toggle-signup");
+let isSignUpMode = false;
 
 async function init() {
-  // Handle magic link redirect - clear hash after processing
+  // Handle email confirmation redirect - clear hash after processing
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
   if (hashParams.get('type') === 'recovery' || hashParams.get('access_token')) {
     // Supabase will handle this via detectSessionInUrl, but we'll clean up the URL
@@ -63,7 +66,6 @@ async function init() {
   if (error) {
     console.error('Session error:', error);
   }
-  console.log('Initial session check:', session ? 'Found session' : 'No session');
   state.session = session;
   if (state.session) {
     await fetchProfile();
@@ -77,7 +79,11 @@ async function init() {
 }
 
 function bindEvents() {
-  otpForm?.addEventListener("submit", handleMagicLink);
+  authForm?.addEventListener("submit", handleAuth);
+  toggleSignup?.addEventListener("click", (e) => {
+    e.preventDefault();
+    toggleAuthMode();
+  });
   logoutBtn?.addEventListener("click", () => supabase.auth.signOut());
   createSetBtn?.addEventListener("click", () => openSetModal());
   el("close-set-modal")?.addEventListener("click", () => closeSetModal());
@@ -95,8 +101,9 @@ function showAuthGate() {
   dashboard.classList.add("hidden");
   userInfo.classList.add("hidden");
   createSetBtn.classList.add("hidden");
-  setAuthMessage("We’ll email you a one-time link. Check spam if it doesn’t arrive.");
-  toggleSendButton(false);
+  setAuthMessage("");
+  isSignUpMode = false;
+  updateAuthUI();
 }
 
 function showApp() {
@@ -120,44 +127,91 @@ function resetState() {
   setsList.innerHTML = "";
 }
 
-async function handleMagicLink(event) {
+function toggleAuthMode() {
+  isSignUpMode = !isSignUpMode;
+  updateAuthUI();
+  setAuthMessage("");
+  authForm?.reset();
+}
+
+function updateAuthUI() {
+  const heading = authGate?.querySelector("h2");
+  const description = authGate?.querySelector("p:first-of-type");
+  const toggleParagraph = toggleSignup?.parentElement;
+  
+  if (isSignUpMode) {
+    if (heading) heading.textContent = "Sign Up";
+    if (description) description.textContent = "Create an account with your email and password.";
+    if (authSubmitBtn) authSubmitBtn.textContent = "Sign up";
+    if (toggleParagraph && toggleSignup) {
+      toggleParagraph.firstChild.textContent = "Already have an account? ";
+      toggleSignup.textContent = "Sign in";
+    }
+  } else {
+    if (heading) heading.textContent = "Login";
+    if (description) description.textContent = "Sign in with your email and password.";
+    if (authSubmitBtn) authSubmitBtn.textContent = "Sign in";
+    if (toggleParagraph && toggleSignup) {
+      toggleParagraph.firstChild.textContent = "Don't have an account? ";
+      toggleSignup.textContent = "Sign up";
+    }
+  }
+}
+
+async function handleAuth(event) {
   event.preventDefault();
   const email = loginEmailInput?.value.trim();
-  if (!email) {
-    setAuthMessage("Enter your school email address.", true);
+  const password = loginPasswordInput?.value;
+
+  if (!email || !password) {
+    setAuthMessage("Please enter both email and password.", true);
     return;
   }
 
-  toggleSendButton(true);
-  setAuthMessage("Sending magic link…");
-
-  const redirectUrl = window.location.origin;
-  console.log('Requesting magic link with redirect to:', redirectUrl);
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: redirectUrl,
-    },
-  });
-
-  if (error) {
-    console.error('Magic link error:', error);
-    setAuthMessage("Unable to send link. Please try again.", true);
-  } else {
-    setAuthMessage(
-      `Check your inbox for a one-time link. Click it on this device to finish signing in. (Link will redirect to ${redirectUrl})`
-    );
-    otpForm?.reset();
+  if (password.length < 6) {
+    setAuthMessage("Password must be at least 6 characters.", true);
+    return;
   }
 
-  toggleSendButton(false);
+  toggleAuthButton(true);
+  setAuthMessage(isSignUpMode ? "Creating account…" : "Signing in…");
+
+  let error;
+  if (isSignUpMode) {
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    error = signUpError;
+    if (!error && data.user) {
+      setAuthMessage("Account created! Please check your email to confirm your account.", false);
+      authForm?.reset();
+      toggleAuthButton(false);
+      return;
+    }
+  } else {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    error = signInError;
+  }
+
+  if (error) {
+    console.error('Auth error:', error);
+    setAuthMessage(error.message || "Unable to sign in. Please check your credentials.", true);
+  } else if (!isSignUpMode) {
+    // Sign in successful - onAuthStateChange will handle the rest
+    setAuthMessage("");
+    authForm?.reset();
+  }
+
+  toggleAuthButton(false);
 }
 
-function toggleSendButton(isLoading) {
-  if (!sendLinkBtn) return;
-  sendLinkBtn.disabled = isLoading;
-  sendLinkBtn.textContent = isLoading ? "Sending…" : "Send magic link";
+function toggleAuthButton(isLoading) {
+  if (!authSubmitBtn) return;
+  authSubmitBtn.disabled = isLoading;
 }
 
 function setAuthMessage(message, isError = false) {

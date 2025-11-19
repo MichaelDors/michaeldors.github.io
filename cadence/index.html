@@ -22,17 +22,24 @@
     <main>
       <section id="auth-gate" class="card">
         <h2>Login</h2>
-        <p>Enter your email to get a magic link to sign in.</p>
-        <form id="otp-form" class="auth-form">
+        <p>Sign in with your email and password.</p>
+        <form id="auth-form" class="auth-form">
           <label>
             Email
             <input type="email" id="login-email" placeholder="name@school.org" required />
           </label>
-          <button type="submit" id="send-link-btn" class="btn primary">
-            Send magic link
+          <label>
+            Password
+            <input type="password" id="login-password" placeholder="Enter your password" required />
+          </label>
+          <button type="submit" id="auth-submit-btn" class="btn primary">
+            Sign in
           </button>
         </form>
-        <p class="muted small-text" id="auth-message">We'll email you a one-time sign-in link.</p>
+        <p class="muted small-text">
+          Don't have an account? <a href="#" id="toggle-signup" class="link">Sign up</a>
+        </p>
+        <p class="muted small-text" id="auth-message"></p>
       </section>
 
       <section id="dashboard" class="hidden">
