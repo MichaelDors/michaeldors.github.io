@@ -14,6 +14,20 @@
         console.log("betaapp.js already loaded, exiting immediately");
         return;
     }
+
+    const countdownConsoleStyle = [
+        'color:#8426ff',
+        'font-size:26px',
+        'font-weight:700',
+        'letter-spacing:0.3rem',
+        'padding:6px 18px',
+        'border:2px solid #8426ff',
+        'border-radius:999px',
+        'text-transform:uppercase',
+        'text-shadow:0 0 6px rgba(132,38,255,0.55)',
+        'background:linear-gradient(120deg, rgba(132,38,255,0.15), rgba(132,38,255,0.05))'
+    ].join(';');
+    console.log('%cCountdown', countdownConsoleStyle);
     
     // Additional protection: Check if script already exists in DOM
     const existingScript = document.querySelector('script[src="betaapp.js"]');
