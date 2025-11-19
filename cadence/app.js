@@ -11,6 +11,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     detectSessionInUrl: true,
     persistSession: true,
+    storage: window.localStorage,
+    autoRefreshToken: true,
   },
 });
 
@@ -49,24 +51,48 @@ async function init() {
     window.history.replaceState(null, '', window.location.pathname);
   }
 
+  let initialSessionChecked = false;
+
   supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log('Auth state change:', event, session ? 'Has session' : 'No session');
     state.session = session;
+    
+    // Don't show auth gate on initial check if we haven't checked getSession yet
+    if (!initialSessionChecked && event === 'INITIAL_SESSION') {
+      return;
+    }
+    
     if (session) {
       await fetchProfile();
       await Promise.all([loadSongs(), loadSets()]);
       showApp();
     } else {
-      resetState();
-      showAuthGate();
+      // Only reset if this isn't the initial load
+      if (initialSessionChecked) {
+        resetState();
+        showAuthGate();
+      }
     }
   });
 
-  // Check for existing session
+  // Check localStorage for session data
+  const supabaseKeys = Object.keys(localStorage).filter(key => key.startsWith('sb-'));
+  console.log('LocalStorage Supabase keys:', supabaseKeys.length > 0 ? supabaseKeys : 'None found');
+  
+  // Check for existing session first
   const { data: { session }, error } = await supabase.auth.getSession();
+  initialSessionChecked = true;
+  
   if (error) {
     console.error('Session error:', error);
   }
+  
+  console.log('Initial session check:', session ? 'Found session' : 'No session');
+  if (session) {
+    console.log('Session expires at:', new Date(session.expires_at * 1000));
+  }
   state.session = session;
+  
   if (state.session) {
     await fetchProfile();
     await Promise.all([loadSongs(), loadSets()]);
@@ -190,23 +216,40 @@ async function handleAuth(event) {
       return;
     }
   } else {
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     error = signInError;
+    
+    if (!error && signInData.session) {
+      console.log('Sign in successful, session:', signInData.session);
+      // Verify session is stored
+      const { data: { session: storedSession } } = await supabase.auth.getSession();
+      console.log('Stored session after sign in:', storedSession ? 'Found' : 'Not found');
+      
+      // Update state immediately
+      state.session = signInData.session;
+      await fetchProfile();
+      await Promise.all([loadSongs(), loadSets()]);
+      showApp();
+      setAuthMessage("");
+      authForm?.reset();
+      toggleAuthButton(false);
+      return;
+    }
   }
 
   if (error) {
     console.error('Auth error:', error);
     setAuthMessage(error.message || "Unable to sign in. Please check your credentials.", true);
+    toggleAuthButton(false);
   } else if (!isSignUpMode) {
-    // Sign in successful - onAuthStateChange will handle the rest
+    // Fallback - onAuthStateChange should handle this
     setAuthMessage("");
     authForm?.reset();
+    toggleAuthButton(false);
   }
-
-  toggleAuthButton(false);
 }
 
 function toggleAuthButton(isLoading) {
