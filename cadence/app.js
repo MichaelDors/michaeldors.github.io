@@ -2327,7 +2327,7 @@ async function openSongDetailsModal(song) {
         
         ${songWithLinks.song_links && songWithLinks.song_links.length > 0 ? `
         <div class="song-details-section">
-          <h3 class="section-title">Resources & Links</h3>
+          <h3 class="section-title" style="margin-top:1.25rem;">Resources & Links</h3>
           <div class="song-details-links"></div>
         </div>
         ` : ''}
