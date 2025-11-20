@@ -358,24 +358,23 @@
       </article>
     </template>
 
-    <template id="song-item-template">
-      <div class="set-song-card">
-        <div class="drag-handle" title="Drag to reorder" style="display: none;">⋮⋮</div>
-        <div class="set-song-header" style="padding-left: 2.5rem;">
-          <div>
-            <h4 class="song-title"></h4>
-            <p class="song-meta"></p>
+      <template id="song-item-template">
+        <div class="set-song-card">
+          <div class="drag-handle" title="Drag to reorder" style="display: none;">⋮⋮</div>
+          <div class="set-song-header" style="padding-left: 2.5rem;">
+            <div class="set-song-info">
+              <h4 class="song-title"></h4>
+              <p class="song-meta"></p>
+            </div>
+            <div class="set-song-actions">
+              <button class="btn small secondary view-song-details-btn" data-song-id="">View Details</button>
+              <button class="btn small ghost edit-set-song-btn hidden" data-set-song-id="">Edit</button>
+              <button class="btn small ghost remove-song-from-set-btn hidden" data-set-song-id="">Remove</button>
+            </div>
           </div>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button class="btn small secondary view-song-details-btn" data-song-id="">View Details</button>
-            <button class="btn small ghost click-track-btn hidden" data-bpm="" title="Click Track">▶ Click</button>
-            <button class="btn small ghost edit-set-song-btn hidden" data-set-song-id="">Edit</button>
-            <button class="btn small ghost remove-song-from-set-btn hidden" data-set-song-id="">Remove</button>
-          </div>
+          <p class="song-notes"></p>
+          <div class="assignments"></div>
         </div>
-        <p class="song-notes"></p>
-        <div class="assignments"></div>
-      </div>
     </template>
 
     <template id="assignment-pill-template">
