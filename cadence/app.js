@@ -21,8 +21,18 @@ const state = {
   profile: null,
   sets: [],
   songs: [],
+  people: [],
   selectedSet: null,
   currentSetSongs: [],
+  creatingSongFromModal: false,
+  expandedSets: new Set(),
+  currentSongDetailsId: null, // Track which song is open in details modal
+  metronome: {
+    isPlaying: false,
+    bpm: null,
+    intervalId: null,
+    audioContext: null,
+  },
 };
 
 const el = (id) => document.getElementById(id);
@@ -33,6 +43,7 @@ const userInfo = el("user-info");
 const userName = el("user-name");
 const createSetBtn = el("btn-create-set");
 const setsList = el("sets-list");
+const yourSetsList = el("your-sets-list");
 const setModal = el("set-modal");
 const songModal = el("song-modal");
 const authForm = el("auth-form");
@@ -52,25 +63,81 @@ async function init() {
   }
 
   let initialSessionChecked = false;
+  let isProcessingSession = false;
 
   supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log('Auth state change:', event, session ? 'Has session' : 'No session');
-    state.session = session;
+    console.log('🔄 Auth state change event:', event);
+    console.log('  - Session:', session ? 'Has session' : 'No session');
+    console.log('  - initialSessionChecked:', initialSessionChecked);
+    console.log('  - isProcessingSession:', isProcessingSession);
+    console.log('  - Session user:', session?.user?.email);
     
-    // Don't show auth gate on initial check if we haven't checked getSession yet
+    // Don't process INITIAL_SESSION if we haven't done getSession() yet
     if (!initialSessionChecked && event === 'INITIAL_SESSION') {
+      console.log('  - Ignoring INITIAL_SESSION event, waiting for getSession()');
       return;
     }
     
+    // Prevent double-processing
+    if (isProcessingSession && event === 'SIGNED_IN') {
+      console.log('  - Already processing session, skipping duplicate SIGNED_IN');
+      return;
+    }
+    
+    state.session = session;
+    
     if (session) {
-      await fetchProfile();
-      await Promise.all([loadSongs(), loadSets()]);
+      console.log('  - Session exists, setting up profile and showing app...');
+      isProcessingSession = true;
+      
+      // Create fallback profile immediately so UI can show
+      if (!state.profile) {
+        state.profile = {
+          id: session.user.id,
+          full_name: session.user.user_metadata.full_name || session.user.email || "User",
+          can_manage: false,
+        };
+        console.log('  - Created temporary profile:', state.profile);
+      }
+      
+      // Show app immediately, don't wait for profile fetch
+      console.log('  - Showing app immediately...');
       showApp();
+      
+      // Load data in background (non-blocking)
+      Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
+        console.log('  - Data loading complete');
+      }).catch(err => {
+        console.error('  - Error loading data:', err);
+      });
+      
+      // Fetch profile in background with timeout
+      const profileTimeout = setTimeout(() => {
+        console.log('  - ⚠️ Profile fetch timeout, keeping temporary profile');
+        isProcessingSession = false;
+      }, 2000); // 2 second timeout
+      
+      fetchProfile().then(() => {
+        clearTimeout(profileTimeout);
+        console.log('  - Profile fetch complete, state.profile:', state.profile);
+        // Update UI in case profile changed (e.g., can_manage status)
+        console.log('  - Updating UI with final profile');
+        showApp();
+        isProcessingSession = false;
+      }).catch(err => {
+        clearTimeout(profileTimeout);
+        console.error('  - ❌ Error fetching profile:', err);
+        isProcessingSession = false;
+      });
     } else {
+      console.log('  - No session');
       // Only reset if this isn't the initial load
       if (initialSessionChecked) {
+        console.log('  - Initial check done, showing auth gate');
         resetState();
         showAuthGate();
+      } else {
+        console.log('  - Initial check not done yet, skipping auth gate');
       }
     }
   });
@@ -80,38 +147,121 @@ async function init() {
   console.log('LocalStorage Supabase keys:', supabaseKeys.length > 0 ? supabaseKeys : 'None found');
   
   // Check for existing session first
+  console.log('🔍 Checking for existing session...');
   const { data: { session }, error } = await supabase.auth.getSession();
   initialSessionChecked = true;
   
   if (error) {
-    console.error('Session error:', error);
+    console.error('❌ Session error:', error);
   }
   
-  console.log('Initial session check:', session ? 'Found session' : 'No session');
+  console.log('📋 Initial session check result:', session ? '✅ Found session' : '❌ No session');
   if (session) {
-    console.log('Session expires at:', new Date(session.expires_at * 1000));
+    console.log('  - Session user:', session.user?.email);
+    console.log('  - Session expires at:', new Date(session.expires_at * 1000));
+    console.log('  - Current time:', new Date());
+    console.log('  - Session expired?', new Date(session.expires_at * 1000) < new Date());
   }
-  state.session = session;
   
-  if (state.session) {
-    await fetchProfile();
-    await Promise.all([loadSongs(), loadSets()]);
+  // Only process if we have a session and haven't already processed it via onAuthStateChange
+  if (session && !isProcessingSession) {
+    console.log('✅ Session found, setting up profile and showing app...');
+    state.session = session;
+    isProcessingSession = true;
+    
+    // Create fallback profile immediately so UI can show
+    if (!state.profile) {
+      state.profile = {
+        id: session.user.id,
+        full_name: session.user.user_metadata.full_name || session.user.email || "User",
+        can_manage: false,
+      };
+      console.log('  - Created temporary profile:', state.profile);
+    }
+    
+    // Show app immediately, don't wait for profile fetch
+    console.log('  - Showing app immediately...');
     showApp();
-  } else {
+    
+    // Load data in background (non-blocking)
+    Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
+      console.log('✅ Data loading complete');
+    }).catch(err => {
+      console.error('❌ Error loading data:', err);
+    });
+    
+    // Fetch profile in background with timeout
+    const profileTimeout = setTimeout(() => {
+      console.log('  - ⚠️ Profile fetch timeout, keeping temporary profile');
+      isProcessingSession = false;
+    }, 2000); // 2 second timeout
+    
+    fetchProfile().then(() => {
+      clearTimeout(profileTimeout);
+      console.log('✅ Profile fetch complete, state.profile:', state.profile);
+      // Update UI in case profile changed (e.g., can_manage status)
+      console.log('  - Updating UI with final profile');
+      showApp();
+      isProcessingSession = false;
+    }).catch(err => {
+      clearTimeout(profileTimeout);
+      console.error('❌ Error fetching profile:', err);
+      isProcessingSession = false;
+    });
+  } else if (!session) {
+    console.log('❌ No session, calling showAuthGate()');
     showAuthGate();
+  } else {
+    console.log('⏳ Session already being processed by auth state change handler');
   }
 
   bindEvents();
 }
 
 function bindEvents() {
+  console.log('🔗 bindEvents() called');
+  console.log('  - authForm element:', authForm);
+  console.log('  - toggleSignup element:', toggleSignup);
+  console.log('  - loginEmailInput element:', loginEmailInput);
+  console.log('  - loginPasswordInput element:', loginPasswordInput);
+  console.log('  - authSubmitBtn element:', authSubmitBtn);
+  
   authForm?.addEventListener("submit", handleAuth);
   toggleSignup?.addEventListener("click", (e) => {
+    console.log('🔄 Toggle signup clicked');
     e.preventDefault();
     toggleAuthMode();
   });
   logoutBtn?.addEventListener("click", () => supabase.auth.signOut());
   createSetBtn?.addEventListener("click", () => openSetModal());
+  el("btn-invite-member")?.addEventListener("click", () => openInviteModal());
+  el("close-invite-modal")?.addEventListener("click", () => closeInviteModal());
+  el("cancel-invite")?.addEventListener("click", () => closeInviteModal());
+  el("invite-form")?.addEventListener("submit", handleInviteSubmit);
+  el("close-edit-person-modal")?.addEventListener("click", () => closeEditPersonModal());
+  el("cancel-edit-person")?.addEventListener("click", () => closeEditPersonModal());
+  el("edit-person-form")?.addEventListener("submit", handleEditPersonSubmit);
+  
+  // Tab switching
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      switchTab(tab);
+    });
+  });
+  el("btn-back")?.addEventListener("click", () => hideSetDetail());
+  el("btn-edit-set-detail")?.addEventListener("click", () => {
+    if (state.selectedSet) {
+      openSetModal(state.selectedSet);
+      hideSetDetail();
+    }
+  });
+  el("btn-delete-set-detail")?.addEventListener("click", () => {
+    if (state.selectedSet) {
+      deleteSet(state.selectedSet);
+      hideSetDetail();
+    }
+  });
   el("close-set-modal")?.addEventListener("click", () => closeSetModal());
   el("cancel-set")?.addEventListener("click", () => closeSetModal());
   el("set-form")?.addEventListener("submit", handleSetSubmit);
@@ -119,28 +269,172 @@ function bindEvents() {
   el("close-song-modal")?.addEventListener("click", () => closeSongModal());
   el("cancel-song")?.addEventListener("click", () => closeSongModal());
   el("song-form")?.addEventListener("submit", handleAddSongToSet);
+  el("create-song-link")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    state.creatingSongFromModal = true;
+    // Don't close the song modal, just open the edit modal on top
+    openSongEditModal();
+  });
   el("btn-add-assignment")?.addEventListener("click", addAssignmentInput);
+  el("btn-create-song")?.addEventListener("click", () => openSongEditModal());
+  el("btn-edit-song-from-set")?.addEventListener("click", () => {
+    // Get the current song from the edit-set-song modal
+    const form = el("edit-set-song-form");
+    const songId = form.dataset.songId;
+    if (songId) {
+      closeEditSetSongModal();
+      openSongEditModal(songId);
+    }
+  });
+  el("close-song-edit-modal")?.addEventListener("click", () => closeSongEditModal());
+  el("cancel-song-edit")?.addEventListener("click", () => closeSongEditModal());
+  el("song-edit-form")?.addEventListener("submit", handleSongEditSubmit);
+  el("btn-add-song-link")?.addEventListener("click", () => addSongLinkInput());
+  el("close-song-details-modal")?.addEventListener("click", () => closeSongDetailsModal());
+  
+  // Format duration input to help with MM:SS entry
+  const durationInput = el("song-edit-duration");
+  if (durationInput) {
+    durationInput.addEventListener("input", (e) => {
+      let value = e.target.value.replace(/[^\d:]/g, ""); // Remove non-digits and colons
+      
+      // Auto-format as user types
+      if (value.length > 0 && !value.includes(":")) {
+        // If they type just numbers, format it
+        const num = parseInt(value, 10);
+        if (!isNaN(num) && num >= 60) {
+          const mins = Math.floor(num / 60);
+          const secs = num % 60;
+          value = `${mins}:${secs.toString().padStart(2, "0")}`;
+        }
+      }
+      
+      // Limit to reasonable format (max 999:59)
+      const parts = value.split(":");
+      if (parts.length === 2) {
+        const mins = parseInt(parts[0], 10);
+        const secs = parts[1];
+        if (!isNaN(mins) && mins > 999) {
+          value = "999:59";
+        } else if (secs && secs.length === 2) {
+          const secNum = parseInt(secs, 10);
+          if (!isNaN(secNum) && secNum >= 60) {
+            value = `${mins + 1}:00`;
+          }
+        }
+      }
+      
+      e.target.value = value;
+    });
+    
+    // Validate on blur
+    durationInput.addEventListener("blur", (e) => {
+      const value = e.target.value.trim();
+      if (value && !parseDuration(value)) {
+        // Invalid format, try to fix it
+        const fixed = parseDuration(value);
+        if (fixed !== null) {
+          e.target.value = formatDuration(fixed);
+        } else {
+          // Show placeholder hint
+          e.target.setAttribute("placeholder", "3:45");
+        }
+      }
+    });
+  }
+  
+  el("close-edit-set-song-modal")?.addEventListener("click", () => closeEditSetSongModal());
+  el("cancel-edit-set-song")?.addEventListener("click", () => closeEditSetSongModal());
+  el("edit-set-song-form")?.addEventListener("submit", handleEditSetSongSubmit);
+  el("btn-add-edit-assignment")?.addEventListener("click", addEditAssignmentInput);
+  
+  console.log('  - ✅ Events bound');
+  
+  // Cleanup: stop metronome on page unload
+  window.addEventListener("beforeunload", () => {
+    stopMetronome();
+  });
 }
 
 function showAuthGate() {
-  authGate.classList.remove("hidden");
-  dashboard.classList.add("hidden");
-  userInfo.classList.add("hidden");
-  createSetBtn.classList.add("hidden");
+  console.log('🔒 showAuthGate() called');
+  console.log('  - authGate element:', authGate);
+  console.log('  - dashboard element:', dashboard);
+  console.log('  - Current state.session:', state.session);
+  console.log('  - Current state.profile:', state.profile);
+  
+  if (authGate) authGate.classList.remove("hidden");
+  if (dashboard) dashboard.classList.add("hidden");
+  if (userInfo) userInfo.classList.add("hidden");
+  if (createSetBtn) createSetBtn.classList.add("hidden");
   setAuthMessage("");
   isSignUpMode = false;
   updateAuthUI();
+  
+  console.log('  - authGate hidden class removed:', !authGate?.classList.contains('hidden'));
+  console.log('  - dashboard hidden class added:', dashboard?.classList.contains('hidden'));
 }
 
 function showApp() {
-  authGate.classList.add("hidden");
-  dashboard.classList.remove("hidden");
-  userInfo.classList.remove("hidden");
-  userName.textContent = state.profile?.full_name ?? "Signed In";
+  console.log('✅ showApp() called');
+  console.log('  - state.session:', !!state.session);
+  console.log('  - state.profile:', state.profile);
+  
+  // Re-fetch elements in case they weren't available during init
+  const authGateEl = el("auth-gate");
+  const dashboardEl = el("dashboard");
+  const userInfoEl = el("user-info");
+  const userNameEl = el("user-name");
+  const createSetBtnEl = el("btn-create-set");
+  const createSongBtnEl = el("btn-create-song");
+  const inviteMemberBtnEl = el("btn-invite-member");
+  
+  console.log('  - authGate element:', authGateEl);
+  console.log('  - dashboard element:', dashboardEl);
+  console.log('  - userInfo element:', userInfoEl);
+  
+  if (!authGateEl || !dashboardEl) {
+    console.error('❌ Critical elements not found! authGate:', !!authGateEl, 'dashboard:', !!dashboardEl);
+    return;
+  }
+  
+  // Force hide auth gate and show dashboard
+  authGateEl.classList.add("hidden");
+  dashboardEl.classList.remove("hidden");
+  
+  if (userInfoEl) {
+    userInfoEl.classList.remove("hidden");
+  }
+  
+  if (userNameEl) {
+    userNameEl.textContent = state.profile?.full_name ?? "Signed In";
+  }
+  
   if (state.profile?.can_manage) {
-    createSetBtn.classList.remove("hidden");
+    if (createSetBtnEl) createSetBtnEl.classList.remove("hidden");
+    if (createSongBtnEl) createSongBtnEl.classList.remove("hidden");
+    if (inviteMemberBtnEl) inviteMemberBtnEl.classList.remove("hidden");
   } else {
-    createSetBtn.classList.add("hidden");
+    if (createSetBtnEl) createSetBtnEl.classList.add("hidden");
+    if (createSongBtnEl) createSongBtnEl.classList.add("hidden");
+    if (inviteMemberBtnEl) inviteMemberBtnEl.classList.add("hidden");
+  }
+  
+  // Verify the changes took effect
+  const authGateHidden = authGateEl.classList.contains('hidden');
+  const dashboardVisible = !dashboardEl.classList.contains('hidden');
+  
+  console.log('  - authGate hidden:', authGateHidden);
+  console.log('  - dashboard visible:', dashboardVisible);
+  
+  if (!authGateHidden || !dashboardVisible) {
+    console.error('❌ UI update failed! Forcing update...');
+    // Force update with setTimeout to ensure DOM has processed
+    setTimeout(() => {
+      authGateEl.classList.add("hidden");
+      dashboardEl.classList.remove("hidden");
+      console.log('  - Forced update complete');
+    }, 0);
   }
 }
 
@@ -154,7 +448,10 @@ function resetState() {
 }
 
 function toggleAuthMode() {
+  console.log('🔄 toggleAuthMode() called');
+  console.log('  - Current isSignUpMode:', isSignUpMode);
   isSignUpMode = !isSignUpMode;
+  console.log('  - New isSignUpMode:', isSignUpMode);
   updateAuthUI();
   setAuthMessage("");
   authForm?.reset();
@@ -185,20 +482,28 @@ function updateAuthUI() {
 }
 
 async function handleAuth(event) {
+  console.log('🔐 handleAuth() called');
+  console.log('  - isSignUpMode:', isSignUpMode);
   event.preventDefault();
   const email = loginEmailInput?.value.trim();
   const password = loginPasswordInput?.value;
 
+  console.log('  - Email provided:', !!email);
+  console.log('  - Password provided:', !!password);
+
   if (!email || !password) {
+    console.log('  - ❌ Missing email or password');
     setAuthMessage("Please enter both email and password.", true);
     return;
   }
 
   if (password.length < 6) {
+    console.log('  - ❌ Password too short');
     setAuthMessage("Password must be at least 6 characters.", true);
     return;
   }
 
+  console.log('  - ✅ Validation passed, proceeding with auth');
   toggleAuthButton(true);
   setAuthMessage(isSignUpMode ? "Creating account…" : "Signing in…");
 
@@ -223,15 +528,28 @@ async function handleAuth(event) {
     error = signInError;
     
     if (!error && signInData.session) {
-      console.log('Sign in successful, session:', signInData.session);
+      console.log('✅ Sign in successful!');
+      console.log('  - Session user:', signInData.session.user?.email);
+      console.log('  - Session expires at:', new Date(signInData.session.expires_at * 1000));
+      
       // Verify session is stored
       const { data: { session: storedSession } } = await supabase.auth.getSession();
-      console.log('Stored session after sign in:', storedSession ? 'Found' : 'Not found');
+      console.log('  - Stored session after sign in:', storedSession ? '✅ Found' : '❌ Not found');
       
       // Update state immediately
+      console.log('  - Updating state.session...');
       state.session = signInData.session;
+      console.log('  - state.session updated:', !!state.session);
+      
+      console.log('  - Fetching profile...');
       await fetchProfile();
-      await Promise.all([loadSongs(), loadSets()]);
+      console.log('  - Profile fetched, state.profile:', state.profile);
+      
+      console.log('  - Loading songs, sets, and people...');
+      await Promise.all([loadSongs(), loadSets(), loadPeople()]);
+      console.log('  - Data loaded');
+      
+      console.log('  - Calling showApp()...');
       showApp();
       setAuthMessage("");
       authForm?.reset();
@@ -265,38 +583,138 @@ function setAuthMessage(message, isError = false) {
 }
 
 async function fetchProfile() {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", state.session.user.id)
-    .single();
-
-  if (error && error.code !== "PGRST116") {
-    console.error(error);
+  console.log('👤 fetchProfile() called');
+  console.log('  - state.session:', !!state.session);
+  console.log('  - state.session.user:', state.session?.user?.id);
+  
+  if (!state.session?.user?.id) {
+    console.error('  - ❌ No session or user ID');
     return;
   }
-
-  if (!data) {
-    const { data: newProfile, error: insertError } = await supabase
+  
+  try {
+    console.log('  - Querying profiles table...');
+    
+    // Wrap query in timeout to prevent hanging
+    const queryPromise = supabase
       .from("profiles")
-      .insert({
-        id: state.session.user.id,
-        full_name: state.session.user.user_metadata.full_name || "New User",
-      })
-      .select()
+      .select("*")
+      .eq("id", state.session.user.id)
       .single();
-    if (insertError) {
-      console.error(insertError);
+    
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Profile query timeout after 2 seconds')), 2000)
+    );
+    
+    let data, error;
+    try {
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      data = result.data;
+      error = result.error;
+    } catch (timeoutErr) {
+      console.error('  - ⚠️ Query timed out:', timeoutErr.message);
+      throw timeoutErr;
+    }
+
+    console.log('  - Query completed. Error:', error?.code || 'none');
+    console.log('  - Data:', data ? 'found' : 'not found');
+
+    if (error && error.code !== "PGRST116") {
+      console.error('  - ❌ Profile fetch error:', error);
+      console.error('  - Error details:', JSON.stringify(error, null, 2));
+      // Create a minimal profile so the app can still function
+      state.profile = {
+        id: state.session.user.id,
+        full_name: state.session.user.user_metadata.full_name || state.session.user.email || "User",
+        can_manage: false,
+      };
+      console.log('  - ⚠️ Using fallback profile:', state.profile);
       return;
     }
-    state.profile = newProfile;
-  } else {
-    state.profile = data;
+
+    if (!data) {
+      console.log('  - No profile found, creating new one...');
+      
+      // Wrap insert in timeout
+      const insertPromise = supabase
+        .from("profiles")
+        .insert({
+          id: state.session.user.id,
+          full_name: state.session.user.user_metadata.full_name || state.session.user.email || "New User",
+          email: state.session.user.email || null,
+        })
+        .select()
+        .single();
+      
+      const insertTimeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile insert timeout after 2 seconds')), 2000)
+      );
+      
+      let newProfile, insertError;
+      try {
+        const result = await Promise.race([insertPromise, insertTimeoutPromise]);
+        newProfile = result.data;
+        insertError = result.error;
+      } catch (timeoutErr) {
+        console.error('  - ⚠️ Insert timed out:', timeoutErr.message);
+        insertError = timeoutErr;
+      }
+      
+      console.log('  - Insert completed. Error:', insertError?.code || 'none');
+      
+      if (insertError) {
+        console.error('  - ❌ Profile creation error:', insertError);
+        console.error('  - Error details:', JSON.stringify(insertError, null, 2));
+        // Use fallback profile
+        state.profile = {
+          id: state.session.user.id,
+          full_name: state.session.user.user_metadata.full_name || state.session.user.email || "User",
+          can_manage: false,
+        };
+        console.log('  - ⚠️ Using fallback profile:', state.profile);
+        return;
+      }
+      state.profile = newProfile;
+      console.log('  - ✅ Profile created:', newProfile);
+    } else {
+      // Sync email if missing
+      if (data && !data.email && state.session.user.email) {
+        await supabase
+          .from("profiles")
+          .update({ email: state.session.user.email })
+          .eq("id", state.session.user.id);
+        data.email = state.session.user.email;
+      }
+      state.profile = data;
+      console.log('  - ✅ Profile found:', data);
+      console.log('  - can_manage:', data.can_manage);
+    }
+  } catch (err) {
+    console.error('  - ❌ Unexpected error in fetchProfile:', err);
+    // Use fallback profile
+    state.profile = {
+      id: state.session.user.id,
+      full_name: state.session.user.user_metadata.full_name || state.session.user.email || "User",
+      can_manage: false,
+    };
+    console.log('  - ⚠️ Using fallback profile after error:', state.profile);
   }
+  
+  console.log('  - ✅ fetchProfile() completed. Final state.profile:', state.profile);
 }
 
 async function loadSongs() {
-  const { data, error } = await supabase.from("songs").select("*").order("title");
+  const { data, error } = await supabase
+    .from("songs")
+    .select(`
+      *,
+      song_links (
+        id,
+        title,
+        url
+      )
+    `)
+    .order("title");
   if (error) {
     console.error(error);
     return;
@@ -315,12 +733,22 @@ async function loadSets() {
         sequence_order,
         notes,
         song:song_id (
-          id, title, bpm, song_key, duration_seconds, description
+          id, title, bpm, song_key, time_signature, duration_seconds, description,
+          song_links (
+            id,
+            title,
+            url
+          )
         ),
         song_assignments (
           id,
+          person_id,
           person_name,
-          role
+          role,
+          person:person_id (
+            id,
+            full_name
+          )
         )
       )
     `
@@ -336,80 +764,665 @@ async function loadSets() {
   renderSets();
 }
 
+function isUserAssignedToSet(set, userId) {
+  if (!userId || !set.set_songs) return false;
+  
+  // Check if user is assigned to any song in this set
+  return set.set_songs.some(setSong => 
+    setSong.song_assignments?.some(assignment => 
+      assignment.person_id === userId
+    )
+  );
+}
+
+function renderSetCard(set, container) {
+  const template = document.getElementById("set-card-template");
+  const node = template.content.cloneNode(true);
+  
+  node.querySelector(".set-title").textContent = set.title;
+  const date = parseLocalDate(set.scheduled_date);
+  node.querySelector(".set-date").textContent = date ? date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }) : "";
+  node.querySelector(".set-description").textContent =
+    set.description || "No description yet.";
+
+  const card = node.querySelector(".set-card");
+  const editBtn = node.querySelector(".edit-set-btn");
+  const deleteBtn = node.querySelector(".delete-set-btn");
+  
+  // Make card clickable to view details
+  card.addEventListener("click", (e) => {
+    // Don't trigger if clicking edit/delete buttons
+    if (e.target === editBtn || e.target === deleteBtn || 
+        editBtn.contains(e.target) || deleteBtn.contains(e.target)) {
+      return;
+    }
+    showSetDetail(set);
+  });
+
+  if (state.profile?.can_manage) {
+    editBtn.classList.remove("hidden");
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openSetModal(set);
+    });
+    deleteBtn.classList.remove("hidden");
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteSet(set);
+    });
+  }
+
+  container.appendChild(node);
+}
+
 function renderSets() {
   setsList.innerHTML = "";
+  if (yourSetsList) yourSetsList.innerHTML = "";
+  
   if (!state.sets.length) {
     setsList.innerHTML = `<p class="muted">No sets scheduled yet.</p>`;
+    if (yourSetsList) {
+      yourSetsList.innerHTML = `<p class="muted">You're not assigned to any sets yet.</p>`;
+    }
     return;
   }
 
-  const template = document.getElementById("set-card-template");
+  const currentUserId = state.profile?.id;
+  const yourSets = [];
+  const allSets = [];
 
+  // Separate sets into "your sets" and "all sets"
   state.sets.forEach((set) => {
-    const node = template.content.cloneNode(true);
-    node.querySelector(".set-title").textContent = set.title;
-    node.querySelector(".set-date").textContent = new Date(
-      set.scheduled_date
-    ).toLocaleDateString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-    node.querySelector(".set-description").textContent =
-      set.description || "No description yet.";
-
-    const editBtn = node.querySelector(".edit-set-btn");
-    if (state.profile?.can_manage) {
-      editBtn.classList.remove("hidden");
-      editBtn.addEventListener("click", () => openSetModal(set));
+    if (currentUserId && isUserAssignedToSet(set, currentUserId)) {
+      yourSets.push(set);
     }
+    allSets.push(set);
+  });
 
-    const songList = node.querySelector(".set-song-list");
-    if (!set.set_songs?.length) {
-      songList.innerHTML = `<p class="muted">No songs added.</p>`;
+  // Render "Your Sets" section
+  if (yourSetsList) {
+    if (yourSets.length === 0) {
+      yourSetsList.innerHTML = `<p class="muted">You're not assigned to any sets yet.</p>`;
     } else {
-      set.set_songs
-        .sort((a, b) => a.sequence_order - b.sequence_order)
-        .forEach((setSong) => {
-          const songNode = document
-            .getElementById("song-item-template")
-            .content.cloneNode(true);
-          songNode.querySelector(".song-title").textContent =
-            setSong.song?.title ?? "Untitled";
-          songNode.querySelector(".song-meta").textContent = [
-            setSong.song?.song_key,
-            setSong.song?.bpm ? `${setSong.song.bpm} BPM` : null,
-            setSong.song?.duration_seconds
-              ? `${Math.round(setSong.song.duration_seconds / 60)} min`
-              : null,
-          ]
-            .filter(Boolean)
-            .join(" • ");
-          songNode.querySelector(".song-notes").textContent =
-            setSong.notes || "";
+      yourSets.forEach((set) => {
+        renderSetCard(set, yourSetsList);
+      });
+    }
+  }
 
-          const assignmentsWrap = songNode.querySelector(".assignments");
-          if (!setSong.song_assignments?.length) {
-            assignmentsWrap.innerHTML =
-              '<span class="muted">No assignments yet.</span>';
+  // Render "All Sets" section
+  if (allSets.length === 0) {
+    setsList.innerHTML = `<p class="muted">No sets scheduled yet.</p>`;
+  } else {
+    allSets.forEach((set) => {
+      renderSetCard(set, setsList);
+    });
+  }
+}
+
+function switchTab(tabName) {
+  // Update tab buttons
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    if (btn.dataset.tab === tabName) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+  
+  // Show/hide tab content
+  el("sets-tab").classList.toggle("hidden", tabName !== "sets");
+  el("songs-tab").classList.toggle("hidden", tabName !== "songs");
+  el("people-tab").classList.toggle("hidden", tabName !== "people");
+  
+  // Load data if switching to tabs
+  if (tabName === "songs") {
+    renderSongCatalog();
+  } else if (tabName === "people") {
+    loadPeople();
+  }
+}
+
+async function loadPeople() {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("full_name");
+  
+  if (error) {
+    console.error("Error loading people:", error);
+    return;
+  }
+  
+  state.people = data || [];
+  renderPeople();
+}
+
+function renderPeople() {
+  const peopleList = el("people-list");
+  if (!peopleList) return;
+  
+  peopleList.innerHTML = "";
+  
+  // Add invite card for managers
+  if (state.profile?.can_manage) {
+    const inviteCard = document.createElement("div");
+    inviteCard.className = "card person-card invite-card";
+    inviteCard.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 1rem; text-align: center; cursor: pointer;">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">+</div>
+        <h3 class="person-name" style="margin: 0;">Invite Member</h3>
+      </div>
+    `;
+    inviteCard.addEventListener("click", () => openInviteModal());
+    peopleList.appendChild(inviteCard);
+  }
+  
+  if (!state.people || state.people.length === 0) {
+    if (!state.profile?.can_manage) {
+      peopleList.innerHTML = '<p class="muted">No members yet.</p>';
+    }
+    return;
+  }
+  
+  state.people.forEach((person) => {
+    const div = document.createElement("div");
+    div.className = "card person-card";
+    
+    if (state.profile?.can_manage) {
+      // Manager view: show email, edit name, delete
+      div.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: start; width: 100%;">
+          <div style="flex: 1;">
+            <h3 class="person-name" style="margin: 0 0 0.5rem 0;">${escapeHtml(person.full_name)}</h3>
+            ${person.email ? `
+              <a href="mailto:${escapeHtml(person.email)}" class="person-email-link" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+                ${escapeHtml(person.email)}
+              </a>
+            ` : '<span class="muted" style="font-size: 0.9rem;">No email</span>'}
+            <div style="margin-top: 0.5rem;">
+              ${person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="btn small secondary edit-person-btn" data-person-id="${person.id}">Edit</button>
+            <button class="btn small ghost delete-person-btn" data-person-id="${person.id}">Remove</button>
+          </div>
+        </div>
+      `;
+      
+      const editBtn = div.querySelector(".edit-person-btn");
+      if (editBtn) {
+        editBtn.addEventListener("click", () => openEditPersonModal(person));
+      }
+      
+      const deleteBtn = div.querySelector(".delete-person-btn");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", () => deletePerson(person));
+      }
+    } else {
+      // Regular user view: just show name and role
+      div.innerHTML = `
+        <h3 class="person-name">${escapeHtml(person.full_name)}</h3>
+        ${person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
+      `;
+    }
+    
+    peopleList.appendChild(div);
+  });
+}
+
+function showSetDetail(set) {
+  state.selectedSet = set;
+  const dashboard = el("dashboard");
+  const detailView = el("set-detail");
+  
+  dashboard.classList.add("hidden");
+  detailView.classList.remove("hidden");
+  
+  // Populate detail view
+  el("detail-set-title").textContent = set.title;
+  const date = parseLocalDate(set.scheduled_date);
+  el("detail-set-date").textContent = date ? date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }) : "";
+  el("detail-set-description").textContent = set.description || "No description yet.";
+  
+  // Show/hide edit/delete buttons for managers
+  const editBtn = el("btn-edit-set-detail");
+  const deleteBtn = el("btn-delete-set-detail");
+  if (state.profile?.can_manage) {
+    editBtn.classList.remove("hidden");
+    deleteBtn.classList.remove("hidden");
+  } else {
+    editBtn.classList.add("hidden");
+    deleteBtn.classList.add("hidden");
+  }
+  
+  // Render songs
+  renderSetDetailSongs(set);
+}
+
+function renderSetDetailSongs(set) {
+  const songsList = el("detail-songs-list");
+  songsList.innerHTML = "";
+  
+  // Render existing songs
+  if (set.set_songs?.length) {
+      set.set_songs
+      .sort((a, b) => a.sequence_order - b.sequence_order)
+      .forEach((setSong, index) => {
+        const songNode = document
+          .getElementById("song-item-template")
+          .content.cloneNode(true);
+        const card = songNode.querySelector(".set-song-card");
+        card.dataset.setSongId = setSong.id;
+        card.dataset.sequenceOrder = setSong.sequence_order;
+        
+        // Only make draggable for managers
+        const dragHandle = songNode.querySelector(".drag-handle");
+        if (state.profile?.can_manage) {
+          card.classList.add("draggable-item");
+          card.draggable = false; // Will be set to true when dragging from handle
+          if (dragHandle) {
+            dragHandle.style.display = "flex";
+            dragHandle.style.cursor = "grab";
+          }
+        } else {
+          card.classList.remove("draggable-item");
+          card.draggable = false;
+          if (dragHandle) dragHandle.style.display = "none";
+        }
+        
+        songNode.querySelector(".song-title").textContent =
+          setSong.song?.title ?? "Untitled";
+        songNode.querySelector(".song-meta").textContent = [
+          setSong.song?.song_key,
+          setSong.song?.time_signature,
+          setSong.song?.bpm ? `${setSong.song.bpm} BPM` : null,
+          setSong.song?.duration_seconds ? formatDuration(setSong.song.duration_seconds) : null,
+        ]
+          .filter(Boolean)
+          .join(" • ");
+        songNode.querySelector(".song-notes").textContent =
+          setSong.notes || "";
+
+        const assignmentsWrap = songNode.querySelector(".assignments");
+        if (!setSong.song_assignments?.length) {
+          assignmentsWrap.innerHTML =
+            '<span class="muted">No assignments yet.</span>';
+        } else {
+          setSong.song_assignments.forEach((assignment) => {
+            const pill = document
+              .getElementById("assignment-pill-template")
+              .content.cloneNode(true);
+            pill.querySelector(".assignment-role").textContent =
+              assignment.role;
+            pill.querySelector(".assignment-person").textContent =
+              assignment.person?.full_name || assignment.person_name || "Unknown";
+            assignmentsWrap.appendChild(pill);
+          });
+        }
+
+        // Add click track button if song has BPM
+        const clickTrackBtn = songNode.querySelector(".click-track-btn");
+        if (clickTrackBtn && setSong.song?.bpm) {
+          clickTrackBtn.classList.remove("hidden");
+          clickTrackBtn.dataset.bpm = setSong.song.bpm;
+          const bpm = parseInt(setSong.song.bpm, 10);
+          if (state.metronome.isPlaying && state.metronome.bpm === bpm) {
+            clickTrackBtn.textContent = '⏸ Stop';
+            clickTrackBtn.classList.add("active");
           } else {
-            setSong.song_assignments.forEach((assignment) => {
-              const pill = document
-                .getElementById("assignment-pill-template")
-                .content.cloneNode(true);
-              pill.querySelector(".assignment-role").textContent =
-                assignment.role;
-              pill.querySelector(".assignment-person").textContent =
-                assignment.person_name;
-              assignmentsWrap.appendChild(pill);
+            clickTrackBtn.textContent = '▶ Click';
+            clickTrackBtn.classList.remove("active");
+          }
+          clickTrackBtn.addEventListener("click", () => {
+            const isPlaying = toggleMetronome(bpm);
+            updateClickTrackButtons();
+          });
+        }
+        
+        // Add edit and remove buttons for managers
+        const editBtn = songNode.querySelector(".edit-set-song-btn");
+        const removeBtn = songNode.querySelector(".remove-song-from-set-btn");
+        if (state.profile?.can_manage) {
+          if (editBtn) {
+            editBtn.classList.remove("hidden");
+            editBtn.dataset.setSongId = setSong.id;
+            editBtn.addEventListener("click", () => openEditSetSongModal(setSong));
+          }
+          if (removeBtn) {
+            removeBtn.classList.remove("hidden");
+            removeBtn.dataset.setSongId = setSong.id;
+            removeBtn.addEventListener("click", async () => {
+              if (!confirm("Remove this song from the set?")) return;
+              await removeSongFromSet(setSong.id, set.id);
             });
           }
+        }
+        
+        // Add view details button
+        const viewDetailsBtn = songNode.querySelector(".view-song-details-btn");
+        if (viewDetailsBtn && setSong.song) {
+          viewDetailsBtn.dataset.songId = setSong.song.id;
+          viewDetailsBtn.addEventListener("click", () => {
+            openSongDetailsModal(setSong.song);
+          });
+        }
 
-          songList.appendChild(songNode);
-        });
+        songsList.appendChild(songNode);
+      });
+    
+    // Setup drag and drop for songs (managers only)
+    if (state.profile?.can_manage) {
+      setupSongDragAndDrop(songsList);
     }
+  }
+  
+  // Add "Add Song" card at the end for managers
+  if (state.profile?.can_manage) {
+    const addCard = document.createElement("div");
+    addCard.className = "card set-song-card add-song-card";
+    addCard.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; cursor: pointer; min-height: 150px;">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem; color: var(--accent-color);">+</div>
+        <h4 style="margin: 0; color: var(--text-primary);">Add Song</h4>
+      </div>
+    `;
+    addCard.addEventListener("click", () => {
+      if (state.selectedSet) {
+        openSongModal();
+      }
+    });
+    songsList.appendChild(addCard);
+  } else if (!set.set_songs?.length) {
+    songsList.innerHTML = '<p class="muted">No songs added to this set yet.</p>';
+  }
+}
 
-    setsList.appendChild(node);
+function hideSetDetail() {
+  const dashboard = el("dashboard");
+  const detailView = el("set-detail");
+  
+  dashboard.classList.remove("hidden");
+  detailView.classList.add("hidden");
+  state.selectedSet = null;
+}
+
+// Drag and Drop Functions
+function setupSongDragAndDrop(container) {
+  const items = container.querySelectorAll(".set-song-card.draggable-item");
+  
+  items.forEach((item) => {
+    // Only allow dragging from the drag handle
+    const dragHandle = item.querySelector(".drag-handle");
+    if (dragHandle) {
+      dragHandle.addEventListener("mousedown", (e) => {
+        item.draggable = true;
+      });
+    }
+    
+    item.addEventListener("dragstart", (e) => {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", item.dataset.setSongId);
+      item.classList.add("dragging");
+      // Hide the dragging element visually but keep it in the DOM for positioning
+      item.style.opacity = "0.5";
+    });
+    
+    item.addEventListener("dragend", (e) => {
+      item.classList.remove("dragging");
+      item.style.opacity = "";
+      item.draggable = false;
+      // Remove any drag-over classes
+      container.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
+    });
+    
+    item.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      
+      const dragging = container.querySelector(".dragging");
+      if (!dragging || dragging === item) return;
+      
+      // Remove existing indicators
+      container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+      
+      const afterElement = getDragAfterElement(container, e.clientY, dragging);
+      
+      // Remove drag-over from all items
+      container.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
+      
+      if (afterElement == null) {
+        // Check if we should append before the "Add Song" card
+        const addCard = container.querySelector(".add-song-card");
+        if (addCard && addCard.previousSibling !== dragging) {
+          container.insertBefore(dragging, addCard);
+          // Add indicator before add card
+          const indicator = document.createElement("div");
+          indicator.className = "drop-indicator";
+          container.insertBefore(indicator, addCard);
+        } else if (!addCard) {
+          container.appendChild(dragging);
+          // Add indicator at the end
+          const indicator = document.createElement("div");
+          indicator.className = "drop-indicator";
+          container.appendChild(indicator);
+        }
+      } else {
+        container.insertBefore(dragging, afterElement);
+        // Add indicator before afterElement
+        const indicator = document.createElement("div");
+        indicator.className = "drop-indicator";
+        container.insertBefore(indicator, afterElement);
+      }
+    });
+    
+    item.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      const draggedId = e.dataTransfer.getData("text/plain");
+      const draggedItem = container.querySelector(`[data-set-song-id="${draggedId}"]`);
+      
+      if (!draggedItem) return;
+      
+      // Remove indicators
+      container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+      
+      // Get new order (exclude add-song-card)
+      const items = Array.from(container.querySelectorAll(".set-song-card.draggable-item"));
+      const newOrder = items.map((el, index) => ({
+        id: el.dataset.setSongId,
+        sequence_order: index
+      }));
+      
+      // Update all sequence orders
+      await updateSongOrder(newOrder);
+    });
+  });
+  
+  // Also handle dragover on the container itself (for dropping at the end)
+  container.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    const dragging = container.querySelector(".dragging");
+    if (!dragging) return;
+    
+    const addCard = container.querySelector(".add-song-card");
+    const draggableItems = container.querySelectorAll(".set-song-card.draggable-item:not(.dragging)");
+    const lastItem = draggableItems[draggableItems.length - 1];
+    
+    if (lastItem && e.clientY > lastItem.getBoundingClientRect().bottom) {
+      // Remove existing indicators
+      container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+      
+      if (addCard && dragging.nextSibling !== addCard) {
+        container.insertBefore(dragging, addCard);
+        // Add indicator before add card
+        const indicator = document.createElement("div");
+        indicator.className = "drop-indicator";
+        container.insertBefore(indicator, addCard);
+      } else if (!addCard) {
+        container.appendChild(dragging);
+        // Add indicator at the end
+        const indicator = document.createElement("div");
+        indicator.className = "drop-indicator";
+        container.appendChild(indicator);
+      }
+    }
+  });
+}
+
+function getDragAfterElement(container, y, dragging) {
+  const draggableElements = [...container.querySelectorAll(".set-song-card.draggable-item:not(.dragging)")];
+  
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+async function updateSongOrder(orderedItems) {
+  if (!state.selectedSet) return;
+  
+  // Update all sequence orders in parallel
+  const updates = orderedItems.map(({ id, sequence_order }) =>
+    supabase
+      .from("set_songs")
+      .update({ sequence_order })
+      .eq("id", id)
+  );
+  
+  await Promise.all(updates);
+  
+  // Reload sets to get updated order
+  await loadSets();
+  const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+  if (updatedSet) {
+    state.selectedSet = updatedSet;
+    renderSetDetailSongs(updatedSet);
+  }
+}
+
+function setupLinkDragAndDrop(item, container) {
+  // Only allow dragging from the drag handle
+  const dragHandle = item.querySelector(".drag-handle");
+  if (dragHandle) {
+    dragHandle.addEventListener("mousedown", (e) => {
+      item.draggable = true;
+    });
+  }
+  
+  item.addEventListener("dragstart", (e) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", item.dataset.linkId);
+    item.classList.add("dragging");
+    item.style.opacity = "0.5";
+  });
+  
+  item.addEventListener("dragend", (e) => {
+    item.classList.remove("dragging");
+    item.style.opacity = "";
+    item.draggable = false;
+    // Remove all drop indicators
+    container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+  });
+  
+  item.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    
+    const dragging = container.querySelector(".dragging");
+    if (!dragging || dragging === item) return;
+    
+    // Remove existing indicators
+    container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+    
+    const afterElement = getDragAfterElementForLinks(container, e.clientY, dragging);
+    
+    if (afterElement == null) {
+      // Dropping at the end
+      container.appendChild(dragging);
+      // Add indicator at the end
+      const indicator = document.createElement("div");
+      indicator.className = "drop-indicator";
+      container.appendChild(indicator);
+    } else {
+      container.insertBefore(dragging, afterElement);
+      // Add indicator before the afterElement
+      const indicator = document.createElement("div");
+      indicator.className = "drop-indicator";
+      container.insertBefore(indicator, afterElement);
+    }
+  });
+  
+  item.addEventListener("drop", (e) => {
+    e.preventDefault();
+    // Order will be saved when the form is submitted
+    updateLinkOrder(container);
+    // Remove indicators
+    container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+  });
+  
+  // Also handle dragover on container for end-of-list drops
+  if (!container.dataset.linkDragSetup) {
+    container.dataset.linkDragSetup = "true";
+    container.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      const dragging = container.querySelector(".dragging");
+      if (!dragging) return;
+      
+      const items = container.querySelectorAll(".song-link-row.draggable-item:not(.dragging)");
+      if (items.length === 0) return;
+      
+      const lastItem = items[items.length - 1];
+      if (lastItem && e.clientY > lastItem.getBoundingClientRect().bottom) {
+        // Remove existing indicators
+        container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+        
+        if (dragging.nextSibling !== lastItem.nextSibling) {
+          container.appendChild(dragging);
+          // Add indicator at the end
+          const indicator = document.createElement("div");
+          indicator.className = "drop-indicator";
+          container.appendChild(indicator);
+        }
+      }
+    });
+  }
+}
+
+function getDragAfterElementForLinks(container, y, dragging) {
+  const draggableElements = [...container.querySelectorAll(".song-link-row.draggable-item:not(.dragging)")];
+  
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function updateLinkOrder(container) {
+  const items = Array.from(container.querySelectorAll(".song-link-row.draggable-item"));
+  items.forEach((item, index) => {
+    item.dataset.displayOrder = index;
   });
 }
 
@@ -422,12 +1435,6 @@ function openSetModal(set = null) {
   el("set-title").value = set?.title ?? "";
   el("set-date").value = set?.scheduled_date ?? "";
   el("set-description").value = set?.description ?? "";
-
-  const hasSet = Boolean(set);
-  el("set-songs-section").classList.toggle("hidden", !hasSet);
-  if (hasSet) {
-    loadSetSongs(set.id);
-  }
 }
 
 function closeSetModal() {
@@ -436,7 +1443,6 @@ function closeSetModal() {
   el("set-form").reset();
   state.selectedSet = null;
   state.currentSetSongs = [];
-  el("set-songs-list").innerHTML = "";
 }
 
 async function handleSetSubmit(event) {
@@ -470,6 +1476,14 @@ async function handleSetSubmit(event) {
 
   closeSetModal();
   await loadSets();
+  
+  // Refresh detail view if it's showing the edited set
+  if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      showSetDetail(updatedSet);
+    }
+  }
 }
 
 async function loadSetSongs(setId) {
@@ -494,8 +1508,32 @@ async function loadSetSongs(setId) {
   renderSetSongsEditor();
 }
 
+async function removeSongFromSet(setSongId, setId) {
+  const { error } = await supabase
+    .from("set_songs")
+    .delete()
+    .eq("id", setSongId);
+  
+  if (error) {
+    console.error(error);
+    alert("Unable to remove song from set.");
+    return;
+  }
+  
+  // Reload the set to refresh the detail view
+  await loadSets();
+  if (state.selectedSet && state.selectedSet.id === setId) {
+    const updatedSet = state.sets.find(s => s.id === setId);
+    if (updatedSet) {
+      state.selectedSet = updatedSet;
+      renderSetDetailSongs(updatedSet);
+    }
+  }
+}
+
 function renderSetSongsEditor() {
   const container = el("set-songs-list");
+  if (!container) return;
   container.innerHTML = "";
   if (!state.currentSetSongs.length) {
     container.innerHTML = `<p class="muted">No songs in this set yet.</p>`;
@@ -509,7 +1547,10 @@ function renderSetSongsEditor() {
       <div class="set-song-header">
         <div>
           <strong>${setSong.song?.title ?? "Untitled"}</strong>
-          <p class="song-meta">${setSong.song?.song_key ?? ""}</p>
+          <p class="song-meta">${[
+            setSong.song?.song_key,
+            setSong.song?.time_signature,
+          ].filter(Boolean).join(" • ") || ""}</p>
         </div>
         <button class="btn small ghost" data-remove="${setSong.id}">Remove</button>
       </div>
@@ -517,17 +1558,7 @@ function renderSetSongsEditor() {
     `;
 
     div.querySelector("[data-remove]")?.addEventListener("click", async () => {
-      if (!confirm("Remove this song from the set?")) return;
-      const { error } = await supabase
-        .from("set_songs")
-        .delete()
-        .eq("id", setSong.id);
-      if (error) {
-        console.error(error);
-        return;
-      }
-      await loadSetSongs(state.selectedSet.id);
-      await loadSets();
+      await removeSongFromSet(setSong.id, setSong.set_id);
     });
 
     container.appendChild(div);
@@ -549,20 +1580,30 @@ function closeSongModal() {
   el("assignments-list").innerHTML = "";
 }
 
+let songDropdown = null;
+
 function populateSongOptions() {
-  const select = el("song-select");
-  select.innerHTML = "";
-  state.songs.forEach((song) => {
-    const option = document.createElement("option");
-    option.value = song.id;
-    option.textContent = song.title;
-    select.appendChild(option);
-  });
+  const container = el("song-select-container");
+  if (!container) return;
+  
+  container.innerHTML = "";
+  
+  const options = state.songs.map(song => ({
+    value: song.id,
+    label: song.title
+  }));
+  
+  songDropdown = createSearchableDropdown(options, "Select a song...");
+  container.appendChild(songDropdown);
 }
 
 async function handleAddSongToSet(event) {
   event.preventDefault();
-  const songId = el("song-select").value;
+  const songId = songDropdown?.getValue();
+  if (!songId) {
+    alert("Please select a song.");
+    return;
+  }
   const notes = el("song-notes").value;
   const assignments = collectAssignments();
 
@@ -599,14 +1640,29 @@ async function handleAddSongToSet(event) {
   }
 
   closeSongModal();
-  await loadSetSongs(state.selectedSet.id);
   await loadSets();
+  
+  // Refresh detail view if it's showing
+  if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      state.selectedSet = updatedSet;
+      renderSetDetailSongs(updatedSet);
+    }
+  }
 }
 
 function addAssignmentInput() {
   const container = el("assignments-list");
   const div = document.createElement("div");
   div.className = "assignment-row";
+  
+  // Build person dropdown options
+  const personOptions = state.people.map(p => ({
+    value: p.id,
+    label: p.full_name
+  }));
+  
   div.innerHTML = `
     <label>
       Role
@@ -614,10 +1670,21 @@ function addAssignmentInput() {
     </label>
     <label>
       Person
-      <input type="text" class="assignment-person-input" placeholder="Name" required />
+      <div class="assignment-person-container"></div>
     </label>
     <button type="button" class="btn small ghost remove-assignment">Remove</button>
   `;
+  
+  // Create searchable dropdown for person
+  const personContainer = div.querySelector(".assignment-person-container");
+  const personDropdown = createSearchableDropdown(
+    personOptions, 
+    "Select a person...",
+    null,
+    state.profile?.can_manage ? (name) => openInviteModal(name) : null
+  );
+  personContainer.appendChild(personDropdown);
+  
   div.querySelector(".remove-assignment").addEventListener("click", () => {
     container.removeChild(div);
   });
@@ -626,19 +1693,1442 @@ function addAssignmentInput() {
 
 function collectAssignments() {
   const roles = Array.from(document.querySelectorAll(".assignment-role-input"));
-  const people = Array.from(
-    document.querySelectorAll(".assignment-person-input")
+  const personContainers = Array.from(
+    document.querySelectorAll(".assignment-person-container")
   );
   const assignments = [];
 
   roles.forEach((roleInput, index) => {
     const role = roleInput.value.trim();
-    const person = people[index]?.value.trim();
-    if (role && person) {
-      assignments.push({ role, person_name: person });
+    const personContainer = personContainers[index];
+    const personDropdown = personContainer?.querySelector(".searchable-dropdown");
+    const personId = personDropdown?.getValue();
+    if (role && personId) {
+      assignments.push({ role, person_id: personId });
     }
   });
   return assignments;
+}
+
+// Edit Set Song Functions
+function openEditSetSongModal(setSong) {
+  if (!state.profile?.can_manage || !setSong) return;
+  
+  const modal = el("edit-set-song-modal");
+  const form = el("edit-set-song-form");
+  const notesInput = el("edit-set-song-notes");
+  const assignmentsList = el("edit-assignments-list");
+  
+  // Store the set song ID and song ID for saving/editing
+  form.dataset.setSongId = setSong.id;
+  form.dataset.songId = setSong.song_id || setSong.song?.id || null;
+  
+  // Populate notes
+  notesInput.value = setSong.notes || "";
+  
+  // Clear and populate assignments
+  assignmentsList.innerHTML = "";
+  if (setSong.song_assignments && setSong.song_assignments.length > 0) {
+    setSong.song_assignments.forEach((assignment) => {
+      addEditAssignmentInput(assignment);
+    });
+  }
+  
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeEditSetSongModal() {
+  const modal = el("edit-set-song-modal");
+  modal.classList.add("hidden");
+  document.body.style.overflow = "";
+  el("edit-set-song-form").reset();
+  el("edit-assignments-list").innerHTML = "";
+  delete el("edit-set-song-form").dataset.setSongId;
+}
+
+function addEditAssignmentInput(existingAssignment = null) {
+  const container = el("edit-assignments-list");
+  const div = document.createElement("div");
+  div.className = "assignment-row";
+  
+  // Build person dropdown options
+  const personOptions = state.people.map(p => ({
+    value: p.id,
+    label: p.full_name
+  }));
+  
+  div.innerHTML = `
+    <label>
+      Role
+      <input type="text" class="edit-assignment-role-input" placeholder="Lead Vocal" value="${existingAssignment?.role || ''}" required />
+    </label>
+    <label>
+      Person
+      <div class="edit-assignment-person-container"></div>
+    </label>
+    ${existingAssignment?.id ? `<input type="hidden" class="edit-assignment-id" value="${existingAssignment.id}" />` : ''}
+    <button type="button" class="btn small ghost remove-edit-assignment">Remove</button>
+  `;
+  
+  // Create searchable dropdown for person
+  const personContainer = div.querySelector(".edit-assignment-person-container");
+  const personDropdown = createSearchableDropdown(
+    personOptions, 
+    "Select a person...",
+    existingAssignment?.person_id || null,
+    state.profile?.can_manage ? (name) => openInviteModal(name) : null
+  );
+  personContainer.appendChild(personDropdown);
+  
+  div.querySelector(".remove-edit-assignment").addEventListener("click", () => {
+    container.removeChild(div);
+  });
+  container.appendChild(div);
+}
+
+function collectEditAssignments() {
+  const roles = Array.from(document.querySelectorAll(".edit-assignment-role-input"));
+  const personContainers = Array.from(
+    document.querySelectorAll(".edit-assignment-person-container")
+  );
+  const ids = Array.from(document.querySelectorAll(".edit-assignment-id"));
+  const assignments = [];
+
+  roles.forEach((roleInput, index) => {
+    const role = roleInput.value.trim();
+    const personContainer = personContainers[index];
+    const personDropdown = personContainer?.querySelector(".searchable-dropdown");
+    const personId = personDropdown?.getValue();
+    const assignmentId = ids[index]?.value;
+    if (role && personId) {
+      assignments.push({ 
+        role, 
+        person_id: personId,
+        id: assignmentId || null
+      });
+    }
+  });
+
+  return assignments;
+}
+
+async function handleEditSetSongSubmit(event) {
+  event.preventDefault();
+  const form = el("edit-set-song-form");
+  const setSongId = form.dataset.setSongId;
+  
+  if (!setSongId) {
+    alert("Missing set song ID.");
+    return;
+  }
+  
+  const notes = el("edit-set-song-notes").value.trim();
+  const assignments = collectEditAssignments();
+  
+  // Update notes
+  const { error: updateError } = await supabase
+    .from("set_songs")
+    .update({ notes })
+    .eq("id", setSongId);
+  
+  if (updateError) {
+    console.error(updateError);
+    alert("Unable to update song notes.");
+    return;
+  }
+  
+  // Get existing assignments
+  const { data: existingAssignments } = await supabase
+    .from("song_assignments")
+    .select("*")
+    .eq("set_song_id", setSongId);
+  
+  // Determine which to delete, update, and insert
+  const existingIds = new Set(existingAssignments?.map(a => a.id) || []);
+  const newAssignments = assignments.filter(a => !a.id);
+  const updatedAssignments = assignments.filter(a => a.id && existingIds.has(a.id));
+  const deletedIds = Array.from(existingIds).filter(id => 
+    !assignments.some(a => a.id === id)
+  );
+  
+  // Delete removed assignments
+  if (deletedIds.length > 0) {
+    await supabase
+      .from("song_assignments")
+      .delete()
+      .in("id", deletedIds);
+  }
+  
+  // Update existing assignments
+  for (const assignment of updatedAssignments) {
+    await supabase
+      .from("song_assignments")
+      .update({
+        role: assignment.role,
+        person_id: assignment.person_id,
+      })
+      .eq("id", assignment.id);
+  }
+  
+  // Insert new assignments
+  if (newAssignments.length > 0) {
+    await supabase
+      .from("song_assignments")
+      .insert(
+        newAssignments.map((assignment) => ({
+          role: assignment.role,
+          person_id: assignment.person_id,
+          set_song_id: setSongId,
+        }))
+      );
+  }
+  
+  closeEditSetSongModal();
+  await loadSets();
+  
+  // Refresh detail view if it's showing
+  if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      state.selectedSet = updatedSet;
+      renderSetDetailSongs(updatedSet);
+    }
+  }
+}
+
+async function deleteSet(set) {
+  if (!state.profile?.can_manage) return;
+  
+  if (!confirm(`Are you sure you want to delete "${set.title}"? This will also delete all songs and assignments in this set.`)) {
+    return;
+  }
+  
+  const { error } = await supabase
+    .from("sets")
+    .delete()
+    .eq("id", set.id);
+  
+  if (error) {
+    console.error(error);
+    alert("Unable to delete set. Check console.");
+    return;
+  }
+  
+  // Hide detail view if showing the deleted set
+  if (state.selectedSet?.id === set.id) {
+    hideSetDetail();
+  }
+  
+  await loadSets();
+}
+
+async function deleteSong(songId) {
+  if (!state.profile?.can_manage) return;
+  
+  const song = state.songs.find(s => s.id === songId);
+  const songTitle = song?.title || "this song";
+  
+  if (!confirm(`Are you sure you want to delete "${songTitle}"? This will remove it from all sets.`)) {
+    return;
+  }
+  
+  const { error } = await supabase
+    .from("songs")
+    .delete()
+    .eq("id", songId);
+  
+  if (error) {
+    console.error(error);
+    alert("Unable to delete song. Check console.");
+    return;
+  }
+  
+  // Close details modal if this song is open
+  if (state.currentSongDetailsId === songId) {
+    closeSongDetailsModal();
+  }
+  
+  await loadSongs();
+  
+  // Update songs tab if it's currently visible
+  if (!el("songs-tab")?.classList.contains("hidden")) {
+    renderSongCatalog();
+  }
+  
+  // Refresh set detail view if it's showing
+  if (state.selectedSet) {
+    await loadSets();
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      state.selectedSet = updatedSet;
+      renderSetDetailSongs(updatedSet);
+    }
+  }
+}
+
+// Invite Member Functions
+function openInviteModal(prefilledName = null) {
+  if (!state.profile?.can_manage) return;
+  const modal = el("invite-modal");
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  el("invite-form").reset();
+  if (prefilledName) {
+    el("invite-name").value = prefilledName;
+  }
+  el("invite-message").textContent = "";
+}
+
+function closeInviteModal() {
+  const modal = el("invite-modal");
+  modal.classList.add("hidden");
+  document.body.style.overflow = "";
+  el("invite-form").reset();
+  el("invite-message").textContent = "";
+}
+
+async function handleInviteSubmit(event) {
+  event.preventDefault();
+  if (!state.profile?.can_manage) return;
+  
+  const email = el("invite-email").value.trim();
+  const name = el("invite-name").value.trim();
+  const messageEl = el("invite-message");
+  
+  if (!email) {
+    messageEl.textContent = "Please enter an email address.";
+    messageEl.classList.add("error-text");
+    messageEl.classList.remove("muted");
+    return;
+  }
+  
+  messageEl.textContent = "Sending invite...";
+  messageEl.classList.remove("error-text");
+  messageEl.classList.add("muted");
+  
+  // Use signInWithOtp with shouldCreateUser to send invite
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: window.location.origin,
+      data: {
+        full_name: name || undefined,
+      },
+    },
+  });
+  
+  if (error) {
+    console.error("Invite error:", error);
+    messageEl.textContent = error.message || "Unable to send invite. Please try again.";
+    messageEl.classList.add("error-text");
+    messageEl.classList.remove("muted");
+    return;
+  }
+  
+  messageEl.textContent = `Invite sent to ${email}! They'll receive an email with a sign-in link. When they click it, their account will be created automatically.`;
+  messageEl.classList.remove("error-text");
+  messageEl.classList.add("muted");
+  el("invite-form").reset();
+  
+  // Optionally store the invite info for profile creation
+  // We'll handle profile creation in fetchProfile when they first sign in
+}
+
+// Edit Person Functions
+function openEditPersonModal(person) {
+  if (!state.profile?.can_manage || !person) return;
+  
+  const modal = el("edit-person-modal");
+  const form = el("edit-person-form");
+  
+  if (!modal || !form) return;
+  
+  el("edit-person-name").value = person.full_name || "";
+  el("edit-person-email").value = person.email || "";
+  el("edit-person-email").disabled = true; // Email is read-only
+  
+  form.dataset.personId = person.id;
+  
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeEditPersonModal() {
+  const modal = el("edit-person-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+    el("edit-person-form")?.reset();
+    delete el("edit-person-form")?.dataset.personId;
+    const emailInput = el("edit-person-email");
+    if (emailInput) emailInput.disabled = false;
+  }
+}
+
+async function handleEditPersonSubmit(event) {
+  event.preventDefault();
+  if (!state.profile?.can_manage) return;
+  
+  const form = el("edit-person-form");
+  const personId = form.dataset.personId;
+  const fullName = el("edit-person-name").value.trim();
+  
+  if (!personId || !fullName) {
+    alert("Missing required information.");
+    return;
+  }
+  
+  const { error } = await supabase
+    .from("profiles")
+    .update({ full_name: fullName })
+    .eq("id", personId);
+  
+  if (error) {
+    console.error(error);
+    alert("Unable to update member. Check console.");
+    return;
+  }
+  
+  closeEditPersonModal();
+  await loadPeople();
+}
+
+async function deletePerson(person) {
+  if (!state.profile?.can_manage || !person) return;
+  
+  if (person.id === state.profile.id) {
+    alert("You cannot remove yourself from the band.");
+    return;
+  }
+  
+  if (!confirm(`Are you sure you want to remove "${person.full_name}" from the band? This will also remove all their assignments.`)) {
+    return;
+  }
+  
+  // Delete the profile - this will cascade delete all assignments due to foreign key
+  const { error } = await supabase
+    .from("profiles")
+    .delete()
+    .eq("id", person.id);
+  
+  if (error) {
+    console.error(error);
+    alert("Unable to remove member. Check console.");
+    return;
+  }
+  
+  // Reload people and sets (to refresh assignments)
+  await Promise.all([loadPeople(), loadSets()]);
+  
+  // Refresh UI if on sets tab
+  if (!el("sets-tab")?.classList.contains("hidden")) {
+    renderSets();
+  }
+}
+
+// Song Catalog Management
+function openSongCatalogModal() {
+  if (!state.profile?.can_manage) return;
+  const modal = el("song-catalog-modal");
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  renderSongCatalog();
+}
+
+function closeSongCatalogModal() {
+  const modal = el("song-catalog-modal");
+  modal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+function renderSongCatalog() {
+  const list = el("songs-catalog-list");
+  if (!list) return;
+  
+  list.innerHTML = "";
+  
+  if (!state.songs || state.songs.length === 0) {
+    list.innerHTML = '<p class="muted">No songs yet. Create your first song!</p>';
+    return;
+  }
+  
+  state.songs.forEach((song) => {
+    const div = document.createElement("div");
+    div.className = "card set-song-card";
+    div.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div style="flex: 1;">
+          <h4 class="song-title" style="margin: 0 0 0.5rem 0;">${escapeHtml(song.title)}</h4>
+          <div class="song-meta-text" style="display: flex; gap: 1rem;">
+            ${song.bpm ? `<span>BPM: ${song.bpm}</span>` : ''}
+            ${song.song_key ? `<span>Key: ${song.song_key}</span>` : ''}
+            ${song.time_signature ? `<span>Time: ${escapeHtml(song.time_signature)}</span>` : ''}
+            ${song.duration_seconds ? `<span>Duration: ${formatDuration(song.duration_seconds)}</span>` : ''}
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
+          ${song.bpm ? `
+          <button class="btn small ghost click-track-btn" data-song-id="${song.id}" data-bpm="${song.bpm}" title="Click Track">
+            ${state.metronome.isPlaying && state.metronome.bpm === song.bpm ? '⏸ Stop' : '▶ Click'}
+          </button>
+          ` : ''}
+          ${state.profile?.can_manage ? `
+          <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
+          <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+    
+    const viewDetailsBtn = div.querySelector(".view-song-details-catalog-btn");
+    if (viewDetailsBtn) {
+      viewDetailsBtn.addEventListener("click", () => {
+        openSongDetailsModal(song);
+      });
+    }
+    
+    const editBtn = div.querySelector(".edit-song-btn");
+    if (editBtn) {
+      editBtn.addEventListener("click", () => {
+        openSongEditModal(song.id);
+      });
+    }
+    
+    const deleteBtn = div.querySelector(".delete-song-btn");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", () => {
+        deleteSong(song.id);
+      });
+    }
+    
+    const clickTrackBtn = div.querySelector(".click-track-btn");
+    if (clickTrackBtn) {
+      clickTrackBtn.addEventListener("click", () => {
+        const bpm = parseInt(clickTrackBtn.dataset.bpm, 10);
+        toggleMetronome(bpm);
+        updateClickTrackButtons();
+      });
+    }
+    
+    list.appendChild(div);
+  });
+}
+
+function openSongEditModal(songId = null) {
+  if (!state.profile?.can_manage) return;
+  const modal = el("song-edit-modal");
+  const title = el("song-edit-modal-title");
+  const form = el("song-edit-form");
+  
+  // Check if song modal is already open (for stacking)
+  const songModalOpen = !el("song-modal").classList.contains("hidden");
+  
+  if (songId) {
+    const song = state.songs.find(s => s.id === songId);
+    if (song) {
+      title.textContent = "Edit Song";
+      el("song-edit-title").value = song.title || "";
+      el("song-edit-bpm").value = song.bpm || "";
+      el("song-edit-key").value = song.song_key || "";
+      el("song-edit-time-signature").value = song.time_signature || "";
+      el("song-edit-duration").value = song.duration_seconds ? formatDuration(song.duration_seconds) : "";
+      el("song-edit-description").value = song.description || "";
+      form.dataset.songId = songId;
+      renderSongLinks(song.song_links || []);
+    }
+  } else {
+    title.textContent = "New Song";
+    form.reset();
+    delete form.dataset.songId;
+    renderSongLinks([]);
+  }
+  
+  modal.classList.remove("hidden");
+  // Only set body overflow if song modal isn't already open
+  if (!songModalOpen) {
+    document.body.style.overflow = "hidden";
+  }
+}
+
+function closeSongEditModal() {
+  const modal = el("song-edit-modal");
+  modal.classList.add("hidden");
+  
+  // Check if song modal is still open
+  const songModalOpen = !el("song-modal").classList.contains("hidden");
+  
+  // Only reset body overflow if no other modals are open
+  if (!songModalOpen) {
+    document.body.style.overflow = "";
+  }
+  
+  el("song-edit-form").reset();
+  delete el("song-edit-form").dataset.songId;
+  el("song-links-list").innerHTML = "";
+  
+  // Reset creatingSongFromModal if cancelled (not saved)
+  // This will be set to false in handleSongEditSubmit if saved successfully
+  if (state.creatingSongFromModal) {
+    state.creatingSongFromModal = false;
+  }
+}
+
+async function openSongDetailsModal(song) {
+  if (!song) return;
+  
+  const modal = el("song-details-modal");
+  const content = el("song-details-content");
+  const title = el("song-details-title");
+  
+  if (!modal || !content) return;
+  
+  // Track which song is open
+  state.currentSongDetailsId = song.id;
+  
+  title.textContent = song.title || "Song Details";
+  
+  // If song_links aren't loaded, fetch them
+  let songWithLinks = song;
+  if (!song.song_links) {
+    const { data } = await supabase
+      .from("songs")
+      .select(`
+        *,
+        song_links (
+          id,
+          title,
+          url,
+          display_order
+        )
+      `)
+      .eq("id", song.id)
+      .single();
+    
+    if (data) {
+      songWithLinks = data;
+    }
+  }
+  
+  // Render all song information in an expanded view
+  content.innerHTML = `
+    <div class="song-details-section">
+      <h2 class="song-details-title">${escapeHtml(songWithLinks.title || "Untitled")}</h2>
+      
+      <div class="song-details-meta">
+        ${songWithLinks.bpm ? `<div class="detail-item">
+          <span class="detail-label">BPM</span>
+          <span class="detail-value">${songWithLinks.bpm}</span>
+        </div>` : ''}
+        ${songWithLinks.song_key ? `<div class="detail-item">
+          <span class="detail-label">Key</span>
+          <span class="detail-value">${escapeHtml(songWithLinks.song_key)}</span>
+        </div>` : ''}
+        ${songWithLinks.time_signature ? `<div class="detail-item">
+          <span class="detail-label">Time Signature</span>
+          <span class="detail-value">${escapeHtml(songWithLinks.time_signature)}</span>
+        </div>` : ''}
+        ${songWithLinks.duration_seconds ? `<div class="detail-item">
+          <span class="detail-label">Duration</span>
+          <span class="detail-value">${formatDuration(songWithLinks.duration_seconds)}</span>
+        </div>` : ''}
+      </div>
+      
+      ${songWithLinks.description ? `
+      <div class="song-details-section">
+        <h3 class="section-title">Description</h3>
+        <p class="song-details-description">${escapeHtml(songWithLinks.description)}</p>
+      </div>
+      ` : ''}
+      
+      ${songWithLinks.song_links && songWithLinks.song_links.length > 0 ? `
+      <div class="song-details-section">
+        <h3 class="section-title">Resources & Links</h3>
+        <div class="song-details-links"></div>
+      </div>
+      ` : ''}
+    </div>
+  `;
+  
+  // Render links if they exist
+  if (songWithLinks.song_links && songWithLinks.song_links.length > 0) {
+    const linksContainer = content.querySelector(".song-details-links");
+    if (linksContainer) {
+      renderSongLinksDisplay(songWithLinks.song_links, linksContainer);
+    }
+  }
+  
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  
+  // Close on outside click
+  const handleOutsideClick = (e) => {
+    if (e.target === modal) {
+      closeSongDetailsModal();
+      modal.removeEventListener("click", handleOutsideClick);
+    }
+  };
+  modal.addEventListener("click", handleOutsideClick);
+  
+  // Close on Escape key
+  const handleEscape = (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+      closeSongDetailsModal();
+      document.removeEventListener("keydown", handleEscape);
+    }
+  };
+  document.addEventListener("keydown", handleEscape);
+}
+
+function closeSongDetailsModal() {
+  const modal = el("song-details-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+    state.currentSongDetailsId = null;
+  }
+}
+
+function renderSongLinks(links) {
+  const container = el("song-links-list");
+  if (!container) return;
+  
+  container.innerHTML = "";
+  
+  // Sort by display_order
+  const sortedLinks = [...links].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  
+  sortedLinks.forEach((link, index) => {
+    const div = document.createElement("div");
+    div.className = "song-link-row draggable-item";
+    div.draggable = state.profile?.can_manage || false;
+    div.dataset.linkId = link.id || `new-${index}`;
+    div.dataset.displayOrder = link.display_order || index;
+    div.innerHTML = `
+      ${state.profile?.can_manage ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
+      <label>
+        Title
+        <input type="text" class="song-link-title-input" placeholder="Recording" value="${escapeHtml(link.title || '')}" required />
+      </label>
+      <label>
+        URL
+        <input type="url" class="song-link-url-input" placeholder="https://..." value="${escapeHtml(link.url || '')}" required />
+      </label>
+      ${link.id ? `<input type="hidden" class="song-link-id" value="${link.id}" />` : ''}
+      <button type="button" class="btn small ghost remove-song-link">Remove</button>
+    `;
+    
+    div.querySelector(".remove-song-link").addEventListener("click", () => {
+      container.removeChild(div);
+    });
+    
+    // Setup drag and drop for links
+    if (state.profile?.can_manage) {
+      setupLinkDragAndDrop(div, container);
+    }
+    
+    container.appendChild(div);
+  });
+}
+
+function addSongLinkInput() {
+  const container = el("song-links-list");
+  if (!container) return;
+  
+  const existingItems = container.querySelectorAll(".song-link-row");
+  const nextOrder = existingItems.length;
+  
+  const div = document.createElement("div");
+  div.className = "song-link-row draggable-item";
+  div.draggable = state.profile?.can_manage || false;
+  div.dataset.linkId = `new-${Date.now()}`;
+  div.dataset.displayOrder = nextOrder;
+  div.innerHTML = `
+    ${state.profile?.can_manage ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
+    <label>
+      Title
+      <input type="text" class="song-link-title-input" placeholder="Recording" required />
+    </label>
+    <label>
+      URL
+      <input type="url" class="song-link-url-input" placeholder="https://..." required />
+    </label>
+    <button type="button" class="btn small ghost remove-song-link">Remove</button>
+  `;
+  
+  div.querySelector(".remove-song-link").addEventListener("click", () => {
+    container.removeChild(div);
+    updateLinkOrder(container);
+  });
+  
+  // Setup drag and drop for new link
+  if (state.profile?.can_manage) {
+    setupLinkDragAndDrop(div, container);
+  }
+  
+  container.appendChild(div);
+}
+
+function collectSongLinks() {
+  const container = el("song-links-list");
+  if (!container) return [];
+  
+  // Get rows in DOM order (the order they appear visually after reordering)
+  const rows = Array.from(container.querySelectorAll(".song-link-row"));
+  const links = [];
+  
+  rows.forEach((row, index) => {
+    const titleInput = row.querySelector(".song-link-title-input");
+    const urlInput = row.querySelector(".song-link-url-input");
+    const idInput = row.querySelector(".song-link-id");
+    
+    const title = titleInput?.value.trim();
+    const url = urlInput?.value.trim();
+    const id = idInput?.value;
+    
+    // Use the index (DOM position) as the display_order
+    // This ensures the order matches what the user sees after dragging
+    if (title && url) {
+      links.push({
+        id: id || null,
+        title,
+        url,
+        display_order: index,
+      });
+    }
+  });
+  
+  return links;
+}
+
+async function handleSongEditSubmit(event) {
+  event.preventDefault();
+  const form = el("song-edit-form");
+  const songId = form.dataset.songId;
+  const title = el("song-edit-title").value.trim();
+  const bpm = el("song-edit-bpm").value ? parseInt(el("song-edit-bpm").value) : null;
+  const songKey = el("song-edit-key").value.trim() || null;
+  const timeSignature = el("song-edit-time-signature").value.trim() || null;
+  const duration = parseDuration(el("song-edit-duration").value);
+  const description = el("song-edit-description").value.trim() || null;
+  
+  if (!title) {
+    alert("Title is required.");
+    return;
+  }
+  
+  const songData = {
+    title,
+    bpm,
+    song_key: songKey,
+    time_signature: timeSignature,
+    duration_seconds: duration,
+    description,
+    created_by: state.session.user.id,
+  };
+  
+  let response;
+  if (songId) {
+    // Update existing song
+    response = await supabase
+      .from("songs")
+      .update(songData)
+      .eq("id", songId)
+      .select()
+      .single();
+  } else {
+    // Create new song
+    response = await supabase
+      .from("songs")
+      .insert(songData)
+      .select()
+      .single();
+  }
+  
+  if (response.error) {
+    console.error(response.error);
+    alert("Unable to save song. Check console.");
+    return;
+  }
+  
+  const finalSongId = response.data.id;
+  const links = collectSongLinks();
+  
+  // Get existing links
+  const { data: existingLinks } = await supabase
+    .from("song_links")
+    .select("*")
+    .eq("song_id", finalSongId);
+  
+  // Determine which to delete, update, and insert
+  const existingIds = new Set(existingLinks?.map(l => l.id) || []);
+  const newLinks = links.filter(l => !l.id);
+  const updatedLinks = links.filter(l => l.id && existingIds.has(l.id));
+  const deletedIds = Array.from(existingIds).filter(id => 
+    !links.some(l => l.id === id)
+  );
+  
+  // Delete removed links
+  if (deletedIds.length > 0) {
+    await supabase
+      .from("song_links")
+      .delete()
+      .in("id", deletedIds);
+  }
+  
+  // Update existing links
+  for (const link of updatedLinks) {
+    await supabase
+      .from("song_links")
+      .update({
+        title: link.title,
+        url: link.url,
+        display_order: link.display_order,
+      })
+      .eq("id", link.id);
+  }
+  
+  // Insert new links
+  if (newLinks.length > 0) {
+    await supabase
+      .from("song_links")
+      .insert(
+        newLinks.map(link => ({
+          song_id: finalSongId,
+          title: link.title,
+          url: link.url,
+          display_order: link.display_order,
+        }))
+      );
+  }
+  
+  // Reload songs and update catalog
+  await loadSongs();
+  
+  // Update songs tab if it's currently visible
+  if (!el("songs-tab")?.classList.contains("hidden")) {
+    renderSongCatalog();
+  }
+  
+  // If details modal is open for this song, refresh it
+  if (state.currentSongDetailsId === finalSongId) {
+    const updatedSong = state.songs.find(s => s.id === finalSongId);
+    if (updatedSong) {
+      // Fetch full song data with links
+      const { data } = await supabase
+        .from("songs")
+        .select(`
+          *,
+          song_links (
+            id,
+            title,
+            url
+          )
+        `)
+        .eq("id", finalSongId)
+        .single();
+      
+      if (data) {
+        await openSongDetailsModal(data);
+      }
+    }
+  }
+  
+  // Refresh set detail view if it's showing this song
+  if (state.selectedSet) {
+    await loadSets();
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      state.selectedSet = updatedSet;
+      renderSetDetailSongs(updatedSet);
+    }
+  }
+  
+  closeSongEditModal();
+  
+  // If we were creating from the song modal, keep it open and select the new song
+  if (state.creatingSongFromModal && !songId) {
+    state.creatingSongFromModal = false;
+    // Song modal should still be open, just refresh the options and select the new song
+    populateSongOptions();
+    if (songDropdown) {
+      songDropdown.setValue(response.data.id);
+    }
+  } else {
+    state.creatingSongFromModal = false;
+    // If song select is open, refresh it
+    if (!el("song-modal").classList.contains("hidden")) {
+      populateSongOptions();
+      // Select the newly created song
+      if (!songId && songDropdown) {
+        songDropdown.setValue(response.data.id);
+      }
+    }
+  }
+}
+
+function formatDuration(seconds) {
+  if (!seconds) return "";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function parseDuration(durationStr) {
+  if (!durationStr || !durationStr.trim()) return null;
+  
+  const trimmed = durationStr.trim();
+  
+  // Handle MM:SS format
+  const parts = trimmed.split(":");
+  if (parts.length === 2) {
+    const mins = parseInt(parts[0], 10);
+    const secs = parseInt(parts[1], 10);
+    if (!isNaN(mins) && !isNaN(secs) && secs >= 0 && secs < 60 && mins >= 0) {
+      return mins * 60 + secs;
+    }
+  }
+  
+  // Handle just minutes (e.g., "3" or "3:")
+  if (parts.length === 1 || (parts.length === 2 && parts[1] === "")) {
+    const mins = parseInt(parts[0], 10);
+    if (!isNaN(mins) && mins >= 0) {
+      return mins * 60;
+    }
+  }
+  
+  // Fallback: try to parse as just a number (seconds) for backwards compatibility
+  const asNumber = parseInt(trimmed, 10);
+  if (!isNaN(asNumber) && asNumber >= 0) {
+    return asNumber;
+  }
+  
+  return null;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function getFaviconUrl(url) {
+  if (!url) return null;
+  try {
+    const urlObj = new URL(url);
+    // Use Google's favicon service as a fallback
+    return `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`;
+  } catch (e) {
+    return null;
+  }
+}
+
+function renderSongLinksDisplay(links, container) {
+  if (!links || links.length === 0) return;
+  
+  const linksContainer = document.createElement("div");
+  linksContainer.style.marginTop = "1rem";
+  linksContainer.style.display = "flex";
+  linksContainer.style.flexDirection = "column";
+  linksContainer.style.gap = "0.5rem";
+  
+  links.forEach(link => {
+    const linkEl = document.createElement("a");
+    linkEl.href = link.url;
+    linkEl.target = "_blank";
+    linkEl.rel = "noopener noreferrer";
+    linkEl.className = "song-link-display";
+    
+    const favicon = document.createElement("img");
+    favicon.className = "song-link-favicon";
+    favicon.src = getFaviconUrl(link.url);
+    favicon.alt = "";
+    favicon.onerror = () => {
+      favicon.style.display = "none";
+    };
+    
+    const content = document.createElement("div");
+    content.className = "song-link-content";
+    
+    const title = document.createElement("div");
+    title.className = "song-link-title";
+    title.textContent = link.title;
+    
+    const url = document.createElement("div");
+    url.className = "song-link-url";
+    url.textContent = link.url;
+    
+    content.appendChild(title);
+    content.appendChild(url);
+    
+    linkEl.appendChild(favicon);
+    linkEl.appendChild(content);
+    
+    linksContainer.appendChild(linkEl);
+  });
+  
+  container.appendChild(linksContainer);
+}
+
+// Parse date string as local date (not UTC) to avoid timezone issues
+function parseLocalDate(dateString) {
+  if (!dateString) return null;
+  // Date strings from inputs are in YYYY-MM-DD format
+  const parts = dateString.split("-");
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+    const day = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  }
+  // Fallback to regular Date parsing
+  return new Date(dateString);
+}
+
+// Metronome/Click Track Functions
+function createClickSound(audioContext) {
+  const now = audioContext.currentTime;
+  const duration = 0.008; // Very short for sharp attack
+  
+  // Create white noise for percussive character
+  const bufferSize = audioContext.sampleRate * duration;
+  const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+  const data = buffer.getChannelData(0);
+  
+  // Fill with white noise
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+  
+  // Use a bandpass filter to emphasize mid-range frequencies (snare-like)
+  const filter = audioContext.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(2000, now); // Center around 2kHz for that "crack"
+  filter.Q.setValueAtTime(2, now); // Narrower Q for more focused sound
+  
+  // Create a very sharp envelope for percussive attack
+  const gainNode = audioContext.createGain();
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(0.6, now + 0.0005); // Very quick attack
+  gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Quick decay
+  
+  // Add a mid-range frequency component for body (like a drumstick click)
+  const oscillator = audioContext.createOscillator();
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(1200, now); // Higher frequency for cut-through
+  oscillator.frequency.exponentialRampToValueAtTime(400, now + 0.003); // Quick drop to body
+  
+  const oscGain = audioContext.createGain();
+  oscGain.gain.setValueAtTime(0, now);
+  oscGain.gain.linearRampToValueAtTime(0.3, now + 0.0005); // Sharp attack
+  oscGain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+  
+  oscillator.connect(oscGain);
+  oscGain.connect(audioContext.destination);
+  
+  // Play filtered white noise (the "snap" part)
+  const source = audioContext.createBufferSource();
+  source.buffer = buffer;
+  source.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  oscillator.start(now);
+  oscillator.stop(now + duration);
+  source.start(now);
+  source.stop(now + duration);
+}
+
+function startMetronome(bpm) {
+  if (!bpm || bpm <= 0) {
+    alert("Song needs a BPM to play click track.");
+    return;
+  }
+  
+  // Stop any existing metronome
+  stopMetronome();
+  
+  // Initialize audio context if needed
+  if (!state.metronome.audioContext) {
+    state.metronome.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  
+  const audioContext = state.metronome.audioContext;
+  
+  // Calculate interval in milliseconds (60 seconds / BPM * 1000)
+  const intervalMs = (60 / bpm) * 1000;
+  
+  // Play first click immediately
+  createClickSound(audioContext);
+  
+  // Set up interval for subsequent clicks
+  state.metronome.intervalId = setInterval(() => {
+    if (state.metronome.isPlaying) {
+      createClickSound(audioContext);
+    }
+  }, intervalMs);
+  
+  state.metronome.isPlaying = true;
+  state.metronome.bpm = bpm;
+}
+
+function stopMetronome() {
+  if (state.metronome.intervalId) {
+    clearInterval(state.metronome.intervalId);
+    state.metronome.intervalId = null;
+  }
+  state.metronome.isPlaying = false;
+  state.metronome.bpm = null;
+  updateClickTrackButtons();
+}
+
+function toggleMetronome(bpm) {
+  if (state.metronome.isPlaying && state.metronome.bpm === bpm) {
+    stopMetronome();
+    return false;
+  } else {
+    startMetronome(bpm);
+    return true;
+  }
+}
+
+function updateClickTrackButtons() {
+  document.querySelectorAll(".click-track-btn").forEach(btn => {
+    const bpm = parseInt(btn.dataset.bpm, 10);
+    if (state.metronome.isPlaying && state.metronome.bpm === bpm) {
+      btn.textContent = '⏸ Stop';
+      btn.classList.add("active");
+    } else {
+      btn.textContent = '▶ Click';
+      btn.classList.remove("active");
+    }
+  });
+}
+
+// Custom Searchable Dropdown Component
+function createSearchableDropdown(options, placeholder = "Search...", selectedValue = null, onInvite = null) {
+  const container = document.createElement("div");
+  container.className = "searchable-dropdown";
+  
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "searchable-dropdown-input";
+  input.placeholder = placeholder;
+  input.setAttribute("readonly", "");
+  
+  const optionsList = document.createElement("div");
+  optionsList.className = "searchable-dropdown-options";
+  
+  let selectedOption = null;
+  let highlightedIndex = -1;
+  let filteredOptions = options;
+  
+  // Find selected option
+  if (selectedValue) {
+    selectedOption = options.find(opt => opt.value === selectedValue);
+    if (selectedOption) {
+      input.value = selectedOption.label;
+      input.classList.remove("placeholder");
+    } else {
+      input.classList.add("placeholder");
+    }
+  } else {
+    input.classList.add("placeholder");
+  }
+  
+  function renderOptions() {
+    optionsList.innerHTML = "";
+    
+    if (filteredOptions.length === 0) {
+      // Show invite option if callback is provided and user typed something
+      if (onInvite && input.value.trim()) {
+        const inviteOption = document.createElement("div");
+        inviteOption.className = "searchable-dropdown-option invite-option";
+        inviteOption.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.2rem;">+</span>
+            <span>Invite "${escapeHtml(input.value.trim())}"</span>
+          </div>
+        `;
+        inviteOption.addEventListener("click", (e) => {
+          e.stopPropagation();
+          optionsList.classList.remove("open");
+          input.setAttribute("readonly", "");
+          onInvite(input.value.trim());
+        });
+        optionsList.appendChild(inviteOption);
+      } else {
+        const noResults = document.createElement("div");
+        noResults.className = "searchable-dropdown-option no-results";
+        noResults.textContent = onInvite ? "Type a name to invite someone" : "No results found";
+        optionsList.appendChild(noResults);
+      }
+      return;
+    }
+    
+    filteredOptions.forEach((option, index) => {
+      const optionEl = document.createElement("div");
+      optionEl.className = "searchable-dropdown-option";
+      if (selectedValue === option.value) {
+        optionEl.classList.add("selected");
+      }
+      optionEl.textContent = option.label;
+      optionEl.dataset.value = option.value;
+      
+      optionEl.addEventListener("click", () => {
+        selectOption(option);
+      });
+      
+      optionsList.appendChild(optionEl);
+    });
+  }
+  
+  function selectOption(option) {
+    selectedOption = option;
+    input.value = option.label;
+    input.classList.remove("placeholder");
+    optionsList.classList.remove("open");
+    highlightedIndex = -1;
+    
+    // Trigger change event
+    const event = new CustomEvent("change", {
+      detail: { value: option.value, option }
+    });
+    container.dispatchEvent(event);
+  }
+  
+  function filterOptions(searchTerm) {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) {
+      filteredOptions = options;
+    } else {
+      filteredOptions = options.filter(opt =>
+        opt.label.toLowerCase().includes(term)
+      );
+    }
+    highlightedIndex = -1;
+    renderOptions();
+  }
+  
+  function highlightOption(index) {
+    const optionEls = optionsList.querySelectorAll(".searchable-dropdown-option:not(.no-results):not(.invite-option)");
+    const inviteOption = optionsList.querySelector(".invite-option");
+    if (inviteOption) inviteOption.classList.remove("highlighted");
+    optionEls.forEach((el, i) => {
+      el.classList.toggle("highlighted", i === index);
+    });
+    highlightedIndex = index;
+  }
+  
+  // Open dropdown
+  input.addEventListener("click", (e) => {
+    e.stopPropagation();
+    optionsList.classList.toggle("open");
+    if (optionsList.classList.contains("open")) {
+      input.removeAttribute("readonly");
+      input.focus();
+      filterOptions(input.value);
+    }
+  });
+  
+  // Search/filter
+  input.addEventListener("input", (e) => {
+    filterOptions(e.target.value);
+    if (!optionsList.classList.contains("open")) {
+      optionsList.classList.add("open");
+    }
+  });
+  
+  // Keyboard navigation
+  input.addEventListener("keydown", (e) => {
+    const optionEls = optionsList.querySelectorAll(".searchable-dropdown-option:not(.no-results)");
+    const inviteOption = optionsList.querySelector(".invite-option");
+    
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (optionEls.length > 0) {
+        highlightedIndex = Math.min(highlightedIndex + 1, optionEls.length - 1);
+        highlightOption(highlightedIndex);
+        optionEls[highlightedIndex]?.scrollIntoView({ block: "nearest" });
+      } else if (inviteOption && highlightedIndex === -1) {
+        inviteOption.classList.add("highlighted");
+        highlightedIndex = -2; // Special index for invite option
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (highlightedIndex === -2 && inviteOption) {
+        inviteOption.classList.remove("highlighted");
+        highlightedIndex = -1;
+      } else if (optionEls.length > 0) {
+        highlightedIndex = Math.max(highlightedIndex - 1, -1);
+        if (highlightedIndex >= 0) {
+          highlightOption(highlightedIndex);
+          optionEls[highlightedIndex]?.scrollIntoView({ block: "nearest" });
+        } else {
+          optionEls.forEach(el => el.classList.remove("highlighted"));
+        }
+      }
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (highlightedIndex === -2 && inviteOption && onInvite) {
+        optionsList.classList.remove("open");
+        input.setAttribute("readonly", "");
+        onInvite(input.value.trim());
+      } else if (highlightedIndex >= 0 && optionEls[highlightedIndex]) {
+        const value = optionEls[highlightedIndex].dataset.value;
+        const option = filteredOptions.find(opt => opt.value === value);
+        if (option) selectOption(option);
+      } else if (filteredOptions.length === 1) {
+        selectOption(filteredOptions[0]);
+      } else if (filteredOptions.length === 0 && inviteOption && onInvite && input.value.trim()) {
+        optionsList.classList.remove("open");
+        input.setAttribute("readonly", "");
+        onInvite(input.value.trim());
+      }
+    } else if (e.key === "Escape") {
+      optionsList.classList.remove("open");
+      input.setAttribute("readonly", "");
+      if (selectedOption) {
+        input.value = selectedOption.label;
+      } else {
+        input.value = "";
+        input.classList.add("placeholder");
+      }
+    }
+  });
+  
+  // Close on outside click
+  document.addEventListener("click", (e) => {
+    if (!container.contains(e.target)) {
+      optionsList.classList.remove("open");
+      input.setAttribute("readonly", "");
+      if (selectedOption) {
+        input.value = selectedOption.label;
+      } else {
+        input.value = "";
+        input.classList.add("placeholder");
+      }
+    }
+  });
+  
+  // Initial render
+  renderOptions();
+  
+  container.appendChild(input);
+  container.appendChild(optionsList);
+  
+  // Public API
+  container.getValue = () => selectedOption?.value || null;
+  container.setValue = (value) => {
+    const option = options.find(opt => opt.value === value);
+    if (option) {
+      selectOption(option);
+    }
+  };
+  
+  return container;
 }
 
 init();

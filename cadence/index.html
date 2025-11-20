@@ -43,14 +43,74 @@
       </section>
 
       <section id="dashboard" class="hidden">
-        <div class="dashboard-header">
-          <div>
-            <h2>Upcoming Sets</h2>
-            <p class="muted">Everyone can see these. Managers can edit.</p>
-          </div>
-          <button id="btn-create-set" class="btn primary hidden">New Set</button>
+        <div class="dashboard-tabs">
+          <button class="tab-btn active" data-tab="sets">Sets</button>
+          <button class="tab-btn" data-tab="songs">Songs</button>
+          <button class="tab-btn" data-tab="people">People</button>
         </div>
-        <div id="sets-list" class="sets-grid"></div>
+        
+        <div id="sets-tab" class="tab-content">
+          <div id="your-sets-section" class="sets-section">
+            <div class="section-header">
+              <div>
+                <h2>Your Sets</h2>
+                <p class="muted">Sets where you're assigned to a song</p>
+              </div>
+            </div>
+            <div id="your-sets-list" class="sets-grid"></div>
+          </div>
+          
+          <div id="all-sets-section" class="sets-section">
+            <div class="dashboard-header">
+              <div>
+                <h2>All Sets</h2>
+              </div>
+              <div class="header-actions">
+                <button id="btn-create-set" class="btn primary hidden">New Set</button>
+              </div>
+            </div>
+            <div id="sets-list" class="sets-grid"></div>
+          </div>
+        </div>
+        
+        <div id="songs-tab" class="tab-content hidden">
+          <div class="dashboard-header">
+            <div>
+              <h2>Song Catalog</h2>
+            </div>
+            <div class="header-actions">
+              <button id="btn-create-song" class="btn primary hidden">New Song</button>
+            </div>
+          </div>
+          <div id="songs-catalog-list" class="song-list"></div>
+        </div>
+        
+        <div id="people-tab" class="tab-content hidden">
+          <div class="dashboard-header">
+            <div>
+              <h2>Team Members</h2>
+            </div>
+          </div>
+          <div id="people-list" class="people-grid"></div>
+        </div>
+      </section>
+
+      <section id="set-detail" class="hidden">
+        <div class="detail-header">
+          <button id="btn-back" class="btn ghost">
+            ← Back to Sets
+          </button>
+          <div class="detail-title-section">
+            <h2 id="detail-set-title"></h2>
+            <p id="detail-set-date" class="muted"></p>
+            <p id="detail-set-description" class="set-description"></p>
+          </div>
+          <div class="header-actions">
+            <button id="btn-edit-set-detail" class="btn secondary hidden">Edit Set</button>
+            <button id="btn-delete-set-detail" class="btn ghost hidden">Delete</button>
+          </div>
+        </div>
+        <div id="detail-songs-list" class="song-list"></div>
       </section>
     </main>
 
@@ -80,13 +140,6 @@
             <button type="submit" class="btn primary">Save</button>
           </div>
         </form>
-        <section id="set-songs-section" class="hidden">
-          <div class="section-header">
-            <h4>Songs in this set</h4>
-            <button id="btn-add-song" type="button" class="btn secondary">Add Song</button>
-          </div>
-          <div id="set-songs-list" class="song-list"></div>
-        </section>
       </div>
     </div>
 
@@ -101,8 +154,11 @@
         <form id="song-form">
           <label>
             Song
-            <select id="song-select"></select>
+            <div id="song-select-container"></div>
           </label>
+          <p class="muted small-text">
+            <a href="#" id="create-song-link" class="link">Create a new song</a>
+          </p>
           <label>
             Notes
             <textarea id="song-notes" rows="2"></textarea>
@@ -124,29 +180,200 @@
       </div>
     </div>
 
+    <div id="edit-set-song-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Edit Song in Set</h3>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button type="button" id="btn-edit-song-from-set" class="btn small secondary">Edit Song Details</button>
+            <button class="icon-btn" id="close-edit-set-song-modal" aria-label="Close modal">
+              ✕
+            </button>
+          </div>
+        </header>
+        <form id="edit-set-song-form">
+          <label>
+            Notes
+            <textarea id="edit-set-song-notes" rows="2"></textarea>
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-edit-set-song">Cancel</button>
+            <button type="submit" class="btn primary">Save</button>
+          </div>
+        </form>
+        <div class="assignment-section">
+          <div class="section-header">
+            <h4>Assignments</h4>
+            <button id="btn-add-edit-assignment" type="button" class="btn secondary">
+              Add Assignment
+            </button>
+          </div>
+          <div id="edit-assignments-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="song-catalog-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Song Catalog</h3>
+          <button class="icon-btn" id="close-song-catalog-modal" aria-label="Close modal">
+            ✕
+          </button>
+        </header>
+        <div class="section-header">
+          <h4>All Songs</h4>
+          <button id="btn-create-song" class="btn primary">New Song</button>
+        </div>
+        <div id="songs-catalog-list" class="song-list"></div>
+      </div>
+    </div>
+
+    <div id="song-details-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3 id="song-details-title">Song Details</h3>
+          <button class="icon-btn" id="close-song-details-modal" aria-label="Close modal">
+            ✕
+          </button>
+        </header>
+        <div id="song-details-content" class="song-details-content"></div>
+      </div>
+    </div>
+
+    <div id="song-edit-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3 id="song-edit-modal-title">New Song</h3>
+          <button class="icon-btn" id="close-song-edit-modal" aria-label="Close modal">
+            ✕
+          </button>
+        </header>
+        <form id="song-edit-form">
+          <label>
+            Title
+            <input type="text" id="song-edit-title" required />
+          </label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <label>
+              BPM
+              <input type="number" id="song-edit-bpm" min="0" />
+            </label>
+            <label>
+              Key
+              <input type="text" id="song-edit-key" placeholder="C, Dm, etc." />
+            </label>
+            <label>
+              Time Signature
+              <input type="text" id="song-edit-time-signature" placeholder="4/4, 3/4, 6/8, etc." />
+            </label>
+          </div>
+          <label>
+            Duration (MM:SS)
+            <input type="text" id="song-edit-duration" placeholder="3:45" pattern="[0-9]+:[0-5][0-9]" />
+          </label>
+          <label>
+            Description
+            <textarea id="song-edit-description" rows="3"></textarea>
+          </label>
+          <div class="section-header">
+            <h4>Links & Resources</h4>
+            <button type="button" id="btn-add-song-link" class="btn secondary">Add Link</button>
+          </div>
+          <div id="song-links-list"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-song-edit">Cancel</button>
+            <button type="submit" class="btn primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-person-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Edit Member</h3>
+          <button class="icon-btn" id="close-edit-person-modal" aria-label="Close modal">
+            ✕
+          </button>
+        </header>
+        <form id="edit-person-form">
+          <label>
+            Full Name
+            <input type="text" id="edit-person-name" required />
+          </label>
+          <label>
+            Email
+            <input type="email" id="edit-person-email" />
+            <p class="muted small-text">Email is read-only and synced from authentication.</p>
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-edit-person">Cancel</button>
+            <button type="submit" class="btn primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="invite-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Invite Band Member</h3>
+          <button class="icon-btn" id="close-invite-modal" aria-label="Close modal">
+            ✕
+          </button>
+        </header>
+        <form id="invite-form">
+          <label>
+            Email
+            <input type="email" id="invite-email" placeholder="member@example.com" required />
+          </label>
+          <label>
+            Full Name (optional)
+            <input type="text" id="invite-name" placeholder="John Doe" />
+            <p class="muted small-text">We'll use this to create their profile when they sign in.</p>
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-invite">Cancel</button>
+            <button type="submit" class="btn primary">Send Invite</button>
+          </div>
+        </form>
+        <p class="muted small-text" id="invite-message"></p>
+      </div>
+    </div>
+
     <template id="set-card-template">
-      <article class="card set-card">
+      <article class="card set-card" style="cursor: pointer;">
         <div class="card-header">
-          <div>
+          <div style="flex: 1;">
             <h3 class="set-title"></h3>
             <p class="set-date"></p>
           </div>
-          <button class="btn small ghost edit-set-btn hidden">Edit</button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn small ghost edit-set-btn hidden">Edit</button>
+            <button class="btn small ghost delete-set-btn hidden">Delete</button>
+          </div>
         </div>
         <p class="set-description"></p>
-        <div class="set-song-list"></div>
       </article>
     </template>
 
     <template id="song-item-template">
       <div class="set-song-card">
-        <div class="set-song-header">
+        <div class="drag-handle" title="Drag to reorder" style="display: none;">⋮⋮</div>
+        <div class="set-song-header" style="padding-left: 2.5rem;">
           <div>
             <h4 class="song-title"></h4>
             <p class="song-meta"></p>
           </div>
-          <p class="song-notes"></p>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="btn small secondary view-song-details-btn" data-song-id="">View Details</button>
+            <button class="btn small ghost click-track-btn hidden" data-bpm="" title="Click Track">▶ Click</button>
+            <button class="btn small ghost edit-set-song-btn hidden" data-set-song-id="">Edit</button>
+            <button class="btn small ghost remove-song-from-set-btn hidden" data-set-song-id="">Remove</button>
+          </div>
         </div>
+        <p class="song-notes"></p>
         <div class="assignments"></div>
       </div>
     </template>
