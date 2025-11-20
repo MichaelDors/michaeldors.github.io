@@ -1173,7 +1173,7 @@ function renderSetCard(set, container) {
     day: "numeric",
   }) : "";
   node.querySelector(".set-description").textContent =
-    set.description || "No description yet.";
+    set.description || "No description yet";
 
   const card = node.querySelector(".set-card");
   const editBtn = node.querySelector(".edit-set-btn");
@@ -1472,7 +1472,7 @@ function showSetDetail(set) {
     day: "numeric",
     year: "numeric",
   }) : "";
-  el("detail-set-description").textContent = set.description || "No description yet.";
+  el("detail-set-description").textContent = set.description || "No description yet";
   
   // Show/hide edit/delete buttons for managers
   const editBtn = el("btn-edit-set-detail");
