@@ -75,8 +75,8 @@ const loginEmailInput = el("login-email");
 const loginPasswordInput = el("login-password");
 const authMessage = el("auth-message");
 const authSubmitBtn = el("auth-submit-btn");
-const toggleSignup = el("toggle-signup");
-let isSignUpMode = false;
+// No manual signup allowed - users must be invited
+let isSignUpMode = false; // Always false, kept for compatibility but never used
 
 async function init() {
   console.log('🚀 init() called');
@@ -334,18 +334,12 @@ async function init() {
 function bindEvents() {
   console.log('🔗 bindEvents() called');
   console.log('  - authForm element:', authForm);
-  console.log('  - toggleSignup element:', toggleSignup);
   console.log('  - loginEmailInput element:', loginEmailInput);
   console.log('  - loginPasswordInput element:', loginPasswordInput);
   console.log('  - authSubmitBtn element:', authSubmitBtn);
   
   authForm?.addEventListener("submit", handleAuth);
-  // Remove signup toggle - no manual signup allowed
-  // toggleSignup?.addEventListener("click", (e) => {
-  //   console.log('🔄 Toggle signup clicked');
-  //   e.preventDefault();
-  //   toggleAuthMode();
-  // });
+  // No signup functionality - users must be invited by a manager
   logoutBtn?.addEventListener("click", () => supabase.auth.signOut());
   
   // Password setup form
@@ -600,26 +594,22 @@ function resetState() {
   setsList.innerHTML = "";
 }
 
-function toggleAuthMode() {
-  console.log('🔄 toggleAuthMode() called');
-  console.log('  - Current isSignUpMode:', isSignUpMode);
-  isSignUpMode = !isSignUpMode;
-  console.log('  - New isSignUpMode:', isSignUpMode);
-  updateAuthUI();
-  setAuthMessage("");
-  authForm?.reset();
-}
+// toggleAuthMode removed - no manual signup allowed
+// Users must be invited by a manager
 
 function updateAuthUI() {
   // Always show login mode - no manual signup allowed
+  // Users must be invited by a manager
   const heading = authGate?.querySelector("h2");
   const description = authGate?.querySelector("p:first-of-type");
-  const toggleParagraph = toggleSignup?.parentElement;
   
   if (heading) heading.textContent = "Login";
   if (description) description.textContent = "Sign in with your email and password.";
   if (authSubmitBtn) authSubmitBtn.textContent = "Sign in";
-  // Hide signup toggle
+  
+  // Remove any signup toggle if it exists
+  const toggleSignup = el("toggle-signup");
+  const toggleParagraph = toggleSignup?.parentElement;
   if (toggleParagraph && toggleSignup) {
     toggleParagraph.style.display = "none";
   }
@@ -649,7 +639,7 @@ async function handleAuth(event) {
 
   console.log('  - ✅ Validation passed, proceeding with auth');
   toggleAuthButton(true);
-  setAuthMessage(isSignUpMode ? "Creating account…" : "Signing in…");
+  setAuthMessage("Signing in…");
 
   // No manual signup allowed - only login
   const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -777,35 +767,20 @@ async function handlePasswordSetup(event) {
     // Create profile and migrate pending invites
     await createProfileAndMigrateInvites(session.user);
     
-    // Sign in with the new password to get a fresh session
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: session.user.email,
-      password: password,
-    });
-    
-    if (signInError || !signInData.session) {
-      console.error('❌ Sign in error after password setup:', signInError);
-      setPasswordSetupMessage("Password set successfully, but sign in failed. Please try logging in.", true);
-      if (submitBtn) submitBtn.disabled = false;
-      // Still proceed - they can log in manually
-      window.location.reload();
-      return;
-    }
-    
-    console.log('✅ Signed in successfully after password setup');
-    
-    // Update state and show app
-    state.session = signInData.session;
-    await fetchProfile();
-    await Promise.all([loadSongs(), loadSets(), loadPeople()]);
+    // Sign out the user so they can log in with their new password
+    console.log('🔓 Signing out user to redirect to login...');
+    await supabase.auth.signOut();
     
     // Clean up URL and reset password setup flag
     window.history.replaceState(null, '', window.location.pathname);
     state.isPasswordSetup = false;
+    state.session = null;
+    state.profile = null;
     
-    // Show app
-    showApp();
-    setPasswordSetupMessage("");
+    // Reload the page to show the login form
+    // This ensures a clean state and the login form appears properly
+    console.log('🔄 Reloading page to show login form...');
+    window.location.reload();
     
   } catch (err) {
     console.error('❌ Unexpected error in handlePasswordSetup:', err);
@@ -1351,16 +1326,41 @@ function renderPeople() {
       const div = document.createElement("div");
       div.className = "card person-card pending-person-card";
       const displayName = invite.full_name || invite.email;
-      div.innerHTML = `
-        <div class="pending-person-header">
-          <div>
-            <h3 class="person-name" style="margin: 0;">${escapeHtml(displayName)}</h3>
-            ${invite.email ? `<span class="pending-person-email">${escapeHtml(invite.email)}</span>` : ""}
+      
+      if (isManager) {
+        // Manager view: show cancel button
+        div.innerHTML = `
+          <div class="pending-person-header">
+            <div style="flex: 1;">
+              <h3 class="person-name" style="margin: 0;">${escapeHtml(displayName)}</h3>
+              ${invite.email ? `<span class="pending-person-email">${escapeHtml(invite.email)}</span>` : ""}
+            </div>
+            <span class="pending-pill">Pending</span>
           </div>
-          <span class="pending-pill">Pending</span>
-        </div>
-        <p class="muted small-text" style="margin-top: 0.75rem;">Invite sent • waiting for signup</p>
-      `;
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
+            <p class="muted small-text" style="margin: 0;">Invite sent • waiting for signup</p>
+            <button class="btn small ghost cancel-invite-btn" data-invite-id="${invite.id}">Cancel Invite</button>
+          </div>
+        `;
+        
+        const cancelBtn = div.querySelector(".cancel-invite-btn");
+        if (cancelBtn) {
+          cancelBtn.addEventListener("click", () => cancelPendingInvite(invite));
+        }
+      } else {
+        // Regular user view: no cancel button
+        div.innerHTML = `
+          <div class="pending-person-header">
+            <div>
+              <h3 class="person-name" style="margin: 0;">${escapeHtml(displayName)}</h3>
+              ${invite.email ? `<span class="pending-person-email">${escapeHtml(invite.email)}</span>` : ""}
+            </div>
+            <span class="pending-pill">Pending</span>
+          </div>
+          <p class="muted small-text" style="margin-top: 0.75rem;">Invite sent • waiting for signup</p>
+        `;
+      }
+      
       peopleList.appendChild(div);
     });
   }
@@ -2762,17 +2762,124 @@ async function deletePerson(person) {
     personName,
     `Removing "${personName}" from the team will also remove all their assignments.`,
     async () => {
-      // Delete the profile - this will cascade delete all assignments due to foreign key
-      const { error } = await supabase
+      console.log('🗑️ Deleting person:', person.id, personName);
+      
+      // Step 1: Delete all song_assignments that reference this person by person_id
+      console.log('  - Step 1: Deleting song assignments by person_id...');
+      const { error: assignmentsError } = await supabase
+        .from("song_assignments")
+        .delete()
+        .eq("person_id", person.id);
+      
+      if (assignmentsError) {
+        console.error('❌ Error deleting assignments by person_id:', assignmentsError);
+        alert("Unable to remove member assignments. Check console.");
+        return;
+      }
+      
+      // Step 2: Find and delete pending_invite if it exists
+      const personEmail = person.email?.toLowerCase();
+      if (personEmail) {
+        console.log('  - Step 2: Checking for pending invite...');
+        const { data: pendingInvite } = await supabase
+          .from("pending_invites")
+          .select("id")
+          .eq("email", personEmail)
+          .maybeSingle();
+        
+        if (pendingInvite) {
+          console.log('  - Step 2a: Deleting song assignments by pending_invite_id...');
+          // Delete assignments that reference this pending_invite
+          const { error: pendingAssignmentsError } = await supabase
+            .from("song_assignments")
+            .delete()
+            .eq("pending_invite_id", pendingInvite.id);
+          
+          if (pendingAssignmentsError) {
+            console.error('❌ Error deleting assignments by pending_invite_id:', pendingAssignmentsError);
+            alert("Unable to remove pending invite assignments. Check console.");
+            return;
+          }
+          
+          console.log('  - Step 2b: Deleting pending_invite...');
+          // Delete the pending_invite
+          const { error: pendingError } = await supabase
+            .from("pending_invites")
+            .delete()
+            .eq("id", pendingInvite.id);
+          
+          if (pendingError) {
+            console.error('❌ Error deleting pending_invite:', pendingError);
+            alert("Unable to remove pending invite. Check console.");
+            return;
+          }
+        }
+      }
+      
+      // Step 3: Delete the profile (this should be safe now that all dependencies are gone)
+      console.log('  - Step 3: Deleting profile...');
+      const { error: profileError } = await supabase
         .from("profiles")
         .delete()
         .eq("id", person.id);
       
-      if (error) {
-        console.error(error);
+      if (profileError) {
+        console.error('❌ Error deleting profile:', profileError);
         alert("Unable to remove member. Check console.");
         return;
       }
+      
+      console.log('✅ Person deleted successfully');
+      
+      // Reload people and sets (to refresh assignments)
+      await Promise.all([loadPeople(), loadSets()]);
+      
+      // Refresh UI if on sets tab
+      if (!el("sets-tab")?.classList.contains("hidden")) {
+        renderSets();
+      }
+    }
+  );
+}
+
+async function cancelPendingInvite(invite) {
+  if (!state.profile?.can_manage) return;
+  
+  const inviteName = invite.full_name || invite.email || "this invite";
+  
+  showDeleteConfirmModal(
+    inviteName,
+    `Canceling the invite for "${inviteName}" will remove all their pending assignments.`,
+    async () => {
+      console.log('🚫 Canceling pending invite:', invite.id, inviteName);
+      
+      // Step 1: Delete all song_assignments that reference this pending_invite
+      console.log('  - Step 1: Deleting song assignments by pending_invite_id...');
+      const { error: assignmentsError } = await supabase
+        .from("song_assignments")
+        .delete()
+        .eq("pending_invite_id", invite.id);
+      
+      if (assignmentsError) {
+        console.error('❌ Error deleting assignments by pending_invite_id:', assignmentsError);
+        alert("Unable to remove pending invite assignments. Check console.");
+        return;
+      }
+      
+      // Step 2: Delete the pending_invite
+      console.log('  - Step 2: Deleting pending_invite...');
+      const { error: inviteError } = await supabase
+        .from("pending_invites")
+        .delete()
+        .eq("id", invite.id);
+      
+      if (inviteError) {
+        console.error('❌ Error deleting pending_invite:', inviteError);
+        alert("Unable to cancel invite. Check console.");
+        return;
+      }
+      
+      console.log('✅ Pending invite canceled successfully');
       
       // Reload people and sets (to refresh assignments)
       await Promise.all([loadPeople(), loadSets()]);
