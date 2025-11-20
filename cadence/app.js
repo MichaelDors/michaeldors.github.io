@@ -737,12 +737,19 @@ async function handlePasswordSetup(event) {
   if (submitBtn) submitBtn.disabled = true;
   setPasswordSetupMessage("Setting up your account...");
   
+  // Auto-reload after 5 seconds as fallback
+  const reloadTimeout = setTimeout(() => {
+    console.log('⏰ Auto-reloading after 5 seconds...');
+    window.location.reload();
+  }, 5000);
+  
   try {
     // Get the current session from the access_token
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !session) {
       console.error('❌ No session found:', sessionError);
+      clearTimeout(reloadTimeout);
       setPasswordSetupMessage("Invalid invite link. Please request a new invite.", true);
       if (submitBtn) submitBtn.disabled = false;
       return;
@@ -757,6 +764,7 @@ async function handlePasswordSetup(event) {
     
     if (updateError) {
       console.error('❌ Password update error:', updateError);
+      clearTimeout(reloadTimeout);
       setPasswordSetupMessage(updateError.message || "Failed to set password. Please try again.", true);
       if (submitBtn) submitBtn.disabled = false;
       return;
@@ -777,6 +785,9 @@ async function handlePasswordSetup(event) {
     state.session = null;
     state.profile = null;
     
+    // Clear the auto-reload timeout since we're reloading now
+    clearTimeout(reloadTimeout);
+    
     // Reload the page to show the login form
     // This ensures a clean state and the login form appears properly
     console.log('🔄 Reloading page to show login form...');
@@ -784,6 +795,7 @@ async function handlePasswordSetup(event) {
     
   } catch (err) {
     console.error('❌ Unexpected error in handlePasswordSetup:', err);
+    clearTimeout(reloadTimeout);
     setPasswordSetupMessage("An unexpected error occurred. Please try again.", true);
     if (submitBtn) submitBtn.disabled = false;
   }
@@ -2773,7 +2785,8 @@ async function deletePerson(person) {
       
       if (assignmentsError) {
         console.error('❌ Error deleting assignments by person_id:', assignmentsError);
-        alert("Unable to remove member assignments. Check console.");
+        const errorMsg = assignmentsError.message || assignmentsError.code || 'Unknown error';
+        alert(`Unable to remove member assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
       
@@ -2797,7 +2810,8 @@ async function deletePerson(person) {
           
           if (pendingAssignmentsError) {
             console.error('❌ Error deleting assignments by pending_invite_id:', pendingAssignmentsError);
-            alert("Unable to remove pending invite assignments. Check console.");
+            const errorMsg = pendingAssignmentsError.message || pendingAssignmentsError.code || 'Unknown error';
+            alert(`Unable to remove pending invite assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
             return;
           }
           
@@ -2810,7 +2824,8 @@ async function deletePerson(person) {
           
           if (pendingError) {
             console.error('❌ Error deleting pending_invite:', pendingError);
-            alert("Unable to remove pending invite. Check console.");
+            const errorMsg = pendingError.message || pendingError.code || 'Unknown error';
+            alert(`Unable to remove pending invite.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
             return;
           }
         }
@@ -2825,7 +2840,8 @@ async function deletePerson(person) {
       
       if (profileError) {
         console.error('❌ Error deleting profile:', profileError);
-        alert("Unable to remove member. Check console.");
+        const errorMsg = profileError.message || profileError.code || 'Unknown error';
+        alert(`Unable to remove member.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.\n\nYou may need to add DELETE policies for:\n- profiles table (for users with can_manage = true)\n- pending_invites table (for users with can_manage = true)\n- song_assignments table (for users with can_manage = true)`);
         return;
       }
       
@@ -2862,7 +2878,8 @@ async function cancelPendingInvite(invite) {
       
       if (assignmentsError) {
         console.error('❌ Error deleting assignments by pending_invite_id:', assignmentsError);
-        alert("Unable to remove pending invite assignments. Check console.");
+        const errorMsg = assignmentsError.message || assignmentsError.code || 'Unknown error';
+        alert(`Unable to remove pending invite assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
       
@@ -2875,7 +2892,8 @@ async function cancelPendingInvite(invite) {
       
       if (inviteError) {
         console.error('❌ Error deleting pending_invite:', inviteError);
-        alert("Unable to cancel invite. Check console.");
+        const errorMsg = inviteError.message || inviteError.code || 'Unknown error';
+        alert(`Unable to cancel invite.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.\n\nYou may need to add DELETE policies for:\n- pending_invites table (for users with can_manage = true)\n- song_assignments table (for users with can_manage = true)`);
         return;
       }
       
