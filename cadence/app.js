@@ -479,6 +479,9 @@ function showAuthGate() {
   console.log('  - Current state.session:', state.session);
   console.log('  - Current state.profile:', state.profile);
   
+  // Always close set details when showing auth gate
+  hideSetDetail();
+  
   const passwordSetupGate = el("password-setup-gate");
   if (passwordSetupGate) passwordSetupGate.classList.add("hidden");
   
@@ -496,6 +499,10 @@ function showAuthGate() {
 
 function showPasswordSetupGate() {
   console.log('🔐 showPasswordSetupGate() called');
+  
+  // Always close set details when showing password setup gate
+  hideSetDetail();
+  
   const passwordSetupGate = el("password-setup-gate");
   const authGateEl = el("auth-gate");
   const dashboardEl = el("dashboard");
@@ -1363,8 +1370,8 @@ function renderPeople() {
       if (isManager) {
         // Manager view: show email, edit name, delete
         div.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: start; width: 100%;">
-            <div style="flex: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: start; width: 100%; gap: 0.5rem;">
+            <div style="flex: 1; min-width: 0; overflow: hidden;">
               <h3 class="person-name" style="margin: 0 0 0.5rem 0;">${escapeHtml(person.full_name)}</h3>
               ${person.email ? `
                 <a href="mailto:${escapeHtml(person.email)}" class="person-email-link" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
@@ -1375,7 +1382,7 @@ function renderPeople() {
                 ${person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
               </div>
             </div>
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0;">
               <button class="btn small secondary edit-person-btn" data-person-id="${person.id}">Edit</button>
               <button class="btn small ghost delete-person-btn" data-person-id="${person.id}">Remove</button>
             </div>
@@ -1413,7 +1420,7 @@ function renderPeople() {
         // Manager view: show cancel button
         div.innerHTML = `
           <div class="pending-person-header">
-            <div style="flex: 1;">
+            <div style="flex: 1; min-width: 0;">
               <h3 class="person-name" style="margin: 0;">${escapeHtml(displayName)}</h3>
               ${invite.email ? `<span class="pending-person-email">${escapeHtml(invite.email)}</span>` : ""}
             </div>
@@ -1433,7 +1440,7 @@ function renderPeople() {
         // Regular user view: no cancel button
         div.innerHTML = `
           <div class="pending-person-header">
-            <div>
+            <div style="flex: 1; min-width: 0;">
               <h3 class="person-name" style="margin: 0;">${escapeHtml(displayName)}</h3>
               ${invite.email ? `<span class="pending-person-email">${escapeHtml(invite.email)}</span>` : ""}
             </div>
@@ -1500,6 +1507,7 @@ function renderSetDetailSongs(set) {
         
         // Only make draggable for managers
         const dragHandle = songNode.querySelector(".drag-handle");
+        const songHeader = songNode.querySelector(".set-song-header");
         if (state.profile?.can_manage) {
           card.classList.add("draggable-item");
           card.draggable = false; // Will be set to true when dragging from handle
@@ -1507,10 +1515,18 @@ function renderSetDetailSongs(set) {
             dragHandle.style.display = "flex";
             dragHandle.style.cursor = "grab";
           }
+          // Keep padding for drag handle
+          if (songHeader) {
+            songHeader.style.paddingLeft = "2.5rem";
+          }
         } else {
           card.classList.remove("draggable-item");
           card.draggable = false;
           if (dragHandle) dragHandle.style.display = "none";
+          // Remove padding when drag handle is hidden
+          if (songHeader) {
+            songHeader.style.paddingLeft = "0";
+          }
         }
         
         songNode.querySelector(".song-title").textContent =
