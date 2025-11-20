@@ -119,21 +119,52 @@
       </section>
 
       <section id="set-detail" class="hidden">
-        <div class="detail-header">
-          <button id="btn-back" class="btn ghost">
-            <i class="fa-solid fa-circle-chevron-left"></i> Back to Sets
-          </button>
-          <div class="detail-title-section">
-            <h2 id="detail-set-title"></h2>
-            <p id="detail-set-date" class="muted"></p>
-            <p id="detail-set-description" class="set-description"></p>
+        <div class="set-detail-container">
+          <div class="set-detail-sidebar desktop-only">
+            <div id="set-detail-times" class="set-detail-times">
+              <div id="service-times-display" class="times-section">
+                <h3><i class="fa-solid fa-church"></i> Service Times</h3>
+                <div id="service-times-content"></div>
+              </div>
+              <div id="rehearsal-times-display" class="times-section">
+                <h3><i class="fa-solid fa-guitar"></i> Rehearsal Times</h3>
+                <div id="rehearsal-times-content"></div>
+              </div>
+            </div>
           </div>
-          <div class="header-actions">
-            <button id="btn-edit-set-detail" class="btn secondary hidden">Edit Set</button>
-            <button id="btn-delete-set-detail" class="btn ghost hidden">Delete</button>
+          <div class="set-detail-main">
+            <div class="detail-header">
+              <div class="detail-title-section">
+                <h2><i id="btn-back" style="padding: 0px !important; cursor: pointer;" class="fa-solid fa-circle-chevron-left"></i><span id="detail-set-title"></span></h2>
+                <p id="detail-set-date" class="muted"></p>
+                <p id="detail-set-description" class="set-description"></p>
+              </div>
+              <div class="header-actions">
+                <button id="btn-edit-set-detail" class="btn secondary hidden">Edit Set</button>
+                <button id="btn-delete-set-detail" class="btn ghost hidden">Delete</button>
+              </div>
+            </div>
+            <div class="set-detail-tabs mobile-only">
+              <button type="button" class="tab-btn active" data-detail-tab="songs"><i class="fa-solid fa-list-ul"></i> Order</button>
+              <button type="button" class="tab-btn" data-detail-tab="times"><i class="fa-solid fa-clock"></i> Times</button>
+            </div>
+            <div id="set-detail-tab-songs" class="set-detail-tab-content">
+              <div id="detail-songs-list" class="song-list"></div>
+            </div>
+            <div id="set-detail-tab-times" class="set-detail-tab-content hidden">
+              <div id="set-detail-times-mobile" class="set-detail-times">
+                <div id="service-times-display-mobile" class="times-section">
+                  <h3><i class="fa-solid fa-church"></i> Service Times</h3>
+                  <div id="service-times-content-mobile"></div>
+                </div>
+                <div id="rehearsal-times-display-mobile" class="times-section">
+                  <h3><i class="fa-solid fa-guitar"></i> Rehearsal Times</h3>
+                  <div id="rehearsal-times-content-mobile"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div id="detail-songs-list" class="song-list"></div>
       </section>
     </main>
 
@@ -158,6 +189,21 @@
             Description
             <textarea id="set-description" rows="3"></textarea>
           </label>
+          
+          <div class="section-header" style="margin-top: 1rem;">
+            <h4>Service Times</h4>
+            <button type="button" id="btn-add-service-time" class="btn secondary small">Add Service Time</button>
+          </div>
+          <div id="service-times-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
+          <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">Service times are optional and will be shown with the service date.</p>
+          
+          <div class="section-header" style="margin-top: 1rem;">
+            <h4>Rehearsal Times</h4>
+            <button type="button" id="btn-add-rehearsal-time" class="btn secondary small">Add Rehearsal</button>
+          </div>
+          <div id="rehearsal-times-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
+          <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">Rehearsal times are optional and can be on different dates than the service.</p>
+          
           <div class="modal-actions">
             <button type="button" class="btn ghost" id="cancel-set">Cancel</button>
             <button type="submit" class="btn primary">Save</button>

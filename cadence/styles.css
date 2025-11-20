@@ -168,6 +168,130 @@ main {
   animation: fadeIn 0.3s ease;
 }
 
+.set-detail-container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.set-detail-sidebar {
+  position: sticky;
+  top: 2rem;
+}
+
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
+.set-detail-times {
+  background: var(--bg-card);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.times-section {
+  margin-bottom: 2rem;
+}
+
+.times-section:last-child {
+  margin-bottom: 0;
+}
+
+.times-section h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.times-section h3 i {
+  color: var(--accent-color);
+  margin-right: 0;
+}
+
+.time-item {
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.time-item:last-child {
+  margin-bottom: 0;
+}
+
+.time-item-time {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.time-item-date {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.no-times {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.set-detail-tabs {
+  display: none; /* Hidden by default, shown on mobile */
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.set-detail-tab-content {
+  animation: fadeIn 0.2s ease;
+  display: block;
+}
+
+/* On desktop, always show songs tab content (no tab switching needed) */
+@media (min-width: 769px) {
+  #set-detail-tab-songs {
+    display: block !important;
+  }
+  
+  #set-detail-tab-times {
+    display: none !important;
+  }
+  
+  /* Override hidden class on desktop */
+  #set-detail-tab-songs.hidden {
+    display: block !important;
+  }
+}
+
+/* On mobile, allow tab switching - use hidden class to control visibility */
+@media (max-width: 768px) {
+  .set-detail-tab-content.hidden {
+    display: none !important;
+  }
+  
+  .set-detail-tab-content:not(.hidden) {
+    display: block !important;
+  }
+}
+
+.set-detail-main {
+  min-width: 0;
+}
+
 .sets-grid {
   display: grid;
   gap: 1.5rem;
@@ -937,6 +1061,30 @@ textarea {
   margin-top: 1rem;
 }
 
+@media (max-width: 768px) {
+  .set-detail-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .set-detail-sidebar {
+    position: static;
+    display: none;
+  }
+
+  .set-detail-tabs {
+    display: flex !important;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block !important;
+  }
+}
+
 @media (max-width: 640px) {
   .app-header {
     padding: 1rem;
@@ -950,6 +1098,11 @@ textarea {
     width: 100%;
     max-height: calc(100vh - 2rem);
     overflow-y: auto;
+  }
+
+  .set-detail-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
 

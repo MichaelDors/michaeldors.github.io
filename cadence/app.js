@@ -366,10 +366,29 @@ function bindEvents() {
     });
   });
   el("btn-back")?.addEventListener("click", () => hideSetDetail());
+  
+  // Set detail tab switching (mobile only) - use event delegation
+  document.addEventListener("click", (e) => {
+    const tabBtn = e.target.closest(".set-detail-tabs .tab-btn");
+    if (tabBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      const tab = tabBtn.dataset.detailTab;
+      if (tab) {
+        switchSetDetailTab(tab);
+      }
+      return false;
+    }
+  }, true); // Use capture phase to catch event early
   el("btn-edit-set-detail")?.addEventListener("click", () => {
     if (state.selectedSet) {
-      openSetModal(state.selectedSet);
+      // Preserve the set before hiding detail view (which clears state.selectedSet)
+      const setToEdit = state.selectedSet;
+      openSetModal(setToEdit);
       hideSetDetail();
+      // Restore state.selectedSet after opening modal (since openSetModal sets it)
+      state.selectedSet = setToEdit;
     }
   });
   el("btn-delete-set-detail")?.addEventListener("click", () => {
@@ -381,6 +400,8 @@ function bindEvents() {
   el("close-set-modal")?.addEventListener("click", () => closeSetModal());
   el("cancel-set")?.addEventListener("click", () => closeSetModal());
   el("set-form")?.addEventListener("submit", handleSetSubmit);
+  el("btn-add-service-time")?.addEventListener("click", () => addServiceTimeRow());
+  el("btn-add-rehearsal-time")?.addEventListener("click", () => addRehearsalTimeRow());
   el("btn-add-song")?.addEventListener("click", () => openSongModal());
   el("close-song-modal")?.addEventListener("click", () => closeSongModal());
   el("cancel-song")?.addEventListener("click", () => closeSongModal());
@@ -1102,11 +1123,21 @@ async function loadSongs() {
 }
 
 async function loadSets() {
-  const { data, error } = await supabase
+  // Try to load with service/rehearsal times first
+  let { data, error } = await supabase
     .from("sets")
     .select(
       `
       *,
+      service_times (
+        id,
+        service_time
+      ),
+      rehearsal_times (
+        id,
+        rehearsal_date,
+        rehearsal_time
+      ),
       set_songs (
         id,
         sequence_order,
@@ -1141,8 +1172,68 @@ async function loadSets() {
     )
     .order("scheduled_date", { ascending: true });
 
-  if (error) {
-    console.error(error);
+  // If error is due to missing tables (service_times or rehearsal_times), fall back to query without them
+  if (error && (error.message?.includes("service_times") || error.message?.includes("rehearsal_times") || error.code === "PGRST116" || error.code === "42P01")) {
+    console.warn("service_times or rehearsal_times tables not found, loading sets without them:", error.message);
+    const fallbackResult = await supabase
+      .from("sets")
+      .select(
+        `
+        *,
+        set_songs (
+          id,
+          sequence_order,
+          notes,
+          song:song_id (
+            id, title, bpm, song_key, time_signature, duration_seconds, description,
+            song_links (
+              id,
+              title,
+              url
+            )
+          ),
+          song_assignments (
+            id,
+            person_id,
+            person_name,
+            person_email,
+            pending_invite_id,
+            role,
+            person:person_id (
+              id,
+              full_name
+            ),
+            pending_invite:pending_invite_id (
+              id,
+              full_name,
+              email
+            )
+          )
+        )
+      `
+      )
+      .order("scheduled_date", { ascending: true });
+    
+    if (fallbackResult.error) {
+      console.error("Error loading sets:", fallbackResult.error);
+      state.sets = [];
+      renderSets();
+      return;
+    }
+    
+    data = fallbackResult.data;
+    // Add empty arrays for service_times and rehearsal_times if they don't exist
+    if (data) {
+      data = data.map(set => ({
+        ...set,
+        service_times: [],
+        rehearsal_times: []
+      }));
+    }
+  } else if (error) {
+    console.error("Error loading sets:", error);
+    state.sets = [];
+    renderSets();
     return;
   }
 
@@ -1455,6 +1546,99 @@ function renderPeople() {
   }
 }
 
+function formatTime(timeString) {
+  if (!timeString) return "";
+  // timeString is in format "HH:MM:SS" or "HH:MM"
+  const [hours, minutes] = timeString.split(":");
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+}
+
+function renderTimes(serviceTimesContent, rehearsalTimesContent, set) {
+  // Render service times
+  serviceTimesContent.innerHTML = "";
+  if (set.service_times && set.service_times.length > 0) {
+    // Sort service times
+    const sortedTimes = [...set.service_times].sort((a, b) => 
+      a.service_time.localeCompare(b.service_time)
+    );
+    sortedTimes.forEach((st) => {
+      const timeItem = document.createElement("div");
+      timeItem.className = "time-item";
+      timeItem.innerHTML = `
+        <div class="time-item-time">${formatTime(st.service_time)}</div>
+      `;
+      serviceTimesContent.appendChild(timeItem);
+    });
+  } else {
+    serviceTimesContent.innerHTML = '<div class="no-times">No service times added</div>';
+  }
+  
+  // Render rehearsal times
+  rehearsalTimesContent.innerHTML = "";
+  if (set.rehearsal_times && set.rehearsal_times.length > 0) {
+    // Sort rehearsal times by date, then by time
+    const sortedRehearsals = [...set.rehearsal_times].sort((a, b) => {
+      const dateCompare = a.rehearsal_date.localeCompare(b.rehearsal_date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.rehearsal_time.localeCompare(b.rehearsal_time);
+    });
+    sortedRehearsals.forEach((rt) => {
+      const timeItem = document.createElement("div");
+      timeItem.className = "time-item";
+      const rehearsalDate = parseLocalDate(rt.rehearsal_date);
+      const dateStr = rehearsalDate ? rehearsalDate.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }) : rt.rehearsal_date;
+      timeItem.innerHTML = `
+        <div class="time-item-time">${formatTime(rt.rehearsal_time)}</div>
+        <div class="time-item-date">${dateStr}</div>
+      `;
+      rehearsalTimesContent.appendChild(timeItem);
+    });
+  } else {
+    rehearsalTimesContent.innerHTML = '<div class="no-times">No rehearsal times added</div>';
+  }
+}
+
+function switchSetDetailTab(tabName) {
+  // Only switch tabs on mobile (tabs are hidden on desktop)
+  const tabsContainer = document.querySelector(".set-detail-tabs");
+  if (!tabsContainer || window.getComputedStyle(tabsContainer).display === "none") {
+    return; // Don't switch if tabs aren't visible (desktop)
+  }
+  
+  // Update tab buttons
+  document.querySelectorAll(".set-detail-tabs .tab-btn").forEach(btn => {
+    if (btn.dataset.detailTab === tabName) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+  
+  // Update tab content
+  const songsTab = el("set-detail-tab-songs");
+  const timesTab = el("set-detail-tab-times");
+  
+  if (!songsTab || !timesTab) {
+    console.error("Tab content elements not found", { songsTab, timesTab });
+    return;
+  }
+  
+  if (tabName === "songs") {
+    songsTab.classList.remove("hidden");
+    timesTab.classList.add("hidden");
+  } else if (tabName === "times") {
+    songsTab.classList.add("hidden");
+    timesTab.classList.remove("hidden");
+  }
+}
+
 function showSetDetail(set) {
   state.selectedSet = set;
   const dashboard = el("dashboard");
@@ -1483,6 +1667,30 @@ function showSetDetail(set) {
   } else {
     editBtn.classList.add("hidden");
     deleteBtn.classList.add("hidden");
+  }
+  
+  // Render service times (desktop sidebar)
+  const serviceTimesContent = el("service-times-content");
+  const rehearsalTimesContent = el("rehearsal-times-content");
+  renderTimes(serviceTimesContent, rehearsalTimesContent, set);
+  
+  // Render service times (mobile tab)
+  const serviceTimesContentMobile = el("service-times-content-mobile");
+  const rehearsalTimesContentMobile = el("rehearsal-times-content-mobile");
+  if (serviceTimesContentMobile && rehearsalTimesContentMobile) {
+    renderTimes(serviceTimesContentMobile, rehearsalTimesContentMobile, set);
+  }
+  
+  // Ensure songs tab is visible initially
+  const songsTab = el("set-detail-tab-songs");
+  const timesTab = el("set-detail-tab-times");
+  if (songsTab) songsTab.classList.remove("hidden");
+  if (timesTab) timesTab.classList.add("hidden");
+  
+  // Reset to songs tab on mobile (only if tabs are visible)
+  const tabsContainer = document.querySelector(".set-detail-tabs");
+  if (tabsContainer && window.getComputedStyle(tabsContainer).display !== "none") {
+    switchSetDetailTab("songs");
   }
   
   // Render songs
@@ -2009,33 +2217,124 @@ function openSetModal(set = null) {
   el("set-title").value = set?.title ?? "";
   el("set-date").value = set?.scheduled_date ?? "";
   el("set-description").value = set?.description ?? "";
+  
+  // Clear and populate service times
+  const serviceTimesList = el("service-times-list");
+  serviceTimesList.innerHTML = "";
+  if (set?.service_times && set.service_times.length > 0) {
+    set.service_times.forEach((st) => {
+      addServiceTimeRow(st.service_time, st.id);
+    });
+  }
+  
+  // Clear and populate rehearsal times
+  const rehearsalTimesList = el("rehearsal-times-list");
+  rehearsalTimesList.innerHTML = "";
+  if (set?.rehearsal_times && set.rehearsal_times.length > 0) {
+    set.rehearsal_times.forEach((rt) => {
+      addRehearsalTimeRow(rt.rehearsal_date, rt.rehearsal_time, rt.id);
+    });
+  }
 }
 
 function closeSetModal() {
   setModal.classList.add("hidden");
   document.body.style.overflow = "";
   el("set-form").reset();
+  el("service-times-list").innerHTML = "";
+  el("rehearsal-times-list").innerHTML = "";
   state.selectedSet = null;
   state.currentSetSongs = [];
+}
+
+function addServiceTimeRow(time = "", id = null) {
+  const container = el("service-times-list");
+  const row = document.createElement("div");
+  row.className = "service-time-row";
+  row.style.display = "flex";
+  row.style.gap = "0.75rem";
+  row.style.alignItems = "flex-end";
+  row.dataset.tempId = id || `temp-${Date.now()}-${Math.random()}`;
+  
+  const timeInput = document.createElement("input");
+  timeInput.type = "time";
+  // Convert "HH:MM:SS" to "HH:MM" if needed for time input
+  const timeValue = time ? time.substring(0, 5) : "";
+  timeInput.value = timeValue;
+  timeInput.required = false;
+  timeInput.style.flex = "1";
+  
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "btn ghost small";
+  removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+  removeBtn.addEventListener("click", () => row.remove());
+  
+  row.appendChild(timeInput);
+  row.appendChild(removeBtn);
+  container.appendChild(row);
+}
+
+function addRehearsalTimeRow(date = "", time = "", id = null) {
+  const container = el("rehearsal-times-list");
+  const row = document.createElement("div");
+  row.className = "rehearsal-time-row";
+  row.style.display = "flex";
+  row.style.gap = "0.75rem";
+  row.style.alignItems = "flex-end";
+  row.dataset.tempId = id || `temp-${Date.now()}-${Math.random()}`;
+  
+  const dateInput = document.createElement("input");
+  dateInput.type = "date";
+  dateInput.value = date;
+  dateInput.required = false;
+  dateInput.style.flex = "1";
+  
+  const timeInput = document.createElement("input");
+  timeInput.type = "time";
+  // Convert "HH:MM:SS" to "HH:MM" if needed for time input
+  const timeValue = time ? time.substring(0, 5) : "";
+  timeInput.value = timeValue;
+  timeInput.required = false;
+  timeInput.style.flex = "1";
+  
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "btn ghost small";
+  removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+  removeBtn.addEventListener("click", () => row.remove());
+  
+  row.appendChild(dateInput);
+  row.appendChild(timeInput);
+  row.appendChild(removeBtn);
+  container.appendChild(row);
 }
 
 async function handleSetSubmit(event) {
   event.preventDefault();
   if (!state.profile?.can_manage) return;
 
+  // Preserve the selectedSet ID immediately - don't rely on state.selectedSet staying set
+  const editingSetId = state.selectedSet?.id || null;
+  const isEditing = !!editingSetId;
+
   const payload = {
     title: el("set-title").value,
     scheduled_date: el("set-date").value,
     description: el("set-description").value,
-    created_by: state.profile.id,
   };
 
+  // Only include created_by when creating a new set
+  if (!isEditing) {
+    payload.created_by = state.profile.id;
+  }
+
   let response;
-  if (state.selectedSet) {
+  if (isEditing) {
     response = await supabase
       .from("sets")
       .update(payload)
-      .eq("id", state.selectedSet.id)
+      .eq("id", editingSetId)
       .select()
       .single();
   } else {
@@ -2048,12 +2347,87 @@ async function handleSetSubmit(event) {
     return;
   }
 
+  const finalSetId = response.data.id;
+
+  // Handle service times
+  const serviceTimeRows = el("service-times-list").querySelectorAll(".service-time-row");
+  const serviceTimes = Array.from(serviceTimeRows)
+    .map(row => {
+      const input = row.querySelector('input[type="time"]');
+      return input?.value || null;
+    })
+    .filter(time => time);
+
+  // Delete existing service times for this set
+  if (isEditing) {
+    await supabase
+      .from("service_times")
+      .delete()
+      .eq("set_id", finalSetId);
+  }
+
+  // Insert new service times
+  if (serviceTimes.length > 0) {
+    const { error: serviceError } = await supabase
+      .from("service_times")
+      .insert(serviceTimes.map(time => ({
+        set_id: finalSetId,
+        service_time: time
+      })));
+
+    if (serviceError) {
+      console.error("Error saving service times:", serviceError);
+    }
+  }
+
+  // Handle rehearsal times
+  const rehearsalTimeRows = el("rehearsal-times-list").querySelectorAll(".rehearsal-time-row");
+  const rehearsalTimes = Array.from(rehearsalTimeRows)
+    .map(row => {
+      const dateInput = row.querySelector('input[type="date"]');
+      const timeInput = row.querySelector('input[type="time"]');
+      if (dateInput?.value && timeInput?.value) {
+        return {
+          date: dateInput.value,
+          time: timeInput.value
+        };
+      }
+      return null;
+    })
+    .filter(rt => rt);
+
+  // Delete existing rehearsal times for this set
+  if (isEditing) {
+    await supabase
+      .from("rehearsal_times")
+      .delete()
+      .eq("set_id", finalSetId);
+  }
+
+  // Insert new rehearsal times
+  if (rehearsalTimes.length > 0) {
+    const { error: rehearsalError } = await supabase
+      .from("rehearsal_times")
+      .insert(rehearsalTimes.map(rt => ({
+        set_id: finalSetId,
+        rehearsal_date: rt.date,
+        rehearsal_time: rt.time
+      })));
+
+    if (rehearsalError) {
+      console.error("Error saving rehearsal times:", rehearsalError);
+    }
+  }
+
+  // Preserve selectedSet ID before closing modal (use the one we saved at the start)
+  const editedSetId = editingSetId;
+  
   closeSetModal();
   await loadSets();
   
   // Refresh detail view if it's showing the edited set
-  if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
-    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+  if (editedSetId && !el("set-detail").classList.contains("hidden")) {
+    const updatedSet = state.sets.find(s => s.id === editedSetId);
     if (updatedSet) {
       showSetDetail(updatedSet);
     }
