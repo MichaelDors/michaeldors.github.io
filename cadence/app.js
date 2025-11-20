@@ -512,6 +512,9 @@ async function handleAuth(event) {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: "https://michaeldors.com/cadence",
+      },
     });
     error = signUpError;
     if (!error && data.user) {
@@ -2012,7 +2015,7 @@ async function handleInviteSubmit(event) {
     email,
     options: {
       shouldCreateUser: true,
-      emailRedirectTo: window.location.origin,
+      emailRedirectTo: "https://michaeldors.com/cadence",
       data: {
         full_name: name || undefined,
       },
