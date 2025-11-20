@@ -1074,25 +1074,6 @@ function renderSetDetailSongs(set) {
           });
         }
 
-        // Add click track button if song has BPM
-        const clickTrackBtn = songNode.querySelector(".click-track-btn");
-        if (clickTrackBtn && setSong.song?.bpm) {
-          clickTrackBtn.classList.remove("hidden");
-          clickTrackBtn.dataset.bpm = setSong.song.bpm;
-          const bpm = parseInt(setSong.song.bpm, 10);
-          if (state.metronome.isPlaying && state.metronome.bpm === bpm) {
-            clickTrackBtn.textContent = '⏸ Stop';
-            clickTrackBtn.classList.add("active");
-          } else {
-            clickTrackBtn.textContent = '▶ Click';
-            clickTrackBtn.classList.remove("active");
-          }
-          clickTrackBtn.addEventListener("click", () => {
-            const isPlaying = toggleMetronome(bpm);
-            updateClickTrackButtons();
-          });
-        }
-        
         // Add edit and remove buttons for managers
         const editBtn = songNode.querySelector(".edit-set-song-btn");
         const removeBtn = songNode.querySelector(".remove-song-from-set-btn");
@@ -2164,18 +2145,11 @@ function renderSongCatalog() {
         <div class="set-song-header song-card-header">
           <div class="set-song-info">
             <h4 class="song-title" style="margin: 0 0 0.5rem 0;">${escapeHtml(song.title)}</h4>
-            <div class="song-meta-row">
-              <div class="song-meta-text">
-                ${song.bpm ? `<span>BPM: ${song.bpm}</span>` : ''}
-                ${song.song_key ? `<span>Key: ${song.song_key}</span>` : ''}
-                ${song.time_signature ? `<span>Time: ${escapeHtml(song.time_signature)}</span>` : ''}
-                ${song.duration_seconds ? `<span>Duration: ${formatDuration(song.duration_seconds)}</span>` : ''}
-              </div>
-              ${song.bpm ? `
-              <button class="btn small ghost click-track-btn" data-song-id="${song.id}" data-bpm="${song.bpm}" title="Click Track">
-                ${state.metronome.isPlaying && state.metronome.bpm === song.bpm ? '⏸ Stop' : '▶ Click'}
-              </button>
-              ` : ''}
+            <div class="song-meta-text">
+              ${song.bpm ? `<span>BPM: ${song.bpm}</span>` : ''}
+              ${song.song_key ? `<span>Key: ${song.song_key}</span>` : ''}
+              ${song.time_signature ? `<span>Time: ${escapeHtml(song.time_signature)}</span>` : ''}
+              ${song.duration_seconds ? `<span>Duration: ${formatDuration(song.duration_seconds)}</span>` : ''}
             </div>
           </div>
           <div class="set-song-actions song-card-actions">
@@ -2206,15 +2180,6 @@ function renderSongCatalog() {
     if (deleteBtn) {
       deleteBtn.addEventListener("click", () => {
         deleteSong(song.id);
-      });
-    }
-    
-    const clickTrackBtn = div.querySelector(".click-track-btn");
-    if (clickTrackBtn) {
-      clickTrackBtn.addEventListener("click", () => {
-        const bpm = parseInt(clickTrackBtn.dataset.bpm, 10);
-        toggleMetronome(bpm);
-        updateClickTrackButtons();
       });
     }
     
@@ -2318,52 +2283,75 @@ async function openSongDetailsModal(song) {
   }
   
   // Render all song information in an expanded view
-  content.innerHTML = `
-    <div class="song-details-section">
-      <h2 class="song-details-title">${escapeHtml(songWithLinks.title || "Untitled")}</h2>
-      
-      <div class="song-details-meta">
-        ${songWithLinks.bpm ? `<div class="detail-item">
-          <span class="detail-label">BPM</span>
-          <span class="detail-value">${songWithLinks.bpm}</span>
-        </div>` : ''}
-        ${songWithLinks.song_key ? `<div class="detail-item">
-          <span class="detail-label">Key</span>
-          <span class="detail-value">${escapeHtml(songWithLinks.song_key)}</span>
-        </div>` : ''}
-        ${songWithLinks.time_signature ? `<div class="detail-item">
-          <span class="detail-label">Time Signature</span>
-          <span class="detail-value">${escapeHtml(songWithLinks.time_signature)}</span>
-        </div>` : ''}
-        ${songWithLinks.duration_seconds ? `<div class="detail-item">
-          <span class="detail-label">Duration</span>
-          <span class="detail-value">${formatDuration(songWithLinks.duration_seconds)}</span>
-        </div>` : ''}
-      </div>
-      
-      ${songWithLinks.description ? `
+    content.innerHTML = `
       <div class="song-details-section">
-        <h3 class="section-title">Description</h3>
-        <p class="song-details-description">${escapeHtml(songWithLinks.description)}</p>
+        <h2 class="song-details-title">${escapeHtml(songWithLinks.title || "Untitled")}</h2>
+        
+        <div class="song-details-meta">
+          ${songWithLinks.bpm ? `<div class="detail-item">
+            <span class="detail-label">BPM</span>
+            <span class="detail-value">${songWithLinks.bpm}</span>
+          </div>` : ''}
+          ${songWithLinks.song_key ? `<div class="detail-item">
+            <span class="detail-label">Key</span>
+            <span class="detail-value">${escapeHtml(songWithLinks.song_key)}</span>
+          </div>` : ''}
+          ${songWithLinks.time_signature ? `<div class="detail-item">
+            <span class="detail-label">Time Signature</span>
+            <span class="detail-value">${escapeHtml(songWithLinks.time_signature)}</span>
+          </div>` : ''}
+          ${songWithLinks.duration_seconds ? `<div class="detail-item">
+            <span class="detail-label">Duration</span>
+            <span class="detail-value">${formatDuration(songWithLinks.duration_seconds)}</span>
+          </div>` : ''}
+        </div>
+        
+        ${songWithLinks.bpm ? `
+        <div class="song-click-track">
+          <div class="song-click-track-info">
+            <p class="song-click-track-title">Click Track</p>
+            <p class="song-click-track-description">Practice at ${songWithLinks.bpm} BPM without leaving this view.</p>
+          </div>
+          <button class="btn secondary click-track-btn" data-bpm="${songWithLinks.bpm}" title="Click Track">
+            ${state.metronome.isPlaying && state.metronome.bpm === songWithLinks.bpm ? '⏸ Stop' : '▶ Click'}
+          </button>
+        </div>
+        ` : ''}
+        
+        ${songWithLinks.description ? `
+        <div class="song-details-section">
+          <h3 class="section-title">Description</h3>
+          <p class="song-details-description">${escapeHtml(songWithLinks.description)}</p>
+        </div>
+        ` : ''}
+        
+        ${songWithLinks.song_links && songWithLinks.song_links.length > 0 ? `
+        <div class="song-details-section">
+          <h3 class="section-title">Resources & Links</h3>
+          <div class="song-details-links"></div>
+        </div>
+        ` : ''}
       </div>
-      ` : ''}
-      
-      ${songWithLinks.song_links && songWithLinks.song_links.length > 0 ? `
-      <div class="song-details-section">
-        <h3 class="section-title">Resources & Links</h3>
-        <div class="song-details-links"></div>
-      </div>
-      ` : ''}
-    </div>
-  `;
+    `;
   
   // Render links if they exist
-  if (songWithLinks.song_links && songWithLinks.song_links.length > 0) {
-    const linksContainer = content.querySelector(".song-details-links");
-    if (linksContainer) {
-      renderSongLinksDisplay(songWithLinks.song_links, linksContainer);
+    if (songWithLinks.song_links && songWithLinks.song_links.length > 0) {
+      const linksContainer = content.querySelector(".song-details-links");
+      if (linksContainer) {
+        renderSongLinksDisplay(songWithLinks.song_links, linksContainer);
+      }
     }
-  }
+    
+    const modalClickTrackBtn = content.querySelector(".song-click-track .click-track-btn");
+    if (modalClickTrackBtn) {
+      modalClickTrackBtn.addEventListener("click", () => {
+        const bpm = parseInt(modalClickTrackBtn.dataset.bpm, 10);
+        toggleMetronome(bpm);
+        updateClickTrackButtons();
+      });
+    }
+    
+    updateClickTrackButtons();
   
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";

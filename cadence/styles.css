@@ -331,24 +331,6 @@ main {
   font-size: 0.9rem;
 }
 
-.song-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.25rem;
-  flex-wrap: wrap;
-}
-
-.song-meta-row .song-meta,
-.song-meta-row .song-meta-text {
-  margin: 0;
-  flex: 1;
-}
-
-.song-meta-row .click-track-btn {
-  flex-shrink: 0;
-}
-
 .song-description-text {
   color: var(--text-secondary);
   margin: 0.5rem 0 0 0;
@@ -734,6 +716,37 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.song-click-track {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.song-click-track-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.song-click-track-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.song-click-track-description {
+  margin: 0.25rem 0 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 .assignment-row {
