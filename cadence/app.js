@@ -7,6 +7,28 @@ if (SUPABASE_URL.includes("YOUR_PROJECT_ID")) {
   console.warn("Update SUPABASE_URL and SUPABASE_ANON_KEY before deploying.");
 }
 
+// Check for access_token in URL BEFORE creating Supabase client
+// This way we can intercept it before detectSessionInUrl processes it
+// IMPORTANT: This must run synchronously at module load time, before Supabase client is created
+(function() {
+  const urlHash = window.location.hash;
+  const hashParams = new URLSearchParams(urlHash.substring(1));
+  window.__hasAccessToken = hashParams.get('access_token');
+  window.__isRecovery = hashParams.get('type') === 'recovery';
+  window.__isInviteLink = window.__hasAccessToken && !window.__isRecovery;
+  
+  console.log('🔍 Pre-init check - Full URL:', window.location.href);
+  console.log('🔍 Pre-init check - URL hash:', urlHash);
+  console.log('🔍 Pre-init check - hashParams keys:', Array.from(hashParams.keys()));
+  console.log('🔍 Pre-init check - hasAccessToken:', !!window.__hasAccessToken);
+  console.log('🔍 Pre-init check - isRecovery:', window.__isRecovery);
+  console.log('🔍 Pre-init check - isInviteLink:', window.__isInviteLink);
+})();
+
+const hasAccessToken = window.__hasAccessToken;
+const isRecovery = window.__isRecovery;
+const isInviteLink = window.__isInviteLink;
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     detectSessionInUrl: true,
@@ -22,11 +44,13 @@ const state = {
   sets: [],
   songs: [],
   people: [],
+  pendingInvites: [],
   selectedSet: null,
   currentSetSongs: [],
   creatingSongFromModal: false,
   expandedSets: new Set(),
   currentSongDetailsId: null, // Track which song is open in details modal
+  isPasswordSetup: isInviteLink, // Set flag immediately if this is an invite link
   metronome: {
     isPlaying: false,
     bpm: null,
@@ -55,16 +79,15 @@ const toggleSignup = el("toggle-signup");
 let isSignUpMode = false;
 
 async function init() {
-  // Handle email confirmation redirect - clear hash after processing
-  const hashParams = new URLSearchParams(window.location.hash.substring(1));
-  if (hashParams.get('type') === 'recovery' || hashParams.get('access_token')) {
-    // Supabase will handle this via detectSessionInUrl, but we'll clean up the URL
-    window.history.replaceState(null, '', window.location.pathname);
-  }
-
+  console.log('🚀 init() called');
+  console.log('🔍 State.isPasswordSetup:', state.isPasswordSetup);
+  console.log('🔍 Current URL hash:', window.location.hash);
+  console.log('🔍 isInviteLink (from top level):', isInviteLink);
+  
   let initialSessionChecked = false;
   let isProcessingSession = false;
-
+  
+  // Set up auth state change handler FIRST so it can handle password setup cases
   supabase.auth.onAuthStateChange(async (event, session) => {
     console.log('🔄 Auth state change event:', event);
     console.log('  - Session:', session ? 'Has session' : 'No session');
@@ -85,6 +108,31 @@ async function init() {
     }
     
     state.session = session;
+    
+    // If we're in password setup mode, check if profile exists
+    if (state.isPasswordSetup && session) {
+      console.log('  - Password setup mode with session, checking profile...');
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      
+      if (!existingProfile) {
+        console.log('  - No profile found in password setup mode, showing password setup form');
+        showPasswordSetupGate();
+        return; // Don't proceed with normal flow
+      } else {
+        console.log('  - Profile exists, clearing password setup mode');
+        state.isPasswordSetup = false; // Profile exists, proceed normally
+      }
+    }
+    
+    // Skip normal flow if we're in password setup mode and no session
+    if (state.isPasswordSetup && !session) {
+      console.log('  - Password setup mode, skipping normal auth flow');
+      return;
+    }
     
     if (session) {
       console.log('  - Session exists, setting up profile and showing app...');
@@ -145,6 +193,64 @@ async function init() {
   // Check localStorage for session data
   const supabaseKeys = Object.keys(localStorage).filter(key => key.startsWith('sb-'));
   console.log('LocalStorage Supabase keys:', supabaseKeys.length > 0 ? supabaseKeys : 'None found');
+  
+  // Bind events first so password setup form handler is ready
+  bindEvents();
+  
+  // Check for invite link BEFORE checking for session
+  // This must happen first so we don't show the login form
+  if (state.isPasswordSetup || isInviteLink) {
+    console.log('🔗 Invite link detected!');
+    console.log('  - state.isPasswordSetup:', state.isPasswordSetup);
+    console.log('  - isInviteLink:', isInviteLink);
+    console.log('  - URL hash:', window.location.hash);
+    
+    // Ensure flag is set
+    state.isPasswordSetup = true;
+    
+    // Wait a moment for Supabase to process the URL (detectSessionInUrl)
+    // This gives Supabase time to create the session from the access_token
+    console.log('⏳ Waiting for Supabase to process URL...');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('🔍 Checking for session after wait...');
+    const { data: { session: inviteSession }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (inviteSession && !sessionError) {
+      console.log('✅ Session created from invite link for:', inviteSession.user.email);
+      state.session = inviteSession; // Set session so we can use it in password setup
+      
+      // Check if profile exists
+      console.log('🔍 Checking if profile exists...');
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", inviteSession.user.id)
+        .maybeSingle();
+      
+      if (!existingProfile) {
+        console.log('👤 No profile found, showing password setup form');
+        showPasswordSetupGate();
+        initialSessionChecked = true; // Mark as checked so we don't process INITIAL_SESSION
+        return; // Don't proceed with normal auth flow yet
+      } else {
+        console.log('✅ Profile already exists, proceeding with normal flow');
+        // Profile exists, so they've already set up their account - proceed normally
+        state.isPasswordSetup = false; // Reset flag since we're proceeding normally
+        // Continue with normal flow below
+      }
+    } else {
+      console.log('⚠️ Could not get session from invite link');
+      console.log('  - Session error:', sessionError);
+      console.log('  - Session:', inviteSession);
+      console.log('  - Still showing password setup form...');
+      showPasswordSetupGate();
+      initialSessionChecked = true; // Mark as checked so we don't process INITIAL_SESSION
+      return;
+    }
+  } else {
+    console.log('ℹ️ Not an invite link, proceeding with normal flow');
+  }
   
   // Check for existing session first
   console.log('🔍 Checking for existing session...');
@@ -214,8 +320,15 @@ async function init() {
   } else {
     console.log('⏳ Session already being processed by auth state change handler');
   }
-
-  bindEvents();
+  
+  // Handle recovery or other auth redirects - clear hash after processing
+  if (isRecovery || (hasAccessToken && !isRecovery)) {
+    // Supabase will handle this via detectSessionInUrl, but we'll clean up the URL after processing
+    // Don't clear it yet if we're showing password setup
+    if (!state.isPasswordSetup) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }
 }
 
 function bindEvents() {
@@ -227,12 +340,17 @@ function bindEvents() {
   console.log('  - authSubmitBtn element:', authSubmitBtn);
   
   authForm?.addEventListener("submit", handleAuth);
-  toggleSignup?.addEventListener("click", (e) => {
-    console.log('🔄 Toggle signup clicked');
-    e.preventDefault();
-    toggleAuthMode();
-  });
+  // Remove signup toggle - no manual signup allowed
+  // toggleSignup?.addEventListener("click", (e) => {
+  //   console.log('🔄 Toggle signup clicked');
+  //   e.preventDefault();
+  //   toggleAuthMode();
+  // });
   logoutBtn?.addEventListener("click", () => supabase.auth.signOut());
+  
+  // Password setup form
+  const passwordSetupForm = el("password-setup-form");
+  passwordSetupForm?.addEventListener("submit", handlePasswordSetup);
   createSetBtn?.addEventListener("click", () => openSetModal());
   el("btn-invite-member")?.addEventListener("click", () => openInviteModal());
   el("close-invite-modal")?.addEventListener("click", () => closeInviteModal());
@@ -363,6 +481,9 @@ function showAuthGate() {
   console.log('  - Current state.session:', state.session);
   console.log('  - Current state.profile:', state.profile);
   
+  const passwordSetupGate = el("password-setup-gate");
+  if (passwordSetupGate) passwordSetupGate.classList.add("hidden");
+  
   if (authGate) authGate.classList.remove("hidden");
   if (dashboard) dashboard.classList.add("hidden");
   if (userInfo) userInfo.classList.add("hidden");
@@ -375,6 +496,30 @@ function showAuthGate() {
   console.log('  - dashboard hidden class added:', dashboard?.classList.contains('hidden'));
 }
 
+function showPasswordSetupGate() {
+  console.log('🔐 showPasswordSetupGate() called');
+  const passwordSetupGate = el("password-setup-gate");
+  const authGateEl = el("auth-gate");
+  const dashboardEl = el("dashboard");
+  
+  if (passwordSetupGate) passwordSetupGate.classList.remove("hidden");
+  if (authGateEl) authGateEl.classList.add("hidden");
+  if (dashboardEl) dashboardEl.classList.add("hidden");
+  
+  setPasswordSetupMessage("");
+  const form = el("password-setup-form");
+  if (form) form.reset();
+  
+  // Show the user's email if we have a session
+  if (state.session?.user?.email) {
+    const emailDisplay = passwordSetupGate?.querySelector('.password-setup-email');
+    if (emailDisplay) {
+      emailDisplay.textContent = state.session.user.email;
+      emailDisplay.parentElement?.classList.remove('hidden');
+    }
+  }
+}
+
 function showApp() {
   console.log('✅ showApp() called');
   console.log('  - state.session:', !!state.session);
@@ -382,6 +527,7 @@ function showApp() {
   
   // Re-fetch elements in case they weren't available during init
   const authGateEl = el("auth-gate");
+  const passwordSetupGateEl = el("password-setup-gate");
   const dashboardEl = el("dashboard");
   const userInfoEl = el("user-info");
   const userNameEl = el("user-name");
@@ -390,6 +536,7 @@ function showApp() {
   const inviteMemberBtnEl = el("btn-invite-member");
   
   console.log('  - authGate element:', authGateEl);
+  console.log('  - passwordSetupGate element:', passwordSetupGateEl);
   console.log('  - dashboard element:', dashboardEl);
   console.log('  - userInfo element:', userInfoEl);
   
@@ -398,9 +545,13 @@ function showApp() {
     return;
   }
   
-  // Force hide auth gate and show dashboard
+  // Force hide auth gate, password setup gate, and show dashboard
   authGateEl.classList.add("hidden");
+  if (passwordSetupGateEl) passwordSetupGateEl.classList.add("hidden");
   dashboardEl.classList.remove("hidden");
+  
+  // Ensure set detail view is hidden when showing dashboard
+  hideSetDetail();
   
   if (userInfoEl) {
     userInfoEl.classList.remove("hidden");
@@ -442,6 +593,8 @@ function resetState() {
   state.profile = null;
   state.sets = [];
   state.songs = [];
+  state.people = [];
+  state.pendingInvites = [];
   state.selectedSet = null;
   state.currentSetSongs = [];
   setsList.innerHTML = "";
@@ -458,26 +611,17 @@ function toggleAuthMode() {
 }
 
 function updateAuthUI() {
+  // Always show login mode - no manual signup allowed
   const heading = authGate?.querySelector("h2");
   const description = authGate?.querySelector("p:first-of-type");
   const toggleParagraph = toggleSignup?.parentElement;
   
-  if (isSignUpMode) {
-    if (heading) heading.textContent = "Sign Up";
-    if (description) description.textContent = "Create an account with your email and password.";
-    if (authSubmitBtn) authSubmitBtn.textContent = "Sign up";
-    if (toggleParagraph && toggleSignup) {
-      toggleParagraph.firstChild.textContent = "Already have an account? ";
-      toggleSignup.textContent = "Sign in";
-    }
-  } else {
-    if (heading) heading.textContent = "Login";
-    if (description) description.textContent = "Sign in with your email and password.";
-    if (authSubmitBtn) authSubmitBtn.textContent = "Sign in";
-    if (toggleParagraph && toggleSignup) {
-      toggleParagraph.firstChild.textContent = "Don't have an account? ";
-      toggleSignup.textContent = "Sign up";
-    }
+  if (heading) heading.textContent = "Login";
+  if (description) description.textContent = "Sign in with your email and password.";
+  if (authSubmitBtn) authSubmitBtn.textContent = "Sign in";
+  // Hide signup toggle
+  if (toggleParagraph && toggleSignup) {
+    toggleParagraph.style.display = "none";
   }
 }
 
@@ -507,65 +651,48 @@ async function handleAuth(event) {
   toggleAuthButton(true);
   setAuthMessage(isSignUpMode ? "Creating account…" : "Signing in…");
 
-  let error;
-  if (isSignUpMode) {
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: "https://michaeldors.com/cadence",
-      },
-    });
-    error = signUpError;
-    if (!error && data.user) {
-      setAuthMessage("Account created! Please check your email to confirm your account.", false);
-      authForm?.reset();
-      toggleAuthButton(false);
-      return;
-    }
-  } else {
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    error = signInError;
+  // No manual signup allowed - only login
+  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  const error = signInError;
+  
+  if (!error && signInData.session) {
+    console.log('✅ Sign in successful!');
+    console.log('  - Session user:', signInData.session.user?.email);
+    console.log('  - Session expires at:', new Date(signInData.session.expires_at * 1000));
     
-    if (!error && signInData.session) {
-      console.log('✅ Sign in successful!');
-      console.log('  - Session user:', signInData.session.user?.email);
-      console.log('  - Session expires at:', new Date(signInData.session.expires_at * 1000));
-      
-      // Verify session is stored
-      const { data: { session: storedSession } } = await supabase.auth.getSession();
-      console.log('  - Stored session after sign in:', storedSession ? '✅ Found' : '❌ Not found');
-      
-      // Update state immediately
-      console.log('  - Updating state.session...');
-      state.session = signInData.session;
-      console.log('  - state.session updated:', !!state.session);
-      
-      console.log('  - Fetching profile...');
-      await fetchProfile();
-      console.log('  - Profile fetched, state.profile:', state.profile);
-      
-      console.log('  - Loading songs, sets, and people...');
-      await Promise.all([loadSongs(), loadSets(), loadPeople()]);
-      console.log('  - Data loaded');
-      
-      console.log('  - Calling showApp()...');
-      showApp();
-      setAuthMessage("");
-      authForm?.reset();
-      toggleAuthButton(false);
-      return;
-    }
+    // Verify session is stored
+    const { data: { session: storedSession } } = await supabase.auth.getSession();
+    console.log('  - Stored session after sign in:', storedSession ? '✅ Found' : '❌ Not found');
+    
+    // Update state immediately
+    console.log('  - Updating state.session...');
+    state.session = signInData.session;
+    console.log('  - state.session updated:', !!state.session);
+    
+    console.log('  - Fetching profile...');
+    await fetchProfile();
+    console.log('  - Profile fetched, state.profile:', state.profile);
+    
+    console.log('  - Loading songs, sets, and people...');
+    await Promise.all([loadSongs(), loadSets(), loadPeople()]);
+    console.log('  - Data loaded');
+    
+    console.log('  - Calling showApp()...');
+    showApp();
+    setAuthMessage("");
+    authForm?.reset();
+    toggleAuthButton(false);
+    return;
   }
 
   if (error) {
     console.error('Auth error:', error);
     setAuthMessage(error.message || "Unable to sign in. Please check your credentials.", true);
     toggleAuthButton(false);
-  } else if (!isSignUpMode) {
+  } else {
     // Fallback - onAuthStateChange should handle this
     setAuthMessage("");
     authForm?.reset();
@@ -583,6 +710,200 @@ function setAuthMessage(message, isError = false) {
   authMessage.textContent = message;
   authMessage.classList.toggle("error-text", Boolean(isError));
   authMessage.classList.toggle("muted", !isError);
+}
+
+function setPasswordSetupMessage(message, isError = false) {
+  const messageEl = el("password-setup-message");
+  if (!messageEl) return;
+  messageEl.textContent = message;
+  messageEl.classList.toggle("error-text", Boolean(isError));
+  messageEl.classList.toggle("muted", !isError);
+}
+
+async function handlePasswordSetup(event) {
+  event.preventDefault();
+  console.log('🔐 handlePasswordSetup() called');
+  
+  const password = el("setup-password")?.value;
+  const passwordConfirm = el("setup-password-confirm")?.value;
+  const submitBtn = el("password-setup-submit-btn");
+  
+  if (!password || !passwordConfirm) {
+    setPasswordSetupMessage("Please enter and confirm your password.", true);
+    return;
+  }
+  
+  if (password.length < 6) {
+    setPasswordSetupMessage("Password must be at least 6 characters.", true);
+    return;
+  }
+  
+  if (password !== passwordConfirm) {
+    setPasswordSetupMessage("Passwords do not match.", true);
+    return;
+  }
+  
+  // Disable button
+  if (submitBtn) submitBtn.disabled = true;
+  setPasswordSetupMessage("Setting up your account...");
+  
+  try {
+    // Get the current session from the access_token
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.error('❌ No session found:', sessionError);
+      setPasswordSetupMessage("Invalid invite link. Please request a new invite.", true);
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+    
+    console.log('✅ Session found, updating password for user:', session.user.email);
+    
+    // Update the user's password
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: password
+    });
+    
+    if (updateError) {
+      console.error('❌ Password update error:', updateError);
+      setPasswordSetupMessage(updateError.message || "Failed to set password. Please try again.", true);
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+    
+    console.log('✅ Password updated successfully');
+    
+    // Create profile and migrate pending invites
+    await createProfileAndMigrateInvites(session.user);
+    
+    // Sign in with the new password to get a fresh session
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: session.user.email,
+      password: password,
+    });
+    
+    if (signInError || !signInData.session) {
+      console.error('❌ Sign in error after password setup:', signInError);
+      setPasswordSetupMessage("Password set successfully, but sign in failed. Please try logging in.", true);
+      if (submitBtn) submitBtn.disabled = false;
+      // Still proceed - they can log in manually
+      window.location.reload();
+      return;
+    }
+    
+    console.log('✅ Signed in successfully after password setup');
+    
+    // Update state and show app
+    state.session = signInData.session;
+    await fetchProfile();
+    await Promise.all([loadSongs(), loadSets(), loadPeople()]);
+    
+    // Clean up URL and reset password setup flag
+    window.history.replaceState(null, '', window.location.pathname);
+    state.isPasswordSetup = false;
+    
+    // Show app
+    showApp();
+    setPasswordSetupMessage("");
+    
+  } catch (err) {
+    console.error('❌ Unexpected error in handlePasswordSetup:', err);
+    setPasswordSetupMessage("An unexpected error occurred. Please try again.", true);
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+async function createProfileAndMigrateInvites(user) {
+  console.log('👤 createProfileAndMigrateInvites() called for user:', user.email);
+  
+  const userEmail = user.email?.toLowerCase();
+  if (!userEmail) {
+    console.error('❌ No email found for user');
+    return;
+  }
+  
+  // Find the pending invite
+  const { data: pendingInvite, error: inviteError } = await supabase
+    .from("pending_invites")
+    .select("*")
+    .eq("email", userEmail)
+    .maybeSingle();
+  
+  if (inviteError && inviteError.code !== "PGRST116") {
+    console.error('❌ Error finding pending invite:', inviteError);
+  }
+  
+  const fullName = pendingInvite?.full_name || user.user_metadata?.full_name || userEmail;
+  
+  // Create the profile
+  const { data: newProfile, error: profileError } = await supabase
+    .from("profiles")
+    .insert({
+      id: user.id,
+      full_name: fullName,
+      email: userEmail,
+    })
+    .select()
+    .single();
+  
+  if (profileError) {
+    console.error('❌ Error creating profile:', profileError);
+    // Profile might already exist, try to update it
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from("profiles")
+      .update({
+        full_name: fullName,
+        email: userEmail,
+      })
+      .eq("id", user.id)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error('❌ Error updating profile:', updateError);
+      return;
+    }
+    
+    console.log('✅ Profile updated:', updatedProfile);
+    state.profile = updatedProfile;
+  } else {
+    console.log('✅ Profile created:', newProfile);
+    state.profile = newProfile;
+  }
+  
+  // Migrate assignments from pending_invite to the new profile
+  if (pendingInvite) {
+    console.log('🔄 Migrating assignments from pending invite:', pendingInvite.id);
+    
+    const { error: migrateError } = await supabase
+      .from("song_assignments")
+      .update({
+        person_id: user.id,
+        person_name: fullName,
+        person_email: userEmail,
+        pending_invite_id: null,
+      })
+      .eq("pending_invite_id", pendingInvite.id);
+    
+    if (migrateError) {
+      console.error('❌ Error migrating assignments:', migrateError);
+    } else {
+      console.log('✅ Assignments migrated successfully');
+    }
+    
+    // Delete the pending invite
+    const { error: deleteError } = await supabase
+      .from("pending_invites")
+      .delete()
+      .eq("id", pendingInvite.id);
+    
+    if (deleteError) {
+      console.error('❌ Error deleting pending invite:', deleteError);
+    } else {
+      console.log('✅ Pending invite deleted');
+    }
+  }
 }
 
 async function fetchProfile() {
@@ -638,7 +959,16 @@ async function fetchProfile() {
     if (!data) {
       console.log('  - No profile found, creating new one...');
       
-      // Wrap insert in timeout
+      // Use the migration function to create profile and migrate invites
+      await createProfileAndMigrateInvites(state.session.user);
+      
+      // If profile was created, fetch it again to get the full data
+      if (state.profile) {
+        console.log('  - ✅ Profile created via migration function:', state.profile);
+        return;
+      }
+      
+      // Fallback: try direct insert if migration didn't work
       const insertPromise = supabase
         .from("profiles")
         .insert({
@@ -747,10 +1077,17 @@ async function loadSets() {
           id,
           person_id,
           person_name,
+          person_email,
+          pending_invite_id,
           role,
           person:person_id (
             id,
             full_name
+          ),
+          pending_invite:pending_invite_id (
+            id,
+            full_name,
+            email
           )
         )
       )
@@ -868,6 +1205,9 @@ function renderSets() {
 }
 
 function switchTab(tabName) {
+  // Hide set detail view when switching tabs
+  hideSetDetail();
+  
   // Update tab buttons
   document.querySelectorAll(".tab-btn").forEach(btn => {
     if (btn.dataset.tab === tabName) {
@@ -891,17 +1231,33 @@ function switchTab(tabName) {
 }
 
 async function loadPeople() {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("full_name");
-  
-  if (error) {
-    console.error("Error loading people:", error);
+  const [
+    { data: profiles, error: profilesError },
+    { data: pendingInvites, error: pendingError },
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*")
+      .order("full_name"),
+    supabase
+      .from("pending_invites")
+      .select("*")
+      .is("resolved_at", null)
+      .order("full_name", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true }),
+  ]);
+
+  if (profilesError) {
+    console.error("Error loading people:", profilesError);
     return;
   }
-  
-  state.people = data || [];
+
+  if (pendingError) {
+    console.error("Error loading pending invites:", pendingError);
+  }
+
+  state.people = profiles || [];
+  state.pendingInvites = pendingInvites || [];
   renderPeople();
 }
 
@@ -912,7 +1268,8 @@ function renderPeople() {
   peopleList.innerHTML = "";
   
   // Add invite card for managers
-  if (state.profile?.can_manage) {
+  const isManager = !!state.profile?.can_manage;
+  if (isManager) {
     const inviteCard = document.createElement("div");
     inviteCard.className = "card person-card invite-card";
     inviteCard.innerHTML = `
@@ -925,58 +1282,88 @@ function renderPeople() {
     peopleList.appendChild(inviteCard);
   }
   
-  if (!state.people || state.people.length === 0) {
-    if (!state.profile?.can_manage) {
+  const hasMembers = Array.isArray(state.people) && state.people.length > 0;
+  const hasPending = Array.isArray(state.pendingInvites) && state.pendingInvites.length > 0;
+  const totalEntries = (state.people?.length || 0) + (state.pendingInvites?.length || 0);
+
+  if (totalEntries === 0) {
+    if (!isManager) {
       peopleList.innerHTML = '<p class="muted">No members yet.</p>';
+      return;
     }
+    const emptyMessage = document.createElement("p");
+    emptyMessage.className = "muted";
+    emptyMessage.textContent = "No members yet. Invite someone to get started.";
+    peopleList.appendChild(emptyMessage);
     return;
   }
-  
-  state.people.forEach((person) => {
-    const div = document.createElement("div");
-    div.className = "card person-card";
-    
-    if (state.profile?.can_manage) {
-      // Manager view: show email, edit name, delete
-      div.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: start; width: 100%;">
-          <div style="flex: 1;">
-            <h3 class="person-name" style="margin: 0 0 0.5rem 0;">${escapeHtml(person.full_name)}</h3>
-            ${person.email ? `
-              <a href="mailto:${escapeHtml(person.email)}" class="person-email-link" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
-                ${escapeHtml(person.email)}
-              </a>
-            ` : '<span class="muted" style="font-size: 0.9rem;">No email</span>'}
-            <div style="margin-top: 0.5rem;">
-              ${person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
+
+  if (hasMembers) {
+    state.people.forEach((person) => {
+      const div = document.createElement("div");
+      div.className = "card person-card";
+      
+      if (isManager) {
+        // Manager view: show email, edit name, delete
+        div.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: start; width: 100%;">
+            <div style="flex: 1;">
+              <h3 class="person-name" style="margin: 0 0 0.5rem 0;">${escapeHtml(person.full_name)}</h3>
+              ${person.email ? `
+                <a href="mailto:${escapeHtml(person.email)}" class="person-email-link" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+                  ${escapeHtml(person.email)}
+                </a>
+              ` : '<span class="muted" style="font-size: 0.9rem;">No email</span>'}
+              <div style="margin-top: 0.5rem;">
+                ${person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <button class="btn small secondary edit-person-btn" data-person-id="${person.id}">Edit</button>
+              <button class="btn small ghost delete-person-btn" data-person-id="${person.id}">Remove</button>
             </div>
           </div>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button class="btn small secondary edit-person-btn" data-person-id="${person.id}">Edit</button>
-            <button class="btn small ghost delete-person-btn" data-person-id="${person.id}">Remove</button>
-          </div>
-        </div>
-      `;
-      
-      const editBtn = div.querySelector(".edit-person-btn");
-      if (editBtn) {
-        editBtn.addEventListener("click", () => openEditPersonModal(person));
+        `;
+        
+        const editBtn = div.querySelector(".edit-person-btn");
+        if (editBtn) {
+          editBtn.addEventListener("click", () => openEditPersonModal(person));
+        }
+        
+        const deleteBtn = div.querySelector(".delete-person-btn");
+        if (deleteBtn) {
+          deleteBtn.addEventListener("click", () => deletePerson(person));
+        }
+      } else {
+        // Regular user view: just show name and role
+        div.innerHTML = `
+          <h3 class="person-name">${escapeHtml(person.full_name)}</h3>
+          ${person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
+        `;
       }
       
-      const deleteBtn = div.querySelector(".delete-person-btn");
-      if (deleteBtn) {
-        deleteBtn.addEventListener("click", () => deletePerson(person));
-      }
-    } else {
-      // Regular user view: just show name and role
+      peopleList.appendChild(div);
+    });
+  }
+
+  if (hasPending) {
+    state.pendingInvites.forEach((invite) => {
+      const div = document.createElement("div");
+      div.className = "card person-card pending-person-card";
+      const displayName = invite.full_name || invite.email;
       div.innerHTML = `
-        <h3 class="person-name">${escapeHtml(person.full_name)}</h3>
-        ${person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
+        <div class="pending-person-header">
+          <div>
+            <h3 class="person-name" style="margin: 0;">${escapeHtml(displayName)}</h3>
+            ${invite.email ? `<span class="pending-person-email">${escapeHtml(invite.email)}</span>` : ""}
+          </div>
+          <span class="pending-pill">Pending</span>
+        </div>
+        <p class="muted small-text" style="margin-top: 0.75rem;">Invite sent • waiting for signup</p>
       `;
-    }
-    
-    peopleList.appendChild(div);
-  });
+      peopleList.appendChild(div);
+    });
+  }
 }
 
 function showSetDetail(set) {
@@ -1068,8 +1455,28 @@ function renderSetDetailSongs(set) {
               .content.cloneNode(true);
             pill.querySelector(".assignment-role").textContent =
               assignment.role;
-            pill.querySelector(".assignment-person").textContent =
-              assignment.person?.full_name || assignment.person_name || "Unknown";
+            const personEl = pill.querySelector(".assignment-person");
+            const isPending = Boolean(assignment.pending_invite_id);
+            const personName =
+              assignment.person?.full_name ||
+              assignment.pending_invite?.full_name ||
+              assignment.person_name ||
+              assignment.person_email ||
+              assignment.pending_invite?.email ||
+              "Unknown";
+            if (personEl) {
+              personEl.textContent = personName;
+              if (isPending) {
+                const pendingTag = document.createElement("span");
+                pendingTag.className = "pending-inline-tag";
+                pendingTag.textContent = " (Pending)";
+                personEl.appendChild(pendingTag);
+              }
+            }
+            const pillRoot = pill.querySelector(".assignment-pill");
+            if (isPending && pillRoot) {
+              pillRoot.classList.add("pending");
+            }
             assignmentsWrap.appendChild(pill);
           });
         }
@@ -1087,8 +1494,14 @@ function renderSetDetailSongs(set) {
             removeBtn.classList.remove("hidden");
             removeBtn.dataset.setSongId = setSong.id;
             removeBtn.addEventListener("click", async () => {
-              if (!confirm("Remove this song from the set?")) return;
-              await removeSongFromSet(setSong.id, set.id);
+              const songTitle = setSong.song?.title || "this song";
+              showDeleteConfirmModal(
+                songTitle,
+                `Remove "${songTitle}" from this set?`,
+                async () => {
+                  await removeSongFromSet(setSong.id, set.id);
+                }
+              );
             });
           }
         }
@@ -1168,6 +1581,8 @@ function setupSongDragAndDrop(container) {
       item.draggable = false;
       // Remove any drag-over classes
       container.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
+      // Remove all drop indicators
+      container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
     });
     
     item.addEventListener("dragover", (e) => {
@@ -1212,6 +1627,7 @@ function setupSongDragAndDrop(container) {
     
     item.addEventListener("drop", async (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const draggedId = e.dataTransfer.getData("text/plain");
       const draggedItem = container.querySelector(`[data-set-song-id="${draggedId}"]`);
       
@@ -1260,6 +1676,28 @@ function setupSongDragAndDrop(container) {
         container.appendChild(indicator);
       }
     }
+  });
+  
+  // Handle drop on container (for drops at the end of the list)
+  container.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    const draggedId = e.dataTransfer.getData("text/plain");
+    const draggedItem = container.querySelector(`[data-set-song-id="${draggedId}"]`);
+    
+    if (!draggedItem) return;
+    
+    // Remove indicators
+    container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+    
+    // Get new order (exclude add-song-card)
+    const items = Array.from(container.querySelectorAll(".set-song-card.draggable-item"));
+    const newOrder = items.map((el, index) => ({
+      id: el.dataset.setSongId,
+      sequence_order: index
+    }));
+    
+    // Update all sequence orders
+    await updateSongOrder(newOrder);
   });
 }
 
@@ -1352,10 +1790,13 @@ function setupLinkDragAndDrop(item, container) {
     }
   });
   
-  item.addEventListener("drop", (e) => {
+  item.addEventListener("drop", async (e) => {
     e.preventDefault();
-    // Order will be saved when the form is submitted
+    e.stopPropagation();
+    // Update the order in the DOM
     updateLinkOrder(container);
+    // Save the order to the database immediately
+    await saveLinkOrder(container);
     // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
   });
@@ -1385,6 +1826,20 @@ function setupLinkDragAndDrop(item, container) {
         }
       }
     });
+    
+    // Handle drop on container (for drops at the end of the list)
+    container.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      const dragging = container.querySelector(".dragging");
+      if (!dragging) return;
+      
+      // Update the order in the DOM
+      updateLinkOrder(container);
+      // Save the order to the database immediately
+      await saveLinkOrder(container);
+      // Remove indicators
+      container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+    });
   }
 }
 
@@ -1408,6 +1863,43 @@ function updateLinkOrder(container) {
   items.forEach((item, index) => {
     item.dataset.displayOrder = index;
   });
+}
+
+async function saveLinkOrder(container) {
+  const form = el("song-edit-form");
+  const songId = form?.dataset.songId;
+  
+  // Only save if we're editing an existing song
+  if (!songId) return;
+  
+  // Get current order from DOM
+  const items = Array.from(container.querySelectorAll(".song-link-row.draggable-item"));
+  const orderedLinks = [];
+  
+  items.forEach((item, index) => {
+    const idInput = item.querySelector(".song-link-id");
+    const linkId = idInput?.value;
+    
+    // Only update existing links (skip new links that haven't been saved yet)
+    if (linkId) {
+      orderedLinks.push({
+        id: linkId,
+        display_order: index
+      });
+    }
+  });
+  
+  // Update display_order for all existing links
+  if (orderedLinks.length > 0) {
+    const updates = orderedLinks.map(({ id, display_order }) =>
+      supabase
+        .from("song_links")
+        .update({ display_order })
+        .eq("id", id)
+    );
+    
+    await Promise.all(updates);
+  }
 }
 
 function openSetModal(set = null) {
@@ -1613,7 +2105,11 @@ async function handleAddSongToSet(event) {
       .from("song_assignments")
       .insert(
         assignments.map((assignment) => ({
-          ...assignment,
+          role: assignment.role,
+          person_id: assignment.person_id || null,
+          pending_invite_id: assignment.pending_invite_id || null,
+          person_name: assignment.person_name || null,
+          person_email: assignment.person_email || null,
           set_song_id: setSong.id,
         }))
       );
@@ -1636,16 +2132,47 @@ async function handleAddSongToSet(event) {
   }
 }
 
+function buildPersonOptions() {
+  const peopleOptions =
+    (state.people || []).map((person) => {
+      const email = (person.email || "").toLowerCase();
+      return {
+        value: person.id,
+        label: person.full_name || email || "Unnamed Member",
+        meta: {
+          type: "profile",
+          email,
+          profileId: person.id,
+          isPending: false,
+        },
+      };
+    }) ?? [];
+
+  const pendingOptions =
+    (state.pendingInvites || []).map((invite) => {
+      const email = (invite.email || "").toLowerCase();
+      return {
+        value: invite.id,
+        label: invite.full_name || email || "Pending Member",
+        meta: {
+          type: "pending",
+          email,
+          pendingInviteId: invite.id,
+          isPending: true,
+        },
+      };
+    }) ?? [];
+
+  return [...peopleOptions, ...pendingOptions];
+}
+
 function addAssignmentInput() {
   const container = el("assignments-list");
   const div = document.createElement("div");
   div.className = "assignment-row";
   
   // Build person dropdown options
-  const personOptions = state.people.map(p => ({
-    value: p.id,
-    label: p.full_name
-  }));
+  const personOptions = buildPersonOptions();
   
   div.innerHTML = `
     <label>
@@ -1686,9 +2213,24 @@ function collectAssignments() {
     const role = roleInput.value.trim();
     const personContainer = personContainers[index];
     const personDropdown = personContainer?.querySelector(".searchable-dropdown");
-    const personId = personDropdown?.getValue();
-    if (role && personId) {
-      assignments.push({ role, person_id: personId });
+    const selectedOption = personDropdown?.getSelectedOption?.();
+    if (role && selectedOption) {
+      const baseAssignment = {
+        role,
+        person_name: selectedOption.label,
+        person_email: selectedOption.meta?.email || null,
+      };
+      if (selectedOption.meta?.type === "pending") {
+        assignments.push({
+          ...baseAssignment,
+          pending_invite_id: selectedOption.value,
+        });
+      } else {
+        assignments.push({
+          ...baseAssignment,
+          person_id: selectedOption.value,
+        });
+      }
     }
   });
   return assignments;
@@ -1737,10 +2279,7 @@ function addEditAssignmentInput(existingAssignment = null) {
   div.className = "assignment-row";
   
   // Build person dropdown options
-  const personOptions = state.people.map(p => ({
-    value: p.id,
-    label: p.full_name
-  }));
+  const personOptions = buildPersonOptions();
   
   div.innerHTML = `
     <label>
@@ -1757,10 +2296,14 @@ function addEditAssignmentInput(existingAssignment = null) {
   
   // Create searchable dropdown for person
   const personContainer = div.querySelector(".edit-assignment-person-container");
+  const selectedValue =
+    existingAssignment?.pending_invite_id ||
+    existingAssignment?.person_id ||
+    null;
   const personDropdown = createSearchableDropdown(
     personOptions, 
     "Select a person...",
-    existingAssignment?.person_id || null,
+    selectedValue,
     state.profile?.can_manage ? (name) => openInviteModal(name) : null
   );
   personContainer.appendChild(personDropdown);
@@ -1783,14 +2326,26 @@ function collectEditAssignments() {
     const role = roleInput.value.trim();
     const personContainer = personContainers[index];
     const personDropdown = personContainer?.querySelector(".searchable-dropdown");
-    const personId = personDropdown?.getValue();
+    const selectedOption = personDropdown?.getSelectedOption?.();
     const assignmentId = ids[index]?.value;
-    if (role && personId) {
-      assignments.push({ 
-        role, 
-        person_id: personId,
-        id: assignmentId || null
-      });
+    if (role && selectedOption) {
+      const baseAssignment = {
+        role,
+        id: assignmentId || null,
+        person_name: selectedOption.label,
+        person_email: selectedOption.meta?.email || null,
+      };
+      if (selectedOption.meta?.type === "pending") {
+        assignments.push({
+          ...baseAssignment,
+          pending_invite_id: selectedOption.value,
+        });
+      } else {
+        assignments.push({
+          ...baseAssignment,
+          person_id: selectedOption.value,
+        });
+      }
     }
   });
 
@@ -1850,7 +2405,10 @@ async function handleEditSetSongSubmit(event) {
       .from("song_assignments")
       .update({
         role: assignment.role,
-        person_id: assignment.person_id,
+        person_id: assignment.person_id || null,
+        pending_invite_id: assignment.pending_invite_id || null,
+        person_name: assignment.person_name || null,
+        person_email: assignment.person_email || null,
       })
       .eq("id", assignment.id);
   }
@@ -1862,7 +2420,10 @@ async function handleEditSetSongSubmit(event) {
       .insert(
         newAssignments.map((assignment) => ({
           role: assignment.role,
-          person_id: assignment.person_id,
+          person_id: assignment.person_id || null,
+          pending_invite_id: assignment.pending_invite_id || null,
+          person_name: assignment.person_name || null,
+          person_email: assignment.person_email || null,
           set_song_id: setSongId,
         }))
       );
@@ -1881,30 +2442,93 @@ async function handleEditSetSongSubmit(event) {
   }
 }
 
+function showDeleteConfirmModal(name, message, onConfirm) {
+  const modal = el("delete-confirm-modal");
+  const title = el("delete-confirm-title");
+  const messageEl = el("delete-confirm-message");
+  const nameEl = el("delete-confirm-name");
+  const input = el("delete-confirm-input");
+  const confirmBtn = el("confirm-delete");
+  const cancelBtn = el("cancel-delete-confirm");
+  const closeBtn = el("close-delete-confirm-modal");
+  
+  if (!modal) return;
+  
+  title.textContent = "Confirm Deletion";
+  messageEl.textContent = message;
+  nameEl.textContent = `'${name}'`;
+  input.value = "";
+  input.placeholder = name;
+  confirmBtn.disabled = true;
+  
+  const checkMatch = () => {
+    confirmBtn.disabled = input.value.trim() !== name.trim();
+  };
+  
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !confirmBtn.disabled) {
+      e.preventDefault();
+      handleConfirm();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cleanup();
+    }
+  };
+  
+  const cleanup = () => {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+    input.removeEventListener("input", checkMatch);
+    input.removeEventListener("keydown", handleKeyDown);
+    input.value = "";
+    confirmBtn.disabled = true;
+  };
+  
+  const handleConfirm = () => {
+    if (input.value.trim() === name.trim()) {
+      cleanup();
+      onConfirm();
+    }
+  };
+  
+  input.addEventListener("input", checkMatch);
+  input.addEventListener("keydown", handleKeyDown);
+  
+  confirmBtn.onclick = handleConfirm;
+  cancelBtn.onclick = cleanup;
+  closeBtn.onclick = cleanup;
+  
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  input.focus();
+}
+
 async function deleteSet(set) {
   if (!state.profile?.can_manage) return;
   
-  if (!confirm(`Are you sure you want to delete "${set.title}"? This will also delete all songs and assignments in this set.`)) {
-    return;
-  }
-  
-  const { error } = await supabase
-    .from("sets")
-    .delete()
-    .eq("id", set.id);
-  
-  if (error) {
-    console.error(error);
-    alert("Unable to delete set. Check console.");
-    return;
-  }
-  
-  // Hide detail view if showing the deleted set
-  if (state.selectedSet?.id === set.id) {
-    hideSetDetail();
-  }
-  
-  await loadSets();
+  showDeleteConfirmModal(
+    set.title,
+    `Deleting "${set.title}" will remove all associated information and assignments.`,
+    async () => {
+      const { error } = await supabase
+        .from("sets")
+        .delete()
+        .eq("id", set.id);
+      
+      if (error) {
+        console.error(error);
+        alert("Unable to delete set. Check console.");
+        return;
+      }
+      
+      // Hide detail view if showing the deleted set
+      if (state.selectedSet?.id === set.id) {
+        hideSetDetail();
+      }
+      
+      await loadSets();
+    }
+  );
 }
 
 async function deleteSong(songId) {
@@ -1913,42 +2537,44 @@ async function deleteSong(songId) {
   const song = state.songs.find(s => s.id === songId);
   const songTitle = song?.title || "this song";
   
-  if (!confirm(`Are you sure you want to delete "${songTitle}"? This will remove it from all sets.`)) {
-    return;
-  }
-  
-  const { error } = await supabase
-    .from("songs")
-    .delete()
-    .eq("id", songId);
-  
-  if (error) {
-    console.error(error);
-    alert("Unable to delete song. Check console.");
-    return;
-  }
-  
-  // Close details modal if this song is open
-  if (state.currentSongDetailsId === songId) {
-    closeSongDetailsModal();
-  }
-  
-  await loadSongs();
-  
-  // Update songs tab if it's currently visible
-  if (!el("songs-tab")?.classList.contains("hidden")) {
-    renderSongCatalog();
-  }
-  
-  // Refresh set detail view if it's showing
-  if (state.selectedSet) {
-    await loadSets();
-    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
-    if (updatedSet) {
-      state.selectedSet = updatedSet;
-      renderSetDetailSongs(updatedSet);
+  showDeleteConfirmModal(
+    songTitle,
+    `Deleting "${songTitle}"? will remove it from all sets.`,
+    async () => {
+      const { error } = await supabase
+        .from("songs")
+        .delete()
+        .eq("id", songId);
+      
+      if (error) {
+        console.error(error);
+        alert("Unable to delete song. Check console.");
+        return;
+      }
+      
+      // Close details modal if this song is open
+      if (state.currentSongDetailsId === songId) {
+        closeSongDetailsModal();
+      }
+      
+      await loadSongs();
+      
+      // Update songs tab if it's currently visible
+      if (!el("songs-tab")?.classList.contains("hidden")) {
+        renderSongCatalog();
+      }
+      
+      // Refresh set detail view if it's showing
+      if (state.selectedSet) {
+        await loadSets();
+        const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+        if (updatedSet) {
+          state.selectedSet = updatedSet;
+          renderSetDetailSongs(updatedSet);
+        }
+      }
     }
-  }
+  );
 }
 
 // Invite Member Functions
@@ -1987,13 +2613,37 @@ async function handleInviteSubmit(event) {
     return;
   }
   
+  const normalizedEmail = email.toLowerCase();
+
+  // Prevent inviting someone who already has an account
+  const { data: existingProfile, error: existingProfileError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (existingProfileError && existingProfileError.code !== "PGRST116") {
+    console.error("Error checking existing profile:", existingProfileError);
+    messageEl.textContent = "Unable to check existing members. Please try again.";
+    messageEl.classList.add("error-text");
+    messageEl.classList.remove("muted");
+    return;
+  }
+
+  if (existingProfile) {
+    messageEl.textContent = `${email} is already a member.`;
+    messageEl.classList.add("error-text");
+    messageEl.classList.remove("muted");
+    return;
+  }
+
   messageEl.textContent = "Sending invite...";
   messageEl.classList.remove("error-text");
   messageEl.classList.add("muted");
   
   // Use signInWithOtp with shouldCreateUser to send invite
   const { error } = await supabase.auth.signInWithOtp({
-    email,
+    email: normalizedEmail,
     options: {
       shouldCreateUser: true,
       emailRedirectTo: "https://michaeldors.com/cadence",
@@ -2011,13 +2661,32 @@ async function handleInviteSubmit(event) {
     return;
   }
   
-  messageEl.textContent = `Invite sent to ${email}! They'll receive an email with a sign-in link. When they click it, their account will be created automatically.`;
+  await ensurePendingInviteRecord(normalizedEmail, name);
+  await loadPeople();
+  
+  messageEl.textContent = `Invite sent to ${email}! They'll receive an email with a sign-in link. You'll see them listed as pending until they complete signup.`;
   messageEl.classList.remove("error-text");
   messageEl.classList.add("muted");
   el("invite-form").reset();
   
   // Optionally store the invite info for profile creation
   // We'll handle profile creation in fetchProfile when they first sign in
+}
+
+async function ensurePendingInviteRecord(email, fullName) {
+  if (!email) return;
+  const normalizedEmail = email.trim().toLowerCase();
+  const payload = {
+    email: normalizedEmail,
+    full_name: fullName || null,
+    created_by: state.profile?.id || null,
+  };
+  const { error } = await supabase
+    .from("pending_invites")
+    .upsert(payload, { onConflict: "email" });
+  if (error) {
+    console.error("Error recording pending invite:", error);
+  }
 }
 
 // Edit Person Functions
@@ -2087,29 +2756,33 @@ async function deletePerson(person) {
     return;
   }
   
-  if (!confirm(`Are you sure you want to remove "${person.full_name}" from the band? This will also remove all their assignments.`)) {
-    return;
-  }
+  const personName = person.full_name || person.email || "this person";
   
-  // Delete the profile - this will cascade delete all assignments due to foreign key
-  const { error } = await supabase
-    .from("profiles")
-    .delete()
-    .eq("id", person.id);
-  
-  if (error) {
-    console.error(error);
-    alert("Unable to remove member. Check console.");
-    return;
-  }
-  
-  // Reload people and sets (to refresh assignments)
-  await Promise.all([loadPeople(), loadSets()]);
-  
-  // Refresh UI if on sets tab
-  if (!el("sets-tab")?.classList.contains("hidden")) {
-    renderSets();
-  }
+  showDeleteConfirmModal(
+    personName,
+    `Removing "${personName}" from the team will also remove all their assignments.`,
+    async () => {
+      // Delete the profile - this will cascade delete all assignments due to foreign key
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", person.id);
+      
+      if (error) {
+        console.error(error);
+        alert("Unable to remove member. Check console.");
+        return;
+      }
+      
+      // Reload people and sets (to refresh assignments)
+      await Promise.all([loadPeople(), loadSets()]);
+      
+      // Refresh UI if on sets tab
+      if (!el("sets-tab")?.classList.contains("hidden")) {
+        renderSets();
+      }
+    }
+  );
 }
 
 // Song Catalog Management
@@ -2312,7 +2985,7 @@ async function openSongDetailsModal(song) {
             <p class="song-click-track-title">Click Track</p>
             <p class="song-click-track-description">Set to ${songWithLinks.bpm} BPM</p>
           </div>
-          <button class="btn secondary click-track-btn" data-bpm="${songWithLinks.bpm}" title="Click Track">
+          <button class="btn primary click-track-btn" data-bpm="${songWithLinks.bpm}" title="Click Track">
             ${state.metronome.isPlaying && state.metronome.bpm === songWithLinks.bpm ? '⏸ Stop' : '▶ Click'}
           </button>
         </div>
@@ -2904,25 +3577,38 @@ function updateClickTrackButtons() {
 function createSearchableDropdown(options, placeholder = "Search...", selectedValue = null, onInvite = null) {
   const container = document.createElement("div");
   container.className = "searchable-dropdown";
-  
+
+  const normalizedOptions = (options || []).map((option) => ({
+    ...option,
+    searchText: [
+      option.label,
+      option.meta?.email,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase(),
+  }));
+
   const input = document.createElement("input");
   input.type = "text";
   input.className = "searchable-dropdown-input";
   input.placeholder = placeholder;
   input.setAttribute("readonly", "");
-  
+
   const optionsList = document.createElement("div");
   optionsList.className = "searchable-dropdown-options";
-  
+
   let selectedOption = null;
   let highlightedIndex = -1;
-  let filteredOptions = options;
-  
+  let filteredOptions = normalizedOptions;
+
   // Find selected option
   if (selectedValue) {
-    selectedOption = options.find(opt => opt.value === selectedValue);
+    selectedOption = normalizedOptions.find((opt) => opt.value === selectedValue) || null;
     if (selectedOption) {
-      input.value = selectedOption.label;
+      input.value = selectedOption.meta?.isPending
+        ? `${selectedOption.label} (Pending)`
+        : selectedOption.label;
       input.classList.remove("placeholder");
     } else {
       input.classList.add("placeholder");
@@ -2930,26 +3616,42 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
   } else {
     input.classList.add("placeholder");
   }
-  
+
+  function highlightMatch(text, searchTerm) {
+    if (!searchTerm || !text) return escapeHtml(text);
+    
+    const lowerText = text.toLowerCase();
+    const lowerSearch = searchTerm.toLowerCase();
+    const searchIndex = lowerText.indexOf(lowerSearch);
+    
+    if (searchIndex === -1) return escapeHtml(text);
+    
+    const beforeMatch = text.substring(0, searchIndex);
+    const match = text.substring(searchIndex, searchIndex + searchTerm.length);
+    const afterMatch = text.substring(searchIndex + searchTerm.length);
+    
+    return `${escapeHtml(beforeMatch)}<span style="color: var(--accent-color);">${escapeHtml(match)}</span>${escapeHtml(afterMatch)}`;
+  }
+
   function renderOptions() {
     optionsList.innerHTML = "";
-    
+    const searchTerm = input.value.trim();
+
     if (filteredOptions.length === 0) {
-      // Show invite option if callback is provided and user typed something
-      if (onInvite && input.value.trim()) {
+      if (onInvite && searchTerm) {
         const inviteOption = document.createElement("div");
         inviteOption.className = "searchable-dropdown-option invite-option";
         inviteOption.innerHTML = `
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <span style="font-size: 1.2rem;">+</span>
-            <span>Invite "${escapeHtml(input.value.trim())}"</span>
+            <span>Invite "${escapeHtml(searchTerm)}"</span>
           </div>
         `;
         inviteOption.addEventListener("click", (e) => {
           e.stopPropagation();
           optionsList.classList.remove("open");
           input.setAttribute("readonly", "");
-          onInvite(input.value.trim());
+          onInvite(searchTerm);
         });
         optionsList.appendChild(inviteOption);
       } else {
@@ -2960,51 +3662,61 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
       }
       return;
     }
-    
+
     filteredOptions.forEach((option, index) => {
       const optionEl = document.createElement("div");
       optionEl.className = "searchable-dropdown-option";
-      if (selectedValue === option.value) {
+      if (selectedOption?.value === option.value) {
         optionEl.classList.add("selected");
       }
-      optionEl.textContent = option.label;
-      optionEl.dataset.value = option.value;
       
+      const highlightedLabel = searchTerm ? highlightMatch(option.label, searchTerm) : escapeHtml(option.label);
+      // Don't highlight email - only show it as plain text since you can't search by email
+      const emailText = option.meta?.email ? escapeHtml(option.meta.email) : "";
+      
+      optionEl.innerHTML = `
+        <div class="searchable-option-row">
+          <span class="searchable-option-label">${highlightedLabel}</span>
+          ${option.meta?.isPending ? '<span class="searchable-option-tag">(Pending)</span>' : ''}
+        </div>
+        ${emailText ? `<div class="searchable-option-subtext">${emailText}</div>` : ""}
+      `;
+      optionEl.dataset.value = option.value;
+
       optionEl.addEventListener("click", () => {
         selectOption(option);
       });
-      
+
       optionsList.appendChild(optionEl);
     });
   }
-  
+
   function selectOption(option) {
     selectedOption = option;
-    input.value = option.label;
+    input.value = option.meta?.isPending ? `${option.label} (Pending)` : option.label;
     input.classList.remove("placeholder");
     optionsList.classList.remove("open");
     highlightedIndex = -1;
-    
-    // Trigger change event
+
     const event = new CustomEvent("change", {
-      detail: { value: option.value, option }
+      detail: { value: option.value, option },
     });
     container.dispatchEvent(event);
   }
-  
+
   function filterOptions(searchTerm) {
     const term = searchTerm.toLowerCase().trim();
     if (!term) {
-      filteredOptions = options;
+      filteredOptions = normalizedOptions;
     } else {
-      filteredOptions = options.filter(opt =>
-        opt.label.toLowerCase().includes(term)
+      filteredOptions = normalizedOptions.filter((opt) =>
+        opt.searchText.includes(term)
       );
     }
     highlightedIndex = -1;
     renderOptions();
   }
-  
+
   function highlightOption(index) {
     const optionEls = optionsList.querySelectorAll(".searchable-dropdown-option:not(.no-results):not(.invite-option)");
     const inviteOption = optionsList.querySelector(".invite-option");
@@ -3014,8 +3726,7 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
     });
     highlightedIndex = index;
   }
-  
-  // Open dropdown
+
   input.addEventListener("click", (e) => {
     e.stopPropagation();
     optionsList.classList.toggle("open");
@@ -3025,20 +3736,18 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
       filterOptions(input.value);
     }
   });
-  
-  // Search/filter
+
   input.addEventListener("input", (e) => {
     filterOptions(e.target.value);
     if (!optionsList.classList.contains("open")) {
       optionsList.classList.add("open");
     }
   });
-  
-  // Keyboard navigation
+
   input.addEventListener("keydown", (e) => {
     const optionEls = optionsList.querySelectorAll(".searchable-dropdown-option:not(.no-results)");
     const inviteOption = optionsList.querySelector(".invite-option");
-    
+
     if (e.key === "ArrowDown") {
       e.preventDefault();
       if (optionEls.length > 0) {
@@ -3047,7 +3756,7 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
         optionEls[highlightedIndex]?.scrollIntoView({ block: "nearest" });
       } else if (inviteOption && highlightedIndex === -1) {
         inviteOption.classList.add("highlighted");
-        highlightedIndex = -2; // Special index for invite option
+        highlightedIndex = -2;
       }
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
@@ -3060,7 +3769,7 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
           highlightOption(highlightedIndex);
           optionEls[highlightedIndex]?.scrollIntoView({ block: "nearest" });
         } else {
-          optionEls.forEach(el => el.classList.remove("highlighted"));
+          optionEls.forEach((el) => el.classList.remove("highlighted"));
         }
       }
     } else if (e.key === "Enter") {
@@ -3071,7 +3780,7 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
         onInvite(input.value.trim());
       } else if (highlightedIndex >= 0 && optionEls[highlightedIndex]) {
         const value = optionEls[highlightedIndex].dataset.value;
-        const option = filteredOptions.find(opt => opt.value === value);
+        const option = filteredOptions.find((opt) => opt.value === value);
         if (option) selectOption(option);
       } else if (filteredOptions.length === 1) {
         selectOption(filteredOptions[0]);
@@ -3084,43 +3793,45 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
       optionsList.classList.remove("open");
       input.setAttribute("readonly", "");
       if (selectedOption) {
-        input.value = selectedOption.label;
+        input.value = selectedOption.meta?.isPending
+          ? `${selectedOption.label} (Pending)`
+          : selectedOption.label;
       } else {
         input.value = "";
         input.classList.add("placeholder");
       }
     }
   });
-  
-  // Close on outside click
+
   document.addEventListener("click", (e) => {
     if (!container.contains(e.target)) {
       optionsList.classList.remove("open");
       input.setAttribute("readonly", "");
       if (selectedOption) {
-        input.value = selectedOption.label;
+        input.value = selectedOption.meta?.isPending
+          ? `${selectedOption.label} (Pending)`
+          : selectedOption.label;
       } else {
         input.value = "";
         input.classList.add("placeholder");
       }
     }
   });
-  
-  // Initial render
+
   renderOptions();
-  
+
   container.appendChild(input);
   container.appendChild(optionsList);
-  
-  // Public API
+
   container.getValue = () => selectedOption?.value || null;
   container.setValue = (value) => {
-    const option = options.find(opt => opt.value === value);
+    const option = normalizedOptions.find((opt) => opt.value === value);
     if (option) {
       selectOption(option);
     }
   };
-  
+  container.getSelectedOption = () => selectedOption;
+
   return container;
 }
 

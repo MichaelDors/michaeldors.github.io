@@ -21,12 +21,12 @@
 
     <main>
       <section id="auth-gate" class="card">
-        <h2>Login</h2>
-        <p>Sign in with your email and password.</p>
+        <h2 id="auth-heading">Login</h2>
+        <p id="auth-description">Sign in with your email and password</p>
         <form id="auth-form" class="auth-form">
           <label>
             Email
-            <input type="email" id="login-email" placeholder="name@school.org" required />
+            <input type="email" id="login-email" placeholder="email@mcaschool.net" required />
           </label>
           <label>
             Password
@@ -36,10 +36,29 @@
             Sign in
           </button>
         </form>
-        <p class="muted small-text">
-          Don't have an account? <a href="#" id="toggle-signup" class="link">Sign up</a>
-        </p>
         <p class="muted small-text" id="auth-message"></p>
+      </section>
+
+      <section id="password-setup-gate" class="card hidden">
+        <h2>Set Up Your Account</h2>
+        <p>You've been invited! Please set a password to complete your account setup.</p>
+        <p class="muted small-text" style="margin-bottom: 1rem;">
+          Account: <span class="password-setup-email"></span>
+        </p>
+        <form id="password-setup-form" class="auth-form">
+          <label>
+            Password
+            <input type="password" id="setup-password" placeholder="Enter a password (min 6 characters)" required minlength="6" />
+          </label>
+          <label>
+            Confirm Password
+            <input type="password" id="setup-password-confirm" placeholder="Confirm your password" required minlength="6" />
+          </label>
+          <button type="submit" id="password-setup-submit-btn" class="btn primary">
+            Set Password
+          </button>
+        </form>
+        <p class="muted small-text" id="password-setup-message"></p>
       </section>
 
       <section id="dashboard" class="hidden">
@@ -261,11 +280,11 @@
             </label>
             <label>
               Key
-              <input type="text" id="song-edit-key" placeholder="C, Dm, etc." />
+              <input type="text" id="song-edit-key" placeholder="C, Dm, etc" />
             </label>
             <label>
               Time Signature
-              <input type="text" id="song-edit-time-signature" placeholder="4/4, 3/4, 6/8, etc." />
+              <input type="text" id="song-edit-time-signature" placeholder="4/4, 6/8, etc" />
             </label>
           </div>
           <label>
@@ -326,12 +345,12 @@
         <form id="invite-form">
           <label>
             Email
-            <input type="email" id="invite-email" placeholder="member@example.com" required />
+            <input type="email" id="invite-email" placeholder="email@mcaschool.net" required />
           </label>
           <label>
             Full Name
             <input type="text" id="invite-name" placeholder="John Doe" />
-            <p class="muted small-text">We'll use this to create their profile when they sign in.</p>
+            <p class="muted small-text">We'll use this to create their profile when they sign in</p>
           </label>
           <div class="modal-actions">
             <button type="button" class="btn ghost" id="cancel-invite">Cancel</button>
@@ -339,6 +358,28 @@
           </div>
         </form>
         <p class="muted small-text" id="invite-message"></p>
+      </div>
+    </div>
+
+    <div id="delete-confirm-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3 id="delete-confirm-title">Confirm Deletion</h3>
+          <button class="icon-btn" id="close-delete-confirm-modal" aria-label="Close modal">
+            ✕
+          </button>
+        </header>
+        <div>
+          <p id="delete-confirm-message"></p>
+          <label>
+            <span style="white-space: nowrap; margin-bottom: 1rem;">Type <span style="color: var(--accent-color);" id="delete-confirm-name"></span> to confirm</span>
+            <input type="text" id="delete-confirm-input" placeholder="" autocomplete="off" style="margin-bottom: 1rem;" />
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-delete-confirm">Cancel</button>
+            <button type="button" class="btn primary" id="confirm-delete" disabled>Delete</button>
+          </div>
+        </div>
       </div>
     </div>
 

@@ -198,6 +198,41 @@ main {
   transform: translateY(-1px);
 }
 
+.pending-person-card {
+  border: 2px dotted var(--border-light);
+  background: color-mix(in srgb, var(--bg-card) 85%, var(--bg-secondary) 15%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.pending-person-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.pending-person-email {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  display: inline-block;
+  margin-top: 0.25rem;
+}
+
+.pending-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-color);
+  background: var(--bg-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .person-name {
   font-size: 1.25rem;
   font-weight: 600;
@@ -368,6 +403,18 @@ main {
   border-color: rgba(220, 255, 81, 0.5);
 }
 
+.assignment-pill.pending {
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  color: var(--text-secondary);
+}
+
+.pending-inline-tag {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
 .btn {
   border: none;
   border-radius: 0.625rem;
@@ -384,17 +431,21 @@ main {
 .btn.primary {
   background: var(--accent-color);
   color: var(--bg-primary);
-  box-shadow: 0 2px 8px rgba(220, 255, 81, 0.3);
 }
 
 .btn.primary:hover {
   background: color-mix(in srgb, var(--accent-color) 90%, white);
-  box-shadow: 0 4px 12px rgba(220, 255, 81, 0.4);
   transform: translateY(-1px);
 }
 
 .btn.primary:active {
   transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .btn.secondary {
@@ -424,9 +475,7 @@ main {
 }
 
 .click-track-btn.active {
-  background: color-mix(in srgb, var(--accent-color) 15% transparent, var(--bg-primary) 85%);
-  border-color: var(--accent-color);
-  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 85%, black);
 }
 
 .link {
@@ -988,5 +1037,28 @@ textarea {
 .searchable-dropdown-option.invite-option.highlighted {
   background: color-mix(in srgb, var(--accent-color) 10% transparent, var(--bg-card) 90%);
   color: var(--accent-color);
+}
+
+.searchable-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.searchable-option-label {
+  font-weight: 600;
+}
+
+.searchable-option-tag {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.searchable-option-subtext {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
 }
 
