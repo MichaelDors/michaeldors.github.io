@@ -1072,4 +1072,11 @@ textarea {
   color: var(--text-muted);
   margin-top: 0.25rem;
 }
+i{
+  margin-right: 0.5rem;
+}
+
+.fa-circle-xmark{
+  margin-right: 0px !important;
+}
 

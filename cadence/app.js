@@ -3193,11 +3193,13 @@ async function openSongDetailsModal(song) {
         ${songWithLinks.bpm ? `
         <div class="song-click-track">
           <div class="song-click-track-info">
-            <p class="song-click-track-title">Click Track</p>
+            <p class="song-click-track-title"><i class="fa-solid fa-drum"></i> Click Track</p>
             <p class="song-click-track-description">Set to ${songWithLinks.bpm} BPM</p>
           </div>
           <button class="btn primary click-track-btn" data-bpm="${songWithLinks.bpm}" title="Click Track">
-            ${state.metronome.isPlaying && state.metronome.bpm === songWithLinks.bpm ? '⏸ Stop' : '▶ Click'}
+            ${state.metronome.isPlaying && state.metronome.bpm === songWithLinks.bpm 
+              ? `<i class="fa-solid fa-pause"></i> Stop` 
+              : `<i class="fa-solid fa-play"></i> Click`}
           </button>
         </div>
         ` : ''}
@@ -3775,10 +3777,10 @@ function updateClickTrackButtons() {
   document.querySelectorAll(".click-track-btn").forEach(btn => {
     const bpm = parseInt(btn.dataset.bpm, 10);
     if (state.metronome.isPlaying && state.metronome.bpm === bpm) {
-      btn.textContent = '⏸ Stop';
+      btn.innerHTML = '<i class="fa-solid fa-pause"></i> Stop';
       btn.classList.add("active");
     } else {
-      btn.textContent = '▶ Click';
+      btn.innerHTML = '<i class="fa-solid fa-play"></i> Click';
       btn.classList.remove("active");
     }
   });

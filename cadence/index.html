@@ -18,7 +18,7 @@
       <div class="header-actions">
         <div id="user-info" class="user-info hidden">
           <span id="user-name"></span>
-          <button id="btn-logout" class="btn ghost">Sign out</button>
+          <button id="btn-logout" class="btn ghost"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
         </div>
       </div>
     </header>
@@ -67,16 +67,16 @@
 
       <section id="dashboard" class="hidden">
         <div class="dashboard-tabs">
-          <button class="tab-btn active" data-tab="sets">Sets</button>
-          <button class="tab-btn" data-tab="songs">Songs</button>
-          <button class="tab-btn" data-tab="people">People</button>
+          <button class="tab-btn active" data-tab="sets"><i class="fa-solid fa-rectangle-list"></i> Sets</button>
+          <button class="tab-btn" data-tab="songs"><i class="fa-solid fa-file-waveform"></i> Songs</button>
+          <button class="tab-btn" data-tab="people"><i class="fa-solid fa-users"></i> People</button>
         </div>
         
         <div id="sets-tab" class="tab-content">
           <div id="your-sets-section" class="sets-section">
             <div class="section-header">
               <div>
-                <h2>Your Sets</h2>
+                <h2><i class="fa-solid fa-user-clock"></i> Your Sets</h2>
                 <p class="muted">Sets where you're assigned to a song</p>
               </div>
             </div>
@@ -86,10 +86,10 @@
           <div id="all-sets-section" class="sets-section">
             <div class="dashboard-header">
               <div>
-                <h2>All Sets</h2>
+                <h2><i class="fa-solid fa-calendar"></i> All Sets</h2>
               </div>
               <div class="header-actions">
-                <button id="btn-create-set" class="btn primary hidden">New Set</button>
+                <button id="btn-create-set" class="btn primary hidden"><i class="fa-solid fa-list-ul"></i> New Set</button>
               </div>
             </div>
             <div id="sets-list" class="sets-grid"></div>
@@ -99,10 +99,10 @@
         <div id="songs-tab" class="tab-content hidden">
           <div class="dashboard-header">
             <div>
-              <h2>Song Catalog</h2>
+              <h2><i class="fa-solid fa-music"></i> Song Catalog</h2>
             </div>
             <div class="header-actions">
-              <button id="btn-create-song" class="btn primary hidden">New Song</button>
+              <button id="btn-create-song" class="btn primary hidden"><i class="fa-solid fa-file-circle-plus"></i> New Song</button>
             </div>
           </div>
           <div id="songs-catalog-list" class="song-list"></div>
@@ -111,7 +111,7 @@
         <div id="people-tab" class="tab-content hidden">
           <div class="dashboard-header">
             <div>
-              <h2>Team Members</h2>
+              <h2><i class="fa-solid fa-address-book"></i> Team Members</h2>
             </div>
           </div>
           <div id="people-list" class="people-grid"></div>
@@ -121,7 +121,7 @@
       <section id="set-detail" class="hidden">
         <div class="detail-header">
           <button id="btn-back" class="btn ghost">
-            ← Back to Sets
+            <i class="fa-solid fa-circle-chevron-left"></i> Back to Sets
           </button>
           <div class="detail-title-section">
             <h2 id="detail-set-title"></h2>
@@ -142,7 +142,7 @@
         <header>
           <h3 id="set-modal-title">New Set</h3>
           <button class="icon-btn" id="close-set-modal" aria-label="Close modal">
-            ✕
+            <i class="fa-solid fa-circle-xmark"></i>
           </button>
         </header>
         <form id="set-form">
@@ -171,7 +171,7 @@
         <header>
           <h3>Add Song to Set</h3>
           <button class="icon-btn" id="close-song-modal" aria-label="Close modal">
-            ✕
+            <i class="fa-solid fa-circle-xmark"></i>
           </button>
         </header>
         <form id="song-form">
@@ -210,7 +210,7 @@
           <div style="display: flex; gap: 0.5rem; align-items: center;">
             <button type="button" id="btn-edit-song-from-set" class="btn small secondary">Edit Song Details</button>
             <button class="icon-btn" id="close-edit-set-song-modal" aria-label="Close modal">
-              ✕
+              <i class="fa-solid fa-circle-xmark"></i>
             </button>
           </div>
         </header>
@@ -241,7 +241,7 @@
         <header>
           <h3>Song Catalog</h3>
           <button class="icon-btn" id="close-song-catalog-modal" aria-label="Close modal">
-            ✕
+            <i class="fa-solid fa-circle-xmark"></i>
           </button>
         </header>
         <div class="section-header">
@@ -257,7 +257,7 @@
         <header>
           <h3 id="song-details-title">Song Details</h3>
           <button class="icon-btn" id="close-song-details-modal" aria-label="Close modal">
-            ✕
+            <i class="fa-solid fa-circle-xmark"></i>
           </button>
         </header>
         <div id="song-details-content" class="song-details-content"></div>
@@ -269,7 +269,7 @@
         <header>
           <h3 id="song-edit-modal-title">New Song</h3>
           <button class="icon-btn" id="close-song-edit-modal" aria-label="Close modal">
-            ✕
+            <i class="fa-solid fa-circle-xmark"></i>
           </button>
         </header>
         <form id="song-edit-form">
@@ -317,7 +317,7 @@
         <header>
           <h3>Edit Member</h3>
           <button class="icon-btn" id="close-edit-person-modal" aria-label="Close modal">
-            ✕
+            <i class="fa-solid fa-circle-xmark"></i>
           </button>
         </header>
         <form id="edit-person-form">
@@ -343,7 +343,7 @@
         <header>
           <h3>Invite Band Member</h3>
           <button class="icon-btn" id="close-invite-modal" aria-label="Close modal">
-            ✕
+            <i class="fa-solid fa-circle-xmark"></i>
           </button>
         </header>
         <form id="invite-form">
@@ -370,7 +370,7 @@
         <header>
           <h3 id="delete-confirm-title">Confirm Deletion</h3>
           <button class="icon-btn" id="close-delete-confirm-modal" aria-label="Close modal">
-            ✕
+            <i class="fa-solid fa-circle-xmark"></i>
           </button>
         </header>
         <div>
