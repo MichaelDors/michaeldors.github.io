@@ -736,6 +736,9 @@ async function handlePasswordSetup(event) {
   // Disable button
   if (submitBtn) submitBtn.disabled = true;
   setPasswordSetupMessage("Setting up your account...");
+  setTimeout(() => {
+    window.location.reload();
+  }, 3000);
   
   // Auto-reload after 5 seconds as fallback - set at function scope so it's always accessible
   let reloadTimeout = setTimeout(() => {
