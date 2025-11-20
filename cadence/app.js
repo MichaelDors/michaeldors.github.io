@@ -155,6 +155,8 @@ async function init() {
       // Load data in background (non-blocking)
       Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
         console.log('  - Data loading complete');
+        // Refresh the active tab to show newly loaded data
+        refreshActiveTab();
       }).catch(err => {
         console.error('  - Error loading data:', err);
       });
@@ -292,6 +294,8 @@ async function init() {
     // Load data in background (non-blocking)
     Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
       console.log('✅ Data loading complete');
+      // Refresh the active tab to show newly loaded data
+      refreshActiveTab();
     }).catch(err => {
       console.error('❌ Error loading data:', err);
     });
@@ -546,6 +550,10 @@ function showApp() {
   
   // Ensure set detail view is hidden when showing dashboard
   hideSetDetail();
+  
+  // Restore the saved tab, defaulting to "sets" if none is saved
+  const savedTab = localStorage.getItem('cadence-active-tab') || 'sets';
+  switchTab(savedTab);
   
   if (userInfoEl) {
     userInfoEl.classList.remove("hidden");
@@ -1239,6 +1247,9 @@ function switchTab(tabName) {
   // Hide set detail view when switching tabs
   hideSetDetail();
   
+  // Save the current tab to localStorage
+  localStorage.setItem('cadence-active-tab', tabName);
+  
   // Update tab buttons
   document.querySelectorAll(".tab-btn").forEach(btn => {
     if (btn.dataset.tab === tabName) {
@@ -1257,6 +1268,21 @@ function switchTab(tabName) {
   if (tabName === "songs") {
     renderSongCatalog();
   } else if (tabName === "people") {
+    loadPeople();
+  }
+}
+
+function refreshActiveTab() {
+  // Get the currently active tab
+  const activeTabBtn = document.querySelector(".tab-btn.active");
+  if (!activeTabBtn) return;
+  
+  const activeTab = activeTabBtn.dataset.tab;
+  
+  // Re-render the active tab content
+  if (activeTab === "songs") {
+    renderSongCatalog();
+  } else if (activeTab === "people") {
     loadPeople();
   }
 }
