@@ -2310,7 +2310,7 @@ async function openSongDetailsModal(song) {
         <div class="song-click-track">
           <div class="song-click-track-info">
             <p class="song-click-track-title">Click Track</p>
-            <p class="song-click-track-description">Practice at ${songWithLinks.bpm} BPM without leaving this view.</p>
+            <p class="song-click-track-description">Set to ${songWithLinks.bpm} BPM</p>
           </div>
           <button class="btn secondary click-track-btn" data-bpm="${songWithLinks.bpm}" title="Click Track">
             ${state.metronome.isPlaying && state.metronome.bpm === songWithLinks.bpm ? '⏸ Stop' : '▶ Click'}
