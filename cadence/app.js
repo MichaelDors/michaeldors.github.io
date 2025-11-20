@@ -737,11 +737,14 @@ async function handlePasswordSetup(event) {
   if (submitBtn) submitBtn.disabled = true;
   setPasswordSetupMessage("Setting up your account...");
   
-  // Auto-reload after 5 seconds as fallback
-  const reloadTimeout = setTimeout(() => {
-    console.log('⏰ Auto-reloading after 5 seconds...');
+  // Auto-reload after 5 seconds as fallback - set at function scope so it's always accessible
+  let reloadTimeout = setTimeout(() => {
+    console.log('⏰ Auto-reloading after 5 seconds (fallback)...');
     window.location.reload();
   }, 5000);
+  
+  // Store timeout ID globally so it can't be lost
+  window.__passwordSetupTimeout = reloadTimeout;
   
   try {
     // Get the current session from the access_token
@@ -750,6 +753,10 @@ async function handlePasswordSetup(event) {
     if (sessionError || !session) {
       console.error('❌ No session found:', sessionError);
       clearTimeout(reloadTimeout);
+      if (window.__passwordSetupTimeout) {
+        clearTimeout(window.__passwordSetupTimeout);
+        delete window.__passwordSetupTimeout;
+      }
       setPasswordSetupMessage("Invalid invite link. Please request a new invite.", true);
       if (submitBtn) submitBtn.disabled = false;
       return;
@@ -765,6 +772,10 @@ async function handlePasswordSetup(event) {
     if (updateError) {
       console.error('❌ Password update error:', updateError);
       clearTimeout(reloadTimeout);
+      if (window.__passwordSetupTimeout) {
+        clearTimeout(window.__passwordSetupTimeout);
+        delete window.__passwordSetupTimeout;
+      }
       setPasswordSetupMessage(updateError.message || "Failed to set password. Please try again.", true);
       if (submitBtn) submitBtn.disabled = false;
       return;
@@ -772,12 +783,34 @@ async function handlePasswordSetup(event) {
     
     console.log('✅ Password updated successfully');
     
-    // Create profile and migrate pending invites
-    await createProfileAndMigrateInvites(session.user);
+    // Create profile and migrate pending invites with timeout
+    console.log('👤 Creating profile and migrating invites...');
+    try {
+      await Promise.race([
+        createProfileAndMigrateInvites(session.user),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Profile creation timeout')), 3000)
+        )
+      ]);
+      console.log('✅ Profile created and invites migrated');
+    } catch (profileError) {
+      console.error('⚠️ Profile creation error or timeout:', profileError);
+      // Continue anyway - profile might have been created, or we'll reload and it will be created
+    }
     
     // Sign out the user so they can log in with their new password
     console.log('🔓 Signing out user to redirect to login...');
-    await supabase.auth.signOut();
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Sign out timeout')), 2000)
+        )
+      ]);
+    } catch (signOutError) {
+      console.error('⚠️ Sign out error or timeout:', signOutError);
+      // Continue anyway - we'll reload
+    }
     
     // Clean up URL and reset password setup flag
     window.history.replaceState(null, '', window.location.pathname);
@@ -787,6 +820,10 @@ async function handlePasswordSetup(event) {
     
     // Clear the auto-reload timeout since we're reloading now
     clearTimeout(reloadTimeout);
+    if (window.__passwordSetupTimeout) {
+      clearTimeout(window.__passwordSetupTimeout);
+      delete window.__passwordSetupTimeout;
+    }
     
     // Reload the page to show the login form
     // This ensures a clean state and the login form appears properly
@@ -796,6 +833,10 @@ async function handlePasswordSetup(event) {
   } catch (err) {
     console.error('❌ Unexpected error in handlePasswordSetup:', err);
     clearTimeout(reloadTimeout);
+    if (window.__passwordSetupTimeout) {
+      clearTimeout(window.__passwordSetupTimeout);
+      delete window.__passwordSetupTimeout;
+    }
     setPasswordSetupMessage("An unexpected error occurred. Please try again.", true);
     if (submitBtn) submitBtn.disabled = false;
   }
