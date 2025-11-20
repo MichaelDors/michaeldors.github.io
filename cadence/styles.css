@@ -298,6 +298,20 @@ main {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.set-song-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.set-song-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .song-title {
@@ -315,6 +329,24 @@ main {
 .song-meta-text {
   color: var(--text-secondary);
   font-size: 0.9rem;
+}
+
+.song-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.song-meta-row .song-meta,
+.song-meta-row .song-meta-text {
+  margin: 0;
+  flex: 1;
+}
+
+.song-meta-row .click-track-btn {
+  flex-shrink: 0;
 }
 
 .song-description-text {

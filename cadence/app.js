@@ -2157,34 +2157,36 @@ function renderSongCatalog() {
     return;
   }
   
-  state.songs.forEach((song) => {
-    const div = document.createElement("div");
-    div.className = "card set-song-card";
-    div.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: start;">
-        <div style="flex: 1;">
-          <h4 class="song-title" style="margin: 0 0 0.5rem 0;">${escapeHtml(song.title)}</h4>
-          <div class="song-meta-text" style="display: flex; gap: 1rem;">
-            ${song.bpm ? `<span>BPM: ${song.bpm}</span>` : ''}
-            ${song.song_key ? `<span>Key: ${song.song_key}</span>` : ''}
-            ${song.time_signature ? `<span>Time: ${escapeHtml(song.time_signature)}</span>` : ''}
-            ${song.duration_seconds ? `<span>Duration: ${formatDuration(song.duration_seconds)}</span>` : ''}
+    state.songs.forEach((song) => {
+      const div = document.createElement("div");
+      div.className = "card set-song-card";
+      div.innerHTML = `
+        <div class="set-song-header song-card-header">
+          <div class="set-song-info">
+            <h4 class="song-title" style="margin: 0 0 0.5rem 0;">${escapeHtml(song.title)}</h4>
+            <div class="song-meta-row">
+              <div class="song-meta-text">
+                ${song.bpm ? `<span>BPM: ${song.bpm}</span>` : ''}
+                ${song.song_key ? `<span>Key: ${song.song_key}</span>` : ''}
+                ${song.time_signature ? `<span>Time: ${escapeHtml(song.time_signature)}</span>` : ''}
+                ${song.duration_seconds ? `<span>Duration: ${formatDuration(song.duration_seconds)}</span>` : ''}
+              </div>
+              ${song.bpm ? `
+              <button class="btn small ghost click-track-btn" data-song-id="${song.id}" data-bpm="${song.bpm}" title="Click Track">
+                ${state.metronome.isPlaying && state.metronome.bpm === song.bpm ? '⏸ Stop' : '▶ Click'}
+              </button>
+              ` : ''}
+            </div>
+          </div>
+          <div class="set-song-actions song-card-actions">
+            <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
+            ${state.profile?.can_manage ? `
+            <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
+            <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
+            ` : ''}
           </div>
         </div>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-          <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
-          ${song.bpm ? `
-          <button class="btn small ghost click-track-btn" data-song-id="${song.id}" data-bpm="${song.bpm}" title="Click Track">
-            ${state.metronome.isPlaying && state.metronome.bpm === song.bpm ? '⏸ Stop' : '▶ Click'}
-          </button>
-          ` : ''}
-          ${state.profile?.can_manage ? `
-          <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
-          <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
-          ` : ''}
-        </div>
-      </div>
-    `;
+      `;
     
     const viewDetailsBtn = div.querySelector(".view-song-details-catalog-btn");
     if (viewDetailsBtn) {
