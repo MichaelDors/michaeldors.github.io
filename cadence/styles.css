@@ -729,7 +729,6 @@ textarea {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  margin-bottom:1.25rem;
 }
 
 .song-click-track-info {
