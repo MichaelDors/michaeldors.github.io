@@ -1427,7 +1427,7 @@ function renderPeople() {
             <span class="pending-pill">Pending</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
-            <p class="muted small-text" style="margin: 0;">Invite sent • waiting for signup</p>
+            <p class="muted small-text" style="margin: 0;">Invite sent</p>
             <button class="btn small ghost cancel-invite-btn" data-invite-id="${invite.id}">Cancel Invite</button>
           </div>
         `;
@@ -1446,7 +1446,7 @@ function renderPeople() {
             </div>
             <span class="pending-pill">Pending</span>
           </div>
-          <p class="muted small-text" style="margin-top: 0.75rem;">Invite sent • waiting for signup</p>
+          <p class="muted small-text" style="margin-top: 0.75rem;">Invite sent</p>
         `;
       }
       
