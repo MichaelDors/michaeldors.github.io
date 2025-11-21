@@ -319,13 +319,13 @@ main {
 
 .invite-card {
   border: 2px dashed var(--border-color);
-  background: var(--bg-secondary);
+  background: color-mix(in srgb, var(--accent-color) 2% transparent, var(--bg-secondary) 98%);
   transition: all 0.3s ease;
 }
 
 .invite-card:hover {
   border-color: var(--border-light);
-  background: color-mix(in srgb, var(--accent-color) 2% transparent, var(--bg-secondary) 98%);
+  background: var(--bg-secondary);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
   transform: translateY(-1px);
 }
@@ -453,13 +453,13 @@ main {
 
 .add-song-card {
   border: 2px dashed var(--border-color);
-  background: var(--bg-secondary);
+  background: color-mix(in srgb, var(--accent-color) 2% transparent, var(--bg-secondary) 98%);
   transition: all 0.3s ease;
 }
 
 .add-song-card:hover {
   border-color: var(--border-light);
-  background: color-mix(in srgb, var(--accent-color) 2% transparent, var(--bg-secondary) 98%);
+  background: var(--bg-secondary);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
   transform: translateY(-1px);
 }

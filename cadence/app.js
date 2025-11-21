@@ -1914,7 +1914,7 @@ function renderSetDetailSongs(set) {
     addCard.className = "card set-song-card add-song-card";
     addCard.innerHTML = `
       <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; cursor: pointer; min-height: 150px;">
-        <div style="font-size: 2rem; margin-bottom: 0.5rem; color: var(--accent-color);">+</div>
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">+</div>
         <h4 style="margin: 0; color: var(--text-primary);">Add Song</h4>
       </div>
     `;
