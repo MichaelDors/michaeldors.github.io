@@ -365,6 +365,17 @@ function bindEvents() {
       switchTab(tab);
     });
   });
+  
+  // Songs tab search
+  el("songs-tab-search")?.addEventListener("input", () => {
+    renderSongCatalog();
+  });
+  
+  // People tab search
+  el("people-tab-search")?.addEventListener("input", () => {
+    renderPeople();
+  });
+  
   el("btn-back")?.addEventListener("click", () => hideSetDetail());
   
   // Set detail tab switching (mobile only) - use event delegation
@@ -1420,9 +1431,13 @@ function renderPeople() {
   const peopleList = el("people-list");
   if (!peopleList) return;
   
+  const searchInput = el("people-tab-search");
+  const searchTermRaw = searchInput ? searchInput.value.trim() : "";
+  const searchTerm = searchTermRaw.toLowerCase();
+  
   peopleList.innerHTML = "";
   
-  // Add invite card for managers
+  // Add invite card for managers (always show, not affected by search)
   const isManager = !!state.profile?.can_manage;
   if (isManager) {
     const inviteCard = document.createElement("div");
@@ -1437,11 +1452,54 @@ function renderPeople() {
     peopleList.appendChild(inviteCard);
   }
   
-  const hasMembers = Array.isArray(state.people) && state.people.length > 0;
-  const hasPending = Array.isArray(state.pendingInvites) && state.pendingInvites.length > 0;
-  const totalEntries = (state.people?.length || 0) + (state.pendingInvites?.length || 0);
+  // Filter people and pending invites based on search
+  let filteredPeople = state.people || [];
+  let filteredPending = state.pendingInvites || [];
+  
+  if (searchTerm) {
+    // Filter people: prioritize name matches over email matches
+    const allPeopleMatches = (state.people || []).filter((person) => {
+      const nameMatch = (person.full_name || "").toLowerCase().includes(searchTerm);
+      const emailMatch = (person.email || "").toLowerCase().includes(searchTerm);
+      return nameMatch || emailMatch;
+    });
+    
+    const nameMatches = allPeopleMatches.filter((person) =>
+      (person.full_name || "").toLowerCase().includes(searchTerm)
+    );
+    const emailMatches = allPeopleMatches.filter((person) =>
+      !(person.full_name || "").toLowerCase().includes(searchTerm)
+    );
+    filteredPeople = [...nameMatches, ...emailMatches];
+    
+    // Filter pending invites: prioritize name matches over email matches
+    const allPendingMatches = (state.pendingInvites || []).filter((invite) => {
+      const nameMatch = (invite.full_name || "").toLowerCase().includes(searchTerm);
+      const emailMatch = (invite.email || "").toLowerCase().includes(searchTerm);
+      return nameMatch || emailMatch;
+    });
+    
+    const pendingNameMatches = allPendingMatches.filter((invite) =>
+      (invite.full_name || "").toLowerCase().includes(searchTerm)
+    );
+    const pendingEmailMatches = allPendingMatches.filter((invite) =>
+      !(invite.full_name || "").toLowerCase().includes(searchTerm)
+    );
+    filteredPending = [...pendingNameMatches, ...pendingEmailMatches];
+  }
+  
+  const hasMembers = filteredPeople.length > 0;
+  const hasPending = filteredPending.length > 0;
+  const totalEntries = filteredPeople.length + filteredPending.length;
 
   if (totalEntries === 0) {
+    if (searchTerm) {
+      const noResults = document.createElement("p");
+      noResults.className = "muted";
+      noResults.textContent = "No members match your search.";
+      peopleList.appendChild(noResults);
+      return;
+    }
     if (!isManager) {
       peopleList.innerHTML = '<p class="muted">No members yet.</p>';
       return;
@@ -1454,17 +1512,28 @@ function renderPeople() {
   }
 
   if (hasMembers) {
-    state.people.forEach((person) => {
+    filteredPeople.forEach((person) => {
       const div = document.createElement("div");
       div.className = "card person-card";
       
       if (isManager) {
         // Manager view: show email, edit name, delete
+        const highlightedName = searchTermRaw ? highlightMatch(person.full_name || "", searchTermRaw) : escapeHtml(person.full_name || "");
+        const highlightedEmail = person.email 
+          ? (searchTermRaw && person.email.toLowerCase().includes(searchTerm) 
+              ? highlightMatch(person.email, searchTermRaw)
+              : escapeHtml(person.email))
+          : null;
+        
         div.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: start; width: 100%; gap: 0.5rem;">
             <div style="flex: 1; min-width: 0; overflow: hidden;">
-              <h3 class="person-name" style="margin: 0 0 0.5rem 0;">${escapeHtml(person.full_name)}</h3>
-              ${person.email ? `
+              <h3 class="person-name" style="margin: 0 0 0.5rem 0;">${highlightedName}</h3>
+              ${highlightedEmail ? `
+                <a href="mailto:${escapeHtml(person.email)}" class="person-email-link" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+                  ${highlightedEmail}
+                </a>
+              ` : person.email ? `
                 <a href="mailto:${escapeHtml(person.email)}" class="person-email-link" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
                   ${escapeHtml(person.email)}
                 </a>
@@ -1491,8 +1560,9 @@ function renderPeople() {
         }
       } else {
         // Regular user view: just show name and role
+        const highlightedName = searchTermRaw ? highlightMatch(person.full_name || "", searchTermRaw) : escapeHtml(person.full_name || "");
         div.innerHTML = `
-          <h3 class="person-name">${escapeHtml(person.full_name)}</h3>
+          <h3 class="person-name">${highlightedName}</h3>
           ${person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
         `;
       }
@@ -1502,18 +1572,26 @@ function renderPeople() {
   }
 
   if (hasPending) {
-    state.pendingInvites.forEach((invite) => {
+    filteredPending.forEach((invite) => {
       const div = document.createElement("div");
       div.className = "card person-card pending-person-card";
       const displayName = invite.full_name || invite.email;
+      
+      // Highlight name and email
+      const highlightedName = searchTermRaw ? highlightMatch(displayName || "", searchTermRaw) : escapeHtml(displayName || "");
+      const highlightedEmail = invite.email 
+        ? (searchTermRaw && invite.email.toLowerCase().includes(searchTerm)
+            ? highlightMatch(invite.email, searchTermRaw)
+            : escapeHtml(invite.email))
+        : null;
       
       if (isManager) {
         // Manager view: show cancel button
         div.innerHTML = `
           <div class="pending-person-header">
             <div style="flex: 1; min-width: 0;">
-              <h3 class="person-name" style="margin: 0;">${escapeHtml(displayName)}</h3>
-              ${invite.email ? `<span class="pending-person-email">${escapeHtml(invite.email)}</span>` : ""}
+              <h3 class="person-name" style="margin: 0;">${highlightedName}</h3>
+              ${highlightedEmail ? `<span class="pending-person-email">${highlightedEmail}</span>` : invite.email ? `<span class="pending-person-email">${escapeHtml(invite.email)}</span>` : ""}
             </div>
             <span class="pending-pill">Pending</span>
           </div>
@@ -1532,8 +1610,8 @@ function renderPeople() {
         div.innerHTML = `
           <div class="pending-person-header">
             <div style="flex: 1; min-width: 0;">
-              <h3 class="person-name" style="margin: 0;">${escapeHtml(displayName)}</h3>
-              ${invite.email ? `<span class="pending-person-email">${escapeHtml(invite.email)}</span>` : ""}
+              <h3 class="person-name" style="margin: 0;">${highlightedName}</h3>
+              ${highlightedEmail ? `<span class="pending-person-email">${highlightedEmail}</span>` : invite.email ? `<span class="pending-person-email">${escapeHtml(invite.email)}</span>` : ""}
             </div>
             <span class="pending-pill">Pending</span>
           </div>
@@ -2538,7 +2616,13 @@ function populateSongOptions() {
   
   const options = state.songs.map(song => ({
     value: song.id,
-    label: song.title
+    label: song.title,
+    meta: {
+      bpm: song.bpm,
+      key: song.song_key,
+      timeSignature: song.time_signature,
+      duration: song.duration_seconds ? formatDuration(song.duration_seconds) : null,
+    }
   }));
   
   songDropdown = createSearchableDropdown(options, "Select a song...");
@@ -3389,6 +3473,10 @@ function renderSongCatalog() {
   const list = el("songs-catalog-list");
   if (!list) return;
   
+  const searchInput = el("songs-tab-search");
+  const searchTermRaw = searchInput ? searchInput.value.trim() : "";
+  const searchTerm = searchTermRaw.toLowerCase();
+  
   list.innerHTML = "";
   
   if (!state.songs || state.songs.length === 0) {
@@ -3396,30 +3484,67 @@ function renderSongCatalog() {
     return;
   }
   
-    state.songs.forEach((song) => {
-      const div = document.createElement("div");
-      div.className = "card set-song-card";
-      div.innerHTML = `
-        <div class="set-song-header song-card-header">
-          <div class="set-song-info">
-            <h4 class="song-title" style="margin: 0 0 0.5rem 0;">${escapeHtml(song.title)}</h4>
-            <div class="song-meta-text">
-              ${song.bpm ? `<span>BPM: ${song.bpm}</span>` : ''}
-              ${song.song_key ? `<span>Key: ${song.song_key}</span>` : ''}
-              ${song.time_signature ? `<span>Time: ${escapeHtml(song.time_signature)}</span>` : ''}
-              ${song.duration_seconds ? `<span>Duration: ${formatDuration(song.duration_seconds)}</span>` : ''}
-            </div>
-          </div>
-          <div class="set-song-actions song-card-actions">
-            <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
-            ${state.profile?.can_manage ? `
-            <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
-            <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
-            ` : ''}
+  // Filter songs based on search term
+  let filteredSongs = state.songs;
+  if (searchTerm) {
+    const allMatches = state.songs.filter((song) => {
+      const titleMatch = (song.title || "").toLowerCase().includes(searchTerm);
+      const bpmMatch = song.bpm ? String(song.bpm).includes(searchTerm) : false;
+      const keyMatch = (song.song_key || "").toLowerCase().includes(searchTerm);
+      const timeMatch = (song.time_signature || "").toLowerCase().includes(searchTerm);
+      const durationMatch = song.duration_seconds ? formatDuration(song.duration_seconds).toLowerCase().includes(searchTerm) : false;
+      return titleMatch || bpmMatch || keyMatch || timeMatch || durationMatch;
+    });
+    
+    // Prioritize: title matches first, then metadata matches
+    const titleMatches = allMatches.filter((song) => 
+      (song.title || "").toLowerCase().includes(searchTerm)
+    );
+    const metadataMatches = allMatches.filter((song) => 
+      !(song.title || "").toLowerCase().includes(searchTerm)
+    );
+    
+    filteredSongs = [...titleMatches, ...metadataMatches];
+  }
+  
+  if (filteredSongs.length === 0) {
+    list.innerHTML = '<p class="muted">No songs match your search.</p>';
+    return;
+  }
+  
+  filteredSongs.forEach((song) => {
+    const div = document.createElement("div");
+    div.className = "card set-song-card";
+    
+    // Highlight search term in title and metadata (use raw search term for highlighting)
+    const highlightedTitle = searchTermRaw ? highlightMatch(song.title || "", searchTermRaw) : escapeHtml(song.title || "");
+    const highlightedBpm = song.bpm ? (searchTerm && String(song.bpm).includes(searchTerm) ? `<span>BPM: ${highlightMatch(String(song.bpm), searchTermRaw)}</span>` : `<span>BPM: ${song.bpm}</span>`) : '';
+    const highlightedKey = song.song_key ? (searchTerm && song.song_key.toLowerCase().includes(searchTerm) ? `<span>Key: ${highlightMatch(song.song_key, searchTermRaw)}</span>` : `<span>Key: ${song.song_key}</span>`) : '';
+    const highlightedTime = song.time_signature ? (searchTerm && song.time_signature.toLowerCase().includes(searchTerm) ? `<span>Time: ${highlightMatch(song.time_signature, searchTermRaw)}</span>` : `<span>Time: ${escapeHtml(song.time_signature)}</span>`) : '';
+    const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
+    const highlightedDuration = durationStr ? (searchTerm && durationStr.toLowerCase().includes(searchTerm) ? `<span>Duration: ${highlightMatch(durationStr, searchTermRaw)}</span>` : `<span>Duration: ${durationStr}</span>`) : '';
+    
+    div.innerHTML = `
+      <div class="set-song-header song-card-header">
+        <div class="set-song-info">
+          <h4 class="song-title" style="margin: 0 0 0.5rem 0;">${highlightedTitle}</h4>
+          <div class="song-meta-text">
+            ${highlightedBpm}
+            ${highlightedKey}
+            ${highlightedTime}
+            ${highlightedDuration}
           </div>
         </div>
-      `;
-    
+        <div class="set-song-actions song-card-actions">
+          <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
+          ${state.profile?.can_manage ? `
+          <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
+          <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  
     const viewDetailsBtn = div.querySelector(".view-song-details-catalog-btn");
     if (viewDetailsBtn) {
       viewDetailsBtn.addEventListener("click", () => {
@@ -3967,6 +4092,22 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function highlightMatch(text, searchTerm) {
+  if (!searchTerm || !text) return escapeHtml(text);
+  
+  const lowerText = text.toLowerCase();
+  const lowerSearch = searchTerm.toLowerCase();
+  const searchIndex = lowerText.indexOf(lowerSearch);
+  
+  if (searchIndex === -1) return escapeHtml(text);
+  
+  const beforeMatch = text.substring(0, searchIndex);
+  const match = text.substring(searchIndex, searchIndex + searchTerm.length);
+  const afterMatch = text.substring(searchIndex + searchTerm.length);
+  
+  return `${escapeHtml(beforeMatch)}<span style="color: var(--accent-color);">${escapeHtml(match)}</span>${escapeHtml(afterMatch)}`;
+}
+
 function getFaviconUrl(url) {
   if (!url) return null;
   try {
@@ -4165,16 +4306,34 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
   const container = document.createElement("div");
   container.className = "searchable-dropdown";
 
-  const normalizedOptions = (options || []).map((option) => ({
-    ...option,
-    searchText: [
-      option.label,
-      option.meta?.email,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase(),
-  }));
+  const normalizedOptions = (options || []).map((option) => {
+    // Build search text including metadata
+    const searchParts = [option.label];
+    
+    // Add email for users
+    if (option.meta?.email) {
+      searchParts.push(option.meta.email);
+    }
+    
+    // Add song metadata
+    if (option.meta?.bpm) {
+      searchParts.push(String(option.meta.bpm));
+    }
+    if (option.meta?.key) {
+      searchParts.push(option.meta.key);
+    }
+    if (option.meta?.timeSignature) {
+      searchParts.push(option.meta.timeSignature);
+    }
+    if (option.meta?.duration) {
+      searchParts.push(option.meta.duration);
+    }
+    
+    return {
+      ...option,
+      searchText: searchParts.filter(Boolean).join(" ").toLowerCase(),
+    };
+  });
 
   const input = document.createElement("input");
   input.type = "text";
@@ -4204,21 +4363,6 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
     input.classList.add("placeholder");
   }
 
-  function highlightMatch(text, searchTerm) {
-    if (!searchTerm || !text) return escapeHtml(text);
-    
-    const lowerText = text.toLowerCase();
-    const lowerSearch = searchTerm.toLowerCase();
-    const searchIndex = lowerText.indexOf(lowerSearch);
-    
-    if (searchIndex === -1) return escapeHtml(text);
-    
-    const beforeMatch = text.substring(0, searchIndex);
-    const match = text.substring(searchIndex, searchIndex + searchTerm.length);
-    const afterMatch = text.substring(searchIndex + searchTerm.length);
-    
-    return `${escapeHtml(beforeMatch)}<span style="color: var(--accent-color);">${escapeHtml(match)}</span>${escapeHtml(afterMatch)}`;
-  }
 
   function renderOptions() {
     optionsList.innerHTML = "";
@@ -4258,15 +4402,57 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
       }
       
       const highlightedLabel = searchTerm ? highlightMatch(option.label, searchTerm) : escapeHtml(option.label);
-      // Don't highlight email - only show it as plain text since you can't search by email
-      const emailText = option.meta?.email ? escapeHtml(option.meta.email) : "";
+      
+      // Build metadata display with highlighting
+      let metadataHtml = "";
+      
+      // For users: show email with highlighting
+      if (option.meta?.email) {
+        const highlightedEmail = searchTerm && option.meta.email.toLowerCase().includes(searchTerm.toLowerCase())
+          ? highlightMatch(option.meta.email, searchTerm)
+          : escapeHtml(option.meta.email);
+        metadataHtml = `<div class="searchable-option-subtext">${highlightedEmail}</div>`;
+      }
+      
+      // For songs: show metadata with highlighting
+      if (option.meta?.bpm || option.meta?.key || option.meta?.timeSignature || option.meta?.duration) {
+        const metaParts = [];
+        if (option.meta.bpm) {
+          const bpmStr = String(option.meta.bpm);
+          const highlightedBpm = searchTerm && bpmStr.includes(searchTerm)
+            ? highlightMatch(bpmStr, searchTerm)
+            : escapeHtml(bpmStr);
+          metaParts.push(`BPM: ${highlightedBpm}`);
+        }
+        if (option.meta.key) {
+          const highlightedKey = searchTerm && option.meta.key.toLowerCase().includes(searchTerm.toLowerCase())
+            ? highlightMatch(option.meta.key, searchTerm)
+            : escapeHtml(option.meta.key);
+          metaParts.push(`Key: ${highlightedKey}`);
+        }
+        if (option.meta.timeSignature) {
+          const highlightedTime = searchTerm && option.meta.timeSignature.toLowerCase().includes(searchTerm.toLowerCase())
+            ? highlightMatch(option.meta.timeSignature, searchTerm)
+            : escapeHtml(option.meta.timeSignature);
+          metaParts.push(`Time: ${highlightedTime}`);
+        }
+        if (option.meta.duration) {
+          const highlightedDuration = searchTerm && option.meta.duration.includes(searchTerm)
+            ? highlightMatch(option.meta.duration, searchTerm)
+            : escapeHtml(option.meta.duration);
+          metaParts.push(`Duration: ${highlightedDuration}`);
+        }
+        if (metaParts.length > 0) {
+          metadataHtml = `<div class="searchable-option-subtext">${metaParts.join(" • ")}</div>`;
+        }
+      }
       
       optionEl.innerHTML = `
         <div class="searchable-option-row">
           <span class="searchable-option-label">${highlightedLabel}</span>
           ${option.meta?.isPending ? '<span class="searchable-option-tag">(Pending)</span>' : ''}
         </div>
-        ${emailText ? `<div class="searchable-option-subtext">${emailText}</div>` : ""}
+        ${metadataHtml}
       `;
       optionEl.dataset.value = option.value;
 
@@ -4296,9 +4482,24 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
     if (!term) {
       filteredOptions = normalizedOptions;
     } else {
-      filteredOptions = normalizedOptions.filter((opt) =>
+      // Filter and prioritize: title/name matches first, then metadata/email matches
+      const allMatches = normalizedOptions.filter((opt) =>
         opt.searchText.includes(term)
       );
+      
+      // Separate into priority groups
+      const primaryMatches = allMatches.filter((opt) => {
+        const labelLower = (opt.label || "").toLowerCase();
+        return labelLower.includes(term);
+      });
+      
+      const secondaryMatches = allMatches.filter((opt) => {
+        const labelLower = (opt.label || "").toLowerCase();
+        return !labelLower.includes(term);
+      });
+      
+      // Combine: primary first, then secondary
+      filteredOptions = [...primaryMatches, ...secondaryMatches];
     }
     highlightedIndex = -1;
     renderOptions();
