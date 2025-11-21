@@ -213,6 +213,13 @@ main {
   display: none;
 }
 
+/* Hide "View as Member" button in header on mobile */
+@media (max-width: 768px) {
+  #btn-view-as-member {
+    display: none !important;
+  }
+}
+
 .set-detail-times {
   background: var(--bg-card);
   border-radius: 1rem;

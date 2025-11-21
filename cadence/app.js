@@ -359,13 +359,25 @@ function bindEvents() {
   createSetBtn?.addEventListener("click", () => openSetModal());
   el("btn-invite-member")?.addEventListener("click", () => openInviteModal());
   
-  // Member view toggle
+  // Member view toggle (header button)
   el("btn-view-as-member")?.addEventListener("click", () => {
     state.isMemberView = true;
     showApp();
     // Refresh current view (could be dashboard or set detail)
     const setDetailView = el("set-detail");
     if (setDetailView && !setDetailView.classList.contains("hidden") && state.selectedSet) {
+      showSetDetail(state.selectedSet);
+    } else {
+      refreshActiveTab();
+    }
+  });
+  
+  // Member view toggle (set detail button)
+  el("btn-view-as-member-detail")?.addEventListener("click", () => {
+    state.isMemberView = true;
+    showApp();
+    // Refresh set detail view
+    if (state.selectedSet) {
       showSetDetail(state.selectedSet);
     } else {
       refreshActiveTab();
@@ -1809,12 +1821,31 @@ function showSetDetail(set) {
   // Show/hide edit/delete buttons for managers
   const editBtn = el("btn-edit-set-detail");
   const deleteBtn = el("btn-delete-set-detail");
+  const viewAsMemberDetailBtn = el("btn-view-as-member-detail");
+  
   if (isManager()) {
     editBtn.classList.remove("hidden");
     deleteBtn.classList.remove("hidden");
   } else {
     editBtn.classList.add("hidden");
     deleteBtn.classList.add("hidden");
+  }
+  
+  // Show/hide "View as Member" button in set detail (only for managers, not when already in member view)
+  if (state.profile?.can_manage) {
+    if (viewAsMemberDetailBtn) {
+      viewAsMemberDetailBtn.classList.remove("hidden");
+      // Grey out the button when already in member view
+      if (state.isMemberView) {
+        viewAsMemberDetailBtn.classList.add("disabled");
+        viewAsMemberDetailBtn.disabled = true;
+      } else {
+        viewAsMemberDetailBtn.classList.remove("disabled");
+        viewAsMemberDetailBtn.disabled = false;
+      }
+    }
+  } else {
+    if (viewAsMemberDetailBtn) viewAsMemberDetailBtn.classList.add("hidden");
   }
   
   // Render service times (desktop sidebar)
