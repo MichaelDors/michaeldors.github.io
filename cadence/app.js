@@ -51,6 +51,7 @@ const state = {
   expandedSets: new Set(),
   currentSongDetailsId: null, // Track which song is open in details modal
   isPasswordSetup: isInviteLink, // Set flag immediately if this is an invite link
+  isMemberView: false, // Track if manager is viewing as member
   metronome: {
     isPlaying: false,
     bpm: null,
@@ -77,6 +78,12 @@ const authMessage = el("auth-message");
 const authSubmitBtn = el("auth-submit-btn");
 // No manual signup allowed - users must be invited
 let isSignUpMode = false; // Always false, kept for compatibility but never used
+
+// Helper function to check if user has manager permissions
+// Returns false if in member view mode, even if user is a manager
+function isManager() {
+  return state.profile?.can_manage && !state.isMemberView;
+}
 
 async function init() {
   console.log('🚀 init() called');
@@ -351,6 +358,31 @@ function bindEvents() {
   passwordSetupForm?.addEventListener("submit", handlePasswordSetup);
   createSetBtn?.addEventListener("click", () => openSetModal());
   el("btn-invite-member")?.addEventListener("click", () => openInviteModal());
+  
+  // Member view toggle
+  el("btn-view-as-member")?.addEventListener("click", () => {
+    state.isMemberView = true;
+    showApp();
+    // Refresh current view (could be dashboard or set detail)
+    const setDetailView = el("set-detail");
+    if (setDetailView && !setDetailView.classList.contains("hidden") && state.selectedSet) {
+      showSetDetail(state.selectedSet);
+    } else {
+      refreshActiveTab();
+    }
+  });
+  
+  el("btn-exit-member-view")?.addEventListener("click", () => {
+    state.isMemberView = false;
+    showApp();
+    // Refresh current view (could be dashboard or set detail)
+    const setDetailView = el("set-detail");
+    if (setDetailView && !setDetailView.classList.contains("hidden") && state.selectedSet) {
+      showSetDetail(state.selectedSet);
+    } else {
+      refreshActiveTab();
+    }
+  });
   el("close-invite-modal")?.addEventListener("click", () => closeInviteModal());
   el("cancel-invite")?.addEventListener("click", () => closeInviteModal());
   el("invite-form")?.addEventListener("submit", handleInviteSubmit);
@@ -602,7 +634,37 @@ function showApp() {
     userNameEl.textContent = state.profile?.full_name ?? "Signed In";
   }
   
+  // Show/hide manager buttons based on actual manager status (not member view)
+  const viewAsMemberBtn = el("btn-view-as-member");
+  const memberViewBanner = el("member-view-banner");
+  
   if (state.profile?.can_manage) {
+    // Show "View as Member" button if user is a manager
+    if (viewAsMemberBtn) {
+      viewAsMemberBtn.classList.remove("hidden");
+      // Grey out the button when already in member view
+      if (state.isMemberView) {
+        viewAsMemberBtn.classList.add("disabled");
+        viewAsMemberBtn.disabled = true;
+      } else {
+        viewAsMemberBtn.classList.remove("disabled");
+        viewAsMemberBtn.disabled = false;
+      }
+    }
+  } else {
+    // Hide "View as Member" button if user is not a manager
+    if (viewAsMemberBtn) viewAsMemberBtn.classList.add("hidden");
+  }
+  
+  // Show/hide member view banner
+  if (state.isMemberView) {
+    if (memberViewBanner) memberViewBanner.classList.remove("hidden");
+  } else {
+    if (memberViewBanner) memberViewBanner.classList.add("hidden");
+  }
+  
+  // Show/hide management buttons based on isManager() (respects member view)
+  if (isManager()) {
     if (createSetBtnEl) createSetBtnEl.classList.remove("hidden");
     if (createSongBtnEl) createSongBtnEl.classList.remove("hidden");
     if (inviteMemberBtnEl) inviteMemberBtnEl.classList.remove("hidden");
@@ -1291,7 +1353,7 @@ function renderSetCard(set, container) {
     showSetDetail(set);
   });
 
-  if (state.profile?.can_manage) {
+  if (isManager()) {
     editBtn.classList.remove("hidden");
     editBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1389,10 +1451,18 @@ function refreshActiveTab() {
   const activeTab = activeTabBtn.dataset.tab;
   
   // Re-render the active tab content
-  if (activeTab === "songs") {
+  if (activeTab === "sets") {
+    renderSets();
+  } else if (activeTab === "songs") {
     renderSongCatalog();
   } else if (activeTab === "people") {
     loadPeople();
+  }
+  
+  // If set detail view is open, refresh it too
+  const setDetailView = el("set-detail");
+  if (setDetailView && !setDetailView.classList.contains("hidden") && state.selectedSet) {
+    renderSetDetailSongs(state.selectedSet);
   }
 }
 
@@ -1432,14 +1502,14 @@ function renderPeople() {
   if (!peopleList) return;
   
   const searchInput = el("people-tab-search");
+  const isManagerCheck = isManager();
   const searchTermRaw = searchInput ? searchInput.value.trim() : "";
   const searchTerm = searchTermRaw.toLowerCase();
   
   peopleList.innerHTML = "";
   
   // Add invite card for managers (always show, not affected by search)
-  const isManager = !!state.profile?.can_manage;
-  if (isManager) {
+  if (isManager()) {
     const inviteCard = document.createElement("div");
     inviteCard.className = "card person-card invite-card";
     inviteCard.innerHTML = `
@@ -1500,7 +1570,7 @@ function renderPeople() {
       peopleList.appendChild(noResults);
       return;
     }
-    if (!isManager) {
+    if (!isManagerCheck) {
       peopleList.innerHTML = '<p class="muted">No members yet.</p>';
       return;
     }
@@ -1516,7 +1586,7 @@ function renderPeople() {
       const div = document.createElement("div");
       div.className = "card person-card";
       
-      if (isManager) {
+      if (isManagerCheck) {
         // Manager view: show email, edit name, delete
         const highlightedName = searchTermRaw ? highlightMatch(person.full_name || "", searchTermRaw) : escapeHtml(person.full_name || "");
         const highlightedEmail = person.email 
@@ -1585,7 +1655,7 @@ function renderPeople() {
             : escapeHtml(invite.email))
         : null;
       
-      if (isManager) {
+      if (isManagerCheck) {
         // Manager view: show cancel button
         div.innerHTML = `
           <div class="pending-person-header">
@@ -1739,7 +1809,7 @@ function showSetDetail(set) {
   // Show/hide edit/delete buttons for managers
   const editBtn = el("btn-edit-set-detail");
   const deleteBtn = el("btn-delete-set-detail");
-  if (state.profile?.can_manage) {
+  if (isManager()) {
     editBtn.classList.remove("hidden");
     deleteBtn.classList.remove("hidden");
   } else {
@@ -1794,7 +1864,7 @@ function renderSetDetailSongs(set) {
         // Only make draggable for managers
         const dragHandle = songNode.querySelector(".drag-handle");
         const songHeader = songNode.querySelector(".set-song-header");
-        if (state.profile?.can_manage) {
+        if (isManager()) {
           card.classList.add("draggable-item");
           card.draggable = false; // Will be set to true when dragging from handle
           if (dragHandle) {
@@ -1868,7 +1938,7 @@ function renderSetDetailSongs(set) {
         // Add edit and remove buttons for managers
         const editBtn = songNode.querySelector(".edit-set-song-btn");
         const removeBtn = songNode.querySelector(".remove-song-from-set-btn");
-        if (state.profile?.can_manage) {
+        if (isManager()) {
           if (editBtn) {
             editBtn.classList.remove("hidden");
             editBtn.dataset.setSongId = setSong.id;
@@ -1903,13 +1973,13 @@ function renderSetDetailSongs(set) {
       });
     
     // Setup drag and drop for songs (managers only)
-    if (state.profile?.can_manage) {
+    if (isManager()) {
       setupSongDragAndDrop(songsList);
     }
   }
   
   // Add "Add Song" card at the end for managers
-  if (state.profile?.can_manage) {
+  if (isManager()) {
     const addCard = document.createElement("div");
     addCard.className = "card set-song-card add-song-card";
     addCard.innerHTML = `
@@ -2287,7 +2357,7 @@ async function saveLinkOrder(container) {
 }
 
 function openSetModal(set = null) {
-  if (!state.profile?.can_manage) return;
+  if (!isManager()) return;
   state.selectedSet = set;
   setModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -2390,7 +2460,7 @@ function addRehearsalTimeRow(date = "", time = "", id = null) {
 
 async function handleSetSubmit(event) {
   event.preventDefault();
-  if (!state.profile?.can_manage) return;
+  if (!isManager()) return;
 
   // Preserve the selectedSet ID immediately - don't rely on state.selectedSet staying set
   const editingSetId = state.selectedSet?.id || null;
@@ -2591,11 +2661,12 @@ function renderSetSongsEditor() {
   });
 }
 
-function openSongModal() {
-  if (!state.profile?.can_manage || !state.selectedSet) return;
+async function openSongModal() {
+  if (!isManager() || !state.selectedSet) return;
   songModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
-  populateSongOptions();
+  await populateSongOptions();
+  populateImportAssignmentsDropdown("import-assignments-container", null);
   el("assignments-list").innerHTML = "";
 }
 
@@ -2604,15 +2675,20 @@ function closeSongModal() {
   document.body.style.overflow = "";
   el("song-form").reset();
   el("assignments-list").innerHTML = "";
+  el("import-assignments-container").innerHTML = "";
+  importAssignmentsDropdown = null;
 }
 
 let songDropdown = null;
 
-function populateSongOptions() {
+async function populateSongOptions() {
   const container = el("song-select-container");
   if (!container) return;
   
   container.innerHTML = "";
+  
+  // Get weeks since last performance for each song
+  const weeksSinceMap = await getWeeksSinceLastPerformance();
   
   const options = state.songs.map(song => ({
     value: song.id,
@@ -2622,11 +2698,78 @@ function populateSongOptions() {
       key: song.song_key,
       timeSignature: song.time_signature,
       duration: song.duration_seconds ? formatDuration(song.duration_seconds) : null,
+      weeksSinceLastPerformed: weeksSinceMap.get(song.id) || null,
     }
   }));
   
   songDropdown = createSearchableDropdown(options, "Select a song...");
   container.appendChild(songDropdown);
+}
+
+async function getWeeksSinceLastPerformance() {
+  const weeksMap = new Map();
+  
+  if (!state.songs || state.songs.length === 0) {
+    return weeksMap;
+  }
+  
+  const songIds = state.songs.map(s => s.id);
+  
+  // Query to find the most recent set date for each song
+  const { data, error } = await supabase
+    .from("set_songs")
+    .select(`
+      song_id,
+      set:set_id (
+        scheduled_date
+      )
+    `)
+    .in("song_id", songIds);
+  
+  if (error) {
+    console.error("Error fetching song performance history:", error);
+    return weeksMap;
+  }
+  
+  // Group by song_id and get the most recent date (only past dates)
+  const songToDateMap = new Map();
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Normalize to start of day
+  
+  if (data) {
+    data.forEach(item => {
+      const songId = item.song_id;
+      // Handle both object and array responses from Supabase
+      const setData = Array.isArray(item.set) ? item.set[0] : item.set;
+      const scheduledDate = setData?.scheduled_date;
+      
+      if (scheduledDate) {
+        const dateValue = new Date(scheduledDate);
+        dateValue.setHours(0, 0, 0, 0);
+        
+        // Only consider dates in the past
+        if (dateValue <= now) {
+          const existingDate = songToDateMap.get(songId);
+          if (!existingDate || dateValue > new Date(existingDate)) {
+            songToDateMap.set(songId, scheduledDate);
+          }
+        }
+      }
+    });
+  }
+  
+  // Calculate weeks since for each song
+  songToDateMap.forEach((lastDate, songId) => {
+    const date = new Date(lastDate);
+    date.setHours(0, 0, 0, 0); // Normalize to start of day
+    const diffTime = now - date;
+    const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
+    if (diffWeeks >= 0) {
+      weeksMap.set(songId, diffWeeks);
+    }
+  });
+  
+  return weeksMap;
 }
 
 async function handleAddSongToSet(event) {
@@ -2639,13 +2782,16 @@ async function handleAddSongToSet(event) {
   const notes = el("song-notes").value;
   const assignments = collectAssignments();
 
+  // Calculate sequence_order from the current set's songs
+  const currentSequenceOrder = state.selectedSet.set_songs?.length || 0;
+
   const { data: setSong, error } = await supabase
     .from("set_songs")
     .insert({
       set_id: state.selectedSet.id,
       song_id: songId,
       notes,
-      sequence_order: state.currentSetSongs.length,
+      sequence_order: currentSequenceOrder,
     })
     .select()
     .single();
@@ -2748,7 +2894,7 @@ function addAssignmentInput() {
     personOptions, 
     "Select a person...",
     null,
-    state.profile?.can_manage ? (name) => openInviteModal(name) : null
+    isManager() ? (name) => openInviteModal(name) : null
   );
   personContainer.appendChild(personDropdown);
   
@@ -2794,7 +2940,7 @@ function collectAssignments() {
 
 // Edit Set Song Functions
 function openEditSetSongModal(setSong) {
-  if (!state.profile?.can_manage || !setSong) return;
+  if (!isManager() || !setSong) return;
   
   const modal = el("edit-set-song-modal");
   const form = el("edit-set-song-form");
@@ -2816,6 +2962,9 @@ function openEditSetSongModal(setSong) {
     });
   }
   
+  // Populate import dropdown, excluding current song
+  populateImportAssignmentsDropdown("import-edit-assignments-container", setSong.id);
+  
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
@@ -2826,6 +2975,8 @@ function closeEditSetSongModal() {
   document.body.style.overflow = "";
   el("edit-set-song-form").reset();
   el("edit-assignments-list").innerHTML = "";
+  el("import-edit-assignments-container").innerHTML = "";
+  importEditAssignmentsDropdown = null;
   delete el("edit-set-song-form").dataset.setSongId;
 }
 
@@ -2860,6 +3011,223 @@ function addEditAssignmentInput(existingAssignment = null) {
     personOptions, 
     "Select a person...",
     selectedValue,
+    state.profile?.can_manage ? (name) => openInviteModal(name) : null
+  );
+  personContainer.appendChild(personDropdown);
+  
+  div.querySelector(".remove-edit-assignment").addEventListener("click", () => {
+    container.removeChild(div);
+  });
+  container.appendChild(div);
+}
+
+let importAssignmentsDropdown = null;
+let importEditAssignmentsDropdown = null;
+
+function populateImportAssignmentsDropdown(containerId, excludeSetSongId) {
+  const container = el(containerId);
+  if (!container || !state.selectedSet) {
+    // Show placeholder even if no set selected
+    if (container) {
+      container.innerHTML = "";
+    }
+    return;
+  }
+  
+  container.innerHTML = "";
+  
+  // Get songs from the current set, excluding the current song if editing
+  const setSongs = (state.selectedSet.set_songs || [])
+    .filter(setSong => setSong.id !== excludeSetSongId)
+    .sort((a, b) => a.sequence_order - b.sequence_order);
+  
+  if (setSongs.length === 0) {
+    // Show message when no other songs to import from
+    const message = document.createElement("span");
+    message.className = "muted small-text";
+    message.style.fontSize = "0.85rem";
+    message.textContent = "No other songs in set";
+    container.appendChild(message);
+    return;
+  }
+  
+  // Add a compact label
+  const labelText = document.createElement("span");
+  labelText.className = "small-text";
+  labelText.style.fontSize = "0.85rem";
+  labelText.style.color = "var(--text-muted)";
+  labelText.style.whiteSpace = "nowrap";
+  labelText.textContent = "or import from:";
+  container.appendChild(labelText);
+  
+  // Add dropdown
+  const dropdownContainer = document.createElement("div");
+  dropdownContainer.style.minWidth = "180px";
+  dropdownContainer.style.flex = "0 1 auto";
+  
+  const options = setSongs.map(setSong => ({
+    value: setSong.id,
+    label: setSong.song?.title || "Untitled",
+    meta: { setSong }
+  }));
+  
+  const dropdown = createSearchableDropdown(options, "Select a song...");
+  dropdownContainer.appendChild(dropdown);
+  container.appendChild(dropdownContainer);
+  
+  // Store reference based on which container
+  if (containerId === "import-assignments-container") {
+    importAssignmentsDropdown = dropdown;
+    // Clear previous event listener and add new one
+    dropdown.addEventListener("change", (e) => {
+      if (e.detail && e.detail.value) {
+        handleImportAssignments(e.detail.value);
+      }
+    });
+  } else {
+    importEditAssignmentsDropdown = dropdown;
+    dropdown.addEventListener("change", (e) => {
+      if (e.detail && e.detail.value) {
+        handleImportEditAssignments(e.detail.value);
+      }
+    });
+  }
+}
+
+function handleImportAssignments(selectedValue) {
+  if (!selectedValue) return;
+  
+  // Find the set song
+  const setSong = state.selectedSet.set_songs?.find(ss => ss.id === selectedValue);
+  if (!setSong || !setSong.song_assignments?.length) {
+    alert("Selected song has no assignments to import.");
+    // Reset dropdown
+    if (importAssignmentsDropdown) {
+      importAssignmentsDropdown.setValue("");
+    }
+    return;
+  }
+  
+  // Clear existing assignments
+  el("assignments-list").innerHTML = "";
+  
+  // Add assignments from selected song
+  setSong.song_assignments.forEach((assignment) => {
+    addAssignmentInputFromImport(assignment);
+  });
+  
+  // Reset dropdown
+  if (importAssignmentsDropdown) {
+    importAssignmentsDropdown.setValue("");
+  }
+}
+
+function handleImportEditAssignments(selectedValue) {
+  if (!selectedValue) return;
+  
+  // Find the set song
+  const setSong = state.selectedSet.set_songs?.find(ss => ss.id === selectedValue);
+  if (!setSong || !setSong.song_assignments?.length) {
+    alert("Selected song has no assignments to import.");
+    // Reset dropdown
+    if (importEditAssignmentsDropdown) {
+      importEditAssignmentsDropdown.setValue("");
+    }
+    return;
+  }
+  
+  // Clear existing assignments
+  el("edit-assignments-list").innerHTML = "";
+  
+  // Add assignments from selected song
+  setSong.song_assignments.forEach((assignment) => {
+    addEditAssignmentInputFromImport(assignment);
+  });
+  
+  // Reset dropdown
+  if (importEditAssignmentsDropdown) {
+    importEditAssignmentsDropdown.setValue("");
+  }
+}
+
+function addAssignmentInputFromImport(assignment) {
+  const container = el("assignments-list");
+  const div = document.createElement("div");
+  div.className = "assignment-row";
+  
+  // Build person dropdown options
+  const personOptions = buildPersonOptions();
+  
+  // Find the person option that matches this assignment
+  let selectedPersonValue = null;
+  if (assignment.pending_invite_id) {
+    selectedPersonValue = assignment.pending_invite_id;
+  } else if (assignment.person_id) {
+    selectedPersonValue = assignment.person_id;
+  }
+  
+  div.innerHTML = `
+    <label>
+      Role
+      <input type="text" class="assignment-role-input" placeholder="Lead Vocal" value="${assignment.role || ''}" required />
+    </label>
+    <label>
+      Person
+      <div class="assignment-person-container"></div>
+    </label>
+    <button type="button" class="btn small ghost remove-assignment">Remove</button>
+  `;
+  
+  // Create searchable dropdown for person
+  const personContainer = div.querySelector(".assignment-person-container");
+  const personDropdown = createSearchableDropdown(
+    personOptions, 
+    "Select a person...",
+    selectedPersonValue,
+    state.profile?.can_manage ? (name) => openInviteModal(name) : null
+  );
+  personContainer.appendChild(personDropdown);
+  
+  div.querySelector(".remove-assignment").addEventListener("click", () => {
+    container.removeChild(div);
+  });
+  container.appendChild(div);
+}
+
+function addEditAssignmentInputFromImport(assignment) {
+  const container = el("edit-assignments-list");
+  const div = document.createElement("div");
+  div.className = "assignment-row";
+  
+  // Build person dropdown options
+  const personOptions = buildPersonOptions();
+  
+  // Find the person option that matches this assignment
+  let selectedPersonValue = null;
+  if (assignment.pending_invite_id) {
+    selectedPersonValue = assignment.pending_invite_id;
+  } else if (assignment.person_id) {
+    selectedPersonValue = assignment.person_id;
+  }
+  
+  div.innerHTML = `
+    <label>
+      Role
+      <input type="text" class="edit-assignment-role-input" placeholder="Lead Vocal" value="${assignment.role || ''}" required />
+    </label>
+    <label>
+      Person
+      <div class="edit-assignment-person-container"></div>
+    </label>
+    <button type="button" class="btn small ghost remove-edit-assignment">Remove</button>
+  `;
+  
+  // Create searchable dropdown for person
+  const personContainer = div.querySelector(".edit-assignment-person-container");
+  const personDropdown = createSearchableDropdown(
+    personOptions, 
+    "Select a person...",
+    selectedPersonValue,
     state.profile?.can_manage ? (name) => openInviteModal(name) : null
   );
   personContainer.appendChild(personDropdown);
@@ -3060,7 +3428,7 @@ function showDeleteConfirmModal(name, message, onConfirm) {
 }
 
 async function deleteSet(set) {
-  if (!state.profile?.can_manage) return;
+  if (!isManager()) return;
   
   showDeleteConfirmModal(
     set.title,
@@ -3088,7 +3456,7 @@ async function deleteSet(set) {
 }
 
 async function deleteSong(songId) {
-  if (!state.profile?.can_manage) return;
+  if (!isManager()) return;
   
   const song = state.songs.find(s => s.id === songId);
   const songTitle = song?.title || "this song";
@@ -3135,7 +3503,7 @@ async function deleteSong(songId) {
 
 // Invite Member Functions
 function openInviteModal(prefilledName = null) {
-  if (!state.profile?.can_manage) return;
+  if (!isManager()) return;
   const modal = el("invite-modal");
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -3156,7 +3524,7 @@ function closeInviteModal() {
 
 async function handleInviteSubmit(event) {
   event.preventDefault();
-  if (!state.profile?.can_manage) return;
+  if (!isManager()) return;
   
   const email = el("invite-email").value.trim();
   const name = el("invite-name").value.trim();
@@ -3247,7 +3615,7 @@ async function ensurePendingInviteRecord(email, fullName) {
 
 // Edit Person Functions
 function openEditPersonModal(person) {
-  if (!state.profile?.can_manage || !person) return;
+  if (!isManager() || !person) return;
   
   const modal = el("edit-person-modal");
   const form = el("edit-person-form");
@@ -3278,7 +3646,7 @@ function closeEditPersonModal() {
 
 async function handleEditPersonSubmit(event) {
   event.preventDefault();
-  if (!state.profile?.can_manage) return;
+  if (!isManager()) return;
   
   const form = el("edit-person-form");
   const personId = form.dataset.personId;
@@ -3305,7 +3673,7 @@ async function handleEditPersonSubmit(event) {
 }
 
 async function deletePerson(person) {
-  if (!state.profile?.can_manage || !person) return;
+  if (!isManager() || !person) return;
   
   if (person.id === state.profile.id) {
     alert("You cannot remove yourself from the band.");
@@ -3403,7 +3771,7 @@ async function deletePerson(person) {
 }
 
 async function cancelPendingInvite(invite) {
-  if (!state.profile?.can_manage) return;
+  if (!isManager()) return;
   
   const inviteName = invite.full_name || invite.email || "this invite";
   
@@ -3456,7 +3824,7 @@ async function cancelPendingInvite(invite) {
 
 // Song Catalog Management
 function openSongCatalogModal() {
-  if (!state.profile?.can_manage) return;
+  if (!isManager()) return;
   const modal = el("song-catalog-modal");
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -3537,7 +3905,7 @@ function renderSongCatalog() {
         </div>
         <div class="set-song-actions song-card-actions">
           <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
-          ${state.profile?.can_manage ? `
+          ${isManager() ? `
           <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
           <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
           ` : ''}
@@ -3571,7 +3939,7 @@ function renderSongCatalog() {
 }
 
 function openSongEditModal(songId = null) {
-  if (!state.profile?.can_manage) return;
+  if (!isManager()) return;
   const modal = el("song-edit-modal");
   const title = el("song-edit-modal-title");
   const form = el("song-edit-form");
@@ -3781,11 +4149,11 @@ function renderSongLinks(links) {
   sortedLinks.forEach((link, index) => {
     const div = document.createElement("div");
     div.className = "song-link-row draggable-item";
-    div.draggable = state.profile?.can_manage || false;
+    div.draggable = isManager() || false;
     div.dataset.linkId = link.id || `new-${index}`;
     div.dataset.displayOrder = link.display_order || index;
     div.innerHTML = `
-      ${state.profile?.can_manage ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
+      ${isManager() ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
       <label>
         Title
         <input type="text" class="song-link-title-input" placeholder="Recording" value="${escapeHtml(link.title || '')}" required />
@@ -3803,7 +4171,7 @@ function renderSongLinks(links) {
     });
     
     // Setup drag and drop for links
-    if (state.profile?.can_manage) {
+    if (isManager()) {
       setupLinkDragAndDrop(div, container);
     }
     
@@ -3842,7 +4210,7 @@ function addSongLinkInput() {
   });
   
   // Setup drag and drop for new link
-  if (state.profile?.can_manage) {
+  if (isManager()) {
     setupLinkDragAndDrop(div, container);
   }
   
@@ -4030,7 +4398,7 @@ async function handleSongEditSubmit(event) {
   if (state.creatingSongFromModal && !songId) {
     state.creatingSongFromModal = false;
     // Song modal should still be open, just refresh the options and select the new song
-    populateSongOptions();
+    await populateSongOptions();
     if (songDropdown) {
       songDropdown.setValue(response.data.id);
     }
@@ -4038,7 +4406,7 @@ async function handleSongEditSubmit(event) {
     state.creatingSongFromModal = false;
     // If song select is open, refresh it
     if (!el("song-modal").classList.contains("hidden")) {
-      populateSongOptions();
+      await populateSongOptions();
       // Select the newly created song
       if (!songId && songDropdown) {
         songDropdown.setValue(response.data.id);
@@ -4447,10 +4815,19 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
         }
       }
       
+      // Add weeks since last performed indicator for songs
+      let weeksIndicator = "";
+      if (option.meta?.weeksSinceLastPerformed !== null && option.meta?.weeksSinceLastPerformed !== undefined) {
+        weeksIndicator = `<span class="searchable-option-weeks" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">${option.meta.weeksSinceLastPerformed}w</span>`;
+      }
+      
       optionEl.innerHTML = `
-        <div class="searchable-option-row">
-          <span class="searchable-option-label">${highlightedLabel}</span>
-          ${option.meta?.isPending ? '<span class="searchable-option-tag">(Pending)</span>' : ''}
+        <div class="searchable-option-row" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0;">
+            <span class="searchable-option-label">${highlightedLabel}</span>
+            ${option.meta?.isPending ? '<span class="searchable-option-tag">(Pending)</span>' : ''}
+          </div>
+          ${weeksIndicator}
         </div>
         ${metadataHtml}
       `;
@@ -4613,9 +4990,17 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
 
   container.getValue = () => selectedOption?.value || null;
   container.setValue = (value) => {
-    const option = normalizedOptions.find((opt) => opt.value === value);
-    if (option) {
-      selectOption(option);
+    if (value === "" || value === null || value === undefined) {
+      // Reset to no selection
+      selectedOption = null;
+      input.value = "";
+      input.classList.add("placeholder");
+      renderOptions();
+    } else {
+      const option = normalizedOptions.find((opt) => opt.value === value);
+      if (option) {
+        selectOption(option);
+      }
     }
   };
   container.getSelectedOption = () => selectedOption;

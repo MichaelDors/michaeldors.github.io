@@ -57,6 +57,31 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
+.member-view-banner {
+  background: var(--accent-color) !important;
+  color: var(--bg-primary);
+  padding: 0.75rem 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.member-view-banner-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  gap: 1rem;
+}
+
+.member-view-banner-content span {
+  font-weight: 500;
+}
+
 .subtitle {
   margin: 0;
   color: var(--text-muted);
@@ -577,7 +602,8 @@ main {
   transform: translateY(0);
 }
 
-.btn:disabled {
+.btn:disabled,
+.btn.disabled {
   opacity: 0.5;
   cursor: not-allowed;
   pointer-events: none;

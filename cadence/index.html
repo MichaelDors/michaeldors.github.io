@@ -16,12 +16,20 @@
         <h1>Cadence</h1>
       </div>
       <div class="header-actions">
+        <button id="btn-view-as-member" class="btn secondary hidden"><i class="fa-solid fa-user"></i> View as Member</button>
         <div id="user-info" class="user-info hidden">
           <span id="user-name"></span>
           <button id="btn-logout" class="btn ghost"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
         </div>
       </div>
     </header>
+
+    <div id="member-view-banner" style="background: var(--accent-color) !important; color: var(--bg-primary) !important; padding: 0.75rem 2rem !important;" class="member-view-banner hidden">
+      <div class="member-view-banner-content" style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="text-align: left;">You're in member view and cannot currently manage</span>
+        <button id="btn-exit-member-view" class="btn secondary small" style="margin-left: 2rem;">Exit</button>
+      </div>
+    </div>
 
     <main>
       <section id="auth-gate" class="card">
@@ -250,9 +258,12 @@
         <div class="assignment-section">
           <div class="section-header">
             <h4>Assignments</h4>
-            <button id="btn-add-assignment" type="button" class="btn secondary">
-              Add Assignment
-            </button>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+              <button id="btn-add-assignment" type="button" class="btn secondary">
+                Add
+              </button>
+              <div id="import-assignments-container" style="display: flex; align-items: center; gap: 0.5rem;"></div>
+            </div>
           </div>
           <div id="assignments-list"></div>
         </div>
@@ -283,9 +294,12 @@
         <div class="assignment-section">
           <div class="section-header">
             <h4>Assignments</h4>
-            <button id="btn-add-edit-assignment" type="button" class="btn secondary">
-              Add Assignment
-            </button>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+              <button id="btn-add-edit-assignment" type="button" class="btn secondary">
+                Add
+              </button>
+              <div id="import-edit-assignments-container" style="display: flex; align-items: center; gap: 0.5rem;"></div>
+            </div>
           </div>
           <div id="edit-assignments-list"></div>
         </div>
