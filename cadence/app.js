@@ -1570,6 +1570,20 @@ function renderPeople() {
     filteredPending = [...pendingNameMatches, ...pendingEmailMatches];
   }
   
+  // Sort people: managers first, then members, both alphabetically by name
+  filteredPeople.sort((a, b) => {
+    // First, sort by manager status (managers first)
+    const aIsManager = a.can_manage === true;
+    const bIsManager = b.can_manage === true;
+    if (aIsManager !== bIsManager) {
+      return bIsManager ? 1 : -1; // Managers come first
+    }
+    // Then sort alphabetically by name within each group
+    const aName = (a.full_name || "").toLowerCase();
+    const bName = (b.full_name || "").toLowerCase();
+    return aName.localeCompare(bName);
+  });
+  
   const hasMembers = filteredPeople.length > 0;
   const hasPending = filteredPending.length > 0;
   const totalEntries = filteredPeople.length + filteredPending.length;
