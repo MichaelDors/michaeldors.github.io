@@ -2207,15 +2207,53 @@ function setupSongDragAndDrop(container) {
     
     if (!draggedItem) return;
     
+    // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
     
-    const items = Array.from(container.querySelectorAll(".set-song-card.draggable-item"));
-    const newOrder = items.map((el, index) => ({
-      id: el.dataset.setSongId,
-      sequence_order: index
-    }));
+    // Calculate where the item should be dropped based on current mouse position
+    const afterElement = getDragAfterElement(container, e.clientY, draggedItem);
+    const addCard = container.querySelector(".add-song-card");
     
-    await updateSongOrder(newOrder);
+    // Move the dragged item to its final position
+    if (afterElement == null) {
+      // Drop at the end
+      if (addCard) {
+        container.insertBefore(draggedItem, addCard);
+      } else {
+        container.appendChild(draggedItem);
+      }
+    } else {
+      container.insertBefore(draggedItem, afterElement);
+    }
+    
+    // Clean up dragging state
+    draggedItem.classList.remove("dragging");
+    draggedItem.style.opacity = "";
+    draggedItem.draggable = false;
+    
+    // Get the final DOM order
+    const allItems = Array.from(container.children);
+    const items = allItems
+      .filter(el => el.classList.contains("set-song-card") && el.classList.contains("draggable-item"))
+      .map((el, index) => {
+        const id = el.dataset.setSongId;
+        if (!id) {
+          console.warn("Missing setSongId on element:", el);
+        }
+        return {
+          id: id,
+          sequence_order: index
+        };
+      })
+      .filter(item => item.id); // Filter out any items without IDs
+    
+    if (items.length === 0) {
+      console.warn("No items to update in handleDrop");
+      return;
+    }
+    
+    console.log("handleDrop - items to update:", items);
+    await updateSongOrder(items);
   };
   
   items.forEach((item) => {
@@ -2271,15 +2309,55 @@ function setupSongDragAndDrop(container) {
     
     if (!draggedItem) return;
     
+    // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
     
-    const items = Array.from(container.querySelectorAll(".set-song-card.draggable-item"));
-    const newOrder = items.map((el, index) => ({
-      id: el.dataset.setSongId,
-      sequence_order: index
-    }));
+    // Calculate where the item should be dropped based on current mouse position
+    const addCard = container.querySelector(".add-song-card");
+    const draggableItems = container.querySelectorAll(".set-song-card.draggable-item:not(.dragging)");
+    const lastItem = draggableItems[draggableItems.length - 1];
     
-    await updateSongOrder(newOrder);
+    // Move the dragged item to its final position
+    if (lastItem && e.clientY > lastItem.getBoundingClientRect().bottom) {
+      // Drop at the end
+      if (addCard) {
+        container.insertBefore(draggedItem, addCard);
+      } else {
+        container.appendChild(draggedItem);
+      }
+    } else if (lastItem) {
+      // Drop after the last item
+      container.insertBefore(draggedItem, lastItem.nextSibling);
+    }
+    
+    // Clean up dragging state
+    draggedItem.classList.remove("dragging");
+    draggedItem.style.opacity = "";
+    draggedItem.draggable = false;
+    
+    // Get the final DOM order
+    const allItems = Array.from(container.children);
+    const items = allItems
+      .filter(el => el.classList.contains("set-song-card") && el.classList.contains("draggable-item"))
+      .map((el, index) => {
+        const id = el.dataset.setSongId;
+        if (!id) {
+          console.warn("Missing setSongId on element:", el);
+        }
+        return {
+          id: id,
+          sequence_order: index
+        };
+      })
+      .filter(item => item.id); // Filter out any items without IDs
+    
+    if (items.length === 0) {
+      console.warn("No items to update in handleContainerDrop");
+      return;
+    }
+    
+    console.log("handleContainerDrop - items to update:", items);
+    await updateSongOrder(items);
   };
   
   // Store handlers for cleanup
@@ -2308,24 +2386,115 @@ function getDragAfterElement(container, y, dragging) {
 }
 
 async function updateSongOrder(orderedItems) {
-  if (!state.selectedSet) return;
+  if (!state.selectedSet) {
+    console.warn("No selected set, cannot update song order");
+    return;
+  }
   
-  // Update all sequence orders in parallel
-  const updates = orderedItems.map(({ id, sequence_order }) =>
-    supabase
+  if (!isManager()) {
+    console.warn("Only managers can reorder songs");
+    alert("Only managers can reorder songs.");
+    return;
+  }
+  
+  console.log("Updating song order:", orderedItems);
+  console.log("Selected set ID:", state.selectedSet.id);
+  
+  // Verify all set_song IDs belong to the selected set
+  const validSetSongIds = new Set((state.selectedSet.set_songs || []).map(ss => String(ss.id)));
+  const invalidItems = orderedItems.filter(item => !validSetSongIds.has(String(item.id)));
+  
+  if (invalidItems.length > 0) {
+    console.error("Some items don't belong to the selected set:", invalidItems);
+    alert("Some songs don't belong to this set. Please refresh and try again.");
+    return;
+  }
+  
+  // Update sequence orders using a two-phase approach to avoid unique constraint violations
+  // Phase 1: Set all to temporary negative values to free up the target positions
+  // Phase 2: Set all to their final values
+  
+  const errors = [];
+  const maxOrder = Math.max(...orderedItems.map(item => item.sequence_order), 0);
+  const tempOffset = -(maxOrder + 1000); // Use negative values well below any possible sequence_order
+  
+  console.log("Phase 1: Setting all songs to temporary negative values...");
+  // Phase 1: Set all to temporary negative values (unique for each)
+  for (let i = 0; i < orderedItems.length; i++) {
+    const { id } = orderedItems[i];
+    const songId = String(id);
+    const tempValue = tempOffset - i; // Each gets a unique temporary value
+    
+    const { error } = await supabase
       .from("set_songs")
-      .update({ sequence_order })
-      .eq("id", id)
-  );
+      .update({ sequence_order: tempValue })
+      .eq("id", songId)
+      .eq("set_id", state.selectedSet.id);
+    
+    if (error) {
+      console.error(`Error setting temporary value for set_song ${songId}:`, error);
+      errors.push({ id: songId, error, phase: "temporary" });
+    } else {
+      console.log(`Set temporary value ${tempValue} for set_song ${songId}`);
+    }
+  }
   
-  await Promise.all(updates);
+  if (errors.length > 0) {
+    console.error("Failed to set temporary values:", errors);
+    const errorMessages = errors.map(e => `Song ${e.id}: ${e.error?.message || JSON.stringify(e.error)}`).join("\n");
+    alert(`Failed to reorder songs:\n${errorMessages}\n\nCheck the console for more details.`);
+    return;
+  }
+  
+  console.log("Phase 2: Setting all songs to their final sequence_order values...");
+  // Phase 2: Set all to their final values
+  for (const { id, sequence_order } of orderedItems) {
+    const songId = String(id);
+    const orderValue = Number(sequence_order);
+    
+    console.log(`Updating set_song ${songId} to sequence_order ${orderValue}...`);
+    
+    const { data, error } = await supabase
+      .from("set_songs")
+      .update({ sequence_order: orderValue })
+      .eq("id", songId)
+      .eq("set_id", state.selectedSet.id)
+      .select();
+    
+    if (error) {
+      console.error(`Error updating set_song ${songId} to sequence_order ${orderValue}:`, error);
+      errors.push({ id: songId, sequence_order: orderValue, error, phase: "final" });
+    } else if (!data || data.length === 0) {
+      console.error(`No set_song found with id ${songId} in set ${state.selectedSet.id}`);
+      errors.push({ id: songId, sequence_order: orderValue, error: { message: "Song not found in this set" }, phase: "final" });
+    } else {
+      console.log(`Successfully updated set_song ${songId} to sequence_order ${orderValue}`, data);
+    }
+  }
+  
+  if (errors.length > 0) {
+    console.error("Some updates failed:", errors);
+    const errorMessages = errors.map(e => `Song ${e.id} (order ${e.sequence_order}): ${e.error?.message || JSON.stringify(e.error)}`).join("\n");
+    console.error("Error details:", errorMessages);
+    alert(`Some songs could not be reordered:\n${errorMessages}\n\nCheck the console for more details.`);
+    return;
+  }
+  
+  console.log("All updates successful, reloading sets...");
   
   // Reload sets to get updated order
   await loadSets();
   const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
   if (updatedSet) {
+    // Ensure set_songs are sorted by sequence_order
+    if (updatedSet.set_songs) {
+      updatedSet.set_songs.sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
+      console.log("Updated set songs order:", updatedSet.set_songs.map(s => ({ id: s.id, title: s.song?.title, order: s.sequence_order })));
+    }
     state.selectedSet = updatedSet;
     renderSetDetailSongs(updatedSet);
+  } else {
+    console.error("Could not find updated set after reload");
   }
 }
 
