@@ -1976,6 +1976,8 @@ function showSetDetail(set) {
 function renderSetDetailSongs(set) {
   const songsList = el("detail-songs-list");
   songsList.innerHTML = "";
+  // Reset drag setup flag since we're re-rendering
+  delete songsList.dataset.dragSetup;
   
   // Render existing songs
   if (set.set_songs?.length) {
@@ -2138,100 +2140,105 @@ function hideSetDetail() {
 
 // Drag and Drop Functions
 function setupSongDragAndDrop(container) {
+  // Store handlers on the container so we can remove them later
+  if (container._songDragHandlers) {
+    // Remove old listeners
+    container.removeEventListener("dragover", container._songDragHandlers.containerDragOver);
+    container.removeEventListener("drop", container._songDragHandlers.containerDrop);
+  }
+  
   const items = container.querySelectorAll(".set-song-card.draggable-item");
   
-  items.forEach((item) => {
-    // Only allow dragging from the drag handle
-    const dragHandle = item.querySelector(".drag-handle");
-    if (dragHandle) {
-      dragHandle.addEventListener("mousedown", (e) => {
-        item.draggable = true;
-      });
-    }
+  // Define handlers as named functions
+  const handleDragStart = function(e) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", this.dataset.setSongId);
+    this.classList.add("dragging");
+    this.style.opacity = "0.5";
+  };
+  
+  const handleDragEnd = function(e) {
+    this.classList.remove("dragging");
+    this.style.opacity = "";
+    this.draggable = false;
+    container.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
+    container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+  };
+  
+  const handleDragOver = function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
     
-    item.addEventListener("dragstart", (e) => {
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", item.dataset.setSongId);
-      item.classList.add("dragging");
-      // Hide the dragging element visually but keep it in the DOM for positioning
-      item.style.opacity = "0.5";
-    });
+    const dragging = container.querySelector(".dragging");
+    if (!dragging || dragging === this) return;
     
-    item.addEventListener("dragend", (e) => {
-      item.classList.remove("dragging");
-      item.style.opacity = "";
-      item.draggable = false;
-      // Remove any drag-over classes
-      container.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
-      // Remove all drop indicators
-      container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-    });
+    container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
     
-    item.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      
-      const dragging = container.querySelector(".dragging");
-      if (!dragging || dragging === item) return;
-      
-      // Remove existing indicators
-      container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-      
-      const afterElement = getDragAfterElement(container, e.clientY, dragging);
-      
-      // Remove drag-over from all items
-      container.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
-      
-      if (afterElement == null) {
-        // Check if we should append before the "Add Song" card
-        const addCard = container.querySelector(".add-song-card");
-        if (addCard && addCard.previousSibling !== dragging) {
-          container.insertBefore(dragging, addCard);
-          // Add indicator before add card
-          const indicator = document.createElement("div");
-          indicator.className = "drop-indicator";
-          container.insertBefore(indicator, addCard);
-        } else if (!addCard) {
-          container.appendChild(dragging);
-          // Add indicator at the end
-          const indicator = document.createElement("div");
-          indicator.className = "drop-indicator";
-          container.appendChild(indicator);
-        }
-      } else {
-        container.insertBefore(dragging, afterElement);
-        // Add indicator before afterElement
+    const afterElement = getDragAfterElement(container, e.clientY, dragging);
+    
+    container.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
+    
+    if (afterElement == null) {
+      const addCard = container.querySelector(".add-song-card");
+      if (addCard && addCard.previousSibling !== dragging) {
+        container.insertBefore(dragging, addCard);
         const indicator = document.createElement("div");
         indicator.className = "drop-indicator";
-        container.insertBefore(indicator, afterElement);
+        container.insertBefore(indicator, addCard);
+      } else if (!addCard) {
+        container.appendChild(dragging);
+        const indicator = document.createElement("div");
+        indicator.className = "drop-indicator";
+        container.appendChild(indicator);
       }
-    });
+    } else {
+      container.insertBefore(dragging, afterElement);
+      const indicator = document.createElement("div");
+      indicator.className = "drop-indicator";
+      container.insertBefore(indicator, afterElement);
+    }
+  };
+  
+  const handleDrop = async function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const draggedId = e.dataTransfer.getData("text/plain");
+    const draggedItem = container.querySelector(`[data-set-song-id="${draggedId}"]`);
     
-    item.addEventListener("drop", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const draggedId = e.dataTransfer.getData("text/plain");
-      const draggedItem = container.querySelector(`[data-set-song-id="${draggedId}"]`);
-      
-      if (!draggedItem) return;
-      
-      // Remove indicators
-      container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-      
-      // Get new order (exclude add-song-card)
-      const items = Array.from(container.querySelectorAll(".set-song-card.draggable-item"));
-      const newOrder = items.map((el, index) => ({
-        id: el.dataset.setSongId,
-        sequence_order: index
-      }));
-      
-      // Update all sequence orders
-      await updateSongOrder(newOrder);
-    });
+    if (!draggedItem) return;
+    
+    container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+    
+    const items = Array.from(container.querySelectorAll(".set-song-card.draggable-item"));
+    const newOrder = items.map((el, index) => ({
+      id: el.dataset.setSongId,
+      sequence_order: index
+    }));
+    
+    await updateSongOrder(newOrder);
+  };
+  
+  items.forEach((item) => {
+    const dragHandle = item.querySelector(".drag-handle");
+    if (dragHandle) {
+      dragHandle.addEventListener("mousedown", function(e) {
+        item.draggable = true;
+      });
+      // Prevent text selection on the drag handle
+      dragHandle.addEventListener("selectstart", function(e) {
+        e.preventDefault();
+      });
+      dragHandle.style.userSelect = "none";
+    }
+    
+    item.addEventListener("dragstart", handleDragStart);
+    item.addEventListener("dragend", handleDragEnd);
+    item.addEventListener("dragover", handleDragOver);
+    item.addEventListener("drop", handleDrop);
   });
   
-  // Also handle dragover on the container itself (for dropping at the end)
-  container.addEventListener("dragover", (e) => {
+  // Container-level handlers
+  const handleContainerDragOver = function(e) {
     e.preventDefault();
     const dragging = container.querySelector(".dragging");
     if (!dragging) return;
@@ -2241,46 +2248,48 @@ function setupSongDragAndDrop(container) {
     const lastItem = draggableItems[draggableItems.length - 1];
     
     if (lastItem && e.clientY > lastItem.getBoundingClientRect().bottom) {
-      // Remove existing indicators
       container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
       
       if (addCard && dragging.nextSibling !== addCard) {
         container.insertBefore(dragging, addCard);
-        // Add indicator before add card
         const indicator = document.createElement("div");
         indicator.className = "drop-indicator";
         container.insertBefore(indicator, addCard);
       } else if (!addCard) {
         container.appendChild(dragging);
-        // Add indicator at the end
         const indicator = document.createElement("div");
         indicator.className = "drop-indicator";
         container.appendChild(indicator);
       }
     }
-  });
+  };
   
-  // Handle drop on container (for drops at the end of the list)
-  container.addEventListener("drop", async (e) => {
+  const handleContainerDrop = async function(e) {
     e.preventDefault();
     const draggedId = e.dataTransfer.getData("text/plain");
     const draggedItem = container.querySelector(`[data-set-song-id="${draggedId}"]`);
     
     if (!draggedItem) return;
     
-    // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
     
-    // Get new order (exclude add-song-card)
     const items = Array.from(container.querySelectorAll(".set-song-card.draggable-item"));
     const newOrder = items.map((el, index) => ({
       id: el.dataset.setSongId,
       sequence_order: index
     }));
     
-    // Update all sequence orders
     await updateSongOrder(newOrder);
-  });
+  };
+  
+  // Store handlers for cleanup
+  container._songDragHandlers = {
+    containerDragOver: handleContainerDragOver,
+    containerDrop: handleContainerDrop
+  };
+  
+  container.addEventListener("dragover", handleContainerDragOver);
+  container.addEventListener("drop", handleContainerDrop);
 }
 
 function getDragAfterElement(container, y, dragging) {
