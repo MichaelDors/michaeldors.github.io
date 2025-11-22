@@ -551,6 +551,22 @@ main {
   margin-top: 0.75rem;
 }
 
+.user-roles-container {
+  margin-top: 0.75rem;
+}
+
+.user-roles-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.user-role-pill {
+  flex-shrink: 0;
+}
+
 .assignment-pill {
   background: rgba(220, 255, 81, 0.15);
   color: var(--accent-color);
