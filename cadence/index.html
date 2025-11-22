@@ -271,18 +271,69 @@
       </div>
     </div>
 
+    <div id="section-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Add Section to Set</h3>
+          <button class="icon-btn" id="close-section-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <form id="section-form">
+          <label>
+            Title
+            <input type="text" id="section-title" required />
+          </label>
+          <label>
+            Description
+            <textarea id="section-description" rows="3"></textarea>
+          </label>
+          <label>
+            Notes
+            <textarea id="section-notes" rows="2"></textarea>
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-section">Cancel</button>
+            <button type="submit" class="btn primary">Add</button>
+          </div>
+        </form>
+        <div class="assignment-section">
+          <div class="section-header">
+            <h4>Assignments</h4>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+              <button id="btn-add-section-assignment" type="button" class="btn secondary">
+                Add
+              </button>
+              <div id="import-section-assignments-container" style="display: flex; align-items: center; gap: 0.5rem;"></div>
+            </div>
+          </div>
+          <div id="section-assignments-list"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="edit-set-song-modal" class="modal hidden">
       <div class="modal-content">
         <header>
-          <h3>Edit Song in Set</h3>
+          <h3 id="edit-set-item-title">Edit Song in Set</h3>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button type="button" id="btn-edit-song-from-set" class="btn small secondary">Edit Song Details</button>
+            <button type="button" id="btn-edit-song-from-set" class="btn small secondary hidden">Edit Song Details</button>
             <button class="icon-btn" id="close-edit-set-song-modal" aria-label="Close modal">
               <i class="fa-solid fa-circle-xmark"></i>
             </button>
           </div>
         </header>
         <form id="edit-set-song-form">
+          <div id="edit-section-fields" class="hidden">
+            <label>
+              Title
+              <input type="text" id="edit-section-title" />
+            </label>
+            <label>
+              Description
+              <textarea id="edit-section-description" rows="3"></textarea>
+            </label>
+          </div>
           <label>
             Notes
             <textarea id="edit-set-song-notes" rows="2"></textarea>

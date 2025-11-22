@@ -567,6 +567,15 @@ main {
   flex-shrink: 0;
 }
 
+.add-item-half {
+  transition: background-color 0.2s ease;
+  border-radius: 0.5rem;
+}
+
+.add-item-half:hover {
+  background: var(--accent-light);
+}
+
 .assignment-pill {
   background: rgba(220, 255, 81, 0.15);
   color: var(--accent-color);

@@ -71,6 +71,7 @@ const setsList = el("sets-list");
 const yourSetsList = el("your-sets-list");
 const setModal = el("set-modal");
 const songModal = el("song-modal");
+const sectionModal = el("section-modal");
 const authForm = el("auth-form");
 const loginEmailInput = el("login-email");
 const loginPasswordInput = el("login-password");
@@ -460,7 +461,10 @@ function bindEvents() {
   el("btn-add-song")?.addEventListener("click", () => openSongModal());
   el("close-song-modal")?.addEventListener("click", () => closeSongModal());
   el("cancel-song")?.addEventListener("click", () => closeSongModal());
+  el("close-section-modal")?.addEventListener("click", () => closeSectionModal());
+  el("cancel-section")?.addEventListener("click", () => closeSectionModal());
   el("song-form")?.addEventListener("submit", handleAddSongToSet);
+  el("section-form")?.addEventListener("submit", handleAddSectionToSet);
   el("create-song-link")?.addEventListener("click", (e) => {
     e.preventDefault();
     state.creatingSongFromModal = true;
@@ -468,6 +472,7 @@ function bindEvents() {
     openSongEditModal();
   });
   el("btn-add-assignment")?.addEventListener("click", addAssignmentInput);
+  el("btn-add-section-assignment")?.addEventListener("click", () => addAssignmentInput("section-assignments-list"));
   el("btn-create-song")?.addEventListener("click", () => openSongEditModal());
   el("btn-edit-song-from-set")?.addEventListener("click", () => {
     // Get the current song from the edit-set-song modal
@@ -1227,6 +1232,9 @@ async function loadSets() {
         id,
         sequence_order,
         notes,
+        title,
+        description,
+        song_id,
         song:song_id (
           id, title, bpm, song_key, time_signature, duration_seconds, description,
           song_links (
@@ -1269,6 +1277,9 @@ async function loadSets() {
           id,
           sequence_order,
           notes,
+          title,
+          description,
+          song_id,
           song:song_id (
             id, title, bpm, song_key, time_signature, duration_seconds, description,
             song_links (
@@ -1390,7 +1401,10 @@ function renderSetCard(set, container) {
       if (setSong.song_assignments) {
         setSong.song_assignments.forEach(assignment => {
           if (assignment.person_id === currentUserId) {
-            const songTitle = setSong.song?.title || "Unknown Song";
+            // Get title: from song if it's a song, from title field if it's a section
+            const songTitle = setSong.song_id 
+              ? (setSong.song?.title || "Unknown Song")
+              : (setSong.title || "Unknown Section");
             userAssignments.push({
               songTitle,
               role: assignment.role
@@ -2015,18 +2029,34 @@ function renderSetDetailSongs(set) {
           }
         }
         
-        songNode.querySelector(".song-title").textContent =
-          setSong.song?.title ?? "Untitled";
-        songNode.querySelector(".song-meta").textContent = [
-          setSong.song?.song_key,
-          setSong.song?.time_signature,
-          setSong.song?.bpm ? `${setSong.song.bpm} BPM` : null,
-          setSong.song?.duration_seconds ? formatDuration(setSong.song.duration_seconds) : null,
-        ]
-          .filter(Boolean)
-          .join(" • ");
-        songNode.querySelector(".song-notes").textContent =
-          setSong.notes || "";
+        // Check if this is a section (no song_id) or a song
+        const isSection = !setSong.song_id;
+        
+        if (isSection) {
+          // Render as section
+          songNode.querySelector(".song-title").textContent = setSong.title || "Untitled Section";
+          songNode.querySelector(".song-meta").textContent = setSong.description || "";
+          songNode.querySelector(".song-notes").textContent = setSong.notes || "";
+          // Hide "View Details" button for sections
+          const viewDetailsBtn = songNode.querySelector(".view-song-details-btn");
+          if (viewDetailsBtn) {
+            viewDetailsBtn.style.display = "none";
+          }
+        } else {
+          // Render as song
+          songNode.querySelector(".song-title").textContent =
+            setSong.song?.title ?? "Untitled";
+          songNode.querySelector(".song-meta").textContent = [
+            setSong.song?.song_key,
+            setSong.song?.time_signature,
+            setSong.song?.bpm ? `${setSong.song.bpm} BPM` : null,
+            setSong.song?.duration_seconds ? formatDuration(setSong.song.duration_seconds) : null,
+          ]
+            .filter(Boolean)
+            .join(" • ");
+          songNode.querySelector(".song-notes").textContent =
+            setSong.notes || "";
+        }
 
         const assignmentsWrap = songNode.querySelector(".assignments");
         if (!setSong.song_assignments?.length) {
@@ -2108,24 +2138,40 @@ function renderSetDetailSongs(set) {
     }
   }
   
-  // Add "Add Song" card at the end for managers
+  // Add "Add Song/Section" card at the end for managers
   if (isManager()) {
     const addCard = document.createElement("div");
     addCard.className = "card set-song-card add-song-card";
     addCard.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; cursor: pointer; min-height: 150px;">
-        <div style="font-size: 2rem; margin-bottom: 0.5rem;">+</div>
-        <h4 style="margin: 0; color: var(--text-primary);">Add Song</h4>
+      <div style="display: flex; min-height: 150px;">
+        <div class="add-item-half add-song-half" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; cursor: pointer; position: relative;">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-compact-disc"></i></div>
+          <h4 style="margin: 0; color: var(--text-primary); font-weight: 600;">Add Song</h4>
+          <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">From catalog</p>
+        </div>
+        <div style="width: 1px; background: var(--border-color); margin: 1rem 0;"></div>
+        <div class="add-item-half add-section-half" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; cursor: pointer; position: relative;">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-microphone-lines"></i></div>
+          <h4 style="margin: 0; color: var(--text-primary); font-weight: 600;">Add Section</h4>
+          <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">Custom section</p>
+        </div>
       </div>
     `;
-    addCard.addEventListener("click", () => {
+    addCard.querySelector(".add-song-half").addEventListener("click", (e) => {
+      e.stopPropagation();
       if (state.selectedSet) {
         openSongModal();
       }
     });
+    addCard.querySelector(".add-section-half").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (state.selectedSet) {
+        openSectionModal();
+      }
+    });
     songsList.appendChild(addCard);
   } else if (!set.set_songs?.length) {
-    songsList.innerHTML = '<p class="muted">No songs added to this set yet.</p>';
+    songsList.innerHTML = '<p class="muted">No songs or sections added to this set yet.</p>';
   }
 }
 
@@ -2985,6 +3031,21 @@ function closeSongModal() {
   importAssignmentsDropdown = null;
 }
 
+async function openSectionModal() {
+  if (!isManager() || !state.selectedSet) return;
+  sectionModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  el("section-assignments-list").innerHTML = "";
+}
+
+function closeSectionModal() {
+  sectionModal.classList.add("hidden");
+  document.body.style.overflow = "";
+  el("section-form").reset();
+  el("section-assignments-list").innerHTML = "";
+  el("import-section-assignments-container").innerHTML = "";
+}
+
 let songDropdown = null;
 
 async function populateSongOptions() {
@@ -3140,6 +3201,71 @@ async function handleAddSongToSet(event) {
   }
 }
 
+async function handleAddSectionToSet(event) {
+  event.preventDefault();
+  const title = el("section-title").value.trim();
+  if (!title) {
+    alert("Please enter a section title.");
+    return;
+  }
+  const description = el("section-description").value.trim();
+  const notes = el("section-notes").value.trim();
+  const assignments = collectAssignments("section-assignments-list");
+
+  // Calculate sequence_order from the current set's songs/sections
+  const currentSequenceOrder = state.selectedSet.set_songs?.length || 0;
+
+  const { data: setSong, error } = await supabase
+    .from("set_songs")
+    .insert({
+      set_id: state.selectedSet.id,
+      song_id: null, // Sections don't have a song_id
+      title: title,
+      description: description || null,
+      notes: notes || null,
+      sequence_order: currentSequenceOrder,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error(error);
+    alert("Unable to add section.");
+    return;
+  }
+
+  if (assignments.length) {
+    const { error: assignmentError } = await supabase
+      .from("song_assignments")
+      .insert(
+        assignments.map((assignment) => ({
+          role: assignment.role,
+          person_id: assignment.person_id || null,
+          pending_invite_id: assignment.pending_invite_id || null,
+          person_name: assignment.person_name || null,
+          person_email: assignment.person_email || null,
+          set_song_id: setSong.id,
+        }))
+      );
+    if (assignmentError) {
+      console.error(assignmentError);
+      alert("Assignments partially failed.");
+    }
+  }
+
+  closeSectionModal();
+  await loadSets();
+  
+  // Refresh detail view if it's showing
+  if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      state.selectedSet = updatedSet;
+      renderSetDetailSongs(updatedSet);
+    }
+  }
+}
+
 function buildPersonOptions() {
   const peopleOptions =
     (state.people || []).map((person) => {
@@ -3210,10 +3336,13 @@ function addAssignmentInput() {
   container.appendChild(div);
 }
 
-function collectAssignments() {
-  const roles = Array.from(document.querySelectorAll(".assignment-role-input"));
+function collectAssignments(containerId = "assignments-list") {
+  const container = el(containerId);
+  if (!container) return [];
+  
+  const roles = Array.from(container.querySelectorAll(".assignment-role-input"));
   const personContainers = Array.from(
-    document.querySelectorAll(".assignment-person-container")
+    container.querySelectorAll(".assignment-person-container")
   );
   const assignments = [];
 
@@ -3252,10 +3381,34 @@ function openEditSetSongModal(setSong) {
   const form = el("edit-set-song-form");
   const notesInput = el("edit-set-song-notes");
   const assignmentsList = el("edit-assignments-list");
+  const isSection = !setSong.song_id;
   
   // Store the set song ID and song ID for saving/editing
   form.dataset.setSongId = setSong.id;
   form.dataset.songId = setSong.song_id || setSong.song?.id || null;
+  form.dataset.isSection = isSection ? "true" : "false";
+  
+  // Update modal title
+  const titleEl = el("edit-set-item-title");
+  if (titleEl) {
+    titleEl.textContent = isSection ? "Edit Section in Set" : "Edit Song in Set";
+  }
+  
+  // Show/hide section fields and song edit button
+  const sectionFields = el("edit-section-fields");
+  const editSongBtn = el("btn-edit-song-from-set");
+  if (sectionFields) {
+    if (isSection) {
+      sectionFields.classList.remove("hidden");
+      el("edit-section-title").value = setSong.title || "";
+      el("edit-section-description").value = setSong.description || "";
+    } else {
+      sectionFields.classList.add("hidden");
+    }
+  }
+  if (editSongBtn) {
+    editSongBtn.classList.toggle("hidden", isSection);
+  }
   
   // Populate notes
   notesInput.value = setSong.notes || "";
@@ -3268,7 +3421,7 @@ function openEditSetSongModal(setSong) {
     });
   }
   
-  // Populate import dropdown, excluding current song
+  // Populate import dropdown, excluding current song/section
   populateImportAssignmentsDropdown("import-edit-assignments-container", setSong.id);
   
   modal.classList.remove("hidden");
@@ -3371,11 +3524,14 @@ function populateImportAssignmentsDropdown(containerId, excludeSetSongId) {
   dropdownContainer.style.minWidth = "180px";
   dropdownContainer.style.flex = "0 1 auto";
   
-  const options = setSongs.map(setSong => ({
-    value: setSong.id,
-    label: setSong.song?.title || "Untitled",
-    meta: { setSong }
-  }));
+  // Only include songs (not sections) since you can't import assignments from sections
+  const options = setSongs
+    .filter(setSong => setSong.song_id !== null) // Only songs, not sections
+    .map(setSong => ({
+      value: setSong.id,
+      label: setSong.song?.title || "Untitled",
+      meta: { setSong }
+    }));
   
   const dropdown = createSearchableDropdown(options, "Select a song...");
   dropdownContainer.appendChild(dropdown);
@@ -3586,6 +3742,7 @@ async function handleEditSetSongSubmit(event) {
   event.preventDefault();
   const form = el("edit-set-song-form");
   const setSongId = form.dataset.setSongId;
+  const isSection = form.dataset.isSection === "true";
   
   if (!setSongId) {
     alert("Missing set song ID.");
@@ -3595,15 +3752,30 @@ async function handleEditSetSongSubmit(event) {
   const notes = el("edit-set-song-notes").value.trim();
   const assignments = collectEditAssignments();
   
-  // Update notes
+  // Build update object
+  const updateData = { notes: notes || null };
+  
+  // If it's a section, also update title and description
+  if (isSection) {
+    const title = el("edit-section-title").value.trim();
+    const description = el("edit-section-description").value.trim();
+    if (!title) {
+      alert("Section title is required.");
+      return;
+    }
+    updateData.title = title;
+    updateData.description = description || null;
+  }
+  
+  // Update set_song
   const { error: updateError } = await supabase
     .from("set_songs")
-    .update({ notes })
+    .update(updateData)
     .eq("id", setSongId);
   
   if (updateError) {
     console.error(updateError);
-    alert("Unable to update song notes.");
+    alert(`Unable to update ${isSection ? 'section' : 'song'} notes.`);
     return;
   }
   
@@ -4571,6 +4743,13 @@ async function handleSongEditSubmit(event) {
     return;
   }
   
+  // Preserve set detail view state before any operations
+  // If creating from song modal, we MUST preserve the set (song modal can only be opened from set detail)
+  const wasSetDetailOpen = state.selectedSet && !el("set-detail").classList.contains("hidden");
+  const preservedSelectedSetId = state.selectedSet?.id;
+  const preservedSelectedSet = state.selectedSet ? { ...state.selectedSet } : null; // Deep copy to preserve full object
+  const isCreatingFromModal = state.creatingSongFromModal && !songId;
+  
   const songData = {
     title,
     bpm,
@@ -4665,7 +4844,8 @@ async function handleSongEditSubmit(event) {
   }
   
   // If details modal is open for this song, refresh it
-  if (state.currentSongDetailsId === finalSongId) {
+  // Only do this if we're NOT creating from the song modal (to avoid closing set details)
+  if (state.currentSongDetailsId === finalSongId && !state.creatingSongFromModal) {
     const updatedSong = state.songs.find(s => s.id === finalSongId);
     if (updatedSong) {
       // Fetch full song data with links
@@ -4688,28 +4868,70 @@ async function handleSongEditSubmit(event) {
     }
   }
   
-  // Refresh set detail view if it's showing this song
-  if (state.selectedSet) {
-    await loadSets();
-    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
-    if (updatedSet) {
-      state.selectedSet = updatedSet;
-      renderSetDetailSongs(updatedSet);
-    }
-  }
-  
   closeSongEditModal();
   
-  // If we were creating from the song modal, keep it open and select the new song
-  if (state.creatingSongFromModal && !songId) {
+  // If we were creating from the song modal, DO NOT call loadSets() 
+  // Just refresh the song modal and keep the set detail view open
+  if (isCreatingFromModal && preservedSelectedSetId) {
     state.creatingSongFromModal = false;
-    // Song modal should still be open, just refresh the options and select the new song
+    
+    // CRITICAL: Restore state.selectedSet IMMEDIATELY and ensure view stays open
+    if (preservedSelectedSet) {
+      state.selectedSet = preservedSelectedSet;
+      // Make absolutely sure the set detail view is visible
+      const dashboard = el("dashboard");
+      const detailView = el("set-detail");
+      if (dashboard && detailView) {
+        dashboard.classList.add("hidden");
+        detailView.classList.remove("hidden");
+      }
+      // Refresh the songs list in the set detail view
+      renderSetDetailSongs(preservedSelectedSet);
+    }
+    
+    // Refresh the song modal options and select the new song
     await populateSongOptions();
     if (songDropdown) {
       songDropdown.setValue(response.data.id);
     }
   } else {
     state.creatingSongFromModal = false;
+    
+    // Restore set detail view if it was open before
+    if (wasSetDetailOpen && preservedSelectedSetId) {
+      // Restore state immediately
+      if (preservedSelectedSet) {
+        state.selectedSet = preservedSelectedSet;
+        // Make absolutely sure the set detail view is visible
+        const dashboard = el("dashboard");
+        const detailView = el("set-detail");
+        if (dashboard && detailView) {
+          dashboard.classList.add("hidden");
+          detailView.classList.remove("hidden");
+        }
+      }
+      
+      // Only load sets if we need fresh data, but preserve the view
+      await loadSets();
+      const updatedSet = state.sets.find(s => s.id === preservedSelectedSetId);
+      if (updatedSet) {
+        state.selectedSet = updatedSet;
+        // Ensure set detail view is visible and restored
+        showSetDetail(updatedSet);
+      } else if (preservedSelectedSet) {
+        state.selectedSet = preservedSelectedSet;
+        showSetDetail(preservedSelectedSet);
+      }
+    } else if (state.selectedSet) {
+      // Refresh set detail view if it's showing this song
+      await loadSets();
+      const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+      if (updatedSet) {
+        state.selectedSet = updatedSet;
+        renderSetDetailSongs(updatedSet);
+      }
+    }
+    
     // If song select is open, refresh it
     if (!el("song-modal").classList.contains("hidden")) {
       await populateSongOptions();
