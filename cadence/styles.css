@@ -327,6 +327,12 @@ main {
 .sets-grid {
   display: grid;
   gap: 1.5rem;
+  grid-template-columns: 1fr;
+}
+
+.sets-grid > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .people-grid {
@@ -439,6 +445,9 @@ main {
 .set-card {
   cursor: pointer;
   transition: all 0.2s ease;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .set-card:hover {
@@ -553,14 +562,20 @@ main {
 
 .user-roles-container {
   margin-top: 0.75rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .user-roles-wrapper {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   white-space: nowrap;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .user-role-pill {

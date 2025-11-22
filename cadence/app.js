@@ -1395,9 +1395,16 @@ function renderSetCard(set, container) {
   const userRolesContainer = card.querySelector(".user-roles-container");
   const currentUserId = state.profile?.id;
   if (container === yourSetsList && currentUserId && set.set_songs) {
-    // Collect all assignments for the current user
+    // Collect all assignments for the current user, sorted by setlist order
     const userAssignments = [];
-    set.set_songs.forEach(setSong => {
+    // Sort set_songs by sequence_order to maintain setlist order
+    const sortedSetSongs = [...set.set_songs].sort((a, b) => {
+      const orderA = a.sequence_order ?? 0;
+      const orderB = b.sequence_order ?? 0;
+      return orderA - orderB;
+    });
+    
+    sortedSetSongs.forEach(setSong => {
       if (setSong.song_assignments) {
         setSong.song_assignments.forEach(assignment => {
           if (assignment.person_id === currentUserId) {
@@ -1407,7 +1414,8 @@ function renderSetCard(set, container) {
               : (setSong.title || "Unknown Section");
             userAssignments.push({
               songTitle,
-              role: assignment.role
+              role: assignment.role,
+              sequenceOrder: setSong.sequence_order ?? 0
             });
           }
         });
@@ -1417,6 +1425,8 @@ function renderSetCard(set, container) {
     if (userAssignments.length > 0) {
       const rolesWrapper = document.createElement("div");
       rolesWrapper.className = "user-roles-wrapper";
+      // Temporarily hide to measure card width without pills
+      rolesWrapper.style.visibility = "hidden";
       userRolesContainer.appendChild(rolesWrapper);
       
       // Create all pills and append them
@@ -1430,43 +1440,67 @@ function renderSetCard(set, container) {
       });
       
       // Measure and determine how many fit
+      // Use double requestAnimationFrame to ensure layout is complete
       requestAnimationFrame(() => {
-        const cardRect = card.getBoundingClientRect();
-        const maxWidth = cardRect.width - 64; // Account for padding (32px each side)
-        let totalWidth = 0;
-        let visibleCount = 0;
-        const gap = 8; // Gap between pills
-        
-        // Measure each pill to see how many fit
-        for (let index = 0; index < pills.length; index++) {
-          const pill = pills[index];
-          const pillWidth = pill.offsetWidth;
-          const neededWidth = totalWidth + (visibleCount > 0 ? gap : 0) + pillWidth;
-          
-          // Reserve space for "+X more" if there are more pills after this one
-          const remainingAfterThis = pills.length - index - 1;
-          const spaceForMore = remainingAfterThis > 0 ? 100 : 0; // Approx width for "+X more"
-          
-          if (neededWidth + spaceForMore <= maxWidth) {
-            totalWidth = neededWidth;
-            visibleCount++;
+        requestAnimationFrame(() => {
+          // Get reference width from a card without assignments (from "All Sets" section)
+          let maxWidth;
+          const allSetsContainer = setsList;
+          if (allSetsContainer && allSetsContainer.children.length > 0) {
+            // Use the first card from "All Sets" as reference (they don't have assignments)
+            const referenceCard = allSetsContainer.querySelector(".set-card");
+            if (referenceCard) {
+              const refRect = referenceCard.getBoundingClientRect();
+              maxWidth = refRect.width - 64; // Account for padding (32px each side)
+            } else {
+              // Fallback: use computed style width of current card
+              const computedStyle = window.getComputedStyle(card);
+              maxWidth = parseFloat(computedStyle.width) - 64;
+            }
           } else {
-            // Can't fit this pill, hide it and remaining ones
-            pill.style.display = "none";
-            const remaining = pills.length - visibleCount;
-            if (remaining > 0) {
-              const morePill = document.createElement("span");
-              morePill.className = "assignment-pill user-role-pill";
-              morePill.textContent = `+${remaining} more`;
-              rolesWrapper.appendChild(morePill);
-            }
-            // Hide remaining pills
-            for (let i = index + 1; i < pills.length; i++) {
-              pills[i].style.display = "none";
-            }
-            break; // Break out of loop
+            // Fallback: use computed style width of current card
+            const computedStyle = window.getComputedStyle(card);
+            maxWidth = parseFloat(computedStyle.width) - 64;
           }
-        }
+          
+          // Now show the wrapper
+          rolesWrapper.style.visibility = "visible";
+          
+          let totalWidth = 0;
+          let visibleCount = 0;
+          const gap = 8; // Gap between pills
+          
+          // Measure each pill to see how many fit
+          for (let index = 0; index < pills.length; index++) {
+            const pill = pills[index];
+            const pillWidth = pill.offsetWidth;
+            const neededWidth = totalWidth + (visibleCount > 0 ? gap : 0) + pillWidth;
+            
+            // Reserve space for "+X more" if there are more pills after this one
+            const remainingAfterThis = pills.length - index - 1;
+            const spaceForMore = remainingAfterThis > 0 ? 100 : 0; // Approx width for "+X more"
+            
+            if (neededWidth + spaceForMore <= maxWidth) {
+              totalWidth = neededWidth;
+              visibleCount++;
+            } else {
+              // Can't fit this pill, hide it and remaining ones
+              pill.style.display = "none";
+              const remaining = pills.length - visibleCount;
+              if (remaining > 0) {
+                const morePill = document.createElement("span");
+                morePill.className = "assignment-pill user-role-pill";
+                morePill.textContent = `+${remaining} more`;
+                rolesWrapper.appendChild(morePill);
+              }
+              // Hide remaining pills
+              for (let i = index + 1; i < pills.length; i++) {
+                pills[i].style.display = "none";
+              }
+              break; // Break out of loop
+            }
+          }
+        });
       });
     } else {
       userRolesContainer.style.display = "none";
@@ -1502,7 +1536,16 @@ function renderSets() {
     allSets.push(set);
   });
 
-  // Render "Your Sets" section
+  // Render "All Sets" section FIRST so we have reference cards for width measurement
+  if (allSets.length === 0) {
+    setsList.innerHTML = `<p class="muted">No sets scheduled yet.</p>`;
+  } else {
+    allSets.forEach((set) => {
+      renderSetCard(set, setsList);
+    });
+  }
+
+  // Render "Your Sets" section AFTER "All Sets" so we can use them as reference
   if (yourSetsList) {
     if (yourSets.length === 0) {
       yourSetsList.innerHTML = `<p class="muted">You're not assigned to any sets yet.</p>`;
@@ -1511,15 +1554,6 @@ function renderSets() {
         renderSetCard(set, yourSetsList);
       });
     }
-  }
-
-  // Render "All Sets" section
-  if (allSets.length === 0) {
-    setsList.innerHTML = `<p class="muted">No sets scheduled yet.</p>`;
-  } else {
-    allSets.forEach((set) => {
-      renderSetCard(set, setsList);
-    });
   }
 }
 
