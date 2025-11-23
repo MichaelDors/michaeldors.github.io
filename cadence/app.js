@@ -883,7 +883,16 @@ async function handleAuth(event) {
     
     if (signUpError) {
       console.error('Signup error:', signUpError);
-      setAuthMessage(signUpError.message || "Unable to create account. Please try again.", true);
+      
+      // Handle rate limiting with a user-friendly message
+      if (signUpError.status === 429 || signUpError.message?.includes('security purposes')) {
+        const waitTimeMatch = signUpError.message?.match(/(\d+)\s+seconds?/);
+        const waitTime = waitTimeMatch ? waitTimeMatch[1] : 'a few';
+        setAuthMessage(`Too many signup attempts. Please wait ${waitTime} seconds before trying again.`, true);
+      } else {
+        setAuthMessage(signUpError.message || "Unable to create account. Please try again.", true);
+      }
+      
       toggleAuthButton(false);
       return;
     }
@@ -894,44 +903,168 @@ async function handleAuth(event) {
       return;
     }
     
-    // Create team and profile
+    // Create profile first, then team, then update profile with team_id
+    // Order matters: profile must exist before team (foreign key constraint)
+    // Use RPC function to create team since user might not have a session yet
+    // (if email confirmation is enabled, signUp doesn't create a session)
     const teamName = email.split('@')[0] + "'s Team"; // Default team name
-    const { data: teamData, error: teamError } = await supabase
-      .from("teams")
-      .insert({
+    
+    // Step 1: Create profile first (without team_id, will update later)
+    // Use RPC function to create profile since user might not have a session yet
+    let profileData;
+    let profileError;
+    
+    // Try using the function first (works even without session)
+    const { data: profileId, error: profileFunctionError } = await supabase
+      .rpc('create_profile_for_user', {
+        p_user_id: signUpData.user.id,
+        p_full_name: signUpData.user.user_metadata?.full_name || email,
+        p_email: email.toLowerCase(),
+        p_is_owner: true,
+        p_can_manage: true
+      });
+    
+    // If function doesn't exist or fails, fall back to direct insert
+    if (profileFunctionError && (profileFunctionError.code === '42883' || profileFunctionError.message?.includes('function'))) {
+      console.log('Profile function not available, trying direct insert...');
+      const { data: directProfileData, error: directProfileError } = await supabase
+        .from("profiles")
+        .insert({
+          id: signUpData.user.id,
+          full_name: signUpData.user.user_metadata?.full_name || email,
+          email: email.toLowerCase(),
+          team_id: null, // Will be set after team creation
+          is_owner: true,
+          can_manage: true
+        })
+        .select()
+        .single();
+      
+      profileData = directProfileData;
+      profileError = directProfileError;
+    } else if (profileFunctionError) {
+      // Function exists but returned an error
+      profileError = profileFunctionError;
+    } else if (profileId) {
+      // Function succeeded - construct profile data from what we know
+      // We don't need to fetch it since we know all the values we just inserted
+      profileData = {
+        id: profileId,
+        full_name: signUpData.user.user_metadata?.full_name || email,
+        email: email.toLowerCase(),
+        team_id: null, // Will be set after team creation
+        is_owner: true,
+        can_manage: true
+      };
+    } else {
+      profileError = new Error('Profile creation function returned no ID');
+    }
+    
+    if (profileError) {
+      console.error('Profile creation error:', profileError);
+      setAuthMessage("Account created but profile creation failed. Please contact support.", true);
+      toggleAuthButton(false);
+      return;
+    }
+    
+    if (!profileData || !profileData.id) {
+      console.error('Profile creation failed: No profile data returned');
+      setAuthMessage("Account created but profile creation failed. Please contact support.", true);
+      toggleAuthButton(false);
+      return;
+    }
+    
+    // Step 2: Create team (now that profile exists, owner_id foreign key will work)
+    let teamData;
+    let teamError;
+    
+    // Try using the function first (works even without session)
+    const { data: teamId, error: teamFunctionError } = await supabase
+      .rpc('create_team_for_user', {
+        p_team_name: teamName,
+        p_owner_id: signUpData.user.id
+      });
+    
+    // If function doesn't exist or fails, fall back to direct insert
+    if (teamFunctionError && (teamFunctionError.code === '42883' || teamFunctionError.message?.includes('function'))) {
+      console.log('Function not available, trying direct insert...');
+      const { data: directTeamData, error: directTeamError } = await supabase
+        .from("teams")
+        .insert({
+          name: teamName,
+          owner_id: signUpData.user.id
+        })
+        .select()
+        .single();
+      
+      teamData = directTeamData;
+      teamError = directTeamError;
+    } else if (teamFunctionError) {
+      // Function exists but returned an error
+      teamError = teamFunctionError;
+    } else if (teamId) {
+      // Function succeeded - construct team data from what we know
+      // We don't need to fetch it since we know all the values we just inserted
+      teamData = {
+        id: teamId,
         name: teamName,
         owner_id: signUpData.user.id
-      })
-      .select()
-      .single();
+      };
+    } else {
+      teamError = new Error('Team creation function returned no ID');
+    }
     
     if (teamError) {
       console.error('Team creation error:', teamError);
+      // Clean up: delete the profile we just created
+      await supabase.from("profiles").delete().eq("id", signUpData.user.id);
       setAuthMessage("Account created but team creation failed. Please contact support.", true);
       toggleAuthButton(false);
       return;
     }
     
-    // Create profile with owner status
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .insert({
-        id: signUpData.user.id,
-        full_name: signUpData.user.user_metadata?.full_name || email,
-        email: email.toLowerCase(),
-        team_id: teamData.id,
-        is_owner: true,
-        can_manage: true
-      })
-      .select()
-      .single();
-    
-    if (profileError) {
-      console.error('Profile creation error:', profileError);
-      setAuthMessage("Account and team created but profile creation failed. Please contact support.", true);
+    if (!teamData || !teamData.id) {
+      console.error('Team creation failed: No team data returned');
+      // Clean up: delete the profile we just created
+      await supabase.from("profiles").delete().eq("id", signUpData.user.id);
+      setAuthMessage("Account created but team creation failed. Please contact support.", true);
       toggleAuthButton(false);
       return;
     }
+    
+    // Step 3: Update profile with team_id
+    // Use RPC function to update profile since user might not have a session yet
+    const { error: updateProfileFunctionError } = await supabase
+      .rpc('update_profile_team_id', {
+        p_user_id: signUpData.user.id,
+        p_team_id: teamData.id
+      });
+    
+    let updateProfileError = updateProfileFunctionError;
+    
+    // If function doesn't exist, fall back to direct update
+    if (updateProfileFunctionError && (updateProfileFunctionError.code === '42883' || updateProfileFunctionError.message?.includes('function'))) {
+      console.log('Update function not available, trying direct update...');
+      const { error: directUpdateError } = await supabase
+        .from("profiles")
+        .update({ team_id: teamData.id })
+        .eq("id", signUpData.user.id);
+      
+      updateProfileError = directUpdateError;
+    }
+    
+    if (updateProfileError) {
+      console.error('Profile update error:', updateProfileError);
+      // Clean up: delete both profile and team
+      await supabase.from("teams").delete().eq("id", teamData.id);
+      await supabase.from("profiles").delete().eq("id", signUpData.user.id);
+      setAuthMessage("Account and team created but profile update failed. Please contact support.", true);
+      toggleAuthButton(false);
+      return;
+    }
+    
+    // Update local profileData object with team_id
+    profileData.team_id = teamData.id;
     
     setAuthMessage("Team created! Please check your email to verify your account.", false);
     toggleAuthButton(false);
@@ -980,7 +1113,16 @@ async function handleAuth(event) {
 
     if (error) {
       console.error('Auth error:', error);
-      setAuthMessage(error.message || "Unable to sign in. Please check your credentials.", true);
+      
+      // Handle rate limiting with a user-friendly message
+      if (error.status === 429 || error.message?.includes('security purposes')) {
+        const waitTimeMatch = error.message?.match(/(\d+)\s+seconds?/);
+        const waitTime = waitTimeMatch ? waitTimeMatch[1] : 'a few';
+        setAuthMessage(`Too many login attempts. Please wait ${waitTime} seconds before trying again.`, true);
+      } else {
+        setAuthMessage(error.message || "Unable to sign in. Please check your credentials.", true);
+      }
+      
       toggleAuthButton(false);
     } else {
       // Fallback - onAuthStateChange should handle this
