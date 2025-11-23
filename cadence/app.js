@@ -77,13 +77,20 @@ const loginEmailInput = el("login-email");
 const loginPasswordInput = el("login-password");
 const authMessage = el("auth-message");
 const authSubmitBtn = el("auth-submit-btn");
-// No manual signup allowed - users must be invited
-let isSignUpMode = false; // Always false, kept for compatibility but never used
+// Team leader signup mode - allows team leaders to create teams
+let isSignUpMode = false;
 
 // Helper function to check if user has manager permissions
 // Returns false if in member view mode, even if user is a manager
+// Returns true for both owners and managers
 function isManager() {
   return state.profile?.can_manage && !state.isMemberView;
+}
+
+// Helper function to check if user is team owner
+// Returns false if in member view mode, even if user is an owner
+function isOwner() {
+  return state.profile?.is_owner && !state.isMemberView;
 }
 
 async function init() {
@@ -160,16 +167,7 @@ async function init() {
       console.log('  - Showing app immediately...');
       showApp();
       
-      // Load data in background (non-blocking)
-      Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
-        console.log('  - Data loading complete');
-        // Refresh the active tab to show newly loaded data
-        refreshActiveTab();
-      }).catch(err => {
-        console.error('  - Error loading data:', err);
-      });
-      
-      // Fetch profile in background with timeout
+      // Fetch profile FIRST, then load data
       const profileTimeout = setTimeout(() => {
         console.log('  - ⚠️ Profile fetch timeout, keeping temporary profile');
         isProcessingSession = false;
@@ -178,6 +176,17 @@ async function init() {
       fetchProfile().then(() => {
         clearTimeout(profileTimeout);
         console.log('  - Profile fetch complete, state.profile:', state.profile);
+        console.log('  - team_id available:', state.profile?.team_id);
+        
+        // NOW load data after profile is loaded
+        Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
+          console.log('  - Data loading complete');
+          // Refresh the active tab to show newly loaded data
+          refreshActiveTab();
+        }).catch(err => {
+          console.error('  - Error loading data:', err);
+        });
+        
         // Update UI in case profile changed (e.g., can_manage status)
         console.log('  - Updating UI with final profile');
         showApp();
@@ -300,15 +309,7 @@ async function init() {
     showApp();
     
     // Load data in background (non-blocking)
-    Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
-      console.log('✅ Data loading complete');
-      // Refresh the active tab to show newly loaded data
-      refreshActiveTab();
-    }).catch(err => {
-      console.error('❌ Error loading data:', err);
-    });
-    
-    // Fetch profile in background with timeout
+    // Fetch profile FIRST, then load data
     const profileTimeout = setTimeout(() => {
       console.log('  - ⚠️ Profile fetch timeout, keeping temporary profile');
       isProcessingSession = false;
@@ -317,6 +318,17 @@ async function init() {
     fetchProfile().then(() => {
       clearTimeout(profileTimeout);
       console.log('✅ Profile fetch complete, state.profile:', state.profile);
+      console.log('  - team_id available:', state.profile?.team_id);
+      
+      // NOW load data after profile is loaded
+      Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
+        console.log('✅ Data loading complete');
+        // Refresh the active tab to show newly loaded data
+        refreshActiveTab();
+      }).catch(err => {
+        console.error('❌ Error loading data:', err);
+      });
+      
       // Update UI in case profile changed (e.g., can_manage status)
       console.log('  - Updating UI with final profile');
       showApp();
@@ -353,6 +365,55 @@ function bindEvents() {
   authForm?.addEventListener("submit", handleAuth);
   // No signup functionality - users must be invited by a manager
   logoutBtn?.addEventListener("click", () => supabase.auth.signOut());
+  
+  // Toggle signup mode for team leaders
+  const toggleSignupBtn = el("toggle-signup");
+  toggleSignupBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    isSignUpMode = !isSignUpMode;
+    updateAuthUI();
+  });
+  
+  // Team management buttons (owners only)
+  el("btn-rename-team")?.addEventListener("click", () => openRenameTeamModal());
+  el("btn-delete-team")?.addEventListener("click", () => deleteTeam());
+  
+  // Rename team modal
+  el("rename-team-form")?.addEventListener("submit", handleRenameTeamSubmit);
+  el("cancel-rename-team")?.addEventListener("click", () => {
+    el("rename-team-modal")?.classList.add("hidden");
+    document.body.style.overflow = "";
+  });
+  el("close-rename-team-modal")?.addEventListener("click", () => {
+    el("rename-team-modal")?.classList.add("hidden");
+    document.body.style.overflow = "";
+  });
+  
+  // Account switcher
+  const accountMenuBtn = el("btn-account-menu");
+  const accountMenu = el("account-menu");
+  accountMenuBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    accountMenu?.classList.toggle("hidden");
+  });
+  
+  // Close account menu when clicking outside
+  document.addEventListener("click", (e) => {
+    if (accountMenu && !accountMenu.contains(e.target) && !accountMenuBtn?.contains(e.target)) {
+      accountMenu.classList.add("hidden");
+    }
+    // Close person menus when clicking outside
+    document.querySelectorAll(".person-menu").forEach(menu => {
+      const menuBtn = document.querySelector(`.person-menu-btn[data-person-id="${menu.dataset.personId}"]`);
+      if (menu && !menu.contains(e.target) && (!menuBtn || !menuBtn.contains(e.target))) {
+        menu.classList.add("hidden");
+      }
+    });
+  });
+  
+  el("btn-switch-account")?.addEventListener("click", () => {
+    supabase.auth.signOut();
+  });
   
   // Password setup form
   const passwordSetupForm = el("password-setup-form");
@@ -664,6 +725,22 @@ function showApp() {
     userNameEl.textContent = state.profile?.full_name ?? "Signed In";
   }
   
+  // Update account menu team name
+  const accountMenuTeamName = el("account-menu-team-name");
+  if (accountMenuTeamName && state.profile?.team?.name) {
+    accountMenuTeamName.textContent = state.profile.team.name;
+  }
+  
+  // Update team name in People tab
+  const teamNameDisplay = el("team-name-display");
+  const teamInfoSection = el("team-info-section");
+  if (teamNameDisplay && state.profile?.team?.name) {
+    teamNameDisplay.textContent = state.profile.team.name;
+    if (teamInfoSection) teamInfoSection.classList.remove("hidden");
+  } else if (teamInfoSection) {
+    teamInfoSection.classList.add("hidden");
+  }
+  
   // Show/hide manager buttons based on actual manager status (not member view)
   const viewAsMemberBtn = el("btn-view-as-member");
   const memberViewBanner = el("member-view-banner");
@@ -704,6 +781,14 @@ function showApp() {
     if (inviteMemberBtnEl) inviteMemberBtnEl.classList.add("hidden");
   }
   
+  // Show/hide team management buttons for owners only (in People tab)
+  const teamManagementEl = el("team-management");
+  if (isOwner()) {
+    if (teamManagementEl) teamManagementEl.classList.remove("hidden");
+  } else {
+    if (teamManagementEl) teamManagementEl.classList.add("hidden");
+  }
+  
   // Verify the changes took effect
   const authGateHidden = authGateEl.classList.contains('hidden');
   const dashboardVisible = !dashboardEl.classList.contains('hidden');
@@ -737,20 +822,28 @@ function resetState() {
 // Users must be invited by a manager
 
 function updateAuthUI() {
-  // Always show login mode - no manual signup allowed
-  // Users must be invited by a manager
+  // Show login/signup toggle for team leaders
   const heading = authGate?.querySelector("h2");
   const description = authGate?.querySelector("p:first-of-type");
   
-  if (heading) heading.textContent = "Login";
-  if (description) description.textContent = "Sign in with your email and password.";
-  if (authSubmitBtn) authSubmitBtn.textContent = "Sign in";
+  if (isSignUpMode) {
+    if (heading) heading.textContent = "Team Leader Signup";
+    if (description) description.textContent = "Create a new team and become the team owner.";
+    if (authSubmitBtn) authSubmitBtn.textContent = "Create Team";
+  } else {
+    if (heading) heading.textContent = "Login";
+    if (description) description.textContent = "Sign in with your email and password.";
+    if (authSubmitBtn) authSubmitBtn.textContent = "Sign in";
+  }
   
-  // Remove any signup toggle if it exists
+  // Show signup toggle
   const toggleSignup = el("toggle-signup");
   const toggleParagraph = toggleSignup?.parentElement;
   if (toggleParagraph && toggleSignup) {
-    toggleParagraph.style.display = "none";
+    toggleParagraph.style.display = "block";
+    toggleSignup.textContent = isSignUpMode 
+      ? "Already have an account? Sign in" 
+      : "Team leader? Create a team";
   }
 }
 
@@ -778,54 +871,123 @@ async function handleAuth(event) {
 
   console.log('  - ✅ Validation passed, proceeding with auth');
   toggleAuthButton(true);
-  setAuthMessage("Signing in…");
-
-  // No manual signup allowed - only login
-  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  const error = signInError;
   
-  if (!error && signInData.session) {
-    console.log('✅ Sign in successful!');
-    console.log('  - Session user:', signInData.session.user?.email);
-    console.log('  - Session expires at:', new Date(signInData.session.expires_at * 1000));
+  if (isSignUpMode) {
+    // Team leader signup - create account and team
+    setAuthMessage("Creating team...");
     
-    // Verify session is stored
-    const { data: { session: storedSession } } = await supabase.auth.getSession();
-    console.log('  - Stored session after sign in:', storedSession ? '✅ Found' : '❌ Not found');
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
     
-    // Update state immediately
-    console.log('  - Updating state.session...');
-    state.session = signInData.session;
-    console.log('  - state.session updated:', !!state.session);
+    if (signUpError) {
+      console.error('Signup error:', signUpError);
+      setAuthMessage(signUpError.message || "Unable to create account. Please try again.", true);
+      toggleAuthButton(false);
+      return;
+    }
     
+    if (!signUpData.user) {
+      setAuthMessage("Unable to create account. Please try again.", true);
+      toggleAuthButton(false);
+      return;
+    }
+    
+    // Create team and profile
+    const teamName = email.split('@')[0] + "'s Team"; // Default team name
+    const { data: teamData, error: teamError } = await supabase
+      .from("teams")
+      .insert({
+        name: teamName,
+        owner_id: signUpData.user.id
+      })
+      .select()
+      .single();
+    
+    if (teamError) {
+      console.error('Team creation error:', teamError);
+      setAuthMessage("Account created but team creation failed. Please contact support.", true);
+      toggleAuthButton(false);
+      return;
+    }
+    
+    // Create profile with owner status
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .insert({
+        id: signUpData.user.id,
+        full_name: signUpData.user.user_metadata?.full_name || email,
+        email: email.toLowerCase(),
+        team_id: teamData.id,
+        is_owner: true,
+        can_manage: true
+      })
+      .select()
+      .single();
+    
+    if (profileError) {
+      console.error('Profile creation error:', profileError);
+      setAuthMessage("Account and team created but profile creation failed. Please contact support.", true);
+      toggleAuthButton(false);
+      return;
+    }
+    
+    setAuthMessage("Team created! Please check your email to verify your account.", false);
+    toggleAuthButton(false);
+    // Don't auto-login - they need to verify email first
+    return;
+  } else {
+    // Regular login
+    setAuthMessage("Signing in…");
+
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    const error = signInError;
+    
+    if (!error && signInData.session) {
+      console.log('✅ Sign in successful!');
+      console.log('  - Session user:', signInData.session.user?.email);
+      console.log('  - Session expires at:', new Date(signInData.session.expires_at * 1000));
+      
+      // Verify session is stored
+      const { data: { session: storedSession } } = await supabase.auth.getSession();
+      console.log('  - Stored session after sign in:', storedSession ? '✅ Found' : '❌ Not found');
+      
+      // Update state immediately
+      console.log('  - Updating state.session...');
+      state.session = signInData.session;
+      console.log('  - state.session updated:', !!state.session);
+      
     console.log('  - Fetching profile...');
     await fetchProfile();
     console.log('  - Profile fetched, state.profile:', state.profile);
+    console.log('  - team_id available:', state.profile?.team_id);
     
     console.log('  - Loading songs, sets, and people...');
     await Promise.all([loadSongs(), loadSets(), loadPeople()]);
     console.log('  - Data loaded');
-    
-    console.log('  - Calling showApp()...');
-    showApp();
-    setAuthMessage("");
-    authForm?.reset();
-    toggleAuthButton(false);
-    return;
-  }
+      
+      console.log('  - Calling showApp()...');
+      showApp();
+      setAuthMessage("");
+      authForm?.reset();
+      toggleAuthButton(false);
+      return;
+    }
 
-  if (error) {
-    console.error('Auth error:', error);
-    setAuthMessage(error.message || "Unable to sign in. Please check your credentials.", true);
-    toggleAuthButton(false);
-  } else {
-    // Fallback - onAuthStateChange should handle this
-    setAuthMessage("");
-    authForm?.reset();
-    toggleAuthButton(false);
+    if (error) {
+      console.error('Auth error:', error);
+      setAuthMessage(error.message || "Unable to sign in. Please check your credentials.", true);
+      toggleAuthButton(false);
+    } else {
+      // Fallback - onAuthStateChange should handle this
+      setAuthMessage("");
+      authForm?.reset();
+      toggleAuthButton(false);
+    }
   }
 }
 
@@ -1005,14 +1167,18 @@ async function createProfileAndMigrateInvites(user) {
   }
   
   const fullName = pendingInvite?.full_name || user.user_metadata?.full_name || userEmail;
+  const teamId = pendingInvite?.team_id || null;
   
-  // Create the profile
+  // Create the profile with team_id from pending invite
   const { data: newProfile, error: profileError } = await supabase
     .from("profiles")
     .insert({
       id: user.id,
       full_name: fullName,
       email: userEmail,
+      team_id: teamId,
+      is_owner: false,
+      can_manage: false,
     })
     .select()
     .single();
@@ -1025,6 +1191,7 @@ async function createProfileAndMigrateInvites(user) {
       .update({
         full_name: fullName,
         email: userEmail,
+        team_id: teamId || undefined, // Only update if team_id exists
       })
       .eq("id", user.id)
       .select()
@@ -1090,9 +1257,23 @@ async function fetchProfile() {
     console.log('  - Querying profiles table...');
     
     // Wrap query in timeout to prevent hanging
+    // IMPORTANT: Select team_id explicitly to ensure it's available
     const queryPromise = supabase
       .from("profiles")
-      .select("*")
+      .select(`
+        id,
+        full_name,
+        email,
+        can_manage,
+        is_owner,
+        team_id,
+        created_at,
+        team:team_id (
+          id,
+          name,
+          owner_id
+        )
+      `)
       .eq("id", state.session.user.id)
       .single();
     
@@ -1189,8 +1370,47 @@ async function fetchProfile() {
         data.email = state.session.user.email;
       }
       state.profile = data;
+      // Ensure team_id is directly accessible (it might be nested in team relationship)
+      if (!data.team_id) {
+        if (data.team && data.team.id) {
+          data.team_id = data.team.id;
+          state.profile.team_id = data.team.id;
+          console.log('  - ⚠️ team_id was missing, extracted from team relationship:', data.team_id);
+        } else {
+          console.error('  - ❌ CRITICAL: Profile has no team_id and no team relationship!');
+          console.error('  - Profile data:', JSON.stringify(data, null, 2));
+        }
+      }
       console.log('  - ✅ Profile found:', data);
       console.log('  - can_manage:', data.can_manage);
+      console.log('  - is_owner:', data.is_owner);
+      console.log('  - team_id:', data.team_id);
+      console.log('  - team:', data.team);
+      console.log('  - Final state.profile.team_id:', state.profile.team_id);
+      
+      // Double-check: if team_id is still missing, try to fetch it directly
+      if (!data.team_id) {
+        console.warn('  - ⚠️ Attempting to fetch team_id directly from database...');
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("team_id")
+          .eq("id", state.session.user.id)
+          .single();
+        
+        if (!profileError && profileData?.team_id) {
+          data.team_id = profileData.team_id;
+          state.profile.team_id = profileData.team_id;
+          console.log('  - ✅ Retrieved team_id directly:', profileData.team_id);
+        } else {
+          console.error('  - ❌ Could not retrieve team_id:', profileError);
+        }
+      }
+      
+      // If we still don't have team_id, this is a critical error
+      if (!state.profile.team_id) {
+        console.error('  - ❌❌❌ CRITICAL ERROR: Profile has no team_id after all attempts!');
+        console.error('  - This user cannot access any data. They need to be assigned to a team.');
+      }
     }
   } catch (err) {
     console.error('  - ❌ Unexpected error in fetchProfile:', err);
@@ -1207,6 +1427,21 @@ async function fetchProfile() {
 }
 
 async function loadSongs() {
+  console.log('🎵 loadSongs() called');
+  console.log('  - state.profile:', state.profile);
+  console.log('  - state.profile?.team_id:', state.profile?.team_id);
+  
+  if (!state.profile?.team_id) {
+    console.warn('⚠️ No team_id in profile, cannot load songs');
+    console.warn('  - Profile object:', JSON.stringify(state.profile, null, 2));
+    state.songs = [];
+    return;
+  }
+  
+  console.log('  - Loading songs for team_id:', state.profile.team_id);
+  
+  // First, test if we can query songs at all (check RLS)
+  console.log('  - Testing songs query...');
   const { data, error } = await supabase
     .from("songs")
     .select(`
@@ -1217,15 +1452,46 @@ async function loadSongs() {
         url
       )
     `)
+    .eq("team_id", state.profile.team_id)
     .order("title");
+  
   if (error) {
-    console.error(error);
+    console.error('❌ Error loading songs:', error);
+    console.error('  - Error code:', error.code);
+    console.error('  - Error message:', error.message);
+    console.error('  - Error details:', JSON.stringify(error, null, 2));
+    console.error('  - Query was for team_id:', state.profile.team_id);
+    state.songs = [];
     return;
   }
-  state.songs = data;
+  
+  console.log('  - ✅ Songs loaded:', data?.length || 0, 'songs');
+  if (data && data.length > 0) {
+    console.log('  - First song sample:', data[0]);
+  } else {
+    console.warn('  - ⚠️ No songs returned. This could mean:');
+    console.warn('    1. No songs exist for this team');
+    console.warn('    2. RLS policies are blocking access');
+    console.warn('    3. team_id mismatch');
+  }
+  state.songs = data || [];
 }
 
 async function loadSets() {
+  console.log('📋 loadSets() called');
+  console.log('  - state.profile?.team_id:', state.profile?.team_id);
+  
+  if (!state.profile?.team_id) {
+    console.warn('⚠️ No team_id in profile, cannot load sets');
+    console.warn('  - Profile object:', JSON.stringify(state.profile, null, 2));
+    state.sets = [];
+    renderSets();
+    return;
+  }
+  
+  console.log('  - Loading sets for team_id:', state.profile.team_id);
+  console.log('  - Testing sets query...');
+  
   // Try to load with service/rehearsal times first
   let { data, error } = await supabase
     .from("sets")
@@ -1276,11 +1542,13 @@ async function loadSets() {
       )
     `
     )
+    .eq("team_id", state.profile.team_id)
     .order("scheduled_date", { ascending: true });
 
   // If error is due to missing tables (service_times or rehearsal_times), fall back to query without them
   if (error && (error.message?.includes("service_times") || error.message?.includes("rehearsal_times") || error.code === "PGRST116" || error.code === "42P01")) {
     console.warn("service_times or rehearsal_times tables not found, loading sets without them:", error.message);
+    console.log('  - Falling back to query without service/rehearsal times...');
     const fallbackResult = await supabase
       .from("sets")
       .select(
@@ -1321,7 +1589,11 @@ async function loadSets() {
         )
       `
       )
+      .eq("team_id", state.profile.team_id)
       .order("scheduled_date", { ascending: true });
+    
+    console.log('  - Fallback query result - error:', fallbackResult.error?.code || 'none');
+    console.log('  - Fallback query result - data count:', fallbackResult.data?.length || 0);
     
     if (fallbackResult.error) {
       console.error("Error loading sets:", fallbackResult.error);
@@ -1340,12 +1612,25 @@ async function loadSets() {
       }));
     }
   } else if (error) {
-    console.error("Error loading sets:", error);
+    console.error("❌ Error loading sets:", error);
+    console.error("  - Error code:", error.code);
+    console.error("  - Error message:", error.message);
+    console.error("  - Error details:", JSON.stringify(error, null, 2));
+    console.error("  - Query was for team_id:", state.profile.team_id);
     state.sets = [];
     renderSets();
     return;
   }
 
+  console.log('  - ✅ Sets loaded:', data?.length || 0, 'sets');
+  if (data && data.length > 0) {
+    console.log('  - First set sample:', { id: data[0].id, title: data[0].title, team_id: data[0].team_id });
+  } else {
+    console.warn('  - ⚠️ No sets returned. This could mean:');
+    console.warn('    1. No sets exist for this team');
+    console.warn('    2. RLS policies are blocking access');
+    console.warn('    3. team_id mismatch');
+  }
   state.sets = data ?? [];
   renderSets();
 }
@@ -1676,6 +1961,19 @@ function refreshActiveTab() {
 }
 
 async function loadPeople() {
+  console.log('👥 loadPeople() called');
+  console.log('  - state.profile?.team_id:', state.profile?.team_id);
+  
+  if (!state.profile?.team_id) {
+    console.warn('⚠️ No team_id in profile, cannot load people');
+    console.warn('  - Profile object:', JSON.stringify(state.profile, null, 2));
+    state.people = [];
+    state.pendingInvites = [];
+    renderPeople();
+    return;
+  }
+  
+  console.log('  - Loading people for team_id:', state.profile.team_id);
   const [
     { data: profiles, error: profilesError },
     { data: pendingInvites, error: pendingError },
@@ -1683,24 +1981,29 @@ async function loadPeople() {
     supabase
       .from("profiles")
       .select("*")
+      .eq("team_id", state.profile.team_id)
       .order("full_name"),
     supabase
       .from("pending_invites")
       .select("*")
+      .eq("team_id", state.profile.team_id)
       .is("resolved_at", null)
       .order("full_name", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true }),
   ]);
 
   if (profilesError) {
-    console.error("Error loading people:", profilesError);
+    console.error("❌ Error loading people:", profilesError);
+    console.error("  - Error details:", JSON.stringify(profilesError, null, 2));
     return;
   }
 
   if (pendingError) {
-    console.error("Error loading pending invites:", pendingError);
+    console.error("❌ Error loading pending invites:", pendingError);
+    console.error("  - Error details:", JSON.stringify(pendingError, null, 2));
   }
 
+  console.log('  - ✅ People loaded:', profiles?.length || 0, 'profiles,', pendingInvites?.length || 0, 'pending invites');
   state.people = profiles || [];
   state.pendingInvites = pendingInvites || [];
   renderPeople();
@@ -1709,6 +2012,16 @@ async function loadPeople() {
 function renderPeople() {
   const peopleList = el("people-list");
   if (!peopleList) return;
+  
+  // Update team name display when rendering people
+  const teamNameDisplay = el("team-name-display");
+  const teamInfoSection = el("team-info-section");
+  if (teamNameDisplay && state.profile?.team?.name) {
+    teamNameDisplay.textContent = state.profile.team.name;
+    if (teamInfoSection) teamInfoSection.classList.remove("hidden");
+  } else if (teamInfoSection) {
+    teamInfoSection.classList.add("hidden");
+  }
   
   const searchInput = el("people-tab-search");
   const isManagerCheck = isManager();
@@ -1832,31 +2145,91 @@ function renderPeople() {
                 </a>
               ` : '<span class="muted" style="font-size: 0.9rem;">No email</span>'}
               <div style="margin-top: 0.5rem;">
-                ${person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
+                ${person.is_owner ? '<span class="person-role" style="background: var(--accent-color); color: var(--bg-primary);">Owner</span>' : person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
               </div>
             </div>
-            <div style="display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0;">
-              <button class="btn small secondary edit-person-btn" data-person-id="${person.id}">Edit</button>
-              <button class="btn small ghost delete-person-btn" data-person-id="${person.id}">Remove</button>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; position: relative;">
+              <div style="position: relative;">
+                <button class="btn small ghost person-menu-btn" data-person-id="${person.id}" style="padding: 0.5rem;">
+                  <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                <div class="person-menu hidden" data-person-id="${person.id}" style="position: absolute; top: 100%; right: 0; margin-top: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; min-width: 180px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;">
+                  <button class="btn small ghost edit-person-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left;"><i class="fa-solid fa-pencil" style="margin-right: 0.5rem;"></i> Edit</button>
+                  <button class="btn small ghost delete-person-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left; margin-top: 0.25rem;"><i class="fa-solid fa-trash" style="margin-right: 0.5rem;"></i> Remove</button>
+                  ${isOwner() && !person.is_owner ? `
+                    <div style="border-top: 1px solid var(--border-color); margin-top: 0.5rem; padding-top: 0.5rem;">
+                      ${person.can_manage 
+                        ? `<button class="btn small ghost demote-manager-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left;"><i class="fa-solid fa-user-minus" style="margin-right: 0.5rem;"></i> Remove Manager</button>`
+                        : `<button class="btn small ghost promote-manager-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left;"><i class="fa-solid fa-user-plus" style="margin-right: 0.5rem;"></i> Make Manager</button>`
+                      }
+                      <button class="btn small ghost transfer-ownership-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left; margin-top: 0.25rem;"><i class="fa-solid fa-crown" style="margin-right: 0.5rem;"></i> Transfer Ownership</button>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
             </div>
           </div>
         `;
         
+        // Person menu button and handlers
+        const menuBtn = div.querySelector(".person-menu-btn");
+        const menu = div.querySelector(".person-menu");
+        if (menuBtn && menu) {
+          menuBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            // Close all other menus
+            document.querySelectorAll(".person-menu").forEach(m => {
+              if (m !== menu) m.classList.add("hidden");
+            });
+            menu.classList.toggle("hidden");
+          });
+        }
+        
         const editBtn = div.querySelector(".edit-person-btn");
         if (editBtn) {
-          editBtn.addEventListener("click", () => openEditPersonModal(person));
+          editBtn.addEventListener("click", () => {
+            openEditPersonModal(person);
+            menu?.classList.add("hidden");
+          });
         }
         
         const deleteBtn = div.querySelector(".delete-person-btn");
         if (deleteBtn) {
-          deleteBtn.addEventListener("click", () => deletePerson(person));
+          deleteBtn.addEventListener("click", () => {
+            deletePerson(person);
+            menu?.classList.add("hidden");
+          });
+        }
+        
+        const promoteBtn = div.querySelector(".promote-manager-btn");
+        if (promoteBtn) {
+          promoteBtn.addEventListener("click", () => {
+            promoteToManager(person.id);
+            menu?.classList.add("hidden");
+          });
+        }
+        
+        const demoteBtn = div.querySelector(".demote-manager-btn");
+        if (demoteBtn) {
+          demoteBtn.addEventListener("click", () => {
+            demoteFromManager(person.id);
+            menu?.classList.add("hidden");
+          });
+        }
+        
+        const transferBtn = div.querySelector(".transfer-ownership-btn");
+        if (transferBtn) {
+          transferBtn.addEventListener("click", () => {
+            transferOwnership(person);
+            menu?.classList.add("hidden");
+          });
         }
       } else {
         // Regular user view: just show name and role
         const highlightedName = searchTermRaw ? highlightMatch(person.full_name || "", searchTermRaw) : escapeHtml(person.full_name || "");
         div.innerHTML = `
           <h3 class="person-name">${highlightedName}</h3>
-          ${person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
+          ${person.is_owner ? '<span class="person-role" style="background: var(--accent-color); color: var(--bg-primary);">Owner</span>' : person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
         `;
       }
       
@@ -2922,6 +3295,7 @@ async function handleSetSubmit(event) {
     title: el("set-title").value,
     scheduled_date: el("set-date").value,
     description: el("set-description").value,
+    team_id: state.profile.team_id,
   };
 
   // Only include created_by when creating a new set
@@ -2935,6 +3309,7 @@ async function handleSetSubmit(event) {
       .from("sets")
       .update(payload)
       .eq("id", editingSetId)
+      .eq("team_id", state.profile.team_id)
       .select()
       .single();
   } else {
@@ -2972,7 +3347,8 @@ async function handleSetSubmit(event) {
       .from("service_times")
       .insert(serviceTimes.map(time => ({
         set_id: finalSetId,
-        service_time: time
+        service_time: time,
+        team_id: state.profile.team_id
       })));
 
     if (serviceError) {
@@ -3011,7 +3387,8 @@ async function handleSetSubmit(event) {
       .insert(rehearsalTimes.map(rt => ({
         set_id: finalSetId,
         rehearsal_date: rt.date,
-        rehearsal_time: rt.time
+        rehearsal_time: rt.time,
+        team_id: state.profile.team_id
       })));
 
     if (rehearsalError) {
@@ -3259,6 +3636,7 @@ async function handleAddSongToSet(event) {
       song_id: songId,
       notes,
       sequence_order: currentSequenceOrder,
+      team_id: state.profile.team_id,
     })
     .select()
     .single();
@@ -3280,6 +3658,7 @@ async function handleAddSongToSet(event) {
           person_name: assignment.person_name || null,
           person_email: assignment.person_email || null,
           set_song_id: setSong.id,
+          team_id: state.profile.team_id,
         }))
       );
     if (assignmentError) {
@@ -3324,6 +3703,7 @@ async function handleAddSectionToSet(event) {
       description: description || null,
       notes: notes || null,
       sequence_order: currentSequenceOrder,
+      team_id: state.profile.team_id,
     })
     .select()
     .single();
@@ -3345,6 +3725,7 @@ async function handleAddSectionToSet(event) {
           person_name: assignment.person_name || null,
           person_email: assignment.person_email || null,
           set_song_id: setSong.id,
+          team_id: state.profile.team_id,
         }))
       );
     if (assignmentError) {
@@ -3927,6 +4308,7 @@ async function handleEditSetSongSubmit(event) {
           person_name: assignment.person_name || null,
           person_email: assignment.person_email || null,
           set_song_id: setSongId,
+          team_id: state.profile.team_id,
         }))
       );
   }
@@ -4015,7 +4397,8 @@ async function deleteSet(set) {
       const { error } = await supabase
         .from("sets")
         .delete()
-        .eq("id", set.id);
+        .eq("id", set.id)
+        .eq("team_id", state.profile.team_id);
       
       if (error) {
         console.error(error);
@@ -4046,7 +4429,8 @@ async function deleteSong(songId) {
       const { error } = await supabase
         .from("songs")
         .delete()
-        .eq("id", songId);
+        .eq("id", songId)
+        .eq("team_id", state.profile.team_id);
       
       if (error) {
         console.error(error);
@@ -4182,6 +4566,7 @@ async function ensurePendingInviteRecord(email, fullName) {
     email: normalizedEmail,
     full_name: fullName || null,
     created_by: state.profile?.id || null,
+    team_id: state.profile?.team_id || null,
   };
   const { error } = await supabase
     .from("pending_invites")
@@ -4858,6 +5243,7 @@ async function handleSongEditSubmit(event) {
     duration_seconds: duration,
     description,
     created_by: state.session.user.id,
+    team_id: state.profile.team_id,
   };
   
   let response;
@@ -4931,6 +5317,7 @@ async function handleSongEditSubmit(event) {
           title: link.title,
           url: link.url,
           display_order: link.display_order,
+          team_id: state.profile.team_id,
         }))
       );
   }
@@ -5634,6 +6021,273 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
   container.getSelectedOption = () => selectedOption;
 
   return container;
+}
+
+// Diagnostic function to test team access
+async function testTeamAccess() {
+  console.log('🔍 Testing team access...');
+  console.log('  - Current profile:', state.profile);
+  console.log('  - team_id:', state.profile?.team_id);
+  
+  if (!state.profile?.team_id) {
+    console.error('❌ No team_id in profile!');
+    return;
+  }
+  
+  // Test songs query
+  console.log('  - Testing songs query...');
+  const { data: songsData, error: songsError } = await supabase
+    .from("songs")
+    .select("id, title, team_id")
+    .eq("team_id", state.profile.team_id)
+    .limit(5);
+  
+  console.log('  - Songs query result:');
+  console.log('    - Error:', songsError?.code || 'none', songsError?.message || '');
+  console.log('    - Count:', songsData?.length || 0);
+  if (songsData && songsData.length > 0) {
+    console.log('    - Sample:', songsData[0]);
+  }
+  
+  // Test sets query
+  console.log('  - Testing sets query...');
+  const { data: setsData, error: setsError } = await supabase
+    .from("sets")
+    .select("id, title, team_id")
+    .eq("team_id", state.profile.team_id)
+    .limit(5);
+  
+  console.log('  - Sets query result:');
+  console.log('    - Error:', setsError?.code || 'none', setsError?.message || '');
+  console.log('    - Count:', setsData?.length || 0);
+  if (setsData && setsData.length > 0) {
+    console.log('    - Sample:', setsData[0]);
+  }
+  
+  // Test profile query
+  console.log('  - Testing profile query...');
+  const { data: profileData, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, full_name, team_id")
+    .eq("id", state.session.user.id)
+    .single();
+  
+  console.log('  - Profile query result:');
+  console.log('    - Error:', profileError?.code || 'none', profileError?.message || '');
+  console.log('    - Profile:', profileData);
+}
+
+// Make it available globally for debugging
+window.testTeamAccess = testTeamAccess;
+
+// Team Management Functions
+
+function openRenameTeamModal() {
+  if (!isOwner()) return;
+  
+  const modal = el("rename-team-modal");
+  const input = el("rename-team-input");
+  
+  if (!modal || !input) return;
+  
+  const currentTeamName = state.profile?.team?.name || "";
+  input.value = currentTeamName;
+  input.select();
+  
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+async function handleRenameTeamSubmit(e) {
+  e.preventDefault();
+  
+  if (!isOwner()) return;
+  
+  const modal = el("rename-team-modal");
+  const input = el("rename-team-input");
+  
+  if (!input) return;
+  
+  const currentTeamName = state.profile?.team?.name || "Team";
+  const newName = input.value.trim();
+  
+  if (!newName) {
+    alert("Team name cannot be empty.");
+    return;
+  }
+  
+  if (newName === currentTeamName) {
+    // No change, just close modal
+    modal?.classList.add("hidden");
+    document.body.style.overflow = "";
+    return;
+  }
+  
+  const { error } = await supabase
+    .from("teams")
+    .update({ name: newName })
+    .eq("id", state.profile.team_id);
+  
+  if (error) {
+    console.error("Error renaming team:", error);
+    alert("Unable to rename team. Check console.");
+    return;
+  }
+  
+  // Update local state
+  if (state.profile.team) {
+    state.profile.team.name = newName;
+  }
+  
+  // Update team name displays
+  const teamNameDisplay = el("team-name-display");
+  if (teamNameDisplay) {
+    teamNameDisplay.textContent = newName;
+  }
+  const accountMenuTeamName = el("account-menu-team-name");
+  if (accountMenuTeamName) {
+    accountMenuTeamName.textContent = newName;
+  }
+  
+  // Close modal
+  modal?.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+async function deleteTeam() {
+  if (!isOwner()) return;
+  
+  const teamName = state.profile?.team?.name || "this team";
+  const message = `Are you sure? This will permanently delete all sets, songs, assignments, and team members. It cannot be undone.`;
+  
+  showDeleteConfirmModal(
+    teamName,
+    message,
+    async () => {
+      const { error } = await supabase
+        .from("teams")
+        .delete()
+        .eq("id", state.profile.team_id);
+      
+      if (error) {
+        console.error("Error deleting team:", error);
+        alert("Unable to delete team. Check console.");
+        return;
+      }
+      
+      // Sign out and redirect to login
+      await supabase.auth.signOut();
+      window.location.reload();
+    }
+  );
+}
+
+async function promoteToManager(personId) {
+  if (!isOwner()) return;
+  
+  if (personId === state.profile.id) {
+    alert("You are already the team owner.");
+    return;
+  }
+  
+  const { error } = await supabase
+    .from("profiles")
+    .update({ can_manage: true })
+    .eq("id", personId)
+    .eq("team_id", state.profile.team_id);
+  
+  if (error) {
+    console.error("Error promoting to manager:", error);
+    alert("Unable to promote user. Check console.");
+    return;
+  }
+  
+  await loadPeople();
+  alert("User promoted to manager.");
+}
+
+async function demoteFromManager(personId) {
+  if (!isOwner()) return;
+  
+  if (personId === state.profile.id) {
+    alert("You cannot demote yourself. Transfer ownership first.");
+    return;
+  }
+  
+  const { error } = await supabase
+    .from("profiles")
+    .update({ can_manage: false })
+    .eq("id", personId)
+    .eq("team_id", state.profile.team_id);
+  
+  if (error) {
+    console.error("Error demoting manager:", error);
+    alert("Unable to demote user. Check console.");
+    return;
+  }
+  
+  await loadPeople();
+  alert("User demoted from manager.");
+}
+
+async function transferOwnership(person) {
+  if (!isOwner()) return;
+  
+  if (person.id === state.profile.id) {
+    alert("You are already the team owner.");
+    return;
+  }
+  
+  const teamName = state.profile?.team?.name || "this team";
+  const message = `Transfer ownership of "${teamName}" to ${person.full_name || person.email}? This will make them the team owner and you will become a manager.`;
+  
+  showDeleteConfirmModal(
+    teamName,
+    message,
+    async () => {
+      // Update the new owner: set is_owner=true and can_manage=true
+      const { error: newOwnerError } = await supabase
+        .from("profiles")
+        .update({ is_owner: true, can_manage: true })
+        .eq("id", person.id)
+        .eq("team_id", state.profile.team_id);
+      
+      if (newOwnerError) {
+        console.error("Error updating new owner:", newOwnerError);
+        alert("Unable to transfer ownership. Check console.");
+        return;
+      }
+      
+      // Update the old owner: set is_owner=false, keep can_manage=true
+      const { error: oldOwnerError } = await supabase
+        .from("profiles")
+        .update({ is_owner: false, can_manage: true })
+        .eq("id", state.profile.id)
+        .eq("team_id", state.profile.team_id);
+      
+      if (oldOwnerError) {
+        console.error("Error updating old owner:", oldOwnerError);
+        alert("Unable to transfer ownership. Check console.");
+        return;
+      }
+      
+      // Update the team's owner_id
+      const { error: teamError } = await supabase
+        .from("teams")
+        .update({ owner_id: person.id })
+        .eq("id", state.profile.team_id);
+      
+      if (teamError) {
+        console.error("Error updating team owner_id:", teamError);
+        alert("Unable to transfer ownership. Check console.");
+        return;
+      }
+      
+      // Sign out and redirect to login (since they're no longer the owner)
+      await supabase.auth.signOut();
+      window.location.reload();
+    }
+  );
 }
 
 init();

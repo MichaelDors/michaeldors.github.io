@@ -19,6 +19,19 @@
         <button id="btn-view-as-member" style="margin-right: 1rem;" class="btn secondary hidden"><i class="fa-solid fa-user"></i> Member View</button>
         <div id="user-info" class="user-info hidden">
           <span id="user-name"></span>
+          <div id="account-switcher" style="margin-right: 0.5rem; position: relative;">
+            <button id="btn-account-menu" class="btn ghost small"><i class="fa-solid fa-user-circle"></i></button>
+            <div id="account-menu" class="hidden" style="position: absolute; top: 100%; right: 0; margin-top: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; min-width: 200px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;">
+              <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
+                <div style="font-size: 0.9rem; color: var(--text-secondary);">Current Team</div>
+                <div id="account-menu-team-name" style="font-weight: 500; margin-top: 0.25rem;"></div>
+              </div>
+              <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
+                <div style="font-size: 0.85rem; color: var(--text-muted);">To switch teams, sign out and sign in with a different email account.</div>
+              </div>
+              <button id="btn-switch-account" class="btn small secondary" style="width: 100%;">Switch Account</button>
+            </div>
+          </div>
           <button id="btn-logout" class="btn ghost"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
         </div>
       </div>
@@ -49,6 +62,9 @@
           </button>
         </form>
         <p class="muted small-text" id="auth-message"></p>
+        <p class="muted small-text" style="margin-top: 1rem; text-align: center;">
+          <a href="#" id="toggle-signup" style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">Team leader? Create a team</a>
+        </p>
       </section>
 
       <section id="password-setup-gate" class="card hidden">
@@ -125,6 +141,17 @@
           <div class="dashboard-header">
             <div>
               <h2><i class="fa-solid fa-address-book"></i> Team Members</h2>
+              <div id="team-info-section" class="hidden" style="margin-top: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <h1 id="team-name-display"></h1>
+                  </div>
+                  <div id="team-management" class="hidden" style="display: flex; gap: 0.5rem;">
+                    <button id="btn-rename-team" class="btn small secondary"><i class="fa-solid fa-pencil"></i> Rename Team</button>
+                    <button id="btn-delete-team" class="btn small ghost" style="color: var(--error-color);"><i class="fa-solid fa-trash"></i> Delete Team</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div style="margin-bottom: 1.5rem;">
@@ -506,6 +533,27 @@
             <button type="button" class="btn primary" id="confirm-delete" disabled>Delete</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div id="rename-team-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Rename Team</h3>
+          <button class="icon-btn" id="close-rename-team-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <form id="rename-team-form">
+          <label>
+            Team Name
+            <input type="text" id="rename-team-input" placeholder="Enter team name" required autocomplete="off" />
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-rename-team">Cancel</button>
+            <button type="submit" class="btn primary">Save</button>
+          </div>
+        </form>
       </div>
     </div>
 
