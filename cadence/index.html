@@ -33,6 +33,7 @@
                 </div>
               </div>
               <div id="account-menu-actions-section" style="padding: 0.5rem;">
+                <button id="btn-edit-account" class="btn small ghost" style="width: 100%; margin-bottom: 0.5rem;"><i class="fa-solid fa-user-pen"></i> Edit Account</button>
                 <button id="btn-create-team" class="btn small secondary" style="width: 100%; margin-bottom: 0.5rem;"><i class="fa-solid fa-plus"></i> Create Team</button>
                 <button id="btn-logout-menu" class="btn small ghost" style="width: 100%;"><i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out</button>
               </div>
@@ -572,6 +573,24 @@
       </div>
     </div>
 
+    <div id="leave-team-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Leave Team</h3>
+          <button class="icon-btn" id="close-leave-team-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <div>
+          <p id="leave-team-message"></p>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-leave-team">Cancel</button>
+            <button type="button" class="btn primary" id="confirm-leave-team" style="color: var(--error-color);">Leave Team</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="rename-team-modal" class="modal hidden">
       <div class="modal-content">
         <header>
@@ -590,6 +609,30 @@
             <button type="submit" class="btn primary">Save</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div id="edit-account-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Edit Account</h3>
+          <button class="icon-btn" id="close-edit-account-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <form id="edit-account-form">
+          <label>
+            Full Name
+            <input type="text" id="edit-account-name-input" placeholder="Enter your name" required autocomplete="off" />
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-edit-account">Cancel</button>
+            <button type="submit" class="btn primary">Save</button>
+          </div>
+        </form>
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn ghost" id="btn-delete-account" style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Account</button>
+        </div>
       </div>
     </div>
 

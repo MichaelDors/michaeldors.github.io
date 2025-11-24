@@ -373,15 +373,44 @@ function bindEvents() {
     updateAuthUI();
   });
   
+  // Account management
+  el("btn-edit-account")?.addEventListener("click", () => openEditAccountModal());
+  
   // Team management buttons (owners only)
   el("btn-rename-team")?.addEventListener("click", () => openRenameTeamModal());
   el("btn-delete-team")?.addEventListener("click", () => deleteTeam());
-  el("btn-leave-team")?.addEventListener("click", async () => {
+  el("btn-leave-team")?.addEventListener("click", () => {
     const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
     if (currentTeam) {
-      await leaveTeam(currentTeam.id, currentTeam.name);
+      openLeaveTeamModal(currentTeam.id, currentTeam.name);
     }
   });
+  
+  // Leave team modal
+  el("confirm-leave-team")?.addEventListener("click", async () => {
+    const modal = el("leave-team-modal");
+    if (modal && modal.dataset.teamId && modal.dataset.teamName) {
+      await leaveTeam(modal.dataset.teamId, modal.dataset.teamName);
+    }
+  });
+  el("cancel-leave-team")?.addEventListener("click", () => closeLeaveTeamModal());
+  el("close-leave-team-modal")?.addEventListener("click", () => closeLeaveTeamModal());
+  el("leave-team-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "leave-team-modal") {
+      closeLeaveTeamModal();
+    }
+  });
+  
+  // Edit account modal
+  el("edit-account-form")?.addEventListener("submit", handleEditAccountSubmit);
+  el("cancel-edit-account")?.addEventListener("click", () => closeEditAccountModal());
+  el("close-edit-account-modal")?.addEventListener("click", () => closeEditAccountModal());
+  el("edit-account-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "edit-account-modal") {
+      closeEditAccountModal();
+    }
+  });
+  el("btn-delete-account")?.addEventListener("click", () => deleteAccount());
   
   // Rename team modal
   el("rename-team-form")?.addEventListener("submit", handleRenameTeamSubmit);
@@ -890,7 +919,7 @@ function updateAuthUI() {
   
   if (isSignUpMode) {
     if (heading) heading.textContent = "Team Leader Signup";
-    if (description) description.textContent = "Create a new team and become the team owner.";
+    if (description) description.textContent = "Sign up and create a new team. If you're joining a team, ask your team leader to invite you instead.";
     if (authSubmitBtn) authSubmitBtn.textContent = "Create Team";
   } else {
     if (heading) heading.textContent = "Login";
@@ -5371,6 +5400,55 @@ async function handleInviteSubmit(event) {
 }
 
 
+async function openLeaveTeamModal(teamId, teamName) {
+  if (!teamId) return;
+  
+  const modal = el("leave-team-modal");
+  const messageEl = el("leave-team-message");
+  const confirmBtn = el("confirm-leave-team");
+  
+  if (!modal || !messageEl) return;
+  
+  // Store team info for confirmation
+  modal.dataset.teamId = teamId;
+  modal.dataset.teamName = teamName;
+  
+  // Check if user is the only owner
+  const team = state.userTeams.find(t => t.id === teamId);
+  if (team?.is_owner) {
+    // Check if there are other owners
+    const { data: owners } = await supabase
+      .from("team_members")
+      .select("user_id")
+      .eq("team_id", teamId)
+      .eq("is_owner", true);
+    
+    if (owners && owners.length === 1) {
+      messageEl.textContent = `You cannot leave "${teamName}" because you are the only owner. Please transfer ownership or delete the team instead.`;
+      if (confirmBtn) confirmBtn.disabled = true;
+    } else {
+      messageEl.textContent = `Leave "${teamName}"? You can be re-invited later.`;
+      if (confirmBtn) confirmBtn.disabled = false;
+    }
+  } else {
+    messageEl.textContent = `Leave "${teamName}"? You can be re-invited later.`;
+    if (confirmBtn) confirmBtn.disabled = false;
+  }
+  
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeLeaveTeamModal() {
+  const modal = el("leave-team-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+    delete modal.dataset.teamId;
+    delete modal.dataset.teamName;
+  }
+}
+
 async function leaveTeam(teamId, teamName) {
   if (!teamId) return;
   
@@ -5385,13 +5463,10 @@ async function leaveTeam(teamId, teamName) {
       .eq("is_owner", true);
     
     if (owners && owners.length === 1) {
-      alert("You cannot leave this team because you are the only owner. Please transfer ownership or delete the team instead.");
+      // This should have been caught by the modal, but just in case
       return;
     }
   }
-  
-  const confirmed = confirm(`Leave "${teamName}"? You can be re-invited later.`);
-  if (!confirmed) return;
   
   const { error } = await supabase
     .from("team_members")
@@ -5405,28 +5480,28 @@ async function leaveTeam(teamId, teamName) {
     return;
   }
   
-  // Refresh user teams
-  await fetchUserTeams();
+  // Remove from local state immediately
+  state.userTeams = state.userTeams.filter(t => t.id !== teamId);
   
-  // If this was the current team, switch to another or show empty state
+  // If this was the current team, switch to another or show empty state immediately
   if (teamId === state.currentTeamId) {
     if (state.userTeams.length > 0) {
       await switchTeam(state.userTeams[0].id);
     } else {
+      // No teams left - show empty state immediately
       state.currentTeamId = null;
       state.sets = [];
       state.songs = [];
       state.people = [];
-      refreshActiveTab();
-      showApp();
+      showEmptyState();
     }
   } else {
     // Just refresh the switcher
     updateTeamSwitcher();
   }
   
-  // Close menu
-  el("account-menu")?.classList.add("hidden");
+  // Close modal
+  closeLeaveTeamModal();
 }
 
 async function ensurePendingInviteRecord(email, fullName) {
@@ -6952,6 +7027,119 @@ window.testTeamAccess = testTeamAccess;
 
 // Team Management Functions
 
+function openEditAccountModal() {
+  const modal = el("edit-account-modal");
+  const input = el("edit-account-name-input");
+  
+  if (!modal || !input) return;
+  
+  const currentName = state.profile?.full_name || "";
+  input.value = currentName;
+  input.select();
+  
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeEditAccountModal() {
+  const modal = el("edit-account-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+    const form = el("edit-account-form");
+    if (form) form.reset();
+  }
+}
+
+async function handleEditAccountSubmit(e) {
+  e.preventDefault();
+  
+  const modal = el("edit-account-modal");
+  const input = el("edit-account-name-input");
+  
+  if (!input || !state.profile) return;
+  
+  const currentName = state.profile.full_name || "";
+  const newName = input.value.trim();
+  
+  if (!newName) {
+    alert("Name cannot be empty.");
+    return;
+  }
+  
+  if (newName === currentName) {
+    // No change, just close modal
+    closeEditAccountModal();
+    return;
+  }
+  
+  const { error } = await supabase
+    .from("profiles")
+    .update({ full_name: newName })
+    .eq("id", state.session.user.id);
+  
+  if (error) {
+    console.error("Error updating account name:", error);
+    alert("Unable to update account name. Check console.");
+    return;
+  }
+  
+  // Update local state
+  state.profile.full_name = newName;
+  
+  // Update UI
+  const userNameEl = el("user-name");
+  if (userNameEl) {
+    userNameEl.textContent = newName;
+  }
+  
+  // Refresh people list to show updated name
+  await loadPeople();
+  
+  // Close modal
+  closeEditAccountModal();
+  
+  // Close account menu
+  el("account-menu")?.classList.add("hidden");
+}
+
+async function deleteAccount() {
+  if (!state.profile || !state.session?.user) return;
+  
+  // Close edit account modal first
+  closeEditAccountModal();
+  
+  const accountName = state.profile.full_name || state.profile.email || "your account";
+  const message = `Are you sure? This will permanently delete your account, all your teams (if you're the only owner), and all associated data. This cannot be undone.`;
+  
+  showDeleteConfirmModal(
+    accountName,
+    message,
+    async () => {
+      // Delete the profile
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", state.session.user.id);
+      
+      if (profileError) {
+        console.error("Error deleting profile:", profileError);
+        alert("Unable to delete account. Check console.");
+        return;
+      }
+      
+      // Sign out the user
+      await supabase.auth.signOut();
+      
+      // Reset state
+      resetState();
+      
+      // Show auth gate
+      showAuthGate();
+    }
+  );
+}
+
 function openRenameTeamModal() {
   if (!isOwner()) return;
   
@@ -7032,22 +7220,107 @@ async function deleteTeam() {
   if (!isOwner()) return;
   
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
-  const teamName = currentTeam?.name || "this team";
+  if (!currentTeam) {
+    console.error("Current team not found in userTeams");
+    alert("Unable to find team. Please refresh the page.");
+    return;
+  }
+  
+  const teamId = currentTeam.id;
+  const teamName = currentTeam.name || "this team";
+  
+  // CRITICAL SAFETY CHECK: Verify the user is actually the owner of this specific team
+  const { data: teamData, error: verifyError } = await supabase
+    .from("teams")
+    .select("id, name, owner_id")
+    .eq("id", teamId)
+    .eq("owner_id", state.session.user.id)
+    .single();
+  
+  if (verifyError || !teamData) {
+    console.error("Error verifying team ownership:", verifyError);
+    alert("Unable to verify team ownership. You may not be the owner of this team.");
+    return;
+  }
+  
+  // Double-check the team ID matches
+  if (teamData.id !== teamId) {
+    console.error("Team ID mismatch during verification");
+    alert("Team verification failed. Please refresh the page.");
+    return;
+  }
+  
   const message = `Are you sure? This will permanently delete all sets, songs, assignments, and team members for "${teamName}". It cannot be undone. Your account will not be deleted.`;
   
   showDeleteConfirmModal(
     teamName,
     message,
     async () => {
+      // TRIPLE CHECK: Verify ownership again right before deletion
+      const { data: finalVerify, error: finalVerifyError } = await supabase
+        .from("teams")
+        .select("id, owner_id")
+        .eq("id", teamId)
+        .eq("owner_id", state.session.user.id)
+        .single();
+      
+      if (finalVerifyError || !finalVerify || finalVerify.id !== teamId) {
+        console.error("Final verification failed before deletion:", finalVerifyError);
+        alert("Team ownership verification failed. Deletion cancelled for safety.");
+        return;
+      }
+      
+      // Delete with explicit team ID and owner verification
+      // First, verify the team still exists and we own it
+      const { data: preDeleteCheck } = await supabase
+        .from("teams")
+        .select("id")
+        .eq("id", teamId)
+        .eq("owner_id", state.session.user.id)
+        .single();
+      
+      if (!preDeleteCheck) {
+        alert("Team ownership verification failed. Deletion cancelled for safety.");
+        return;
+      }
+      
+      // Perform the deletion with strict filters
       const { error } = await supabase
         .from("teams")
         .delete()
-        .eq("id", state.currentTeamId);
+        .eq("id", teamId)
+        .eq("owner_id", state.session.user.id);
       
       if (error) {
         console.error("Error deleting team:", error);
         alert("Unable to delete team. Check console.");
         return;
+      }
+      
+      // Verify the team was actually deleted (and only this team)
+      const { data: postDeleteCheck } = await supabase
+        .from("teams")
+        .select("id")
+        .eq("id", teamId)
+        .single();
+      
+      if (postDeleteCheck) {
+        console.error("CRITICAL: Team still exists after deletion attempt!");
+        alert("ERROR: Team deletion may have failed. Please check your teams and contact support if needed.");
+        return;
+      }
+      
+      // Additional safety: Check how many teams we still own
+      const { data: remainingTeams } = await supabase
+        .from("teams")
+        .select("id, name")
+        .eq("owner_id", state.session.user.id);
+      
+      console.log("Remaining teams after deletion:", remainingTeams?.length || 0);
+      
+      if (remainingTeams && remainingTeams.length === 0 && state.userTeams.length > 1) {
+        console.error("CRITICAL: All teams deleted when only one should have been deleted!");
+        alert("ERROR: Multiple teams may have been deleted. Please check your teams immediately and contact support.");
       }
       
       // Refresh user teams (removes deleted team)
