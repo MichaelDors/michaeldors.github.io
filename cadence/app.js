@@ -85,13 +85,43 @@ let isSignUpMode = false;
 // Returns false if in member view mode, even if user is a manager
 // Returns true for both owners and managers
 function isManager() {
-  return state.profile?.can_manage && !state.isMemberView;
+  if (state.isMemberView) return false;
+  
+  // Check if user is owner or can manage from profile (backward compatibility)
+  if (state.profile?.is_owner || state.profile?.can_manage) {
+    return true;
+  }
+  
+  // Check if user is owner or can manage in current team (multi-team support)
+  if (state.currentTeamId) {
+    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+    if (currentTeam && (currentTeam.is_owner || currentTeam.can_manage)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 // Helper function to check if user is team owner
 // Returns false if in member view mode, even if user is an owner
 function isOwner() {
-  return state.profile?.is_owner && !state.isMemberView;
+  if (state.isMemberView) return false;
+  
+  // Check if user is owner from profile (backward compatibility)
+  if (state.profile?.is_owner) {
+    return true;
+  }
+  
+  // Check if user is owner in current team (multi-team support)
+  if (state.currentTeamId) {
+    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+    if (currentTeam && currentTeam.is_owner) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 async function init() {
@@ -699,6 +729,9 @@ function showAuthGate() {
   
   const passwordSetupGate = el("password-setup-gate");
   if (passwordSetupGate) passwordSetupGate.classList.add("hidden");
+  
+  const emptyState = el("empty-state");
+  if (emptyState) emptyState.classList.add("hidden");
   
   if (authGate) authGate.classList.remove("hidden");
   if (dashboard) dashboard.classList.add("hidden");
@@ -2691,8 +2724,10 @@ function renderPeople() {
   
   peopleList.innerHTML = "";
   
-  // Add invite card for managers (always show, not affected by search)
-  if (isManager()) {
+  // Add invite card for managers/owners (always show, not affected by search)
+  // Check if user can manage the current team (owner or manager)
+  const canManageCurrentTeam = currentTeam && (currentTeam.is_owner || currentTeam.can_manage);
+  if (canManageCurrentTeam || isManager()) {
     const inviteCard = document.createElement("div");
     inviteCard.className = "card person-card invite-card";
     inviteCard.innerHTML = `
@@ -7545,17 +7580,28 @@ async function promoteToManager(personId) {
     return;
   }
   
+  // Update team_members table (multi-team support)
   const { error } = await supabase
-    .from("profiles")
-    .update({ can_manage: true })
-    .eq("id", personId)
-    .eq("team_id", state.currentTeamId);
+    .from("team_members")
+    .update({ 
+      can_manage: true,
+      role: 'manager'
+    })
+    .eq("team_id", state.currentTeamId)
+    .eq("user_id", personId);
   
   if (error) {
     console.error("Error promoting to manager:", error);
     alert("Unable to promote user. Check console.");
     return;
   }
+  
+  // Also update profiles for backward compatibility (if team_id matches)
+  await supabase
+    .from("profiles")
+    .update({ can_manage: true })
+    .eq("id", personId)
+    .eq("team_id", state.currentTeamId);
   
   await loadPeople();
   alert("User promoted to manager.");
@@ -7569,17 +7615,28 @@ async function demoteFromManager(personId) {
     return;
   }
   
+  // Update team_members table (multi-team support)
   const { error } = await supabase
-    .from("profiles")
-    .update({ can_manage: false })
-    .eq("id", personId)
-    .eq("team_id", state.currentTeamId);
+    .from("team_members")
+    .update({ 
+      can_manage: false,
+      role: 'member'
+    })
+    .eq("team_id", state.currentTeamId)
+    .eq("user_id", personId);
   
   if (error) {
     console.error("Error demoting manager:", error);
     alert("Unable to demote user. Check console.");
     return;
   }
+  
+  // Also update profiles for backward compatibility (if team_id matches)
+  await supabase
+    .from("profiles")
+    .update({ can_manage: false })
+    .eq("id", personId)
+    .eq("team_id", state.currentTeamId);
   
   await loadPeople();
   alert("User demoted from manager.");
