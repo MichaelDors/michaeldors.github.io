@@ -21,18 +21,23 @@
           <span id="user-name"></span>
           <div id="account-switcher" style="margin-right: 0.5rem; position: relative;">
             <button id="btn-account-menu" class="btn ghost small"><i class="fa-solid fa-user-circle"></i></button>
-            <div id="account-menu" class="hidden" style="position: absolute; top: 100%; right: 0; margin-top: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; min-width: 200px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;">
-              <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
-                <div style="font-size: 0.9rem; color: var(--text-secondary);">Current Team</div>
-                <div id="account-menu-team-name" style="font-weight: 500; margin-top: 0.25rem;"></div>
+            <div id="account-menu" class="hidden" style="position: absolute; top: 100%; right: 0; margin-top: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; min-width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;">
+              <div id="account-menu-team-section" style="padding: 0.5rem;">
+                <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Current Team</div>
+                <div id="account-menu-team-name" style="font-weight: 500; margin-bottom: 0.75rem;"></div>
+                <div id="team-switcher-container" style="display: none;">
+                  <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Switch Team</div>
+                  <div id="team-switcher-list" style="display: flex; flex-direction: column; gap: 0.25rem; max-height: 200px; overflow-y: auto;">
+                    <!-- Teams will be populated here -->
+                  </div>
+                </div>
               </div>
-              <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
-                <div style="font-size: 0.85rem; color: var(--text-muted);">To switch teams, sign out and sign in with a different email account.</div>
+              <div id="account-menu-actions-section" style="padding: 0.5rem;">
+                <button id="btn-create-team" class="btn small secondary" style="width: 100%; margin-bottom: 0.5rem;"><i class="fa-solid fa-plus"></i> Create Team</button>
+                <button id="btn-logout-menu" class="btn small ghost" style="width: 100%;"><i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out</button>
               </div>
-              <button id="btn-switch-account" class="btn small secondary" style="width: 100%;">Switch Account</button>
             </div>
           </div>
-          <button id="btn-logout" class="btn ghost"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
         </div>
       </div>
     </header>
@@ -87,6 +92,15 @@
           </button>
         </form>
         <p class="muted small-text" id="password-setup-message"></p>
+      </section>
+
+      <section id="empty-state" class="card hidden" style="max-width: 600px; margin: 2rem auto; text-align: center;">
+        <h2>No Teams</h2>
+        <p class="muted" style="margin-bottom: 2rem;">You're not a member of any teams yet.</p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+          <button id="btn-create-team-empty" class="btn primary"><i class="fa-solid fa-plus"></i> Create a Team</button>
+          <p class="muted" style="margin: 0; display: flex; align-items: center;">or ask someone to invite you</p>
+        </div>
       </section>
 
       <section id="dashboard" class="hidden">
@@ -500,10 +514,10 @@
             Email
             <input type="email" id="invite-email" placeholder="email@mcaschool.net" required />
           </label>
-          <label>
+          <label id="invite-name-label" class="hidden">
             Full Name
             <input type="text" id="invite-name" placeholder="John Doe" />
-            <p class="muted small-text">We'll use this to create their profile when they sign in</p>
+            <p class="muted small-text">They'll receive an email invite to create their account and join the team.</p>
           </label>
           <div class="modal-actions">
             <button type="button" class="btn ghost" id="cancel-invite">Cancel</button>
@@ -511,6 +525,25 @@
           </div>
         </form>
         <p class="muted small-text" id="invite-message"></p>
+      </div>
+    </div>
+
+    <div id="in-app-invite-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Invite Existing User</h3>
+          <button class="icon-btn" id="close-in-app-invite-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <div>
+          <p id="in-app-invite-message"></p>
+          <div class="modal-actions" style="margin-top: 1.5rem;">
+            <button type="button" class="btn ghost" id="cancel-in-app-invite">Cancel</button>
+            <button type="button" class="btn primary" id="confirm-in-app-invite">Send Invite</button>
+          </div>
+        </div>
+        <p class="muted small-text" id="in-app-invite-status"></p>
       </div>
     </div>
 
@@ -554,6 +587,29 @@
             <button type="submit" class="btn primary">Save</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div id="create-team-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Create New Team</h3>
+          <button class="icon-btn" id="close-create-team-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <form id="create-team-form">
+          <label>
+            Team Name
+            <input type="text" id="create-team-input" placeholder="Enter team name" required autocomplete="off" />
+          </label>
+          <p class="muted small-text">You'll be the owner of this team and can invite members.</p>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-create-team">Cancel</button>
+            <button type="submit" class="btn primary">Create Team</button>
+          </div>
+        </form>
+        <p class="muted small-text" id="create-team-message"></p>
       </div>
     </div>
 

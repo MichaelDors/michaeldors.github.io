@@ -52,6 +52,8 @@ const state = {
   currentSongDetailsId: null, // Track which song is open in details modal
   isPasswordSetup: isInviteLink, // Set flag immediately if this is an invite link
   isMemberView: false, // Track if manager is viewing as member
+  currentTeamId: null, // Current team the user is viewing/working with
+  userTeams: [], // Array of all teams the user is a member of
   metronome: {
     isPlaying: false,
     bpm: null,
@@ -63,7 +65,6 @@ const state = {
 const el = (id) => document.getElementById(id);
 const authGate = el("auth-gate");
 const dashboard = el("dashboard");
-const logoutBtn = el("btn-logout");
 const userInfo = el("user-info");
 const userName = el("user-name");
 const createSetBtn = el("btn-create-set");
@@ -363,8 +364,6 @@ function bindEvents() {
   console.log('  - authSubmitBtn element:', authSubmitBtn);
   
   authForm?.addEventListener("submit", handleAuth);
-  // No signup functionality - users must be invited by a manager
-  logoutBtn?.addEventListener("click", () => supabase.auth.signOut());
   
   // Toggle signup mode for team leaders
   const toggleSignupBtn = el("toggle-signup");
@@ -411,8 +410,32 @@ function bindEvents() {
     });
   });
   
-  el("btn-switch-account")?.addEventListener("click", () => {
+  // Account menu buttons
+  el("btn-create-team")?.addEventListener("click", () => {
+    el("account-menu")?.classList.add("hidden");
+    openCreateTeamModal();
+  });
+  
+  // Empty state create team button
+  el("btn-create-team-empty")?.addEventListener("click", () => {
+    openCreateTeamModal();
+  });
+  
+  el("btn-logout-menu")?.addEventListener("click", () => {
     supabase.auth.signOut();
+  });
+  
+  // Team switcher - handled in updateTeamSwitcher via click events
+  
+  // Create team modal
+  el("create-team-form")?.addEventListener("submit", handleCreateTeamSubmit);
+  el("cancel-create-team")?.addEventListener("click", () => {
+    el("create-team-modal")?.classList.add("hidden");
+    document.body.style.overflow = "";
+  });
+  el("close-create-team-modal")?.addEventListener("click", () => {
+    el("create-team-modal")?.classList.add("hidden");
+    document.body.style.overflow = "";
   });
   
   // Password setup form
@@ -459,6 +482,8 @@ function bindEvents() {
   });
   el("close-invite-modal")?.addEventListener("click", () => closeInviteModal());
   el("cancel-invite")?.addEventListener("click", () => closeInviteModal());
+  
+  // In-app invite modal
   el("invite-form")?.addEventListener("submit", handleInviteSubmit);
   el("close-edit-person-modal")?.addEventListener("click", () => closeEditPersonModal());
   el("cancel-edit-person")?.addEventListener("click", () => closeEditPersonModal());
@@ -705,10 +730,17 @@ function showApp() {
     return;
   }
   
+  // Check if user has no teams - show empty state
+  if (!state.currentTeamId || state.userTeams.length === 0) {
+    showEmptyState();
+    return;
+  }
+  
   // Force hide auth gate, password setup gate, and show dashboard
   authGateEl.classList.add("hidden");
   if (passwordSetupGateEl) passwordSetupGateEl.classList.add("hidden");
   dashboardEl.classList.remove("hidden");
+  el("empty-state")?.classList.add("hidden");
   
   // Ensure set detail view is hidden when showing dashboard
   hideSetDetail();
@@ -725,17 +757,15 @@ function showApp() {
     userNameEl.textContent = state.profile?.full_name ?? "Signed In";
   }
   
-  // Update account menu team name
-  const accountMenuTeamName = el("account-menu-team-name");
-  if (accountMenuTeamName && state.profile?.team?.name) {
-    accountMenuTeamName.textContent = state.profile.team.name;
-  }
+  // Update team switcher
+  updateTeamSwitcher();
   
   // Update team name in People tab
   const teamNameDisplay = el("team-name-display");
   const teamInfoSection = el("team-info-section");
-  if (teamNameDisplay && state.profile?.team?.name) {
-    teamNameDisplay.textContent = state.profile.team.name;
+  const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+  if (teamNameDisplay && currentTeam) {
+    teamNameDisplay.textContent = currentTeam.name;
     if (teamInfoSection) teamInfoSection.classList.remove("hidden");
   } else if (teamInfoSection) {
     teamInfoSection.classList.add("hidden");
@@ -807,6 +837,30 @@ function showApp() {
   }
 }
 
+function showEmptyState() {
+  const authGateEl = el("auth-gate");
+  const passwordSetupGateEl = el("password-setup-gate");
+  const dashboardEl = el("dashboard");
+  const emptyStateEl = el("empty-state");
+  const userInfoEl = el("user-info");
+  const userNameEl = el("user-name");
+  
+  if (!emptyStateEl) return;
+  
+  // Hide auth gate, password setup gate, dashboard
+  if (authGateEl) authGateEl.classList.add("hidden");
+  if (passwordSetupGateEl) passwordSetupGateEl.classList.add("hidden");
+  if (dashboardEl) dashboardEl.classList.add("hidden");
+  
+  // Show empty state and user info
+  emptyStateEl.classList.remove("hidden");
+  if (userInfoEl) userInfoEl.classList.remove("hidden");
+  if (userNameEl) userNameEl.textContent = state.profile?.full_name ?? "Signed In";
+  
+  // Update team switcher
+  updateTeamSwitcher();
+}
+
 function resetState() {
   state.profile = null;
   state.sets = [];
@@ -815,6 +869,8 @@ function resetState() {
   state.pendingInvites = [];
   state.selectedSet = null;
   state.currentSetSongs = [];
+  state.currentTeamId = null;
+  state.userTeams = [];
   setsList.innerHTML = "";
 }
 
@@ -1032,7 +1088,28 @@ async function handleAuth(event) {
       return;
     }
     
-    // Step 3: Update profile with team_id
+    // Step 3: Add user to team_members as owner
+    const { error: teamMemberError } = await supabase
+      .from("team_members")
+      .insert({
+        team_id: teamData.id,
+        user_id: signUpData.user.id,
+        role: 'owner',
+        is_owner: true,
+        can_manage: true
+      });
+    
+    if (teamMemberError) {
+      console.error('Team member creation error:', teamMemberError);
+      // Clean up: delete both profile and team
+      await supabase.from("teams").delete().eq("id", teamData.id);
+      await supabase.from("profiles").delete().eq("id", signUpData.user.id);
+      setAuthMessage("Account and team created but team membership failed. Please contact support.", true);
+      toggleAuthButton(false);
+      return;
+    }
+    
+    // Step 4: Update profile with team_id
     // Use RPC function to update profile since user might not have a session yet
     const { error: updateProfileFunctionError } = await supabase
       .rpc('update_profile_team_id', {
@@ -1055,7 +1132,8 @@ async function handleAuth(event) {
     
     if (updateProfileError) {
       console.error('Profile update error:', updateProfileError);
-      // Clean up: delete both profile and team
+      // Clean up: delete team_members, team, and profile
+      await supabase.from("team_members").delete().eq("team_id", teamData.id).eq("user_id", signUpData.user.id);
       await supabase.from("teams").delete().eq("id", teamData.id);
       await supabase.from("profiles").delete().eq("id", signUpData.user.id);
       setAuthMessage("Account and team created but profile update failed. Please contact support.", true);
@@ -1351,6 +1429,55 @@ async function createProfileAndMigrateInvites(user) {
     state.profile = newProfile;
   }
   
+  // Add user to team_members if they have a team_id
+  if (teamId) {
+    console.log('👥 Adding user to team_members for team:', teamId);
+    
+    // Use RPC function to bypass RLS (similar to invite flow)
+    const { error: teamMemberError } = await supabase
+      .rpc('add_team_member', {
+        p_team_id: teamId,
+        p_user_id: user.id,
+        p_role: 'member',
+        p_is_owner: false,
+        p_can_manage: false
+      });
+    
+    if (teamMemberError && (teamMemberError.code === '42883' || teamMemberError.message?.includes('function'))) {
+      // Function doesn't exist, try direct insert
+      console.log('⚠️ add_team_member function not available, trying direct insert...');
+      const { error: directError } = await supabase
+        .from("team_members")
+        .insert({
+          team_id: teamId,
+          user_id: user.id,
+          role: 'member',
+          is_owner: false,
+          can_manage: false
+        });
+      
+      if (directError) {
+        // If error is because user is already a member, that's okay
+        if (directError.code !== '23505') { // Unique violation
+          console.error('❌ Error adding user to team_members:', directError);
+        } else {
+          console.log('✅ User already in team_members');
+        }
+      } else {
+        console.log('✅ User added to team_members (direct insert)');
+      }
+    } else if (teamMemberError) {
+      // If error is because user is already a member, that's okay
+      if (teamMemberError.code !== '23505') { // Unique violation
+        console.error('❌ Error adding user to team_members:', teamMemberError);
+      } else {
+        console.log('✅ User already in team_members');
+      }
+    } else {
+      console.log('✅ User added to team_members (via RPC)');
+    }
+  }
+  
   // Migrate assignments from pending_invite to the new profile
   if (pendingInvite) {
     console.log('🔄 Migrating assignments from pending invite:', pendingInvite.id);
@@ -1554,6 +1681,10 @@ async function fetchProfile() {
         console.error('  - This user cannot access any data. They need to be assigned to a team.');
       }
     }
+    
+    // Fetch user teams and set current team
+    await fetchUserTeams();
+    
   } catch (err) {
     console.error('  - ❌ Unexpected error in fetchProfile:', err);
     // Use fallback profile
@@ -1568,19 +1699,300 @@ async function fetchProfile() {
   console.log('  - ✅ fetchProfile() completed. Final state.profile:', state.profile);
 }
 
+async function fetchUserTeams() {
+  console.log('👥 fetchUserTeams() called');
+  
+  if (!state.session?.user?.id) {
+    console.error('  - ❌ No session or user ID');
+    return;
+  }
+  
+  try {
+    // Fetch all teams the user is a member of
+    const { data: teamMembers, error } = await supabase
+      .from("team_members")
+      .select(`
+        team_id,
+        role,
+        is_owner,
+        can_manage,
+        team:team_id (
+          id,
+          name,
+          owner_id
+        )
+      `)
+      .eq("user_id", state.session.user.id)
+      .order("joined_at", { ascending: true });
+    
+    if (error) {
+      console.error('  - ❌ Error fetching user teams:', error);
+      console.log('  - ⚠️ Falling back to profile.team_id (migration may not be run yet)');
+      
+      // Fallback: use profile.team_id if available (backward compatibility)
+      if (state.profile?.team_id) {
+        state.currentTeamId = state.profile.team_id;
+        state.userTeams = [{
+          id: state.profile.team_id,
+          name: state.profile.team?.name || 'Unknown Team',
+          role: state.profile.is_owner ? 'owner' : (state.profile.can_manage ? 'manager' : 'member'),
+          is_owner: state.profile.is_owner || false,
+          can_manage: state.profile.can_manage || false,
+        }];
+        console.log('  - ✅ Using profile.team_id as fallback:', state.currentTeamId);
+        updateTeamSwitcher();
+      } else {
+        state.currentTeamId = null;
+        console.log('  - ⚠️ No team_id available');
+      }
+      return;
+    }
+    
+    state.userTeams = (teamMembers || []).map(tm => ({
+      id: tm.team_id,
+      name: tm.team?.name || 'Unknown Team',
+      role: tm.role,
+      is_owner: tm.is_owner,
+      can_manage: tm.can_manage,
+    }));
+    
+    console.log('  - ✅ Found', state.userTeams.length, 'teams');
+    console.log('  - Teams:', state.userTeams.map(t => t.name));
+    
+    // Set current team: use profile.team_id if it exists and user is member, otherwise use first team
+    if (state.profile?.team_id) {
+      const profileTeam = state.userTeams.find(t => t.id === state.profile.team_id);
+      if (profileTeam) {
+        state.currentTeamId = state.profile.team_id;
+        console.log('  - ✅ Using profile team_id as current team:', profileTeam.name);
+      } else if (state.userTeams.length > 0) {
+        // Profile has team_id but user is not a member (shouldn't happen, but handle it)
+        state.currentTeamId = state.userTeams[0].id;
+        console.log('  - ⚠️ Profile team_id not in user teams, using first team');
+      }
+    } else if (state.userTeams.length > 0) {
+      state.currentTeamId = state.userTeams[0].id;
+      console.log('  - ✅ No profile team_id, using first team:', state.userTeams[0].name);
+    } else {
+      state.currentTeamId = null;
+      console.log('  - ⚠️ User is not a member of any teams');
+    }
+    
+    // Update team switcher UI
+    updateTeamSwitcher();
+    
+  } catch (err) {
+    console.error('  - ❌ Unexpected error in fetchUserTeams:', err);
+    
+    // Fallback: use profile.team_id if available
+    if (state.profile?.team_id) {
+      state.currentTeamId = state.profile.team_id;
+      state.userTeams = [{
+        id: state.profile.team_id,
+        name: state.profile.team?.name || 'Unknown Team',
+        role: state.profile.is_owner ? 'owner' : (state.profile.can_manage ? 'manager' : 'member'),
+        is_owner: state.profile.is_owner || false,
+        can_manage: state.profile.can_manage || false,
+      }];
+      console.log('  - ✅ Using profile.team_id as fallback after error:', state.currentTeamId);
+      updateTeamSwitcher();
+    } else {
+      state.currentTeamId = null;
+      console.log('  - ⚠️ No team_id available after error');
+    }
+  }
+}
+
+async function switchTeam(teamId) {
+  console.log('🔄 switchTeam() called with teamId:', teamId);
+  
+  if (!teamId) {
+    console.error('  - ❌ No teamId provided');
+    return;
+  }
+  
+  // Verify user is a member of this team
+  const team = state.userTeams.find(t => t.id === teamId);
+  if (!team) {
+    console.error('  - ❌ User is not a member of team:', teamId);
+    return;
+  }
+  
+  // Update current team
+  state.currentTeamId = teamId;
+  
+  // Update profile.team_id (for backward compatibility and default team)
+  if (state.profile) {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ team_id: teamId })
+      .eq("id", state.session.user.id);
+    
+    if (error) {
+      console.error('  - ❌ Error updating profile team_id:', error);
+    } else {
+      state.profile.team_id = teamId;
+      console.log('  - ✅ Updated profile team_id');
+    }
+  }
+  
+  // Reload all data for the new team
+  console.log('  - 🔄 Reloading data for new team...');
+  await Promise.all([loadSongs(), loadSets(), loadPeople()]);
+  
+  // Refresh UI
+  refreshActiveTab();
+  updateTeamSwitcher();
+  showApp();
+  
+  console.log('  - ✅ Team switched to:', team.name);
+}
+
+function updateTeamSwitcher() {
+  const teamSwitcherContainer = el("team-switcher-container");
+  const teamSwitcherList = el("team-switcher-list");
+  const accountMenuTeamName = el("account-menu-team-name");
+  const accountMenuTeamSection = el("account-menu-team-section");
+  const accountMenuActionsSection = el("account-menu-actions-section");
+  
+  if (!teamSwitcherContainer || !teamSwitcherList) return;
+  
+  const hasMultipleTeams = state.userTeams.length > 1;
+  
+  // Show switcher if user has multiple teams
+  if (hasMultipleTeams) {
+    teamSwitcherContainer.style.display = "block";
+    
+    // Clear and populate custom list
+    teamSwitcherList.innerHTML = "";
+    state.userTeams.forEach(team => {
+      const teamItem = document.createElement("div");
+      teamItem.className = "team-switcher-item";
+      teamItem.dataset.teamId = team.id;
+      teamItem.style.cssText = `
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+      `;
+      
+      // Highlight current team
+      if (team.id === state.currentTeamId) {
+        teamItem.style.backgroundColor = "var(--accent-color)";
+        teamItem.style.color = "var(--bg-primary)";
+      } else {
+        teamItem.style.backgroundColor = "transparent";
+        teamItem.style.color = "var(--text-primary)";
+      }
+      
+      // Hover effect
+      teamItem.addEventListener("mouseenter", () => {
+        if (team.id !== state.currentTeamId) {
+          teamItem.style.backgroundColor = "var(--bg-primary)";
+        }
+      });
+      teamItem.addEventListener("mouseleave", () => {
+        if (team.id !== state.currentTeamId) {
+          teamItem.style.backgroundColor = "transparent";
+        }
+      });
+      
+      // Team name and role
+      const teamInfo = document.createElement("div");
+      teamInfo.style.cssText = "flex: 1; min-width: 0;";
+      
+      const teamName = document.createElement("div");
+      teamName.textContent = team.name;
+      teamName.style.cssText = "font-weight: 500; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
+      
+      const teamRole = document.createElement("div");
+      teamRole.textContent = team.is_owner ? "Owner" : (team.can_manage ? "Manager" : "Member");
+      teamRole.style.cssText = "font-size: 0.75rem; opacity: 0.7; margin-top: 0.125rem;";
+      
+      teamInfo.appendChild(teamName);
+      teamInfo.appendChild(teamRole);
+      
+      // Checkmark for current team
+      if (team.id === state.currentTeamId) {
+        const checkmark = document.createElement("i");
+        checkmark.className = "fa-solid fa-check";
+        checkmark.style.cssText = "font-size: 0.85rem;";
+        teamItem.appendChild(teamInfo);
+        teamItem.appendChild(checkmark);
+      } else {
+        teamItem.appendChild(teamInfo);
+      }
+      
+      // Leave team button (always show, but will be disabled if only owner)
+      const leaveBtn = document.createElement("button");
+      leaveBtn.className = "btn ghost small";
+      leaveBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+      leaveBtn.style.cssText = "padding: 0.25rem 0.5rem; min-width: auto; opacity: 0.6;";
+      leaveBtn.title = "Leave team";
+      leaveBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await leaveTeam(team.id, team.name);
+      });
+      teamItem.appendChild(leaveBtn);
+      
+      // Click handler
+      teamItem.addEventListener("click", async () => {
+        if (team.id !== state.currentTeamId) {
+          await switchTeam(team.id);
+          // Close menu after switching
+          el("account-menu")?.classList.add("hidden");
+        }
+      });
+      
+      teamSwitcherList.appendChild(teamItem);
+    });
+  } else {
+    teamSwitcherContainer.style.display = "none";
+  }
+  
+  // Hide dividers if user only has one team
+  if (accountMenuTeamSection && accountMenuActionsSection) {
+    if (hasMultipleTeams) {
+      accountMenuTeamSection.style.borderBottom = "1px solid var(--border-color)";
+      accountMenuTeamSection.style.marginBottom = "0.5rem";
+      accountMenuActionsSection.style.borderTop = "1px solid var(--border-color)";
+      accountMenuActionsSection.style.marginTop = "0.5rem";
+    } else {
+      accountMenuTeamSection.style.borderBottom = "none";
+      accountMenuTeamSection.style.marginBottom = "0";
+      accountMenuActionsSection.style.borderTop = "none";
+      accountMenuActionsSection.style.marginTop = "0";
+    }
+  }
+  
+  // Update current team name display
+  if (accountMenuTeamName) {
+    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+    if (currentTeam) {
+      accountMenuTeamName.textContent = currentTeam.name;
+    } else if (state.profile?.team?.name) {
+      accountMenuTeamName.textContent = state.profile.team.name;
+    } else {
+      accountMenuTeamName.textContent = "No Team";
+    }
+  }
+}
+
 async function loadSongs() {
   console.log('🎵 loadSongs() called');
-  console.log('  - state.profile:', state.profile);
-  console.log('  - state.profile?.team_id:', state.profile?.team_id);
+  console.log('  - state.currentTeamId:', state.currentTeamId);
   
-  if (!state.profile?.team_id) {
-    console.warn('⚠️ No team_id in profile, cannot load songs');
-    console.warn('  - Profile object:', JSON.stringify(state.profile, null, 2));
+  if (!state.currentTeamId) {
+    console.warn('⚠️ No currentTeamId, cannot load songs');
     state.songs = [];
     return;
   }
   
-  console.log('  - Loading songs for team_id:', state.profile.team_id);
+  console.log('  - Loading songs for team_id:', state.currentTeamId);
   
   // First, test if we can query songs at all (check RLS)
   console.log('  - Testing songs query...');
@@ -1594,7 +2006,7 @@ async function loadSongs() {
         url
       )
     `)
-    .eq("team_id", state.profile.team_id)
+    .eq("team_id", state.currentTeamId)
     .order("title");
   
   if (error) {
@@ -1621,17 +2033,16 @@ async function loadSongs() {
 
 async function loadSets() {
   console.log('📋 loadSets() called');
-  console.log('  - state.profile?.team_id:', state.profile?.team_id);
+  console.log('  - state.currentTeamId:', state.currentTeamId);
   
-  if (!state.profile?.team_id) {
-    console.warn('⚠️ No team_id in profile, cannot load sets');
-    console.warn('  - Profile object:', JSON.stringify(state.profile, null, 2));
+  if (!state.currentTeamId) {
+    console.warn('⚠️ No currentTeamId, cannot load sets');
     state.sets = [];
     renderSets();
     return;
   }
   
-  console.log('  - Loading sets for team_id:', state.profile.team_id);
+  console.log('  - Loading sets for team_id:', state.currentTeamId);
   console.log('  - Testing sets query...');
   
   // Try to load with service/rehearsal times first
@@ -1684,7 +2095,7 @@ async function loadSets() {
       )
     `
     )
-    .eq("team_id", state.profile.team_id)
+    .eq("team_id", state.currentTeamId)
     .order("scheduled_date", { ascending: true });
 
   // If error is due to missing tables (service_times or rehearsal_times), fall back to query without them
@@ -1731,7 +2142,7 @@ async function loadSets() {
         )
       `
       )
-      .eq("team_id", state.profile.team_id)
+      .eq("team_id", state.currentTeamId)
       .order("scheduled_date", { ascending: true });
     
     console.log('  - Fallback query result - error:', fallbackResult.error?.code || 'none');
@@ -1758,7 +2169,7 @@ async function loadSets() {
     console.error("  - Error code:", error.code);
     console.error("  - Error message:", error.message);
     console.error("  - Error details:", JSON.stringify(error, null, 2));
-    console.error("  - Query was for team_id:", state.profile.team_id);
+    console.error("  - Query was for team_id:", state.currentTeamId);
     state.sets = [];
     renderSets();
     return;
@@ -2104,18 +2515,17 @@ function refreshActiveTab() {
 
 async function loadPeople() {
   console.log('👥 loadPeople() called');
-  console.log('  - state.profile?.team_id:', state.profile?.team_id);
+  console.log('  - state.currentTeamId:', state.currentTeamId);
   
-  if (!state.profile?.team_id) {
-    console.warn('⚠️ No team_id in profile, cannot load people');
-    console.warn('  - Profile object:', JSON.stringify(state.profile, null, 2));
+  if (!state.currentTeamId) {
+    console.warn('⚠️ No currentTeamId, cannot load people');
     state.people = [];
     state.pendingInvites = [];
     renderPeople();
     return;
   }
   
-  console.log('  - Loading people for team_id:', state.profile.team_id);
+  console.log('  - Loading people for team_id:', state.currentTeamId);
   const [
     { data: profiles, error: profilesError },
     { data: pendingInvites, error: pendingError },
@@ -2123,12 +2533,12 @@ async function loadPeople() {
     supabase
       .from("profiles")
       .select("*")
-      .eq("team_id", state.profile.team_id)
+      .eq("team_id", state.currentTeamId)
       .order("full_name"),
     supabase
       .from("pending_invites")
       .select("*")
-      .eq("team_id", state.profile.team_id)
+      .eq("team_id", state.currentTeamId)
       .is("resolved_at", null)
       .order("full_name", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true }),
@@ -2158,8 +2568,9 @@ function renderPeople() {
   // Update team name display when rendering people
   const teamNameDisplay = el("team-name-display");
   const teamInfoSection = el("team-info-section");
-  if (teamNameDisplay && state.profile?.team?.name) {
-    teamNameDisplay.textContent = state.profile.team.name;
+  const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+  if (teamNameDisplay && currentTeam) {
+    teamNameDisplay.textContent = currentTeam.name;
     if (teamInfoSection) teamInfoSection.classList.remove("hidden");
   } else if (teamInfoSection) {
     teamInfoSection.classList.add("hidden");
@@ -3437,7 +3848,7 @@ async function handleSetSubmit(event) {
     title: el("set-title").value,
     scheduled_date: el("set-date").value,
     description: el("set-description").value,
-    team_id: state.profile.team_id,
+    team_id: state.currentTeamId,
   };
 
   // Only include created_by when creating a new set
@@ -3451,7 +3862,7 @@ async function handleSetSubmit(event) {
       .from("sets")
       .update(payload)
       .eq("id", editingSetId)
-      .eq("team_id", state.profile.team_id)
+      .eq("team_id", state.currentTeamId)
       .select()
       .single();
   } else {
@@ -3778,7 +4189,7 @@ async function handleAddSongToSet(event) {
       song_id: songId,
       notes,
       sequence_order: currentSequenceOrder,
-      team_id: state.profile.team_id,
+      team_id: state.currentTeamId,
     })
     .select()
     .single();
@@ -3800,7 +4211,7 @@ async function handleAddSongToSet(event) {
           person_name: assignment.person_name || null,
           person_email: assignment.person_email || null,
           set_song_id: setSong.id,
-          team_id: state.profile.team_id,
+          team_id: state.currentTeamId,
         }))
       );
     if (assignmentError) {
@@ -3845,7 +4256,7 @@ async function handleAddSectionToSet(event) {
       description: description || null,
       notes: notes || null,
       sequence_order: currentSequenceOrder,
-      team_id: state.profile.team_id,
+      team_id: state.currentTeamId,
     })
     .select()
     .single();
@@ -3867,7 +4278,7 @@ async function handleAddSectionToSet(event) {
           person_name: assignment.person_name || null,
           person_email: assignment.person_email || null,
           set_song_id: setSong.id,
-          team_id: state.profile.team_id,
+          team_id: state.currentTeamId,
         }))
       );
     if (assignmentError) {
@@ -4450,7 +4861,7 @@ async function handleEditSetSongSubmit(event) {
           person_name: assignment.person_name || null,
           person_email: assignment.person_email || null,
           set_song_id: setSongId,
-          team_id: state.profile.team_id,
+          team_id: state.currentTeamId,
         }))
       );
   }
@@ -4540,7 +4951,7 @@ async function deleteSet(set) {
         .from("sets")
         .delete()
         .eq("id", set.id)
-        .eq("team_id", state.profile.team_id);
+        .eq("team_id", state.currentTeamId);
       
       if (error) {
         console.error(error);
@@ -4572,7 +4983,7 @@ async function deleteSong(songId) {
         .from("songs")
         .delete()
         .eq("id", songId)
-        .eq("team_id", state.profile.team_id);
+        .eq("team_id", state.currentTeamId);
       
       if (error) {
         console.error(error);
@@ -4612,10 +5023,61 @@ function openInviteModal(prefilledName = null) {
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   el("invite-form").reset();
+  
+  // Hide name field initially
+  const nameLabel = el("invite-name-label");
+  if (nameLabel) {
+    nameLabel.classList.add("hidden");
+  }
+  const nameInput = el("invite-name");
+  if (nameInput) {
+    nameInput.removeAttribute("required");
+  }
+  
   if (prefilledName) {
-    el("invite-name").value = prefilledName;
+    if (nameInput) nameInput.value = prefilledName;
   }
   el("invite-message").textContent = "";
+  
+  // Set up email check listener on blur
+  const emailInput = el("invite-email");
+  if (emailInput) {
+    // Use a one-time blur listener that checks the email
+    const blurHandler = async () => {
+      const email = emailInput.value.trim();
+      if (email) {
+        await checkEmailForInvite(email);
+      }
+      emailInput.removeEventListener("blur", blurHandler);
+    };
+    emailInput.addEventListener("blur", blurHandler);
+    
+    // Also check on input with debounce
+    let emailCheckTimeout;
+    const inputHandler = async (e) => {
+      clearTimeout(emailCheckTimeout);
+      const email = e.target.value.trim().toLowerCase();
+      
+      if (!email || !email.includes("@")) {
+        if (nameLabel) nameLabel.classList.add("hidden");
+        if (nameInput) nameInput.removeAttribute("required");
+        const messageEl = el("invite-message");
+        if (messageEl) {
+          messageEl.textContent = "";
+          messageEl.classList.remove("error-text", "muted");
+        }
+        return;
+      }
+      
+      emailCheckTimeout = setTimeout(async () => {
+        await checkEmailForInvite(email);
+      }, 500); // Debounce for 500ms
+    };
+    
+    // Store handler so we can remove it later if needed
+    emailInput.dataset.inviteEmailHandler = "true";
+    emailInput.addEventListener("input", inputHandler);
+  }
 }
 
 function closeInviteModal() {
@@ -4624,6 +5086,59 @@ function closeInviteModal() {
   document.body.style.overflow = "";
   el("invite-form").reset();
   el("invite-message").textContent = "";
+  
+  // Hide name field
+  const nameLabel = el("invite-name-label");
+  if (nameLabel) {
+    nameLabel.classList.add("hidden");
+  }
+  const nameInput = el("invite-name");
+  if (nameInput) {
+    nameInput.removeAttribute("required");
+  }
+}
+
+async function checkEmailForInvite(email) {
+  if (!email || !email.includes("@")) return;
+  
+  const normalizedEmail = email.toLowerCase();
+  const nameLabel = el("invite-name-label");
+  const nameInput = el("invite-name");
+  const messageEl = el("invite-message");
+  
+  // Check if user exists
+  const { data: existingProfile, error: existingProfileError } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+  
+  if (existingProfileError && existingProfileError.code !== "PGRST116") {
+    console.error("Error checking existing profile:", existingProfileError);
+    return;
+  }
+  
+  if (existingProfile) {
+    // User exists - hide name field
+    if (nameLabel) nameLabel.classList.add("hidden");
+    if (nameInput) {
+      nameInput.removeAttribute("required");
+      nameInput.value = ""; // Clear name since we don't need it
+    }
+    if (messageEl) {
+      messageEl.textContent = `${existingProfile.full_name || email} already has an account. They'll be added to the team.`;
+      messageEl.classList.remove("error-text");
+      messageEl.classList.add("muted");
+    }
+  } else {
+    // User doesn't exist - show name field
+    if (nameLabel) nameLabel.classList.remove("hidden");
+    if (nameInput) nameInput.setAttribute("required", "required");
+    if (messageEl) {
+      messageEl.textContent = "";
+      messageEl.classList.remove("error-text", "muted");
+    }
+  }
 }
 
 async function handleInviteSubmit(event) {
@@ -4631,7 +5146,8 @@ async function handleInviteSubmit(event) {
   if (!isManager()) return;
   
   const email = el("invite-email").value.trim();
-  const name = el("invite-name").value.trim();
+  const nameInput = el("invite-name");
+  const name = nameInput ? nameInput.value.trim() : "";
   const messageEl = el("invite-message");
   
   if (!email) {
@@ -4642,6 +5158,16 @@ async function handleInviteSubmit(event) {
   }
   
   const normalizedEmail = email.toLowerCase();
+  
+  // Check if name is required (user doesn't have account)
+  const nameLabel = el("invite-name-label");
+  const nameIsVisible = nameLabel && !nameLabel.classList.contains("hidden");
+  if (nameIsVisible && !name) {
+    messageEl.textContent = "Please enter a name for the new user.";
+    messageEl.classList.add("error-text");
+    messageEl.classList.remove("muted");
+    return;
+  }
 
   // Prevent inviting someone who already has an account
   const { data: existingProfile, error: existingProfileError } = await supabase
@@ -4658,10 +5184,74 @@ async function handleInviteSubmit(event) {
     return;
   }
 
+  // Check if user already exists
   if (existingProfile) {
-    messageEl.textContent = `${email} is already a member.`;
-    messageEl.classList.add("error-text");
-    messageEl.classList.remove("muted");
+    // Check if they're already in this team
+    const { data: existingMember } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", existingProfile.id)
+      .eq("team_id", state.currentTeamId)
+      .maybeSingle();
+    
+    if (existingMember) {
+      messageEl.textContent = `${email} is already a member of this team.`;
+      messageEl.classList.add("error-text");
+      messageEl.classList.remove("muted");
+      return;
+    }
+    
+    // User exists but not in this team - automatically add them
+    messageEl.textContent = "Adding user to team...";
+    messageEl.classList.remove("error-text");
+    messageEl.classList.add("muted");
+    
+    // Create pending_invite record (for tracking) - no name needed for existing users
+    await ensurePendingInviteRecord(normalizedEmail, null);
+    
+    // Add user to team_members directly
+    const { error: addError } = await supabase
+      .rpc('add_team_member', {
+        p_team_id: state.currentTeamId,
+        p_user_id: existingProfile.id,
+        p_role: 'member',
+        p_is_owner: false,
+        p_can_manage: false
+      });
+    
+    if (addError && (addError.code === '42883' || addError.message?.includes('function'))) {
+      // Function doesn't exist, try direct insert
+      const { error: directError } = await supabase
+        .from("team_members")
+        .insert({
+          team_id: state.currentTeamId,
+          user_id: existingProfile.id,
+          role: 'member',
+          is_owner: false,
+          can_manage: false
+        });
+      
+      if (directError) {
+        console.error("Error adding user to team:", directError);
+        messageEl.textContent = directError.message || "Unable to add user to team. Please try again.";
+        messageEl.classList.add("error-text");
+        messageEl.classList.remove("muted");
+        return;
+      }
+    } else if (addError) {
+      console.error("Error adding user to team:", addError);
+      messageEl.textContent = addError.message || "Unable to add user to team. Please try again.";
+      messageEl.classList.add("error-text");
+      messageEl.classList.remove("muted");
+      return;
+    }
+    
+    // Success - user added to team
+    await loadPeople();
+    messageEl.textContent = `${email} has been added to the team! They'll see this team in their account.`;
+    messageEl.classList.remove("error-text");
+    messageEl.classList.add("muted");
+    el("invite-form").reset();
     return;
   }
 
@@ -4692,13 +5282,72 @@ async function handleInviteSubmit(event) {
   await ensurePendingInviteRecord(normalizedEmail, name);
   await loadPeople();
   
-  messageEl.textContent = `Invite sent to ${email}! They'll receive an email with a sign-in link. You'll see them listed as pending until they complete signup.`;
+  messageEl.textContent = `Invite sent to ${email}! They'll receive an email to create their account and join the team.`;
   messageEl.classList.remove("error-text");
   messageEl.classList.add("muted");
   el("invite-form").reset();
   
   // Optionally store the invite info for profile creation
   // We'll handle profile creation in fetchProfile when they first sign in
+}
+
+
+async function leaveTeam(teamId, teamName) {
+  if (!teamId) return;
+  
+  // Check if user is the only owner
+  const team = state.userTeams.find(t => t.id === teamId);
+  if (team?.is_owner) {
+    // Check if there are other owners
+    const { data: owners } = await supabase
+      .from("team_members")
+      .select("user_id")
+      .eq("team_id", teamId)
+      .eq("is_owner", true);
+    
+    if (owners && owners.length === 1) {
+      alert("You cannot leave this team because you are the only owner. Please transfer ownership or delete the team instead.");
+      return;
+    }
+  }
+  
+  const confirmed = confirm(`Leave "${teamName}"? You can be re-invited later.`);
+  if (!confirmed) return;
+  
+  const { error } = await supabase
+    .from("team_members")
+    .delete()
+    .eq("team_id", teamId)
+    .eq("user_id", state.session.user.id);
+  
+  if (error) {
+    console.error("Error leaving team:", error);
+    alert("Unable to leave team. Check console.");
+    return;
+  }
+  
+  // Refresh user teams
+  await fetchUserTeams();
+  
+  // If this was the current team, switch to another or show empty state
+  if (teamId === state.currentTeamId) {
+    if (state.userTeams.length > 0) {
+      await switchTeam(state.userTeams[0].id);
+    } else {
+      state.currentTeamId = null;
+      state.sets = [];
+      state.songs = [];
+      state.people = [];
+      refreshActiveTab();
+      showApp();
+    }
+  } else {
+    // Just refresh the switcher
+    updateTeamSwitcher();
+  }
+  
+  // Close menu
+  el("account-menu")?.classList.add("hidden");
 }
 
 async function ensurePendingInviteRecord(email, fullName) {
@@ -4708,7 +5357,7 @@ async function ensurePendingInviteRecord(email, fullName) {
     email: normalizedEmail,
     full_name: fullName || null,
     created_by: state.profile?.id || null,
-    team_id: state.profile?.team_id || null,
+    team_id: state.currentTeamId || null,
   };
   const { error } = await supabase
     .from("pending_invites")
@@ -5385,7 +6034,7 @@ async function handleSongEditSubmit(event) {
     duration_seconds: duration,
     description,
     created_by: state.session.user.id,
-    team_id: state.profile.team_id,
+    team_id: state.currentTeamId,
   };
   
   let response;
@@ -5459,7 +6108,7 @@ async function handleSongEditSubmit(event) {
           title: link.title,
           url: link.url,
           display_order: link.display_order,
-          team_id: state.profile.team_id,
+          team_id: state.currentTeamId,
         }))
       );
   }
@@ -6181,7 +6830,7 @@ async function testTeamAccess() {
   const { data: songsData, error: songsError } = await supabase
     .from("songs")
     .select("id, title, team_id")
-    .eq("team_id", state.profile.team_id)
+    .eq("team_id", state.currentTeamId)
     .limit(5);
   
   console.log('  - Songs query result:');
@@ -6196,7 +6845,7 @@ async function testTeamAccess() {
   const { data: setsData, error: setsError } = await supabase
     .from("sets")
     .select("id, title, team_id")
-    .eq("team_id", state.profile.team_id)
+    .eq("team_id", state.currentTeamId)
     .limit(5);
   
   console.log('  - Sets query result:');
@@ -6232,7 +6881,8 @@ function openRenameTeamModal() {
   
   if (!modal || !input) return;
   
-  const currentTeamName = state.profile?.team?.name || "";
+  const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+  const currentTeamName = currentTeam?.name || "";
   input.value = currentTeamName;
   input.select();
   
@@ -6250,7 +6900,8 @@ async function handleRenameTeamSubmit(e) {
   
   if (!input) return;
   
-  const currentTeamName = state.profile?.team?.name || "Team";
+  const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+  const currentTeamName = currentTeam?.name || "Team";
   const newName = input.value.trim();
   
   if (!newName) {
@@ -6268,7 +6919,7 @@ async function handleRenameTeamSubmit(e) {
   const { error } = await supabase
     .from("teams")
     .update({ name: newName })
-    .eq("id", state.profile.team_id);
+    .eq("id", state.currentTeamId);
   
   if (error) {
     console.error("Error renaming team:", error);
@@ -6277,7 +6928,10 @@ async function handleRenameTeamSubmit(e) {
   }
   
   // Update local state
-  if (state.profile.team) {
+  if (currentTeam) {
+    currentTeam.name = newName;
+  }
+  if (state.profile?.team) {
     state.profile.team.name = newName;
   }
   
@@ -6286,10 +6940,9 @@ async function handleRenameTeamSubmit(e) {
   if (teamNameDisplay) {
     teamNameDisplay.textContent = newName;
   }
-  const accountMenuTeamName = el("account-menu-team-name");
-  if (accountMenuTeamName) {
-    accountMenuTeamName.textContent = newName;
-  }
+  
+  // Refresh team switcher to show updated name
+  updateTeamSwitcher();
   
   // Close modal
   modal?.classList.add("hidden");
@@ -6299,8 +6952,9 @@ async function handleRenameTeamSubmit(e) {
 async function deleteTeam() {
   if (!isOwner()) return;
   
-  const teamName = state.profile?.team?.name || "this team";
-  const message = `Are you sure? This will permanently delete all sets, songs, assignments, and team members. It cannot be undone.`;
+  const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+  const teamName = currentTeam?.name || "this team";
+  const message = `Are you sure? This will permanently delete all sets, songs, assignments, and team members for "${teamName}". It cannot be undone. Your account will not be deleted.`;
   
   showDeleteConfirmModal(
     teamName,
@@ -6309,7 +6963,7 @@ async function deleteTeam() {
       const { error } = await supabase
         .from("teams")
         .delete()
-        .eq("id", state.profile.team_id);
+        .eq("id", state.currentTeamId);
       
       if (error) {
         console.error("Error deleting team:", error);
@@ -6317,11 +6971,218 @@ async function deleteTeam() {
         return;
       }
       
-      // Sign out and redirect to login
-      await supabase.auth.signOut();
-      window.location.reload();
+      // Refresh user teams (removes deleted team)
+      await fetchUserTeams();
+      
+      // If user has other teams, switch to the first one
+      if (state.userTeams.length > 0) {
+        await switchTeam(state.userTeams[0].id);
+      } else {
+        // No teams left - show empty state
+        state.currentTeamId = null;
+        state.sets = [];
+        state.songs = [];
+        state.people = [];
+        refreshActiveTab();
+        showApp();
+      }
     }
   );
+}
+
+function openCreateTeamModal() {
+  const modal = el("create-team-modal");
+  const input = el("create-team-input");
+  const message = el("create-team-message");
+  
+  if (!modal || !input) return;
+  
+  input.value = "";
+  if (message) {
+    message.textContent = "";
+    message.classList.remove("error-text");
+  }
+  
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  input.focus();
+}
+
+async function handleCreateTeamSubmit(e) {
+  e.preventDefault();
+  
+  const modal = el("create-team-modal");
+  const input = el("create-team-input");
+  const message = el("create-team-message");
+  const submitBtn = modal?.querySelector('button[type="submit"]');
+  
+  if (!input) return;
+  
+  const teamName = input.value.trim();
+  
+  if (!teamName) {
+    if (message) {
+      message.textContent = "Team name cannot be empty.";
+      message.classList.add("error-text");
+    }
+    return;
+  }
+  
+  // Disable submit button
+  if (submitBtn) submitBtn.disabled = true;
+  if (message) {
+    message.textContent = "Creating team...";
+    message.classList.remove("error-text");
+  }
+  
+  try {
+    // Create the team (same logic as signup)
+    let teamData;
+    let teamError;
+    
+    // Try using the function first (works even without session)
+    const { data: teamId, error: teamFunctionError } = await supabase
+      .rpc('create_team_for_user', {
+        p_team_name: teamName,
+        p_owner_id: state.session.user.id
+      });
+    
+    // If function doesn't exist or fails, fall back to direct insert
+    if (teamFunctionError && (teamFunctionError.code === '42883' || teamFunctionError.message?.includes('function'))) {
+      console.log('Function not available, trying direct insert...');
+      const { data: directTeamData, error: directTeamError } = await supabase
+        .from("teams")
+        .insert({
+          name: teamName,
+          owner_id: state.session.user.id
+        })
+        .select()
+        .single();
+      
+      teamData = directTeamData;
+      teamError = directTeamError;
+    } else if (teamFunctionError) {
+      // Function exists but returned an error
+      teamError = teamFunctionError;
+    } else if (teamId) {
+      // Function succeeded - construct team data from what we know
+      teamData = {
+        id: teamId,
+        name: teamName,
+        owner_id: state.session.user.id
+      };
+    } else {
+      teamError = new Error('Team creation function returned no ID');
+    }
+    
+    if (teamError) {
+      console.error('Team creation error:', teamError);
+      if (message) {
+        message.textContent = teamError.message || "Unable to create team. Please try again.";
+        message.classList.add("error-text");
+      }
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+    
+    if (!teamData || !teamData.id) {
+      console.error('Team creation failed: No team data returned');
+      if (message) {
+        message.textContent = "Team creation failed. Please try again.";
+        message.classList.add("error-text");
+      }
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+    
+    // Add user to team_members as owner (same pattern as signup)
+    // Try using RPC function first, fallback to direct insert
+    const { data: memberId, error: teamMemberFunctionError } = await supabase
+      .rpc('add_team_member', {
+        p_team_id: teamData.id,
+        p_user_id: state.session.user.id,
+        p_role: 'owner',
+        p_is_owner: true,
+        p_can_manage: true
+      });
+    
+    let teamMemberError = teamMemberFunctionError;
+    
+    // If function doesn't exist, fall back to direct insert
+    if (teamMemberFunctionError && (teamMemberFunctionError.code === '42883' || teamMemberFunctionError.message?.includes('function'))) {
+      console.log('Add team member function not available, trying direct insert...');
+      const { error: directMemberError } = await supabase
+        .from("team_members")
+        .insert({
+          team_id: teamData.id,
+          user_id: state.session.user.id,
+          role: 'owner',
+          is_owner: true,
+          can_manage: true
+        });
+      
+      teamMemberError = directMemberError;
+    }
+    
+    if (teamMemberError) {
+      console.error("Error adding user to team_members:", teamMemberError);
+      // Clean up: delete the team
+      await supabase.from("teams").delete().eq("id", teamData.id);
+      if (message) {
+        message.textContent = "Team created but failed to add you as member. Please try again.";
+        message.classList.add("error-text");
+      }
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+    
+    // Update profile.team_id to the new team (as default)
+    // Use RPC function like signup does
+    const { error: updateProfileFunctionError } = await supabase
+      .rpc('update_profile_team_id', {
+        p_user_id: state.session.user.id,
+        p_team_id: teamData.id
+      });
+    
+    let updateProfileError = updateProfileFunctionError;
+    
+    // If function doesn't exist, fall back to direct update
+    if (updateProfileFunctionError && (updateProfileFunctionError.code === '42883' || updateProfileFunctionError.message?.includes('function'))) {
+      console.log('Update function not available, trying direct update...');
+      const { error: directUpdateError } = await supabase
+        .from("profiles")
+        .update({ team_id: teamData.id })
+        .eq("id", state.session.user.id);
+      
+      updateProfileError = directUpdateError;
+    }
+    
+    if (updateProfileError) {
+      console.error("Error updating profile team_id:", updateProfileError);
+      // Not critical, continue anyway
+    }
+    
+    // Refresh user teams and switch to the new team
+    await fetchUserTeams();
+    await switchTeam(teamData.id);
+    
+    // Close modal
+    modal?.classList.add("hidden");
+    document.body.style.overflow = "";
+    input.value = "";
+    
+    if (message) {
+      message.textContent = "";
+    }
+    
+  } catch (err) {
+    console.error("Unexpected error creating team:", err);
+    if (message) {
+      message.textContent = "An unexpected error occurred. Please try again.";
+      message.classList.add("error-text");
+    }
+    if (submitBtn) submitBtn.disabled = false;
+  }
 }
 
 async function promoteToManager(personId) {
@@ -6336,7 +7197,7 @@ async function promoteToManager(personId) {
     .from("profiles")
     .update({ can_manage: true })
     .eq("id", personId)
-    .eq("team_id", state.profile.team_id);
+    .eq("team_id", state.currentTeamId);
   
   if (error) {
     console.error("Error promoting to manager:", error);
@@ -6360,7 +7221,7 @@ async function demoteFromManager(personId) {
     .from("profiles")
     .update({ can_manage: false })
     .eq("id", personId)
-    .eq("team_id", state.profile.team_id);
+    .eq("team_id", state.currentTeamId);
   
   if (error) {
     console.error("Error demoting manager:", error);
@@ -6392,7 +7253,7 @@ async function transferOwnership(person) {
         .from("profiles")
         .update({ is_owner: true, can_manage: true })
         .eq("id", person.id)
-        .eq("team_id", state.profile.team_id);
+        .eq("team_id", state.currentTeamId);
       
       if (newOwnerError) {
         console.error("Error updating new owner:", newOwnerError);
@@ -6405,7 +7266,7 @@ async function transferOwnership(person) {
         .from("profiles")
         .update({ is_owner: false, can_manage: true })
         .eq("id", state.profile.id)
-        .eq("team_id", state.profile.team_id);
+        .eq("team_id", state.currentTeamId);
       
       if (oldOwnerError) {
         console.error("Error updating old owner:", oldOwnerError);
