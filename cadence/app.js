@@ -376,6 +376,12 @@ function bindEvents() {
   // Team management buttons (owners only)
   el("btn-rename-team")?.addEventListener("click", () => openRenameTeamModal());
   el("btn-delete-team")?.addEventListener("click", () => deleteTeam());
+  el("btn-leave-team")?.addEventListener("click", async () => {
+    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+    if (currentTeam) {
+      await leaveTeam(currentTeam.id, currentTeam.name);
+    }
+  });
   
   // Rename team modal
   el("rename-team-form")?.addEventListener("submit", handleRenameTeamSubmit);
@@ -1927,18 +1933,6 @@ function updateTeamSwitcher() {
         teamItem.appendChild(teamInfo);
       }
       
-      // Leave team button (always show, but will be disabled if only owner)
-      const leaveBtn = document.createElement("button");
-      leaveBtn.className = "btn ghost small";
-      leaveBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-      leaveBtn.style.cssText = "padding: 0.25rem 0.5rem; min-width: auto; opacity: 0.6;";
-      leaveBtn.title = "Leave team";
-      leaveBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        await leaveTeam(team.id, team.name);
-      });
-      teamItem.appendChild(leaveBtn);
-      
       // Click handler
       teamItem.addEventListener("click", async () => {
         if (team.id !== state.currentTeamId) {
@@ -2629,6 +2623,36 @@ function renderPeople() {
     if (teamInfoSection) teamInfoSection.classList.remove("hidden");
   } else if (teamInfoSection) {
     teamInfoSection.classList.add("hidden");
+  }
+  
+  // Show/hide leave team button
+  const leaveTeamBtn = el("btn-leave-team");
+  if (leaveTeamBtn && currentTeam) {
+    // Show leave button if user is not the only owner
+    // We'll check this asynchronously to avoid blocking render
+    (async () => {
+      if (currentTeam.is_owner) {
+        // Check if there are other owners
+        const { data: owners } = await supabase
+          .from("team_members")
+          .select("user_id")
+          .eq("team_id", state.currentTeamId)
+          .eq("is_owner", true);
+        
+        if (owners && owners.length === 1) {
+          // Only owner - hide leave button
+          leaveTeamBtn.classList.add("hidden");
+        } else {
+          // Not the only owner - show leave button
+          leaveTeamBtn.classList.remove("hidden");
+        }
+      } else {
+        // Not an owner - show leave button
+        leaveTeamBtn.classList.remove("hidden");
+      }
+    })();
+  } else if (leaveTeamBtn) {
+    leaveTeamBtn.classList.add("hidden");
   }
   
   const searchInput = el("people-tab-search");
