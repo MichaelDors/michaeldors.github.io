@@ -2526,15 +2526,30 @@ async function loadPeople() {
   }
   
   console.log('  - Loading people for team_id:', state.currentTeamId);
+  
+  // Query team_members and join with profiles to get all team members
   const [
-    { data: profiles, error: profilesError },
+    { data: teamMembers, error: teamMembersError },
     { data: pendingInvites, error: pendingError },
   ] = await Promise.all([
     supabase
-      .from("profiles")
-      .select("*")
+      .from("team_members")
+      .select(`
+        id,
+        role,
+        is_owner,
+        can_manage,
+        joined_at,
+        profile:user_id (
+          id,
+          full_name,
+          email,
+          team_id,
+          created_at
+        )
+      `)
       .eq("team_id", state.currentTeamId)
-      .order("full_name"),
+      .order("joined_at", { ascending: true }),
     supabase
       .from("pending_invites")
       .select("*")
@@ -2544,9 +2559,26 @@ async function loadPeople() {
       .order("created_at", { ascending: true }),
   ]);
 
-  if (profilesError) {
-    console.error("❌ Error loading people:", profilesError);
-    console.error("  - Error details:", JSON.stringify(profilesError, null, 2));
+  if (teamMembersError) {
+    console.error("❌ Error loading team members:", teamMembersError);
+    console.error("  - Error details:", JSON.stringify(teamMembersError, null, 2));
+    
+    // Fallback to old method if team_members table doesn't exist or RLS fails
+    console.log("  - ⚠️ Falling back to profiles query...");
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("team_id", state.currentTeamId)
+      .order("full_name");
+    
+    if (profilesError) {
+      console.error("❌ Error loading people (fallback):", profilesError);
+      return;
+    }
+    
+    state.people = profiles || [];
+    state.pendingInvites = pendingInvites || [];
+    renderPeople();
     return;
   }
 
@@ -2554,6 +2586,29 @@ async function loadPeople() {
     console.error("❌ Error loading pending invites:", pendingError);
     console.error("  - Error details:", JSON.stringify(pendingError, null, 2));
   }
+
+  // Transform team_members data to match expected format
+  const profiles = (teamMembers || [])
+    .map(tm => {
+      const profile = tm.profile;
+      if (!profile) return null;
+      
+      return {
+        ...profile,
+        role: tm.role,
+        is_owner: tm.is_owner,
+        can_manage: tm.can_manage,
+        team_member_id: tm.id,
+        joined_at: tm.joined_at
+      };
+    })
+    .filter(p => p !== null)
+    .sort((a, b) => {
+      // Sort by full_name
+      const nameA = (a.full_name || "").toLowerCase();
+      const nameB = (b.full_name || "").toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
 
   console.log('  - ✅ People loaded:', profiles?.length || 0, 'profiles,', pendingInvites?.length || 0, 'pending invites');
   state.people = profiles || [];
