@@ -7666,24 +7666,8 @@ async function transferOwnership(person) {
     teamName,
     message,
     async () => {
-      // Step 1: Update team_members - new owner becomes owner
-      const { error: newOwnerError } = await supabase
-        .from("team_members")
-        .update({ 
-          is_owner: true,
-          can_manage: true,
-          role: 'owner'
-        })
-        .eq("team_id", state.currentTeamId)
-        .eq("user_id", person.id);
-      
-      if (newOwnerError) {
-        console.error("Error updating new owner in team_members:", newOwnerError);
-        alert("Unable to transfer ownership. Check console.");
-        return;
-      }
-      
-      // Step 2: Update team_members - old owner becomes manager
+      // Step 1: First, update the old owner to become a manager
+      // This must happen first to avoid constraint violations (only one owner at a time)
       const { error: oldOwnerError } = await supabase
         .from("team_members")
         .update({ 
@@ -7696,11 +7680,13 @@ async function transferOwnership(person) {
       
       if (oldOwnerError) {
         console.error("Error updating old owner in team_members:", oldOwnerError);
-        alert("Unable to transfer ownership. Check console.");
+        console.error("Error details:", JSON.stringify(oldOwnerError, null, 2));
+        alert(`Unable to transfer ownership: ${oldOwnerError.message || 'Unknown error'}. Check console.`);
         return;
       }
       
-      // Step 3: Update the team's owner_id
+      // Step 2: Update the team's owner_id first (before updating team_members)
+      // This ensures the team knows who the new owner is
       const { error: teamError } = await supabase
         .from("teams")
         .update({ owner_id: person.id })
@@ -7709,7 +7695,43 @@ async function transferOwnership(person) {
       
       if (teamError) {
         console.error("Error updating team owner_id:", teamError);
-        alert("Unable to transfer ownership. Check console.");
+        console.error("Error details:", JSON.stringify(teamError, null, 2));
+        // Try to revert old owner change
+        await supabase
+          .from("team_members")
+          .update({ is_owner: true, can_manage: true, role: 'owner' })
+          .eq("team_id", state.currentTeamId)
+          .eq("user_id", state.profile.id);
+        alert(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Check console.`);
+        return;
+      }
+      
+      // Step 3: Now update the new owner in team_members
+      // The team.owner_id is already updated, so triggers/constraints should allow this
+      const { error: newOwnerError } = await supabase
+        .from("team_members")
+        .update({ 
+          is_owner: true,
+          can_manage: true,
+          role: 'owner'
+        })
+        .eq("team_id", state.currentTeamId)
+        .eq("user_id", person.id);
+      
+      if (newOwnerError) {
+        console.error("Error updating new owner in team_members:", newOwnerError);
+        console.error("Error details:", JSON.stringify(newOwnerError, null, 2));
+        // Try to revert changes
+        await supabase
+          .from("teams")
+          .update({ owner_id: state.profile.id })
+          .eq("id", state.currentTeamId);
+        await supabase
+          .from("team_members")
+          .update({ is_owner: true, can_manage: true, role: 'owner' })
+          .eq("team_id", state.currentTeamId)
+          .eq("user_id", state.profile.id);
+        alert(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Changes reverted. Check console.`);
         return;
       }
       
