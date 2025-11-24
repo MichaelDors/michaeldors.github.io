@@ -7603,7 +7603,11 @@ async function promoteToManager(personId) {
     .eq("id", personId)
     .eq("team_id", state.currentTeamId);
   
+  // Refresh all state to reflect changes
+  await fetchUserTeams();
+  await fetchProfile();
   await loadPeople();
+  
   alert("User promoted to manager.");
 }
 
@@ -7638,7 +7642,11 @@ async function demoteFromManager(personId) {
     .eq("id", personId)
     .eq("team_id", state.currentTeamId);
   
+  // Refresh all state to reflect changes
+  await fetchUserTeams();
+  await fetchProfile();
   await loadPeople();
+  
   alert("User demoted from manager.");
 }
 
@@ -7650,44 +7658,54 @@ async function transferOwnership(person) {
     return;
   }
   
-  const teamName = state.profile?.team?.name || "this team";
+  const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+  const teamName = currentTeam?.name || state.profile?.team?.name || "this team";
   const message = `Transfer ownership of "${teamName}" to ${person.full_name || person.email}? This will make them the team owner and you will become a manager.`;
   
   showDeleteConfirmModal(
     teamName,
     message,
     async () => {
-      // Update the new owner: set is_owner=true and can_manage=true
+      // Step 1: Update team_members - new owner becomes owner
       const { error: newOwnerError } = await supabase
-        .from("profiles")
-        .update({ is_owner: true, can_manage: true })
-        .eq("id", person.id)
-        .eq("team_id", state.currentTeamId);
+        .from("team_members")
+        .update({ 
+          is_owner: true,
+          can_manage: true,
+          role: 'owner'
+        })
+        .eq("team_id", state.currentTeamId)
+        .eq("user_id", person.id);
       
       if (newOwnerError) {
-        console.error("Error updating new owner:", newOwnerError);
+        console.error("Error updating new owner in team_members:", newOwnerError);
         alert("Unable to transfer ownership. Check console.");
         return;
       }
       
-      // Update the old owner: set is_owner=false, keep can_manage=true
+      // Step 2: Update team_members - old owner becomes manager
       const { error: oldOwnerError } = await supabase
-        .from("profiles")
-        .update({ is_owner: false, can_manage: true })
-        .eq("id", state.profile.id)
-        .eq("team_id", state.currentTeamId);
+        .from("team_members")
+        .update({ 
+          is_owner: false,
+          can_manage: true,
+          role: 'manager'
+        })
+        .eq("team_id", state.currentTeamId)
+        .eq("user_id", state.profile.id);
       
       if (oldOwnerError) {
-        console.error("Error updating old owner:", oldOwnerError);
+        console.error("Error updating old owner in team_members:", oldOwnerError);
         alert("Unable to transfer ownership. Check console.");
         return;
       }
       
-      // Update the team's owner_id
+      // Step 3: Update the team's owner_id
       const { error: teamError } = await supabase
         .from("teams")
         .update({ owner_id: person.id })
-        .eq("id", state.profile.team_id);
+        .eq("id", state.currentTeamId)
+        .eq("owner_id", state.profile.id); // Safety check: only update if we're currently the owner
       
       if (teamError) {
         console.error("Error updating team owner_id:", teamError);
@@ -7695,9 +7713,29 @@ async function transferOwnership(person) {
         return;
       }
       
-      // Sign out and redirect to login (since they're no longer the owner)
-      await supabase.auth.signOut();
-      window.location.reload();
+      // Step 4: Update profiles for backward compatibility
+      await supabase
+        .from("profiles")
+        .update({ is_owner: true, can_manage: true })
+        .eq("id", person.id)
+        .eq("team_id", state.currentTeamId);
+      
+      await supabase
+        .from("profiles")
+        .update({ is_owner: false, can_manage: true })
+        .eq("id", state.profile.id)
+        .eq("team_id", state.currentTeamId);
+      
+      // Step 5: Refresh all state
+      await fetchUserTeams();
+      await fetchProfile();
+      await loadPeople();
+      
+      // Refresh UI
+      updateTeamSwitcher();
+      refreshActiveTab();
+      
+      alert("Ownership transferred successfully. You are now a manager.");
     }
   );
 }
