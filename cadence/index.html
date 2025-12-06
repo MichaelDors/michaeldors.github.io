@@ -206,6 +206,26 @@
                 <button id="btn-view-as-member-detail" class="btn secondary hidden"><i class="fa-solid fa-user"></i> View as Member</button>
                 <button id="btn-edit-set-detail" class="btn secondary hidden"><i class="fa-solid fa-pencil"></i> Edit Set</button>
                 <button id="btn-delete-set-detail" class="btn ghost hidden">Delete</button>
+                <div class="header-dropdown-container hidden" id="header-add-dropdown-container">
+                  <button id="btn-header-add-toggle" class="btn secondary" type="button">
+                    <i class="fa-solid fa-plus"></i> Add
+                    <i class="fa-solid fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.75rem;"></i>
+                  </button>
+                  <div class="header-dropdown-menu hidden" id="header-add-dropdown-menu">
+                    <button type="button" class="header-dropdown-item" id="btn-header-add-song">
+                      <i class="fa-solid fa-compact-disc"></i>
+                      <span>Add Song</span>
+                    </button>
+                    <button type="button" class="header-dropdown-item" id="btn-header-add-section">
+                      <i class="fa-solid fa-microphone-lines"></i>
+                      <span>Add Section</span>
+                    </button>
+                    <button type="button" class="header-dropdown-item" id="btn-header-add-section-header">
+                      <i class="fa-solid fa-heading"></i>
+                      <span>Add Header</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="set-detail-tabs mobile-only">
@@ -354,6 +374,27 @@
           </div>
           <div id="section-assignments-list"></div>
         </div>
+      </div>
+    </div>
+
+    <div id="section-header-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Add Section Header</h3>
+          <button class="icon-btn" id="close-section-header-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <form id="section-header-form">
+          <label>
+            Header Title
+            <input type="text" id="section-header-title" required placeholder="e.g., Opening, Worship, Message, Closing" />
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-section-header">Cancel</button>
+            <button type="submit" class="btn primary">Add</button>
+          </div>
+        </form>
       </div>
     </div>
 

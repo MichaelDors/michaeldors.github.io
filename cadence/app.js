@@ -3,10 +3,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.2";
 const SUPABASE_URL = "https://pvqrxkbyjhgomwqwkedw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cXJ4a2J5amhnb213cXdrZWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1Mjg1NTQsImV4cCI6MjA3ODEwNDU1NH0.FWrCZOExwjhfihh7nSZFR2FkIhcJjVyDo0GdDaGKg1g";
 
-if (SUPABASE_URL.includes("YOUR_PROJECT_ID")) {
-  console.warn("Update SUPABASE_URL and SUPABASE_ANON_KEY before deploying.");
-}
-
 // Check for access_token in URL BEFORE creating Supabase client
 // This way we can intercept it before detectSessionInUrl processes it
 // IMPORTANT: This must run synchronously at module load time, before Supabase client is created
@@ -73,6 +69,7 @@ const yourSetsList = el("your-sets-list");
 const setModal = el("set-modal");
 const songModal = el("song-modal");
 const sectionModal = el("section-modal");
+const sectionHeaderModal = el("section-header-modal");
 const authForm = el("auth-form");
 const loginEmailInput = el("login-email");
 const loginPasswordInput = el("login-password");
@@ -617,6 +614,49 @@ function bindEvents() {
       hideSetDetail();
     }
   });
+  
+  // Header dropdown toggle
+  el("btn-header-add-toggle")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const dropdownMenu = el("header-add-dropdown-menu");
+    if (dropdownMenu) {
+      dropdownMenu.classList.toggle("hidden");
+    }
+  });
+  
+  // Header dropdown items
+  el("btn-header-add-song")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeHeaderDropdown();
+    if (state.selectedSet) {
+      openSongModal();
+    }
+  });
+  
+  el("btn-header-add-section")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeHeaderDropdown();
+    if (state.selectedSet) {
+      openSectionModal();
+    }
+  });
+  
+  el("btn-header-add-section-header")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeHeaderDropdown();
+    if (state.selectedSet) {
+      openSectionHeaderModal();
+    }
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    const container = el("header-add-dropdown-container");
+    const menu = el("header-add-dropdown-menu");
+    if (container && menu && !container.contains(e.target) && !menu.classList.contains("hidden")) {
+      closeHeaderDropdown();
+    }
+  });
   el("close-set-modal")?.addEventListener("click", () => closeSetModal());
   el("cancel-set")?.addEventListener("click", () => closeSetModal());
   el("set-form")?.addEventListener("submit", handleSetSubmit);
@@ -627,8 +667,11 @@ function bindEvents() {
   el("cancel-song")?.addEventListener("click", () => closeSongModal());
   el("close-section-modal")?.addEventListener("click", () => closeSectionModal());
   el("cancel-section")?.addEventListener("click", () => closeSectionModal());
+  el("close-section-header-modal")?.addEventListener("click", () => closeSectionHeaderModal());
+  el("cancel-section-header")?.addEventListener("click", () => closeSectionHeaderModal());
   el("song-form")?.addEventListener("submit", handleAddSongToSet);
   el("section-form")?.addEventListener("submit", handleAddSectionToSet);
+  el("section-header-form")?.addEventListener("submit", handleAddSectionHeaderToSet);
   el("create-song-link")?.addEventListener("click", (e) => {
     e.preventDefault();
     state.creatingSongFromModal = true;
@@ -1188,11 +1231,19 @@ async function handleAuth(event) {
     let updateProfileError = updateProfileFunctionError;
     
     // If function doesn't exist, fall back to direct update
+    // IMPORTANT: Explicitly preserve full_name to prevent it from being reset to email
     if (updateProfileFunctionError && (updateProfileFunctionError.code === '42883' || updateProfileFunctionError.message?.includes('function'))) {
       console.log('Update function not available, trying direct update...');
+      const updateData = { team_id: teamData.id };
+      
+      // Preserve full_name if it exists (prevent reset to email)
+      if (profileData?.full_name) {
+        updateData.full_name = profileData.full_name;
+      }
+      
       const { error: directUpdateError } = await supabase
         .from("profiles")
-        .update({ team_id: teamData.id })
+        .update(updateData)
         .eq("id", signUpData.user.id);
       
       updateProfileError = directUpdateError;
@@ -1443,7 +1494,7 @@ async function createProfileAndMigrateInvites(user) {
     return;
   }
   
-  // Find the pending invite
+  // Find the pending invite FIRST - this is critical for auto-adding to team
   const { data: pendingInvite, error: inviteError } = await supabase
     .from("pending_invites")
     .select("*")
@@ -1457,92 +1508,124 @@ async function createProfileAndMigrateInvites(user) {
   const fullName = pendingInvite?.full_name || user.user_metadata?.full_name || userEmail;
   const teamId = pendingInvite?.team_id || null;
   
-  // Create the profile with team_id from pending invite
-  const { data: newProfile, error: profileError } = await supabase
+  // Check if profile already exists
+  const { data: existingProfile } = await supabase
     .from("profiles")
-    .insert({
-      id: user.id,
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+  
+  if (existingProfile) {
+    console.log('👤 Profile already exists, updating with pending invite info...');
+    
+    // Update profile with team_id from pending invite if it exists
+    const updateData = {
       full_name: fullName,
       email: userEmail,
-      team_id: teamId,
-      is_owner: false,
-      can_manage: false,
-    })
-    .select()
-    .single();
-  
-  if (profileError) {
-    console.error('❌ Error creating profile:', profileError);
-    // Profile might already exist, try to update it
+    };
+    
+    // Always update team_id if we have one from pending invite
+    if (teamId) {
+      updateData.team_id = teamId;
+    }
+    
     const { data: updatedProfile, error: updateError } = await supabase
       .from("profiles")
-      .update({
-        full_name: fullName,
-        email: userEmail,
-        team_id: teamId || undefined, // Only update if team_id exists
-      })
+      .update(updateData)
       .eq("id", user.id)
       .select()
       .single();
     
     if (updateError) {
       console.error('❌ Error updating profile:', updateError);
-      return;
+      // Continue anyway - might still be able to add to team
+    } else {
+      console.log('✅ Profile updated:', updatedProfile);
+      state.profile = updatedProfile;
     }
-    
-    console.log('✅ Profile updated:', updatedProfile);
-    state.profile = updatedProfile;
   } else {
-    console.log('✅ Profile created:', newProfile);
-    state.profile = newProfile;
+    // Create the profile with team_id from pending invite
+    const { data: newProfile, error: profileError } = await supabase
+      .from("profiles")
+      .insert({
+        id: user.id,
+        full_name: fullName,
+        email: userEmail,
+        team_id: teamId,
+        is_owner: false,
+        can_manage: false,
+      })
+      .select()
+      .single();
+    
+    if (profileError) {
+      console.error('❌ Error creating profile:', profileError);
+      // Continue anyway - might still be able to add to team
+    } else {
+      console.log('✅ Profile created:', newProfile);
+      state.profile = newProfile;
+    }
   }
   
-  // Add user to team_members if they have a team_id
+  // ALWAYS add user to team_members if there's a pending invite with team_id
+  // This ensures invited users are automatically added to the team
   if (teamId) {
-    console.log('👥 Adding user to team_members for team:', teamId);
+    console.log('👥 Auto-adding user to team_members for team:', teamId);
     
-    // Use RPC function to bypass RLS (similar to invite flow)
-    const { error: teamMemberError } = await supabase
-      .rpc('add_team_member', {
-        p_team_id: teamId,
-        p_user_id: user.id,
-        p_role: 'member',
-        p_is_owner: false,
-        p_can_manage: false
-      });
+    // Check if already a member first
+    const { data: existingMember } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("team_id", teamId)
+      .eq("user_id", user.id)
+      .maybeSingle();
     
-    if (teamMemberError && (teamMemberError.code === '42883' || teamMemberError.message?.includes('function'))) {
-      // Function doesn't exist, try direct insert
-      console.log('⚠️ add_team_member function not available, trying direct insert...');
-      const { error: directError } = await supabase
-        .from("team_members")
-        .insert({
-          team_id: teamId,
-          user_id: user.id,
-          role: 'member',
-          is_owner: false,
-          can_manage: false
+    if (existingMember) {
+      console.log('✅ User already in team_members');
+    } else {
+      // Use RPC function to bypass RLS (similar to invite flow)
+      const { error: teamMemberError } = await supabase
+        .rpc('add_team_member', {
+          p_team_id: teamId,
+          p_user_id: user.id,
+          p_role: 'member',
+          p_is_owner: false,
+          p_can_manage: false
         });
       
-      if (directError) {
+      if (teamMemberError && (teamMemberError.code === '42883' || teamMemberError.message?.includes('function'))) {
+        // Function doesn't exist, try direct insert
+        console.log('⚠️ add_team_member function not available, trying direct insert...');
+        const { error: directError } = await supabase
+          .from("team_members")
+          .insert({
+            team_id: teamId,
+            user_id: user.id,
+            role: 'member',
+            is_owner: false,
+            can_manage: false
+          });
+        
+        if (directError) {
+          // If error is because user is already a member, that's okay
+          if (directError.code !== '23505') { // Unique violation
+            console.error('❌ Error adding user to team_members:', directError);
+          } else {
+            console.log('✅ User already in team_members');
+          }
+        } else {
+          console.log('✅ User added to team_members (direct insert)');
+        }
+      } else if (teamMemberError) {
         // If error is because user is already a member, that's okay
-        if (directError.code !== '23505') { // Unique violation
-          console.error('❌ Error adding user to team_members:', directError);
+        if (teamMemberError.code !== '23505') { // Unique violation
+          console.error('❌ Error adding user to team_members:', teamMemberError);
         } else {
           console.log('✅ User already in team_members');
         }
       } else {
-        console.log('✅ User added to team_members (direct insert)');
+        console.log('✅ User added to team_members (via RPC)');
       }
-    } else if (teamMemberError) {
-      // If error is because user is already a member, that's okay
-      if (teamMemberError.code !== '23505') { // Unique violation
-        console.error('❌ Error adding user to team_members:', teamMemberError);
-      } else {
-        console.log('✅ User already in team_members');
-      }
-    } else {
-      console.log('✅ User added to team_members (via RPC)');
     }
   }
   
@@ -1657,12 +1740,28 @@ async function fetchProfile() {
       }
       
       // Fallback: try direct insert if migration didn't work
+      // First check for pending invite to get team_id
+      const userEmail = state.session.user.email?.toLowerCase();
+      let pendingInvite = null;
+      let teamId = null;
+      
+      if (userEmail) {
+        const { data: invite } = await supabase
+          .from("pending_invites")
+          .select("*")
+          .eq("email", userEmail)
+          .maybeSingle();
+        pendingInvite = invite;
+        teamId = invite?.team_id || null;
+      }
+      
       const insertPromise = supabase
         .from("profiles")
         .insert({
           id: state.session.user.id,
-          full_name: state.session.user.user_metadata.full_name || state.session.user.email || "New User",
+          full_name: pendingInvite?.full_name || state.session.user.user_metadata.full_name || state.session.user.email || "New User",
           email: state.session.user.email || null,
+          team_id: teamId,
         })
         .select()
         .single();
@@ -1697,6 +1796,26 @@ async function fetchProfile() {
       }
       state.profile = newProfile;
       console.log('  - ✅ Profile created:', newProfile);
+      
+      // If there's a pending invite with team_id, add user to team_members
+      if (teamId && newProfile) {
+        console.log('  - 👥 Auto-adding user to team_members (fallback)...');
+        const { error: teamMemberError } = await supabase
+          .from("team_members")
+          .insert({
+            team_id: teamId,
+            user_id: state.session.user.id,
+            role: 'member',
+            is_owner: false,
+            can_manage: false
+          });
+        
+        if (teamMemberError && teamMemberError.code !== '23505') {
+          console.error('  - ❌ Error adding user to team_members (fallback):', teamMemberError);
+        } else if (!teamMemberError) {
+          console.log('  - ✅ User added to team_members (fallback)');
+        }
+      }
     } else {
       // Sync email if missing
       if (data && !data.email && state.session.user.email) {
@@ -1890,10 +2009,20 @@ async function switchTeam(teamId) {
   state.currentTeamId = teamId;
   
   // Update profile.team_id (for backward compatibility and default team)
+  // IMPORTANT: Explicitly preserve full_name to prevent it from being reset to email
   if (state.profile) {
+    const updateData = { 
+      team_id: teamId 
+    };
+    
+    // Preserve full_name if it exists (prevent reset to email)
+    if (state.profile.full_name) {
+      updateData.full_name = state.profile.full_name;
+    }
+    
     const { error } = await supabase
       .from("profiles")
-      .update({ team_id: teamId })
+      .update(updateData)
       .eq("id", state.session.user.id);
     
     if (error) {
@@ -3102,13 +3231,20 @@ function showSetDetail(set) {
   const editBtn = el("btn-edit-set-detail");
   const deleteBtn = el("btn-delete-set-detail");
   const viewAsMemberDetailBtn = el("btn-view-as-member-detail");
+  const headerAddDropdown = el("header-add-dropdown-container");
   
   if (isManager()) {
     editBtn.classList.remove("hidden");
     deleteBtn.classList.remove("hidden");
+    if (headerAddDropdown) {
+      headerAddDropdown.classList.remove("hidden");
+    }
   } else {
     editBtn.classList.add("hidden");
     deleteBtn.classList.add("hidden");
+    if (headerAddDropdown) {
+      headerAddDropdown.classList.add("hidden");
+    }
   }
   
   // Show/hide "View as Member" button in set detail (only for managers, not when already in member view)
@@ -3167,6 +3303,62 @@ function renderSetDetailSongs(set) {
       set.set_songs
       .sort((a, b) => a.sequence_order - b.sequence_order)
       .forEach((setSong, index) => {
+        // Check if this is a section (no song_id) or a song
+        const isSection = !setSong.song_id;
+        
+        // Check if this is a section header (section with no description, notes, or assignments)
+        const isSectionHeader = isSection && 
+          !setSong.description && 
+          !setSong.notes && 
+          (!setSong.song_assignments || setSong.song_assignments.length === 0);
+        
+        if (isSectionHeader) {
+          // Render as section header (H1 title)
+          const headerWrapper = document.createElement("div");
+          headerWrapper.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin: 2rem 0 1rem 0; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;";
+          
+          const headerElement = document.createElement("h1");
+          headerElement.className = "section-header-title";
+          headerElement.textContent = setSong.title || "Untitled Header";
+          headerElement.style.cssText = "margin: 0; font-size: 1.75rem; font-weight: 700; color: var(--text-primary); flex: 1;";
+          
+          headerWrapper.appendChild(headerElement);
+          
+          // Add edit/remove buttons for managers
+          if (isManager()) {
+            const actionsContainer = document.createElement("div");
+            actionsContainer.style.cssText = "display: flex; gap: 0.5rem; align-items: center;";
+            
+            const editBtn = document.createElement("button");
+            editBtn.className = "btn small ghost";
+            editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i> Edit';
+            editBtn.dataset.setSongId = setSong.id;
+            editBtn.addEventListener("click", () => openEditSetSongModal(setSong));
+            
+            const removeBtn = document.createElement("button");
+            removeBtn.className = "btn small ghost";
+            removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Remove';
+            removeBtn.dataset.setSongId = setSong.id;
+            removeBtn.addEventListener("click", async () => {
+              const headerTitle = setSong.title || "this header";
+              showDeleteConfirmModal(
+                headerTitle,
+                `Remove "${headerTitle}" from this set?`,
+                async () => {
+                  await removeSongFromSet(setSong.id, set.id);
+                }
+              );
+            });
+            
+            actionsContainer.appendChild(editBtn);
+            actionsContainer.appendChild(removeBtn);
+            headerWrapper.appendChild(actionsContainer);
+          }
+          
+          songsList.appendChild(headerWrapper);
+          return; // Skip the normal card rendering
+        }
+        
         const songNode = document
           .getElementById("song-item-template")
           .content.cloneNode(true);
@@ -3197,9 +3389,6 @@ function renderSetDetailSongs(set) {
             songHeader.style.paddingLeft = "0";
           }
         }
-        
-        // Check if this is a section (no song_id) or a song
-        const isSection = !setSong.song_id;
         
         if (isSection) {
           // Render as section
@@ -3277,10 +3466,13 @@ function renderSetDetailSongs(set) {
             removeBtn.classList.remove("hidden");
             removeBtn.dataset.setSongId = setSong.id;
             removeBtn.addEventListener("click", async () => {
-              const songTitle = setSong.song?.title || "this song";
+              // For sections, use title; for songs, use song.title
+              // Check if it's a section by checking if song_id is null
+              const isSectionItem = !setSong.song_id;
+              const itemTitle = isSectionItem ? (setSong.title || "this section") : (setSong.song?.title || "this song");
               showDeleteConfirmModal(
-                songTitle,
-                `Remove "${songTitle}" from this set?`,
+                itemTitle,
+                `Remove "${itemTitle}" from this set?`,
                 async () => {
                   await removeSongFromSet(setSong.id, set.id);
                 }
@@ -3345,6 +3537,7 @@ function renderSetDetailSongs(set) {
 }
 
 function hideSetDetail() {
+  closeHeaderDropdown();
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
   
@@ -4219,6 +4412,29 @@ function closeSectionModal() {
   el("import-section-assignments-container").innerHTML = "";
 }
 
+async function openSectionHeaderModal() {
+  if (!isManager() || !state.selectedSet) return;
+  if (sectionHeaderModal) {
+    sectionHeaderModal.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+}
+
+function closeSectionHeaderModal() {
+  if (sectionHeaderModal) {
+    sectionHeaderModal.classList.add("hidden");
+    document.body.style.overflow = "";
+    el("section-header-form")?.reset();
+  }
+}
+
+function closeHeaderDropdown() {
+  const dropdownMenu = el("header-add-dropdown-menu");
+  if (dropdownMenu) {
+    dropdownMenu.classList.add("hidden");
+  }
+}
+
 let songDropdown = null;
 
 async function populateSongOptions() {
@@ -4387,8 +4603,23 @@ async function handleAddSectionToSet(event) {
   const notes = el("section-notes").value.trim();
   const assignments = collectAssignments("section-assignments-list");
 
-  // Calculate sequence_order from the current set's songs/sections
-  const currentSequenceOrder = state.selectedSet.set_songs?.length || 0;
+  // Refresh set data to get latest sequence_order values
+  const { data: currentSet } = await supabase
+    .from("sets")
+    .select(`
+      *,
+      set_songs (
+        id,
+        sequence_order
+      )
+    `)
+    .eq("id", state.selectedSet.id)
+    .single();
+
+  // Calculate sequence_order from the refreshed set's songs/sections
+  // Use max sequence_order + 1 to avoid conflicts, or 0 if no items exist
+  const existingOrders = (currentSet?.set_songs || []).map(ss => ss.sequence_order || 0);
+  const currentSequenceOrder = existingOrders.length > 0 ? Math.max(...existingOrders) + 1 : 0;
 
   const { data: setSong, error } = await supabase
     .from("set_songs")
@@ -4405,8 +4636,13 @@ async function handleAddSectionToSet(event) {
     .single();
 
   if (error) {
-    console.error(error);
-    alert("Unable to add section.");
+    console.error("Error adding section:", error);
+    // 409 is HTTP conflict, could be from unique constraint or other conflicts
+    if (error.code === '23505' || error.status === 409 || error.statusCode === 409) {
+      alert("Unable to add section due to a conflict. Please refresh and try again.");
+    } else {
+      alert("Unable to add section. Please try again.");
+    }
     return;
   }
 
@@ -4431,6 +4667,70 @@ async function handleAddSectionToSet(event) {
   }
 
   closeSectionModal();
+  await loadSets();
+  
+  // Refresh detail view if it's showing
+  if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      state.selectedSet = updatedSet;
+      renderSetDetailSongs(updatedSet);
+    }
+  }
+}
+
+async function handleAddSectionHeaderToSet(event) {
+  event.preventDefault();
+  const title = el("section-header-title").value.trim();
+  if (!title) {
+    alert("Please enter a header title.");
+    return;
+  }
+
+  // Refresh set data to get latest sequence_order values
+  const { data: currentSet } = await supabase
+    .from("sets")
+    .select(`
+      *,
+      set_songs (
+        id,
+        sequence_order
+      )
+    `)
+    .eq("id", state.selectedSet.id)
+    .single();
+
+  // Calculate sequence_order from the refreshed set's songs/sections
+  // Use max sequence_order + 1 to avoid conflicts, or 0 if no items exist
+  const existingOrders = (currentSet?.set_songs || []).map(ss => ss.sequence_order || 0);
+  const currentSequenceOrder = existingOrders.length > 0 ? Math.max(...existingOrders) + 1 : 0;
+
+  const { data: setSong, error } = await supabase
+    .from("set_songs")
+    .insert({
+      set_id: state.selectedSet.id,
+      song_id: null, // Section headers don't have a song_id
+      title: title,
+      description: null, // Section headers have no description
+      notes: null, // Section headers have no notes
+      sequence_order: currentSequenceOrder,
+      team_id: state.currentTeamId,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding section header:", error);
+    // 409 is HTTP conflict, could be from unique constraint or other conflicts
+    if (error.code === '23505' || error.status === 409 || error.statusCode === 409) {
+      alert("Unable to add section header due to a conflict. Please refresh and try again.");
+    } else {
+      alert("Unable to add section header. Please try again.");
+    }
+    return;
+  }
+
+  closeSectionHeaderModal();
   await loadSets();
   
   // Refresh detail view if it's showing
@@ -4560,25 +4860,51 @@ function openEditSetSongModal(setSong) {
   const assignmentsList = el("edit-assignments-list");
   const isSection = !setSong.song_id;
   
+  // Check if this is a section header (section with no description, notes, or assignments)
+  const isSectionHeader = isSection && 
+    !setSong.description && 
+    !setSong.notes && 
+    (!setSong.song_assignments || setSong.song_assignments.length === 0);
+  
   // Store the set song ID and song ID for saving/editing
   form.dataset.setSongId = setSong.id;
   form.dataset.songId = setSong.song_id || setSong.song?.id || null;
   form.dataset.isSection = isSection ? "true" : "false";
+  form.dataset.isSectionHeader = isSectionHeader ? "true" : "false";
   
   // Update modal title
   const titleEl = el("edit-set-item-title");
   if (titleEl) {
+    if (isSectionHeader) {
+      titleEl.textContent = "Edit Section Header";
+    } else {
     titleEl.textContent = isSection ? "Edit Section in Set" : "Edit Song in Set";
+    }
   }
   
   // Show/hide section fields and song edit button
   const sectionFields = el("edit-section-fields");
   const editSongBtn = el("btn-edit-song-from-set");
+  const assignmentSection = el("edit-set-song-modal")?.querySelector(".assignment-section");
+  
   if (sectionFields) {
     if (isSection) {
       sectionFields.classList.remove("hidden");
       el("edit-section-title").value = setSong.title || "";
-      el("edit-section-description").value = setSong.description || "";
+      const descriptionField = sectionFields.querySelector('label:has(textarea), label:has(#edit-section-description)');
+      const descriptionInput = el("edit-section-description");
+      if (isSectionHeader) {
+        // Hide description field for section headers
+        if (descriptionInput) {
+          descriptionInput.closest("label")?.classList.add("hidden");
+        }
+      } else {
+        // Show description field for regular sections
+        if (descriptionInput) {
+          descriptionInput.closest("label")?.classList.remove("hidden");
+          descriptionInput.value = setSong.description || "";
+        }
+      }
     } else {
       sectionFields.classList.add("hidden");
     }
@@ -4587,15 +4913,29 @@ function openEditSetSongModal(setSong) {
     editSongBtn.classList.toggle("hidden", isSection);
   }
   
-  // Populate notes
+  // Hide notes and assignments for section headers
+  if (isSectionHeader) {
+    if (notesInput) {
+      notesInput.closest("label")?.classList.add("hidden");
+    }
+    if (assignmentSection) {
+      assignmentSection.classList.add("hidden");
+    }
+  } else {
+    if (notesInput) {
+      notesInput.closest("label")?.classList.remove("hidden");
   notesInput.value = setSong.notes || "";
-  
+    }
+    if (assignmentSection) {
+      assignmentSection.classList.remove("hidden");
+    }
   // Clear and populate assignments
   assignmentsList.innerHTML = "";
   if (setSong.song_assignments && setSong.song_assignments.length > 0) {
     setSong.song_assignments.forEach((assignment) => {
       addEditAssignmentInput(assignment);
     });
+    }
   }
   
   // Populate import dropdown, excluding current song/section
@@ -4920,28 +5260,42 @@ async function handleEditSetSongSubmit(event) {
   const form = el("edit-set-song-form");
   const setSongId = form.dataset.setSongId;
   const isSection = form.dataset.isSection === "true";
+  const isSectionHeader = form.dataset.isSectionHeader === "true";
   
   if (!setSongId) {
     alert("Missing set song ID.");
     return;
   }
   
-  const notes = el("edit-set-song-notes").value.trim();
-  const assignments = collectEditAssignments();
-  
   // Build update object
-  const updateData = { notes: notes || null };
+  const updateData = {};
   
-  // If it's a section, also update title and description
-  if (isSection) {
+  // If it's a section header, only update title
+  if (isSectionHeader) {
+    const title = el("edit-section-title").value.trim();
+    if (!title) {
+      alert("Header title is required.");
+      return;
+    }
+    updateData.title = title;
+    updateData.description = null;
+    updateData.notes = null;
+  } else if (isSection) {
+    // Regular section: update title, description, and notes
     const title = el("edit-section-title").value.trim();
     const description = el("edit-section-description").value.trim();
+    const notes = el("edit-set-song-notes").value.trim();
     if (!title) {
       alert("Section title is required.");
       return;
     }
     updateData.title = title;
     updateData.description = description || null;
+    updateData.notes = notes || null;
+  } else {
+    // Song: only update notes
+    const notes = el("edit-set-song-notes").value.trim();
+    updateData.notes = notes || null;
   }
   
   // Update set_song
@@ -4952,9 +5306,14 @@ async function handleEditSetSongSubmit(event) {
   
   if (updateError) {
     console.error(updateError);
-    alert(`Unable to update ${isSection ? 'section' : 'song'} notes.`);
+    const itemType = isSectionHeader ? 'section header' : (isSection ? 'section' : 'song');
+    alert(`Unable to update ${itemType}.`);
     return;
   }
+  
+  // Skip assignment handling for section headers
+  if (!isSectionHeader) {
+    const assignments = collectEditAssignments();
   
   // Get existing assignments
   const { data: existingAssignments } = await supabase
@@ -5007,6 +5366,7 @@ async function handleEditSetSongSubmit(event) {
           team_id: state.currentTeamId,
         }))
       );
+    }
   }
   
   closeEditSetSongModal();
@@ -5022,7 +5382,7 @@ async function handleEditSetSongSubmit(event) {
   }
 }
 
-function showDeleteConfirmModal(name, message, onConfirm) {
+function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
   const modal = el("delete-confirm-modal");
   const title = el("delete-confirm-title");
   const messageEl = el("delete-confirm-message");
@@ -5034,11 +5394,15 @@ function showDeleteConfirmModal(name, message, onConfirm) {
   
   if (!modal) return;
   
-  title.textContent = "Confirm Deletion";
+  const modalTitle = options.title || "Confirm Deletion";
+  const buttonText = options.buttonText || "Delete";
+  
+  title.textContent = modalTitle;
   messageEl.textContent = message;
   nameEl.textContent = `'${name}'`;
   input.value = "";
   input.placeholder = name;
+  confirmBtn.textContent = buttonText;
   confirmBtn.disabled = true;
   
   const checkMatch = () => {
@@ -7319,44 +7683,85 @@ async function deleteTeam() {
         return;
       }
       
-      // Perform the deletion with strict filters
-      const { error } = await supabase
-        .from("teams")
-        .delete()
-        .eq("id", teamId)
-        .eq("owner_id", state.session.user.id);
-      
-      if (error) {
-        console.error("Error deleting team:", error);
-        alert("Unable to delete team. Check console.");
+      // CRITICAL: Verify teamId is valid and not empty
+      if (!teamId || typeof teamId !== 'string' || teamId.trim() === '') {
+        console.error("CRITICAL: Invalid teamId for deletion:", teamId);
+        alert("ERROR: Invalid team ID. Deletion cancelled for safety.");
         return;
       }
       
-      // Verify the team was actually deleted (and only this team)
-      const { data: postDeleteCheck } = await supabase
-        .from("teams")
-        .select("id")
-        .eq("id", teamId)
-        .single();
+      console.log(`🗑️ Attempting to delete team with ID: ${teamId}`);
       
-      if (postDeleteCheck) {
-        console.error("CRITICAL: Team still exists after deletion attempt!");
-        alert("ERROR: Team deletion may have failed. Please check your teams and contact support if needed.");
-        return;
-      }
-      
-      // Additional safety: Check how many teams we still own
-      const { data: remainingTeams } = await supabase
+      // CRITICAL: Get count of teams BEFORE deletion to verify only one is deleted
+      const { data: teamsBeforeDelete, error: countError } = await supabase
         .from("teams")
         .select("id, name")
         .eq("owner_id", state.session.user.id);
       
-      console.log("Remaining teams after deletion:", remainingTeams?.length || 0);
-      
-      if (remainingTeams && remainingTeams.length === 0 && state.userTeams.length > 1) {
-        console.error("CRITICAL: All teams deleted when only one should have been deleted!");
-        alert("ERROR: Multiple teams may have been deleted. Please check your teams immediately and contact support.");
+      if (countError) {
+        console.error("Error counting teams before deletion:", countError);
+        alert("Unable to verify team count. Deletion cancelled for safety.");
+        return;
       }
+      
+      const teamsCountBefore = teamsBeforeDelete?.length || 0;
+      console.log(`🔍 Teams before deletion: ${teamsCountBefore}`, teamsBeforeDelete?.map(t => ({ id: t.id, name: t.name })));
+      
+      // Verify the team we're about to delete is in the list
+      const teamToDelete = teamsBeforeDelete?.find(t => t.id === teamId);
+      if (!teamToDelete) {
+        console.error("CRITICAL: Team to delete not found in user's teams!");
+        console.error("  - teamId:", teamId);
+        console.error("  - User's teams:", teamsBeforeDelete?.map(t => t.id));
+        alert("ERROR: Team not found in your teams. Deletion cancelled for safety.");
+        return;
+      }
+      
+      console.log(`✅ Verified team to delete: ${teamToDelete.name} (${teamId})`);
+      
+      // CRITICAL: Double-check that we're only deleting ONE team by verifying the exact team exists
+      const { data: exactTeamCheck, error: exactCheckError } = await supabase
+        .from("teams")
+        .select("id, name, owner_id")
+        .eq("id", teamId)
+        .eq("owner_id", state.session.user.id)
+        .single();
+      
+      if (exactCheckError || !exactTeamCheck) {
+        console.error("CRITICAL: Cannot verify exact team before deletion:", exactCheckError);
+        alert("ERROR: Cannot verify team before deletion. Operation cancelled for safety.");
+        return;
+      }
+      
+      if (exactTeamCheck.id !== teamId) {
+        console.error("CRITICAL: Team ID mismatch in final check!");
+        alert("ERROR: Team verification failed. Operation cancelled for safety.");
+        return;
+      }
+      
+      console.log(`✅ Final verification passed. Deleting team: ${exactTeamCheck.name} (${teamId})`);
+      
+      // Perform the deletion using RPC function - simple direct delete
+      const { data: deleteResult, error } = await supabase
+        .rpc('delete_team_direct', { p_team_id: teamId });
+      
+      if (error) {
+        console.error("Error deleting team:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
+        alert("Unable to delete team. Check console.");
+        return;
+      }
+      
+      // Check if the RPC function succeeded
+      if (!deleteResult || !deleteResult.success) {
+        const errorMsg = deleteResult?.error || 'Unknown error';
+        console.error("🚨 Team deletion failed:", errorMsg);
+        alert(`Unable to delete team: ${errorMsg}`);
+        return;
+      }
+      
+      // Success - team was deleted
+      console.log(`✅ Team deleted successfully:`, deleteResult.deleted_team);
       
       // Refresh user teams (removes deleted team)
       await fetchUserTeams();
@@ -7381,6 +7786,7 @@ function openCreateTeamModal() {
   const modal = el("create-team-modal");
   const input = el("create-team-input");
   const message = el("create-team-message");
+  const submitBtn = modal?.querySelector('button[type="submit"]');
   
   if (!modal || !input) return;
   
@@ -7388,6 +7794,11 @@ function openCreateTeamModal() {
   if (message) {
     message.textContent = "";
     message.classList.remove("error-text");
+  }
+  
+  // Reset submit button state
+  if (submitBtn) {
+    submitBtn.disabled = false;
   }
   
   modal.classList.remove("hidden");
@@ -7534,11 +7945,19 @@ async function handleCreateTeamSubmit(e) {
     let updateProfileError = updateProfileFunctionError;
     
     // If function doesn't exist, fall back to direct update
+    // IMPORTANT: Explicitly preserve full_name to prevent it from being reset to email
     if (updateProfileFunctionError && (updateProfileFunctionError.code === '42883' || updateProfileFunctionError.message?.includes('function'))) {
       console.log('Update function not available, trying direct update...');
+      const updateData = { team_id: teamData.id };
+      
+      // Preserve full_name if it exists (prevent reset to email)
+      if (state.profile?.full_name) {
+        updateData.full_name = state.profile.full_name;
+      }
+      
       const { error: directUpdateError } = await supabase
         .from("profiles")
-        .update({ team_id: teamData.id })
+        .update(updateData)
         .eq("id", state.session.user.id);
       
       updateProfileError = directUpdateError;
@@ -7552,6 +7971,9 @@ async function handleCreateTeamSubmit(e) {
     // Refresh user teams and switch to the new team
     await fetchUserTeams();
     await switchTeam(teamData.id);
+    
+    // Re-enable submit button before closing modal
+    if (submitBtn) submitBtn.disabled = false;
     
     // Close modal
     modal?.classList.add("hidden");
@@ -7758,6 +8180,10 @@ async function transferOwnership(person) {
       refreshActiveTab();
       
       alert("Ownership transferred successfully. You are now a manager.");
+    },
+    {
+      title: "Transfer Ownership",
+      buttonText: "Transfer"
     }
   );
 }
