@@ -2761,8 +2761,17 @@ async function loadPeople() {
       return;
     }
     
+    // Filter out pending invites for users who already have accounts (profiles)
+    const profileEmails = new Set(
+      (profiles || []).map(p => (p.email || '').toLowerCase().trim()).filter(Boolean)
+    );
+    const filteredPendingInvites = (pendingInvites || []).filter(invite => {
+      const inviteEmail = (invite.email || '').toLowerCase().trim();
+      return !profileEmails.has(inviteEmail);
+    });
+    
     state.people = profiles || [];
-    state.pendingInvites = pendingInvites || [];
+    state.pendingInvites = filteredPendingInvites;
     renderPeople();
     return;
   }
@@ -2795,9 +2804,20 @@ async function loadPeople() {
       return nameA.localeCompare(nameB);
     });
 
-  console.log('  - ✅ People loaded:', profiles?.length || 0, 'profiles,', pendingInvites?.length || 0, 'pending invites');
+  // Filter out pending invites for users who already have accounts (profiles)
+  // Only show pending invites for users who still need to sign up
+  const profileEmails = new Set(
+    (profiles || []).map(p => (p.email || '').toLowerCase().trim()).filter(Boolean)
+  );
+  const filteredPendingInvites = (pendingInvites || []).filter(invite => {
+    const inviteEmail = (invite.email || '').toLowerCase().trim();
+    // Exclude if this email matches an existing profile
+    return !profileEmails.has(inviteEmail);
+  });
+
+  console.log('  - ✅ People loaded:', profiles?.length || 0, 'profiles,', filteredPendingInvites?.length || 0, 'pending invites (filtered from', pendingInvites?.length || 0, 'total)');
   state.people = profiles || [];
-  state.pendingInvites = pendingInvites || [];
+  state.pendingInvites = filteredPendingInvites;
   renderPeople();
 }
 
@@ -8088,48 +8108,10 @@ async function transferOwnership(person) {
     teamName,
     message,
     async () => {
-      // Step 1: First, update the old owner to become a manager
-      // This must happen first to avoid constraint violations (only one owner at a time)
-      const { error: oldOwnerError } = await supabase
-        .from("team_members")
-        .update({ 
-          is_owner: false,
-          can_manage: true,
-          role: 'manager'
-        })
-        .eq("team_id", state.currentTeamId)
-        .eq("user_id", state.profile.id);
-      
-      if (oldOwnerError) {
-        console.error("Error updating old owner in team_members:", oldOwnerError);
-        console.error("Error details:", JSON.stringify(oldOwnerError, null, 2));
-        alert(`Unable to transfer ownership: ${oldOwnerError.message || 'Unknown error'}. Check console.`);
-        return;
-      }
-      
-      // Step 2: Update the team's owner_id first (before updating team_members)
-      // This ensures the team knows who the new owner is
-      const { error: teamError } = await supabase
-        .from("teams")
-        .update({ owner_id: person.id })
-        .eq("id", state.currentTeamId)
-        .eq("owner_id", state.profile.id); // Safety check: only update if we're currently the owner
-      
-      if (teamError) {
-        console.error("Error updating team owner_id:", teamError);
-        console.error("Error details:", JSON.stringify(teamError, null, 2));
-        // Try to revert old owner change
-        await supabase
-          .from("team_members")
-          .update({ is_owner: true, can_manage: true, role: 'owner' })
-          .eq("team_id", state.currentTeamId)
-          .eq("user_id", state.profile.id);
-        alert(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Check console.`);
-        return;
-      }
-      
-      // Step 3: Now update the new owner in team_members
-      // The team.owner_id is already updated, so triggers/constraints should allow this
+      // Step 1: First, promote the new owner to owner status
+      // This must happen FIRST so the database trigger sync_team_owner_id can properly
+      // set the team's owner_id. If we demote the old owner first, the trigger will
+      // try to reassign ownership when no other owner exists yet.
       const { error: newOwnerError } = await supabase
         .from("team_members")
         .update({ 
@@ -8143,6 +8125,46 @@ async function transferOwnership(person) {
       if (newOwnerError) {
         console.error("Error updating new owner in team_members:", newOwnerError);
         console.error("Error details:", JSON.stringify(newOwnerError, null, 2));
+        alert(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Check console.`);
+        return;
+      }
+      
+      // Step 2: Update the team's owner_id to match (in case trigger didn't fire)
+      // The trigger should have already done this, but we do it explicitly for safety
+      const { error: teamError } = await supabase
+        .from("teams")
+        .update({ owner_id: person.id })
+        .eq("id", state.currentTeamId)
+        .eq("owner_id", state.profile.id); // Safety check: only update if we're currently the owner
+      
+      if (teamError) {
+        console.error("Error updating team owner_id:", teamError);
+        console.error("Error details:", JSON.stringify(teamError, null, 2));
+        // Try to revert new owner change
+        await supabase
+          .from("team_members")
+          .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
+          .eq("team_id", state.currentTeamId)
+          .eq("user_id", person.id);
+        alert(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Check console.`);
+        return;
+      }
+      
+      // Step 3: Now demote the old owner to manager
+      // Since there's already a new owner, the trigger won't try to reassign ownership
+      const { error: oldOwnerError } = await supabase
+        .from("team_members")
+        .update({ 
+          is_owner: false,
+          can_manage: true,
+          role: 'manager'
+        })
+        .eq("team_id", state.currentTeamId)
+        .eq("user_id", state.profile.id);
+      
+      if (oldOwnerError) {
+        console.error("Error updating old owner in team_members:", oldOwnerError);
+        console.error("Error details:", JSON.stringify(oldOwnerError, null, 2));
         // Try to revert changes
         await supabase
           .from("teams")
@@ -8153,7 +8175,12 @@ async function transferOwnership(person) {
           .update({ is_owner: true, can_manage: true, role: 'owner' })
           .eq("team_id", state.currentTeamId)
           .eq("user_id", state.profile.id);
-        alert(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Changes reverted. Check console.`);
+        await supabase
+          .from("team_members")
+          .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
+          .eq("team_id", state.currentTeamId)
+          .eq("user_id", person.id);
+        alert(`Unable to transfer ownership: ${oldOwnerError.message || 'Unknown error'}. Changes reverted. Check console.`);
         return;
       }
       
@@ -8175,9 +8202,10 @@ async function transferOwnership(person) {
       await fetchProfile();
       await loadPeople();
       
-      // Refresh UI
+      // Refresh UI - showApp() updates owner-only UI elements like delete team button
       updateTeamSwitcher();
       refreshActiveTab();
+      showApp();
       
       alert("Ownership transferred successfully. You are now a manager.");
     },
