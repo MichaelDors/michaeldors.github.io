@@ -8108,147 +8108,105 @@ async function transferOwnership(person) {
     teamName,
     message,
     async () => {
-      // CRITICAL: The check_single_owner_per_team trigger prevents having two owners at once.
-      // We must demote the old owner FIRST, then promote the new owner.
-      // However, when we demote the old owner, the sync_team_owner_id trigger will try
-      // to reassign ownership. To prevent issues, we'll update the team's owner_id first,
-      // then demote the old owner, then promote the new owner.
+      // Use RPC function to transfer ownership atomically
+      // This avoids trigger conflicts and ensures the transfer happens in a single transaction
+      const { data: result, error: rpcError } = await supabase
+        .rpc('transfer_team_ownership', {
+          p_team_id: state.currentTeamId,
+          p_current_owner_id: state.profile.id,
+          p_new_owner_id: person.id
+        });
       
-      // Step 1: Update the team's owner_id FIRST (before any team_members changes)
-      // This tells the database who the new owner should be
-      const { error: teamError } = await supabase
-        .from("teams")
-        .update({ owner_id: person.id })
-        .eq("id", state.currentTeamId)
-        .eq("owner_id", state.profile.id); // Safety check: only update if we're currently the owner
-      
-      if (teamError) {
-        console.error("Error updating team owner_id:", teamError);
-        console.error("Error details:", JSON.stringify(teamError, null, 2));
-        alert(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Check console.`);
-        return;
-      }
-      
-      // Step 2: Demote the old owner to manager
-      // This must happen before promoting the new owner to avoid the single-owner constraint
-      const { error: oldOwnerError, data: oldOwnerData } = await supabase
-        .from("team_members")
-        .update({ 
-          is_owner: false,
-          can_manage: true,
-          role: 'manager'
-        })
-        .eq("team_id", state.currentTeamId)
-        .eq("user_id", state.profile.id)
-        .select();
-      
-      if (oldOwnerError) {
-        console.error("Error updating old owner in team_members:", oldOwnerError);
-        console.error("Error details:", JSON.stringify(oldOwnerError, null, 2));
-        // Try to revert team owner_id change
-        await supabase
+      // If RPC function doesn't exist, fall back to manual transfer
+      if (rpcError && (rpcError.code === '42883' || rpcError.message?.includes('function'))) {
+        console.log('RPC function not available, using manual transfer...');
+        
+        // Manual transfer fallback
+        // Step 1: Update team's owner_id
+        const { error: teamError } = await supabase
           .from("teams")
-          .update({ owner_id: state.profile.id })
-          .eq("id", state.currentTeamId);
-        alert(`Unable to transfer ownership: ${oldOwnerError.message || 'Unknown error'}. Check console.`);
-        return;
-      }
-      
-      // Verify old owner was demoted
-      const { data: verifyOldOwner } = await supabase
-        .from("team_members")
-        .select("is_owner, can_manage, role")
-        .eq("team_id", state.currentTeamId)
-        .eq("user_id", state.profile.id)
-        .single();
-      
-      if (verifyOldOwner?.is_owner !== false) {
-        console.error("Old owner was not properly demoted:", verifyOldOwner);
-        // Try to revert team owner_id change
-        await supabase
-          .from("teams")
-          .update({ owner_id: state.profile.id })
-          .eq("id", state.currentTeamId);
-        alert("Failed to demote old owner. Transfer cancelled.");
-        return;
-      }
-      
-      // Step 3: Now promote the new owner to owner status
-      // The old owner is already demoted, so the single-owner constraint won't block this
-      const { error: newOwnerError, data: newOwnerData } = await supabase
-        .from("team_members")
-        .update({ 
-          is_owner: true,
-          can_manage: true,
-          role: 'owner'
-        })
-        .eq("team_id", state.currentTeamId)
-        .eq("user_id", person.id)
-        .select();
-      
-      if (newOwnerError) {
-        console.error("Error updating new owner in team_members:", newOwnerError);
-        console.error("Error details:", JSON.stringify(newOwnerError, null, 2));
-        // Try to revert changes
-        await supabase
-          .from("teams")
-          .update({ owner_id: state.profile.id })
-          .eq("id", state.currentTeamId);
-        await supabase
+          .update({ owner_id: person.id })
+          .eq("id", state.currentTeamId)
+          .eq("owner_id", state.profile.id);
+        
+        if (teamError) {
+          console.error("Error updating team owner_id:", teamError);
+          alert(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Check console.`);
+          return;
+        }
+        
+        // Step 2: Demote old owner
+        const { error: oldOwnerError } = await supabase
           .from("team_members")
-          .update({ is_owner: true, can_manage: true, role: 'owner' })
+          .update({ 
+            is_owner: false,
+            can_manage: true,
+            role: 'manager'
+          })
           .eq("team_id", state.currentTeamId)
           .eq("user_id", state.profile.id);
-        await supabase
+        
+        if (oldOwnerError) {
+          console.error("Error updating old owner:", oldOwnerError);
+          await supabase
+            .from("teams")
+            .update({ owner_id: state.profile.id })
+            .eq("id", state.currentTeamId);
+          alert(`Unable to transfer ownership: ${oldOwnerError.message || 'Unknown error'}. Check console.`);
+          return;
+        }
+        
+        // Step 3: Promote new owner
+        const { error: newOwnerError } = await supabase
           .from("team_members")
-          .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
+          .update({ 
+            is_owner: true,
+            can_manage: true,
+            role: 'owner'
+          })
           .eq("team_id", state.currentTeamId)
           .eq("user_id", person.id);
-        alert(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Changes reverted. Check console.`);
+        
+        if (newOwnerError) {
+          console.error("Error updating new owner:", newOwnerError);
+          await supabase
+            .from("teams")
+            .update({ owner_id: state.profile.id })
+            .eq("id", state.currentTeamId);
+          await supabase
+            .from("team_members")
+            .update({ is_owner: true, can_manage: true, role: 'owner' })
+            .eq("team_id", state.currentTeamId)
+            .eq("user_id", state.profile.id);
+          alert(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Changes reverted.`);
+          return;
+        }
+        
+        // Step 4: Update profiles
+        await supabase
+          .from("profiles")
+          .update({ is_owner: false, can_manage: true })
+          .eq("id", state.profile.id)
+          .eq("team_id", state.currentTeamId);
+        
+        await supabase
+          .from("profiles")
+          .update({ is_owner: true, can_manage: true })
+          .eq("id", person.id)
+          .eq("team_id", state.currentTeamId);
+      } else if (rpcError) {
+        // RPC function exists but returned an error
+        console.error("Error transferring ownership:", rpcError);
+        const errorMsg = result?.error || rpcError.message || 'Unknown error';
+        alert(`Unable to transfer ownership: ${errorMsg}. Check console.`);
+        return;
+      } else if (!result || !result.success) {
+        // RPC function returned but with success: false
+        const errorMsg = result?.error || 'Transfer failed';
+        console.error("Ownership transfer failed:", errorMsg);
+        alert(`Unable to transfer ownership: ${errorMsg}. Check console.`);
         return;
       }
-      
-      // Verify new owner was promoted
-      const { data: verifyNewOwner } = await supabase
-        .from("team_members")
-        .select("is_owner, can_manage, role")
-        .eq("team_id", state.currentTeamId)
-        .eq("user_id", person.id)
-        .single();
-      
-      if (verifyNewOwner?.is_owner !== true) {
-        console.error("New owner was not properly promoted:", verifyNewOwner);
-        // Try to revert changes
-        await supabase
-          .from("teams")
-          .update({ owner_id: state.profile.id })
-          .eq("id", state.currentTeamId);
-        await supabase
-          .from("team_members")
-          .update({ is_owner: true, can_manage: true, role: 'owner' })
-          .eq("team_id", state.currentTeamId)
-          .eq("user_id", state.profile.id);
-        await supabase
-          .from("team_members")
-          .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
-          .eq("team_id", state.currentTeamId)
-          .eq("user_id", person.id);
-        alert("Failed to promote new owner. Transfer cancelled and changes reverted.");
-        return;
-      }
-      
-      // Step 4: Update profiles for backward compatibility
-      await supabase
-        .from("profiles")
-        .update({ is_owner: true, can_manage: true })
-        .eq("id", person.id)
-        .eq("team_id", state.currentTeamId);
-      
-      await supabase
-        .from("profiles")
-        .update({ is_owner: false, can_manage: true })
-        .eq("id", state.profile.id)
-        .eq("team_id", state.currentTeamId);
       
       // Step 5: Refresh all state
       await fetchUserTeams();
