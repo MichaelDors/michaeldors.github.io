@@ -76,6 +76,11 @@ const loginEmailInput = el("login-email");
 const loginPasswordInput = el("login-password");
 const authMessage = el("auth-message");
 const authSubmitBtn = el("auth-submit-btn");
+const loginFormContainer = el("login-form-container");
+const forgotPasswordContainer = el("forgot-password-container");
+const forgotPasswordForm = el("forgot-password-form");
+const forgotPasswordEmailInput = el("forgot-password-email");
+const forgotPasswordMessage = el("forgot-password-message");
 // Team leader signup mode - allows team leaders to create teams
 let isSignUpMode = false;
 
@@ -470,7 +475,20 @@ function bindEvents() {
   const forgotPasswordLink = el("forgot-password-link");
   forgotPasswordLink?.addEventListener("click", (e) => {
     e.preventDefault();
-    handleForgotPassword();
+    showForgotPasswordForm();
+  });
+  
+  // Back to login link
+  const backToLoginLink = el("back-to-login-link");
+  backToLoginLink?.addEventListener("click", (e) => {
+    e.preventDefault();
+    showLoginForm();
+  });
+  
+  // Forgot password form submit
+  forgotPasswordForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await handleForgotPasswordSubmit();
   });
   
   // Account management
@@ -856,6 +874,9 @@ function showAuthGate() {
   setAuthMessage("");
   isSignUpMode = false;
   updateAuthUI();
+  
+  // Ensure login form is shown (not forgot password form)
+  showLoginForm();
   
   console.log('  - authGate hidden class removed:', !authGate?.classList.contains('hidden'));
   console.log('  - dashboard hidden class added:', dashboard?.classList.contains('hidden'));
@@ -1442,30 +1463,78 @@ function setPasswordSetupMessage(message, isError = false) {
   messageEl.classList.toggle("muted", !isError);
 }
 
-async function handleForgotPassword() {
-  console.log('🔐 handleForgotPassword() called');
+function showForgotPasswordForm() {
+  console.log('🔐 showForgotPasswordForm() called');
   
-  // Get email from the login form
-  const email = loginEmailInput?.value.trim();
+  // Hide login form, show forgot password form
+  if (loginFormContainer) loginFormContainer.classList.add("hidden");
+  if (forgotPasswordContainer) forgotPasswordContainer.classList.remove("hidden");
+  
+  // Pre-fill email from login form if available
+  if (loginEmailInput?.value && forgotPasswordEmailInput) {
+    forgotPasswordEmailInput.value = loginEmailInput.value;
+  }
+  
+  // Focus on email input
+  if (forgotPasswordEmailInput) {
+    setTimeout(() => forgotPasswordEmailInput.focus(), 100);
+  }
+  
+  // Clear any previous messages
+  if (forgotPasswordMessage) {
+    forgotPasswordMessage.textContent = "";
+    forgotPasswordMessage.classList.remove("error-text", "muted");
+  }
+}
+
+function showLoginForm() {
+  console.log('🔐 showLoginForm() called');
+  
+  // Hide forgot password form, show login form
+  if (forgotPasswordContainer) forgotPasswordContainer.classList.add("hidden");
+  if (loginFormContainer) loginFormContainer.classList.remove("hidden");
+  
+  // Clear forgot password form
+  if (forgotPasswordForm) forgotPasswordForm.reset();
+  if (forgotPasswordMessage) {
+    forgotPasswordMessage.textContent = "";
+    forgotPasswordMessage.classList.remove("error-text", "muted");
+  }
+  
+  // Clear auth message
+  if (authMessage) {
+    authMessage.textContent = "";
+    authMessage.classList.remove("error-text", "muted");
+  }
+}
+
+async function handleForgotPasswordSubmit() {
+  console.log('🔐 handleForgotPasswordSubmit() called');
+  
+  const email = forgotPasswordEmailInput?.value.trim();
   
   if (!email) {
-    // If no email in form, prompt for it
-    const emailInput = prompt("Please enter your email address to reset your password:");
-    if (!emailInput || !emailInput.trim()) {
-      setAuthMessage("Email is required to reset your password.", true);
-      return;
-    }
-    
-    const trimmedEmail = emailInput.trim();
-    await sendPasswordResetEmail(trimmedEmail);
-  } else {
-    await sendPasswordResetEmail(email);
+    setForgotPasswordMessage("Please enter your email address.", true);
+    return;
   }
+  
+  await sendPasswordResetEmail(email);
+}
+
+function setForgotPasswordMessage(message, isError = false) {
+  if (!forgotPasswordMessage) return;
+  forgotPasswordMessage.textContent = message;
+  forgotPasswordMessage.classList.toggle("error-text", Boolean(isError));
+  forgotPasswordMessage.classList.toggle("muted", !isError);
 }
 
 async function sendPasswordResetEmail(email) {
   console.log('📧 Sending password reset email to:', email);
-  setAuthMessage("Sending password reset email...", false);
+  setForgotPasswordMessage("Sending password reset email...", false);
+  
+  // Disable submit button
+  const submitBtn = el("forgot-password-submit-btn");
+  if (submitBtn) submitBtn.disabled = true;
   
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -1474,20 +1543,23 @@ async function sendPasswordResetEmail(email) {
     
     if (error) {
       console.error('❌ Error sending password reset email:', error);
-      setAuthMessage(error.message || "Failed to send password reset email. Please try again.", true);
+      setForgotPasswordMessage(error.message || "Failed to send password reset email. Please try again.", true);
+      if (submitBtn) submitBtn.disabled = false;
       return;
     }
     
     console.log('✅ Password reset email sent successfully');
-    setAuthMessage("Password reset email sent! Please check your inbox and follow the instructions to reset your password.", false);
+    setForgotPasswordMessage("Password reset email sent! Please check your inbox and follow the instructions to reset your password.", false);
     
-    // Clear the password field for security
-    if (loginPasswordInput) {
-      loginPasswordInput.value = "";
-    }
+    // Clear the form
+    if (forgotPasswordForm) forgotPasswordForm.reset();
+    
+    // Re-enable button
+    if (submitBtn) submitBtn.disabled = false;
   } catch (err) {
     console.error('❌ Unexpected error sending password reset email:', err);
-    setAuthMessage("An unexpected error occurred. Please try again.", true);
+    setForgotPasswordMessage("An unexpected error occurred. Please try again.", true);
+    if (submitBtn) submitBtn.disabled = false;
   }
 }
 

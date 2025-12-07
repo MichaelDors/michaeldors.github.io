@@ -52,28 +52,45 @@
 
     <main>
       <section id="auth-gate" class="card">
-        <h2 id="auth-heading">Login</h2>
-        <p id="auth-description">Sign in with your email and password</p>
-        <form id="auth-form" class="auth-form">
-          <label>
-            Email
-            <input type="email" id="login-email" placeholder="email@mcaschool.net" required />
-          </label>
-          <label>
-            Password
-            <input type="password" id="login-password" placeholder="Enter your password" required />
-          </label>
-          <button type="submit" id="auth-submit-btn" class="btn primary">
-            Sign in
-          </button>
-        </form>
-        <p class="muted small-text" id="auth-message"></p>
-        <p class="muted small-text" style="margin-top: 0.5rem; text-align: center;">
-          <a href="#" id="forgot-password-link" style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">Forgot password?</a>
-        </p>
-        <p class="muted small-text" style="margin-top: 1rem; text-align: center;">
-          <a href="#" id="toggle-signup" style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">Team leader? Create a team</a>
-        </p>
+        <div id="login-form-container">
+          <h2 id="auth-heading">Login</h2>
+          <p id="auth-description">Sign in with your email and password</p>
+          <form id="auth-form" class="auth-form">
+            <label>
+              Email
+              <input type="email" id="login-email" placeholder="email@mcaschool.net" required />
+            </label>
+            <label>
+              Password
+              <input type="password" id="login-password" placeholder="Enter your password" required />
+            </label>
+            <button type="submit" id="auth-submit-btn" class="btn primary">
+              Sign in
+            </button>
+          </form>
+          <p class="muted small-text" id="auth-message"></p>
+          <p class="muted small-text" style="margin-top: 2rem; text-align: center;">
+            <a href="#" id="forgot-password-link" style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">Forgot password?</a> | <a href="#" id="toggle-signup" style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">Team leader? Create a team</a>
+          </p>
+        </div>
+        
+        <div id="forgot-password-container" class="hidden">
+          <h2>Reset Password</h2>
+          <p>Enter your email address and we'll send you a link to reset your password.</p>
+          <form id="forgot-password-form" class="auth-form">
+            <label>
+              Email
+              <input type="email" id="forgot-password-email" placeholder="email@mcaschool.net" required />
+            </label>
+            <button type="submit" id="forgot-password-submit-btn" class="btn primary">
+              Send Reset Link
+            </button>
+          </form>
+          <p class="muted small-text" id="forgot-password-message"></p>
+          <p class="muted small-text" style="margin-top: 1rem; text-align: center;">
+            <a href="#" id="back-to-login-link" style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">← Back to login</a>
+          </p>
+        </div>
       </section>
 
       <section id="password-setup-gate" class="card hidden">
