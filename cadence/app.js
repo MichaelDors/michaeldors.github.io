@@ -106,17 +106,38 @@ function isManager() {
 function isOwner() {
   if (state.isMemberView) return false;
   
-  // Check if user is owner from profile (backward compatibility)
-  if (state.profile?.is_owner) {
-    return true;
+  // CRITICAL: Prioritize state.userTeams (from team_members) over state.profile.is_owner
+  // state.profile.is_owner can be stale after ownership transfers
+  // Check if user is owner in current team (multi-team support)
+  if (state.currentTeamId && state.userTeams && state.userTeams.length > 0) {
+    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+    if (currentTeam) {
+      // If userTeams has data for this team, use it as source of truth
+      // Explicitly check is_owner from team_members, not profile
+      const isOwnerFromUserTeams = currentTeam.is_owner === true;
+      if (isOwnerFromUserTeams) {
+        return true;
+      } else {
+        // If userTeams says user is NOT owner, return false immediately
+        // Don't fall back to stale profile data
+        // Log this to help debug stale profile data issues
+        if (state.profile?.is_owner) {
+          console.warn('⚠️ isOwner() mismatch: userTeams says NOT owner, but profile.is_owner is true. Using userTeams (correct).', {
+            currentTeamId: state.currentTeamId,
+            currentTeamName: currentTeam.name,
+            'userTeams.is_owner': currentTeam.is_owner,
+            'profile.is_owner': state.profile.is_owner
+          });
+        }
+        return false;
+      }
+    }
   }
   
-  // Check if user is owner in current team (multi-team support)
-  if (state.currentTeamId) {
-    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
-    if (currentTeam && currentTeam.is_owner) {
-      return true;
-    }
+  // Fallback to profile only if userTeams is not available yet (during initial load)
+  // This should only happen before fetchUserTeams() completes
+  if (state.profile?.is_owner && (!state.userTeams || state.userTeams.length === 0)) {
+    return true;
   }
   
   return false;
@@ -443,6 +464,13 @@ function bindEvents() {
     e.preventDefault();
     isSignUpMode = !isSignUpMode;
     updateAuthUI();
+  });
+  
+  // Forgot password link
+  const forgotPasswordLink = el("forgot-password-link");
+  forgotPasswordLink?.addEventListener("click", (e) => {
+    e.preventDefault();
+    handleForgotPassword();
   });
   
   // Account management
@@ -1412,6 +1440,55 @@ function setPasswordSetupMessage(message, isError = false) {
   messageEl.textContent = message;
   messageEl.classList.toggle("error-text", Boolean(isError));
   messageEl.classList.toggle("muted", !isError);
+}
+
+async function handleForgotPassword() {
+  console.log('🔐 handleForgotPassword() called');
+  
+  // Get email from the login form
+  const email = loginEmailInput?.value.trim();
+  
+  if (!email) {
+    // If no email in form, prompt for it
+    const emailInput = prompt("Please enter your email address to reset your password:");
+    if (!emailInput || !emailInput.trim()) {
+      setAuthMessage("Email is required to reset your password.", true);
+      return;
+    }
+    
+    const trimmedEmail = emailInput.trim();
+    await sendPasswordResetEmail(trimmedEmail);
+  } else {
+    await sendPasswordResetEmail(email);
+  }
+}
+
+async function sendPasswordResetEmail(email) {
+  console.log('📧 Sending password reset email to:', email);
+  setAuthMessage("Sending password reset email...", false);
+  
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}${window.location.pathname}`,
+    });
+    
+    if (error) {
+      console.error('❌ Error sending password reset email:', error);
+      setAuthMessage(error.message || "Failed to send password reset email. Please try again.", true);
+      return;
+    }
+    
+    console.log('✅ Password reset email sent successfully');
+    setAuthMessage("Password reset email sent! Please check your inbox and follow the instructions to reset your password.", false);
+    
+    // Clear the password field for security
+    if (loginPasswordInput) {
+      loginPasswordInput.value = "";
+    }
+  } catch (err) {
+    console.error('❌ Unexpected error sending password reset email:', err);
+    setAuthMessage("An unexpected error occurred. Please try again.", true);
+  }
 }
 
 async function handlePasswordSetup(event) {
@@ -2807,8 +2884,11 @@ async function loadPeople() {
   }
   
   console.log('  - Loading people for team_id:', state.currentTeamId);
+  console.log('  - Current user ID:', state.session?.user?.id);
+  console.log('  - Current user is owner (from state):', isOwner());
   
-  // Query team_members and join with profiles to get all team members
+  // Query team_members WITHOUT profile join first to avoid RLS issues
+  // Then fetch profiles separately and merge
   const [
     { data: teamMembers, error: teamMembersError },
     { data: pendingInvites, error: pendingError },
@@ -2817,17 +2897,11 @@ async function loadPeople() {
       .from("team_members")
       .select(`
         id,
+        user_id,
         role,
         is_owner,
         can_manage,
-        joined_at,
-        profile:user_id (
-          id,
-          full_name,
-          email,
-          team_id,
-          created_at
-        )
+        joined_at
       `)
       .eq("team_id", state.currentTeamId)
       .order("joined_at", { ascending: true }),
@@ -2839,6 +2913,86 @@ async function loadPeople() {
       .order("full_name", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true }),
   ]);
+  
+  // Now fetch profiles separately for all user_ids to avoid join RLS issues
+  let profilesMap = {};
+  if (teamMembers && teamMembers.length > 0) {
+    const userIds = teamMembers.map(tm => tm.user_id).filter(Boolean);
+    console.log('  - Fetching profiles for user_ids:', userIds);
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, team_id, created_at")
+      .in("id", userIds);
+    
+    if (profilesError) {
+      console.error('  - ❌ Error fetching profiles:', profilesError);
+    } else {
+      console.log('  - ✅ Fetched profiles:', profiles?.length || 0);
+      // Create a map for quick lookup
+      profilesMap = (profiles || []).reduce((acc, p) => {
+        acc[p.id] = p;
+        return acc;
+      }, {});
+    }
+  }
+
+  // Log raw query results for debugging
+  console.log('  - Raw team_members query result (NO profile join):', teamMembers);
+  console.log('  - Number of members:', teamMembers?.length || 0);
+  if (teamMembers) {
+    teamMembers.forEach((tm, idx) => {
+      const profile = profilesMap[tm.user_id];
+      console.log(`  - Member ${idx + 1}:`, {
+        user_id: tm.user_id,
+        is_owner: tm.is_owner,
+        can_manage: tm.can_manage,
+        role: tm.role,
+        profile_name: profile?.full_name || 'NOT FOUND',
+        profile_email: profile?.email || 'NOT FOUND',
+        'team_members.is_owner': tm.is_owner,
+        'team_members.can_manage': tm.can_manage,
+        'team_members.role': tm.role
+      });
+    });
+  }
+  
+  // Also do a direct query to verify database state
+  console.log('  - Verifying database state with direct query...');
+  console.log('  - Querying team_id:', state.currentTeamId);
+  const { data: directCheck, error: directError } = await supabase
+    .from("team_members")
+    .select("user_id, is_owner, can_manage, role, team_id")
+    .eq("team_id", state.currentTeamId);
+  console.log('  - Direct database check:', directCheck);
+  console.log('  - Direct query error:', directError);
+  
+  // Check teams.owner_id
+  const { data: teamCheck, error: teamCheckError } = await supabase
+    .from("teams")
+    .select("id, owner_id, name")
+    .eq("id", state.currentTeamId)
+    .single();
+  console.log('  - Team check:', teamCheck);
+  console.log('  - Team owner_id in database:', teamCheck?.owner_id);
+  console.log('  - Team name:', teamCheck?.name);
+  console.log('  - Team check error:', teamCheckError);
+  
+  // Verify: if team owner_id doesn't match what we expect, log a warning
+  if (teamCheck?.owner_id && directCheck) {
+    const ownerInMembers = directCheck.find(m => m.user_id === teamCheck.owner_id);
+    console.log('  - Owner from teams.owner_id is in team_members:', !!ownerInMembers);
+    if (ownerInMembers) {
+      console.log('  - Owner member data:', {
+        user_id: ownerInMembers.user_id,
+        is_owner: ownerInMembers.is_owner,
+        can_manage: ownerInMembers.can_manage,
+        role: ownerInMembers.role
+      });
+      if (!ownerInMembers.is_owner) {
+        console.error('  - ⚠️ WARNING: teams.owner_id points to a user who is NOT marked as owner in team_members!');
+      }
+    }
+  }
 
   if (teamMembersError) {
     console.error("❌ Error loading team members:", teamMembersError);
@@ -2878,19 +3032,59 @@ async function loadPeople() {
   }
 
   // Transform team_members data to match expected format
+  // Merge with profiles data fetched separately
   const profiles = (teamMembers || [])
     .map(tm => {
-      const profile = tm.profile;
-      if (!profile) return null;
+      const profile = profilesMap[tm.user_id];
+      if (!profile) {
+        console.warn(`  - ⚠️ No profile found for user_id: ${tm.user_id}`);
+        return null;
+      }
       
-      return {
-        ...profile,
+      // CRITICAL: Ensure team_members data is the ONLY source for ownership/management
+      // Profile data should ONLY provide name, email, etc. - NOT role/permissions
+      const personData = {
+        id: profile.id,
+        full_name: profile.full_name,
+        email: profile.email,
+        created_at: profile.created_at,
+        // CRITICAL: Use ONLY team_members data for ownership/management
+        // We explicitly set these from team_members to be absolutely sure
         role: tm.role,
-        is_owner: tm.is_owner,
-        can_manage: tm.can_manage,
+        is_owner: tm.is_owner === true, // Explicit boolean conversion
+        can_manage: tm.can_manage === true, // Explicit boolean conversion
         team_member_id: tm.id,
-        joined_at: tm.joined_at
+        joined_at: tm.joined_at,
+        // Only include team_id from profile if it exists
+        team_id: profile.team_id
       };
+      
+      // Log for debugging ownership issues - especially for owners
+      if (tm.is_owner) {
+        console.log('  - ✅ Owner detected (from team_members):', {
+          id: personData.id,
+          name: personData.full_name,
+          email: personData.email,
+          'team_members.is_owner': tm.is_owner,
+          'team_members.can_manage': tm.can_manage,
+          'team_members.role': tm.role,
+          'final.is_owner': personData.is_owner,
+          'final.can_manage': personData.can_manage,
+          'final.role': personData.role
+        });
+      }
+      
+      // Also log if current user is owner but this person is not marked as owner
+      if (isOwner() && tm.user_id === state.session?.user?.id && !tm.is_owner) {
+        console.error('  - 🚨 CRITICAL: Current user is owner but team_members says they are NOT owner!', {
+          current_user_id: state.session?.user?.id,
+          team_member_user_id: tm.user_id,
+          team_member_is_owner: tm.is_owner,
+          team_member_role: tm.role
+        });
+      }
+      
+      return personData;
     })
     .filter(p => p !== null)
     .sort((a, b) => {
@@ -2899,6 +3093,38 @@ async function loadPeople() {
       const nameB = (b.full_name || "").toLowerCase();
       return nameA.localeCompare(nameB);
     });
+  
+  console.log('  - Final people data (showing is_owner status):', profiles.map(p => ({
+    id: p.id,
+    name: p.full_name,
+    email: p.email,
+    is_owner: p.is_owner,
+    can_manage: p.can_manage,
+    role: p.role
+  })));
+  
+  // CRITICAL CHECK: Compare what we're about to render vs what's in the database
+  if (teamCheck?.owner_id) {
+    const renderedOwner = profiles.find(p => p.is_owner === true);
+    const expectedOwner = profiles.find(p => p.id === teamCheck.owner_id);
+    console.log('  - 🔍 OWNERSHIP VERIFICATION:');
+    console.log('    - teams.owner_id:', teamCheck.owner_id);
+    console.log('    - Expected owner (from teams.owner_id):', expectedOwner ? {
+      id: expectedOwner.id,
+      name: expectedOwner.full_name,
+      is_owner: expectedOwner.is_owner
+    } : 'NOT FOUND IN PROFILES');
+    console.log('    - Rendered owner (is_owner=true):', renderedOwner ? {
+      id: renderedOwner.id,
+      name: renderedOwner.full_name,
+      is_owner: renderedOwner.is_owner
+    } : 'NONE FOUND');
+    if (renderedOwner && expectedOwner && renderedOwner.id !== expectedOwner.id) {
+      console.error('  - 🚨 MISMATCH: Rendered owner does not match teams.owner_id!');
+      console.error('    - Rendered:', renderedOwner.id, renderedOwner.full_name);
+      console.error('    - Expected:', expectedOwner.id, expectedOwner.full_name);
+    }
+  }
 
   // Filter out pending invites for users who already have accounts (profiles)
   // Only show pending invites for users who still need to sign up
@@ -6103,13 +6329,19 @@ async function deletePerson(person) {
     return;
   }
   
+  // Check if person is an owner - owners cannot be removed, they must transfer ownership first
+  if (person.is_owner) {
+    alert("You cannot remove an owner from the team. The owner must transfer ownership first.");
+    return;
+  }
+  
   const personName = person.full_name || person.email || "this person";
   
   showDeleteConfirmModal(
     personName,
     `Removing "${personName}" from the team will also remove all their assignments.`,
     async () => {
-      console.log('🗑️ Deleting person:', person.id, personName);
+      console.log('🗑️ Removing person from team:', person.id, personName);
       
       // Step 1: Delete all song_assignments that reference this person by person_id
       console.log('  - Step 1: Deleting song assignments by person_id...');
@@ -6125,7 +6357,7 @@ async function deletePerson(person) {
         return;
       }
       
-      // Step 2: Find and delete pending_invite if it exists
+      // Step 2: Find and delete pending_invite if it exists for this team
       const personEmail = person.email?.toLowerCase();
       if (personEmail) {
         console.log('  - Step 2: Checking for pending invite...');
@@ -6133,6 +6365,7 @@ async function deletePerson(person) {
           .from("pending_invites")
           .select("id")
           .eq("email", personEmail)
+          .eq("team_id", state.currentTeamId)
           .maybeSingle();
         
         if (pendingInvite) {
@@ -6166,21 +6399,24 @@ async function deletePerson(person) {
         }
       }
       
-      // Step 3: Delete the profile (this should be safe now that all dependencies are gone)
-      console.log('  - Step 3: Deleting profile...');
-      const { error: profileError } = await supabase
-        .from("profiles")
+      // Step 3: Remove the person from the team by deleting their team_members entry
+      // This is the correct approach - we're removing them from THIS team, not deleting their profile
+      // They may be a member of other teams
+      console.log('  - Step 3: Removing from team_members...');
+      const { error: teamMemberError } = await supabase
+        .from("team_members")
         .delete()
-        .eq("id", person.id);
+        .eq("team_id", state.currentTeamId)
+        .eq("user_id", person.id);
       
-      if (profileError) {
-        console.error('❌ Error deleting profile:', profileError);
-        const errorMsg = profileError.message || profileError.code || 'Unknown error';
-        alert(`Unable to remove member.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.\n\nYou may need to add DELETE policies for:\n- profiles table (for users with can_manage = true)\n- pending_invites table (for users with can_manage = true)\n- song_assignments table (for users with can_manage = true)`);
+      if (teamMemberError) {
+        console.error('❌ Error removing from team_members:', teamMemberError);
+        const errorMsg = teamMemberError.message || teamMemberError.code || 'Unknown error';
+        alert(`Unable to remove member from team.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
       
-      console.log('✅ Person deleted successfully');
+      console.log('✅ Person removed from team successfully');
       
       // Reload people and sets (to refresh assignments)
       await Promise.all([loadPeople(), loadSets()]);
@@ -8260,80 +8496,12 @@ async function transferOwnership(person) {
         }
         
         // Manual transfer fallback
-        // Step 1: Update team's owner_id (remove owner_id check since DB state might be different)
-        console.log('📝 Step 1: Updating team owner_id...');
-        console.log('  - Updating team', state.currentTeamId, 'to owner', person.id);
-        const { data: teamUpdateData, error: teamError } = await supabase
-          .from("teams")
-          .update({ owner_id: person.id })
-          .eq("id", state.currentTeamId)
-          .select();
+        // IMPORTANT: Promote new owner FIRST, then demote old owner
+        // This ensures the old owner can still update team_members because they're still an owner
+        // Then update teams.owner_id last
         
-        console.log('  - Team update result:', teamUpdateData);
-        console.log('  - Team update error:', teamError);
-        console.log('  - Rows updated:', teamUpdateData?.length || 0);
-        
-        if (teamError) {
-          console.error("❌ Error updating team owner_id:", teamError);
-          alert(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Check console.`);
-          return;
-        }
-        
-        // Verify team was updated
-        const { data: verifyTeam } = await supabase
-          .from("teams")
-          .select("id, owner_id")
-          .eq("id", state.currentTeamId)
-          .single();
-        console.log('  - Team after update:', verifyTeam);
-        
-        // Step 2: Demote old owner
-        console.log('📝 Step 2: Demoting old owner...');
-        const { data: oldOwnerUpdateData, error: oldOwnerError } = await supabase
-          .from("team_members")
-          .update({ 
-            is_owner: false,
-            can_manage: true,
-            role: 'manager'
-          })
-          .eq("team_id", state.currentTeamId)
-          .eq("user_id", state.profile.id)
-          .select();
-        
-        console.log('  - Old owner update result:', oldOwnerUpdateData);
-        console.log('  - Old owner update error:', oldOwnerError);
-        
-        if (oldOwnerError) {
-          console.error("❌ Error updating old owner:", oldOwnerError);
-          await supabase
-            .from("teams")
-            .update({ owner_id: state.profile.id })
-            .eq("id", state.currentTeamId);
-          alert(`Unable to transfer ownership: ${oldOwnerError.message || 'Unknown error'}. Check console.`);
-          return;
-        }
-        
-        // Verify old owner was demoted
-        const { data: verifyOldOwner } = await supabase
-          .from("team_members")
-          .select("user_id, is_owner, can_manage, role")
-          .eq("team_id", state.currentTeamId)
-          .eq("user_id", state.profile.id)
-          .single();
-        console.log('  - Old owner after demotion:', verifyOldOwner);
-        
-        if (verifyOldOwner?.is_owner !== false) {
-          console.error("❌ Old owner was not properly demoted:", verifyOldOwner);
-          await supabase
-            .from("teams")
-            .update({ owner_id: state.profile.id })
-            .eq("id", state.currentTeamId);
-          alert("Failed to demote old owner. Transfer cancelled.");
-          return;
-        }
-        
-        // Step 3: Promote new owner
-        console.log('📝 Step 3: Promoting new owner...');
+        // Step 1: Promote new owner FIRST (old owner is still owner, so RLS allows this)
+        console.log('📝 Step 1: Promoting new owner...');
         console.log('  - Checking if new owner exists in team_members...');
         const { data: newOwnerBefore } = await supabase
           .from("team_members")
@@ -8380,28 +8548,33 @@ async function transferOwnership(person) {
           console.error("  - Error message:", newOwnerError.message);
           console.error("  - Error details:", newOwnerError.details);
           console.error("  - Error hint:", newOwnerError.hint);
-          await supabase
-            .from("teams")
-            .update({ owner_id: state.profile.id })
-            .eq("id", state.currentTeamId);
-          await supabase
-            .from("team_members")
-            .update({ is_owner: true, can_manage: true, role: 'owner' })
-            .eq("team_id", state.currentTeamId)
-            .eq("user_id", state.profile.id);
           alert(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Check console for details.`);
           return;
         }
         
         if (!newOwnerUpdateData || newOwnerUpdateData.length === 0) {
           console.error("❌ Update returned 0 rows - no rows were updated!");
-          console.error("  - This might be due to a constraint or trigger blocking the update");
+          console.error("  - This might be due to RLS policy blocking the update");
+          console.error("  - Current user might not be recognized as owner");
           console.error("  - Checking current state of all team members...");
           const { data: allMembers } = await supabase
             .from("team_members")
             .select("user_id, is_owner, can_manage, role")
             .eq("team_id", state.currentTeamId);
           console.error("  - All team members:", allMembers);
+          
+          // Check teams.owner_id vs team_members.is_owner
+          const { data: teamCheck } = await supabase
+            .from("teams")
+            .select("id, owner_id")
+            .eq("id", state.currentTeamId)
+            .single();
+          console.error("  - teams.owner_id:", teamCheck?.owner_id);
+          console.error("  - Current user ID:", state.profile.id);
+          console.error("  - Match:", teamCheck?.owner_id === state.profile.id);
+          
+          alert("Failed to promote new owner. The RLS policy might be blocking the update. Check console for details.");
+          return;
         }
         
         // Verify new owner was promoted
@@ -8417,34 +8590,205 @@ async function transferOwnership(person) {
           console.error("❌ New owner was not properly promoted:", verifyNewOwner);
           console.error("  - Expected is_owner: true");
           console.error("  - Actual is_owner:", verifyNewOwner?.is_owner);
+          alert("Failed to promote new owner. Transfer cancelled.");
+          return;
+        }
+        
+        // Step 2: Demote old owner (new owner is now owner, so they can do it, OR old owner can still do it)
+        console.log('📝 Step 2: Demoting old owner...');
+        const { data: oldOwnerUpdateData, error: oldOwnerError } = await supabase
+          .from("team_members")
+          .update({ 
+            is_owner: false,
+            can_manage: true,
+            role: 'manager'
+          })
+          .eq("team_id", state.currentTeamId)
+          .eq("user_id", state.profile.id)
+          .select();
+        
+        console.log('  - Old owner update result:', oldOwnerUpdateData);
+        console.log('  - Old owner update error:', oldOwnerError);
+        
+        if (oldOwnerError) {
+          console.error("❌ Error updating old owner:", oldOwnerError);
+          // Revert new owner promotion
           await supabase
-            .from("teams")
-            .update({ owner_id: state.profile.id })
-            .eq("id", state.currentTeamId);
+            .from("team_members")
+            .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
+            .eq("team_id", state.currentTeamId)
+            .eq("user_id", person.id);
+          alert(`Unable to transfer ownership: ${oldOwnerError.message || 'Unknown error'}. Check console.`);
+          return;
+        }
+        
+        // Verify old owner was demoted
+        const { data: verifyOldOwner } = await supabase
+          .from("team_members")
+          .select("user_id, is_owner, can_manage, role")
+          .eq("team_id", state.currentTeamId)
+          .eq("user_id", state.profile.id)
+          .single();
+        console.log('  - Old owner after demotion:', verifyOldOwner);
+        
+        if (verifyOldOwner?.is_owner !== false) {
+          console.error("❌ Old owner was not properly demoted:", verifyOldOwner);
+          // Revert new owner promotion
+          await supabase
+            .from("team_members")
+            .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
+            .eq("team_id", state.currentTeamId)
+            .eq("user_id", person.id);
+          alert("Failed to demote old owner. Transfer cancelled.");
+          return;
+        }
+        
+        // Step 3: Update profiles for backward compatibility
+        // Note: profiles table might have team_id set to a different team or null
+        // So we update without the team_id filter to ensure it works
+        console.log('📝 Step 3: Updating profiles...');
+        console.log('  - Updating old owner profile (id:', state.profile.id, ')');
+        const { data: profileOldData, error: profileOldError } = await supabase
+          .from("profiles")
+          .update({ is_owner: false, can_manage: true })
+          .eq("id", state.profile.id)
+          .select();
+        console.log('  - Old profile update result:', profileOldData);
+        console.log('  - Old profile update error:', profileOldError);
+        console.log('  - Rows updated:', profileOldData?.length || 0);
+        
+        // Also try with team_id filter in case it's set
+        if (state.currentTeamId) {
+          const { error: profileOldError2 } = await supabase
+            .from("profiles")
+            .update({ is_owner: false, can_manage: true })
+            .eq("id", state.profile.id)
+            .eq("team_id", state.currentTeamId);
+          if (!profileOldError2) {
+            console.log('  - Also updated old profile with team_id filter');
+          }
+        }
+        
+        console.log('  - Updating new owner profile (id:', person.id, ')');
+        const { data: profileNewData, error: profileNewError } = await supabase
+          .from("profiles")
+          .update({ is_owner: true, can_manage: true })
+          .eq("id", person.id)
+          .select();
+        console.log('  - New profile update result:', profileNewData);
+        console.log('  - New profile update error:', profileNewError);
+        console.log('  - Rows updated:', profileNewData?.length || 0);
+        
+        // Also try with team_id filter in case it's set
+        if (state.currentTeamId) {
+          const { error: profileNewError2 } = await supabase
+            .from("profiles")
+            .update({ is_owner: true, can_manage: true })
+            .eq("id", person.id)
+            .eq("team_id", state.currentTeamId);
+          if (!profileNewError2) {
+            console.log('  - Also updated new profile with team_id filter');
+          }
+        }
+        
+        // Step 4: Update team's owner_id LAST (after both team_members updates)
+        // NOTE: The trigger sync_team_owner_id should automatically update teams.owner_id
+        // when team_members.is_owner changes, but we update it explicitly to ensure it's correct
+        // and to handle cases where the trigger might not fire
+        console.log('📝 Step 4: Updating team owner_id...');
+        console.log('  - Updating team', state.currentTeamId, 'to owner', person.id);
+        
+        // CRITICAL: Verify that team_members was actually updated before updating teams.owner_id
+        // This prevents the broken state where teams.owner_id is updated but team_members isn't
+        const { data: finalCheck } = await supabase
+          .from("team_members")
+          .select("user_id, is_owner")
+          .eq("team_id", state.currentTeamId)
+          .in("user_id", [state.profile.id, person.id]);
+        
+        console.log('  - Final check of team_members:', finalCheck);
+        
+        const newOwnerInMembers = finalCheck?.find(m => m.user_id === person.id);
+        const oldOwnerInMembers = finalCheck?.find(m => m.user_id === state.profile.id);
+        
+        if (!newOwnerInMembers || newOwnerInMembers.is_owner !== true) {
+          console.error("❌ CRITICAL: New owner is not marked as owner in team_members!");
+          console.error("  - New owner data:", newOwnerInMembers);
+          console.error("  - Cannot update teams.owner_id - team_members update failed");
+          console.error("  - This would create a broken state where teams.owner_id doesn't match team_members");
+          
+          // Try to revert old owner back to owner to prevent broken state
+          console.log('  - Attempting to revert old owner to prevent broken state...');
           await supabase
             .from("team_members")
             .update({ is_owner: true, can_manage: true, role: 'owner' })
             .eq("team_id", state.currentTeamId)
             .eq("user_id", state.profile.id);
-          alert("Failed to promote new owner. Transfer cancelled and changes reverted.");
+          
+          alert("Failed to update team_members. The RLS policy might be blocking the update. Transfer cancelled. Check console.");
           return;
         }
         
-        // Step 4: Update profiles
-        console.log('📝 Step 4: Updating profiles...');
-        const { error: profileOldError } = await supabase
-          .from("profiles")
-          .update({ is_owner: false, can_manage: true })
-          .eq("id", state.profile.id)
-          .eq("team_id", state.currentTeamId);
-        console.log('  - Old profile update error:', profileOldError);
+        if (oldOwnerInMembers && oldOwnerInMembers.is_owner !== false) {
+          console.error("❌ CRITICAL: Old owner is still marked as owner in team_members!");
+          console.error("  - Old owner data:", oldOwnerInMembers);
+          console.error("  - Cannot update teams.owner_id - team_members update incomplete");
+          
+          // Revert new owner promotion
+          console.log('  - Reverting new owner promotion...');
+          await supabase
+            .from("team_members")
+            .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
+            .eq("team_id", state.currentTeamId)
+            .eq("user_id", person.id);
+          
+          alert("Failed to demote old owner. Transfer cancelled. Check console.");
+          return;
+        }
         
-        const { error: profileNewError } = await supabase
-          .from("profiles")
-          .update({ is_owner: true, can_manage: true })
-          .eq("id", person.id)
-          .eq("team_id", state.currentTeamId);
-        console.log('  - New profile update error:', profileNewError);
+        const { data: teamUpdateData, error: teamError } = await supabase
+          .from("teams")
+          .update({ owner_id: person.id })
+          .eq("id", state.currentTeamId)
+          .select();
+        
+        console.log('  - Team update result:', teamUpdateData);
+        console.log('  - Team update error:', teamError);
+        console.log('  - Rows updated:', teamUpdateData?.length || 0);
+        
+        if (teamError) {
+          console.error("❌ Error updating team owner_id:", teamError);
+          // Try to revert team_members changes
+          await supabase
+            .from("team_members")
+            .update({ is_owner: true, can_manage: true, role: 'owner' })
+            .eq("team_id", state.currentTeamId)
+            .eq("user_id", state.profile.id);
+          await supabase
+            .from("team_members")
+            .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
+            .eq("team_id", state.currentTeamId)
+            .eq("user_id", person.id);
+          alert(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Changes reverted. Check console.`);
+          return;
+        }
+        
+        // Verify team was updated
+        const { data: verifyTeam } = await supabase
+          .from("teams")
+          .select("id, owner_id")
+          .eq("id", state.currentTeamId)
+          .single();
+        console.log('  - Team after update:', verifyTeam);
+        
+        // Final verification: ensure teams.owner_id matches team_members.is_owner
+        if (verifyTeam?.owner_id !== person.id) {
+          console.error("❌ CRITICAL: teams.owner_id does not match new owner!");
+          console.error("  - Expected owner_id:", person.id);
+          console.error("  - Actual owner_id:", verifyTeam?.owner_id);
+          alert("Transfer incomplete: teams.owner_id was not updated correctly. Check console.");
+          return;
+        }
       } else if (rpcError && !(rpcError.code === '42883' || rpcError.message?.includes('function'))) {
         // RPC function exists but returned a real error (not "function doesn't exist")
         console.error("❌ Error transferring ownership via RPC:", rpcError);
@@ -8479,8 +8823,14 @@ async function transferOwnership(person) {
       
       // Step 5: Refresh all state
       console.log('🔄 Refreshing state...');
+      // Add a small delay to ensure database has fully updated
+      await new Promise(resolve => setTimeout(resolve, 100));
       await fetchUserTeams();
       await fetchProfile();
+      // Force reload people to ensure fresh data
+      await loadPeople();
+      // Reload people again after a brief delay to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 200));
       await loadPeople();
       
       // Check state after refresh
