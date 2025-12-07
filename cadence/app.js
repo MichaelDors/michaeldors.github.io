@@ -8189,7 +8189,15 @@ async function demoteFromManager(personId) {
 }
 
 async function transferOwnership(person) {
-  if (!isOwner()) return;
+  console.log('🔄 transferOwnership() called');
+  console.log('  - Current owner ID:', state.profile.id);
+  console.log('  - New owner ID:', person.id);
+  console.log('  - Team ID:', state.currentTeamId);
+  
+  if (!isOwner()) {
+    console.log('  - ❌ User is not owner, aborting');
+    return;
+  }
   
   if (person.id === state.profile.id) {
     alert("You are already the team owner.");
@@ -8204,8 +8212,27 @@ async function transferOwnership(person) {
     teamName,
     message,
     async () => {
+      console.log('✅ Transfer confirmed, starting ownership transfer...');
+      
+      // First, check current state before transfer
+      console.log('📊 Checking current state before transfer...');
+      const { data: beforeState } = await supabase
+        .from("team_members")
+        .select("user_id, is_owner, can_manage, role")
+        .eq("team_id", state.currentTeamId)
+        .in("user_id", [state.profile.id, person.id]);
+      console.log('  - Before state:', beforeState);
+      
+      const { data: teamBefore } = await supabase
+        .from("teams")
+        .select("id, owner_id")
+        .eq("id", state.currentTeamId)
+        .single();
+      console.log('  - Team before:', teamBefore);
+      
       // Use RPC function to transfer ownership atomically
       // This avoids trigger conflicts and ensures the transfer happens in a single transaction
+      console.log('🔧 Attempting RPC function transfer...');
       const { data: result, error: rpcError } = await supabase
         .rpc('transfer_team_ownership', {
           p_team_id: state.currentTeamId,
@@ -8213,26 +8240,43 @@ async function transferOwnership(person) {
           p_new_owner_id: person.id
         });
       
+      console.log('  - RPC result:', result);
+      console.log('  - RPC error:', rpcError);
+      
       // If RPC function doesn't exist, fall back to manual transfer
       if (rpcError && (rpcError.code === '42883' || rpcError.message?.includes('function'))) {
-        console.log('RPC function not available, using manual transfer...');
+        console.log('⚠️ RPC function not available, using manual transfer...');
         
         // Manual transfer fallback
         // Step 1: Update team's owner_id
-        const { error: teamError } = await supabase
+        console.log('📝 Step 1: Updating team owner_id...');
+        const { data: teamUpdateData, error: teamError } = await supabase
           .from("teams")
           .update({ owner_id: person.id })
           .eq("id", state.currentTeamId)
-          .eq("owner_id", state.profile.id);
+          .eq("owner_id", state.profile.id)
+          .select();
+        
+        console.log('  - Team update result:', teamUpdateData);
+        console.log('  - Team update error:', teamError);
         
         if (teamError) {
-          console.error("Error updating team owner_id:", teamError);
+          console.error("❌ Error updating team owner_id:", teamError);
           alert(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Check console.`);
           return;
         }
         
+        // Verify team was updated
+        const { data: verifyTeam } = await supabase
+          .from("teams")
+          .select("id, owner_id")
+          .eq("id", state.currentTeamId)
+          .single();
+        console.log('  - Team after update:', verifyTeam);
+        
         // Step 2: Demote old owner
-        const { error: oldOwnerError } = await supabase
+        console.log('📝 Step 2: Demoting old owner...');
+        const { data: oldOwnerUpdateData, error: oldOwnerError } = await supabase
           .from("team_members")
           .update({ 
             is_owner: false,
@@ -8240,10 +8284,14 @@ async function transferOwnership(person) {
             role: 'manager'
           })
           .eq("team_id", state.currentTeamId)
-          .eq("user_id", state.profile.id);
+          .eq("user_id", state.profile.id)
+          .select();
+        
+        console.log('  - Old owner update result:', oldOwnerUpdateData);
+        console.log('  - Old owner update error:', oldOwnerError);
         
         if (oldOwnerError) {
-          console.error("Error updating old owner:", oldOwnerError);
+          console.error("❌ Error updating old owner:", oldOwnerError);
           await supabase
             .from("teams")
             .update({ owner_id: state.profile.id })
@@ -8252,8 +8300,28 @@ async function transferOwnership(person) {
           return;
         }
         
+        // Verify old owner was demoted
+        const { data: verifyOldOwner } = await supabase
+          .from("team_members")
+          .select("user_id, is_owner, can_manage, role")
+          .eq("team_id", state.currentTeamId)
+          .eq("user_id", state.profile.id)
+          .single();
+        console.log('  - Old owner after demotion:', verifyOldOwner);
+        
+        if (verifyOldOwner?.is_owner !== false) {
+          console.error("❌ Old owner was not properly demoted:", verifyOldOwner);
+          await supabase
+            .from("teams")
+            .update({ owner_id: state.profile.id })
+            .eq("id", state.currentTeamId);
+          alert("Failed to demote old owner. Transfer cancelled.");
+          return;
+        }
+        
         // Step 3: Promote new owner
-        const { error: newOwnerError } = await supabase
+        console.log('📝 Step 3: Promoting new owner...');
+        const { data: newOwnerUpdateData, error: newOwnerError } = await supabase
           .from("team_members")
           .update({ 
             is_owner: true,
@@ -8261,10 +8329,14 @@ async function transferOwnership(person) {
             role: 'owner'
           })
           .eq("team_id", state.currentTeamId)
-          .eq("user_id", person.id);
+          .eq("user_id", person.id)
+          .select();
+        
+        console.log('  - New owner update result:', newOwnerUpdateData);
+        console.log('  - New owner update error:', newOwnerError);
         
         if (newOwnerError) {
-          console.error("Error updating new owner:", newOwnerError);
+          console.error("❌ Error updating new owner:", newOwnerError);
           await supabase
             .from("teams")
             .update({ owner_id: state.profile.id })
@@ -8278,36 +8350,89 @@ async function transferOwnership(person) {
           return;
         }
         
+        // Verify new owner was promoted
+        const { data: verifyNewOwner } = await supabase
+          .from("team_members")
+          .select("user_id, is_owner, can_manage, role")
+          .eq("team_id", state.currentTeamId)
+          .eq("user_id", person.id)
+          .single();
+        console.log('  - New owner after promotion:', verifyNewOwner);
+        
+        if (verifyNewOwner?.is_owner !== true) {
+          console.error("❌ New owner was not properly promoted:", verifyNewOwner);
+          await supabase
+            .from("teams")
+            .update({ owner_id: state.profile.id })
+            .eq("id", state.currentTeamId);
+          await supabase
+            .from("team_members")
+            .update({ is_owner: true, can_manage: true, role: 'owner' })
+            .eq("team_id", state.currentTeamId)
+            .eq("user_id", state.profile.id);
+          alert("Failed to promote new owner. Transfer cancelled and changes reverted.");
+          return;
+        }
+        
         // Step 4: Update profiles
-        await supabase
+        console.log('📝 Step 4: Updating profiles...');
+        const { error: profileOldError } = await supabase
           .from("profiles")
           .update({ is_owner: false, can_manage: true })
           .eq("id", state.profile.id)
           .eq("team_id", state.currentTeamId);
+        console.log('  - Old profile update error:', profileOldError);
         
-        await supabase
+        const { error: profileNewError } = await supabase
           .from("profiles")
           .update({ is_owner: true, can_manage: true })
           .eq("id", person.id)
           .eq("team_id", state.currentTeamId);
+        console.log('  - New profile update error:', profileNewError);
       } else if (rpcError) {
         // RPC function exists but returned an error
-        console.error("Error transferring ownership:", rpcError);
+        console.error("❌ Error transferring ownership via RPC:", rpcError);
         const errorMsg = result?.error || rpcError.message || 'Unknown error';
         alert(`Unable to transfer ownership: ${errorMsg}. Check console.`);
         return;
       } else if (!result || !result.success) {
         // RPC function returned but with success: false
         const errorMsg = result?.error || 'Transfer failed';
-        console.error("Ownership transfer failed:", errorMsg);
+        console.error("❌ Ownership transfer failed via RPC:", errorMsg);
         alert(`Unable to transfer ownership: ${errorMsg}. Check console.`);
         return;
+      } else {
+        console.log('✅ RPC function succeeded:', result);
       }
       
+      // Verify final state after all operations
+      console.log('📊 Checking final state after transfer...');
+      const { data: afterState } = await supabase
+        .from("team_members")
+        .select("user_id, is_owner, can_manage, role")
+        .eq("team_id", state.currentTeamId)
+        .in("user_id", [state.profile.id, person.id]);
+      console.log('  - After state:', afterState);
+      
+      const { data: teamAfter } = await supabase
+        .from("teams")
+        .select("id, owner_id")
+        .eq("id", state.currentTeamId)
+        .single();
+      console.log('  - Team after:', teamAfter);
+      
       // Step 5: Refresh all state
+      console.log('🔄 Refreshing state...');
       await fetchUserTeams();
       await fetchProfile();
       await loadPeople();
+      
+      // Check state after refresh
+      console.log('📊 State after refresh:');
+      console.log('  - Current user isOwner():', isOwner());
+      console.log('  - Current user profile:', state.profile);
+      const currentTeamAfter = state.userTeams.find(t => t.id === state.currentTeamId);
+      console.log('  - Current team:', currentTeamAfter);
       
       // Refresh UI - showApp() updates owner-only UI elements like delete team button
       updateTeamSwitcher();
