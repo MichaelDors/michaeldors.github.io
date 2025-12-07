@@ -8229,6 +8229,9 @@ async function transferOwnership(person) {
         .eq("id", state.currentTeamId)
         .single();
       console.log('  - Team before:', teamBefore);
+      console.log('  - Expected owner_id (state.profile.id):', state.profile.id);
+      console.log('  - Actual owner_id in DB:', teamBefore?.owner_id);
+      console.log('  - Match:', teamBefore?.owner_id === state.profile.id);
       
       // Use RPC function to transfer ownership atomically
       // This avoids trigger conflicts and ensures the transfer happens in a single transaction
@@ -8243,9 +8246,18 @@ async function transferOwnership(person) {
       console.log('  - RPC result:', result);
       console.log('  - RPC error:', rpcError);
       
-      // If RPC function doesn't exist, fall back to manual transfer
-      if (rpcError && (rpcError.code === '42883' || rpcError.message?.includes('function'))) {
-        console.log('⚠️ RPC function not available, using manual transfer...');
+      // Check if RPC function doesn't exist or if it failed
+      const shouldUseManual = 
+        (rpcError && (rpcError.code === '42883' || rpcError.message?.includes('function'))) ||
+        (result && !result.success);
+      
+      if (shouldUseManual) {
+        if (result && !result.success) {
+          console.log('⚠️ RPC function returned error:', result.error);
+          console.log('⚠️ Falling back to manual transfer...');
+        } else {
+          console.log('⚠️ RPC function not available, using manual transfer...');
+        }
         
         // Manual transfer fallback
         // Step 1: Update team's owner_id
@@ -8389,20 +8401,20 @@ async function transferOwnership(person) {
           .eq("id", person.id)
           .eq("team_id", state.currentTeamId);
         console.log('  - New profile update error:', profileNewError);
-      } else if (rpcError) {
-        // RPC function exists but returned an error
+      } else if (rpcError && !(rpcError.code === '42883' || rpcError.message?.includes('function'))) {
+        // RPC function exists but returned a real error (not "function doesn't exist")
         console.error("❌ Error transferring ownership via RPC:", rpcError);
-        const errorMsg = result?.error || rpcError.message || 'Unknown error';
+        const errorMsg = rpcError.message || 'Unknown error';
         alert(`Unable to transfer ownership: ${errorMsg}. Check console.`);
         return;
-      } else if (!result || !result.success) {
-        // RPC function returned but with success: false
-        const errorMsg = result?.error || 'Transfer failed';
-        console.error("❌ Ownership transfer failed via RPC:", errorMsg);
-        alert(`Unable to transfer ownership: ${errorMsg}. Check console.`);
-        return;
-      } else {
+      } else if (result && result.success) {
+        // RPC function succeeded
         console.log('✅ RPC function succeeded:', result);
+      } else {
+        // This shouldn't happen, but just in case
+        console.error("❌ Unexpected RPC result:", result, rpcError);
+        alert('Unexpected error during ownership transfer. Check console.');
+        return;
       }
       
       // Verify final state after all operations
