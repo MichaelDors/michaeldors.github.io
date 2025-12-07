@@ -8260,17 +8260,18 @@ async function transferOwnership(person) {
         }
         
         // Manual transfer fallback
-        // Step 1: Update team's owner_id
+        // Step 1: Update team's owner_id (remove owner_id check since DB state might be different)
         console.log('📝 Step 1: Updating team owner_id...');
+        console.log('  - Updating team', state.currentTeamId, 'to owner', person.id);
         const { data: teamUpdateData, error: teamError } = await supabase
           .from("teams")
           .update({ owner_id: person.id })
           .eq("id", state.currentTeamId)
-          .eq("owner_id", state.profile.id)
           .select();
         
         console.log('  - Team update result:', teamUpdateData);
         console.log('  - Team update error:', teamError);
+        console.log('  - Rows updated:', teamUpdateData?.length || 0);
         
         if (teamError) {
           console.error("❌ Error updating team owner_id:", teamError);
@@ -8333,6 +8334,31 @@ async function transferOwnership(person) {
         
         // Step 3: Promote new owner
         console.log('📝 Step 3: Promoting new owner...');
+        console.log('  - Checking if new owner exists in team_members...');
+        const { data: newOwnerBefore } = await supabase
+          .from("team_members")
+          .select("user_id, is_owner, can_manage, role")
+          .eq("team_id", state.currentTeamId)
+          .eq("user_id", person.id)
+          .single();
+        console.log('  - New owner before update:', newOwnerBefore);
+        
+        if (!newOwnerBefore) {
+          console.error("❌ New owner not found in team_members!");
+          alert("New owner is not a member of this team. Transfer cancelled.");
+          return;
+        }
+        
+        // Check if there are any other owners that might block the constraint
+        console.log('  - Checking for other owners in team...');
+        const { data: otherOwners } = await supabase
+          .from("team_members")
+          .select("user_id, is_owner")
+          .eq("team_id", state.currentTeamId)
+          .eq("is_owner", true);
+        console.log('  - Other owners found:', otherOwners);
+        
+        console.log('  - Attempting to update new owner to is_owner=true...');
         const { data: newOwnerUpdateData, error: newOwnerError } = await supabase
           .from("team_members")
           .update({ 
@@ -8346,9 +8372,14 @@ async function transferOwnership(person) {
         
         console.log('  - New owner update result:', newOwnerUpdateData);
         console.log('  - New owner update error:', newOwnerError);
+        console.log('  - Rows updated:', newOwnerUpdateData?.length || 0);
         
         if (newOwnerError) {
           console.error("❌ Error updating new owner:", newOwnerError);
+          console.error("  - Error code:", newOwnerError.code);
+          console.error("  - Error message:", newOwnerError.message);
+          console.error("  - Error details:", newOwnerError.details);
+          console.error("  - Error hint:", newOwnerError.hint);
           await supabase
             .from("teams")
             .update({ owner_id: state.profile.id })
@@ -8358,8 +8389,19 @@ async function transferOwnership(person) {
             .update({ is_owner: true, can_manage: true, role: 'owner' })
             .eq("team_id", state.currentTeamId)
             .eq("user_id", state.profile.id);
-          alert(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Changes reverted.`);
+          alert(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Check console for details.`);
           return;
+        }
+        
+        if (!newOwnerUpdateData || newOwnerUpdateData.length === 0) {
+          console.error("❌ Update returned 0 rows - no rows were updated!");
+          console.error("  - This might be due to a constraint or trigger blocking the update");
+          console.error("  - Checking current state of all team members...");
+          const { data: allMembers } = await supabase
+            .from("team_members")
+            .select("user_id, is_owner, can_manage, role")
+            .eq("team_id", state.currentTeamId);
+          console.error("  - All team members:", allMembers);
         }
         
         // Verify new owner was promoted
@@ -8373,6 +8415,8 @@ async function transferOwnership(person) {
         
         if (verifyNewOwner?.is_owner !== true) {
           console.error("❌ New owner was not properly promoted:", verifyNewOwner);
+          console.error("  - Expected is_owner: true");
+          console.error("  - Actual is_owner:", verifyNewOwner?.is_owner);
           await supabase
             .from("teams")
             .update({ owner_id: state.profile.id })
