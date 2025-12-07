@@ -47,6 +47,7 @@ const state = {
   expandedSets: new Set(),
   currentSongDetailsId: null, // Track which song is open in details modal
   isPasswordSetup: isInviteLink, // Set flag immediately if this is an invite link
+  isPasswordReset: isRecovery, // Set flag immediately if this is a password reset link
   isMemberView: false, // Track if manager is viewing as member
   currentTeamId: null, // Current team the user is viewing/working with
   userTeams: [], // Array of all teams the user is a member of
@@ -152,6 +153,13 @@ async function init() {
     
     state.session = session;
     
+    // If we're in password reset mode, show password reset form
+    if (state.isPasswordReset && session) {
+      console.log('  - Password reset mode with session, showing password reset form');
+      showPasswordSetupGate();
+      return; // Don't proceed with normal flow
+    }
+    
     // If we're in password setup mode, check if profile exists
     if (state.isPasswordSetup && session) {
       console.log('  - Password setup mode with session, checking profile...');
@@ -171,9 +179,9 @@ async function init() {
       }
     }
     
-    // Skip normal flow if we're in password setup mode and no session
-    if (state.isPasswordSetup && !session) {
-      console.log('  - Password setup mode, skipping normal auth flow');
+    // Skip normal flow if we're in password setup or reset mode and no session
+    if ((state.isPasswordSetup || state.isPasswordReset) && !session) {
+      console.log('  - Password setup/reset mode, skipping normal auth flow');
       return;
     }
     
@@ -243,6 +251,43 @@ async function init() {
   
   // Bind events first so password setup form handler is ready
   bindEvents();
+  
+  // Check for password reset link BEFORE checking for session
+  // This must happen first so we don't show the login form
+  if (state.isPasswordReset || isRecovery) {
+    console.log('🔐 Password reset link detected!');
+    console.log('  - state.isPasswordReset:', state.isPasswordReset);
+    console.log('  - isRecovery:', isRecovery);
+    console.log('  - URL hash:', window.location.hash);
+    
+    // Ensure flag is set
+    state.isPasswordReset = true;
+    
+    // Wait a moment for Supabase to process the URL (detectSessionInUrl)
+    // This gives Supabase time to create the session from the access_token
+    console.log('⏳ Waiting for Supabase to process URL...');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('🔍 Checking for session after wait...');
+    const { data: { session: recoverySession }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (recoverySession && !sessionError) {
+      console.log('✅ Session created from password reset link for:', recoverySession.user.email);
+      state.session = recoverySession; // Set session so we can use it in password reset
+      console.log('👤 Showing password reset form');
+      showPasswordSetupGate();
+      initialSessionChecked = true; // Mark as checked so we don't process INITIAL_SESSION
+      return; // Don't proceed with normal auth flow yet
+    } else {
+      console.log('⚠️ Could not get session from password reset link');
+      console.log('  - Session error:', sessionError);
+      console.log('  - Session:', recoverySession);
+      showAuthGate();
+      setAuthMessage("Invalid or expired password reset link. Please request a new one.", true);
+      initialSessionChecked = true;
+      return;
+    }
+  }
   
   // Check for invite link BEFORE checking for session
   // This must happen first so we don't show the login form
@@ -376,8 +421,8 @@ async function init() {
   // Handle recovery or other auth redirects - clear hash after processing
   if (isRecovery || (hasAccessToken && !isRecovery)) {
     // Supabase will handle this via detectSessionInUrl, but we'll clean up the URL after processing
-    // Don't clear it yet if we're showing password setup
-    if (!state.isPasswordSetup) {
+    // Don't clear it yet if we're showing password setup or reset
+    if (!state.isPasswordSetup && !state.isPasswordReset) {
       window.history.replaceState(null, '', window.location.pathname);
     }
   }
@@ -790,6 +835,8 @@ function showAuthGate() {
 
 function showPasswordSetupGate() {
   console.log('🔐 showPasswordSetupGate() called');
+  console.log('  - isPasswordReset:', state.isPasswordReset);
+  console.log('  - isPasswordSetup:', state.isPasswordSetup);
   
   // Always close set details when showing password setup gate
   hideSetDetail();
@@ -805,6 +852,23 @@ function showPasswordSetupGate() {
   setPasswordSetupMessage("");
   const form = el("password-setup-form");
   if (form) form.reset();
+  
+  // Update text based on whether it's password reset or setup
+  const heading = passwordSetupGate?.querySelector('h2');
+  const description = passwordSetupGate?.querySelector('p:not(.muted)');
+  const submitButton = el("password-setup-submit-btn");
+  
+  if (state.isPasswordReset) {
+    // Password reset mode
+    if (heading) heading.textContent = "Reset Your Password";
+    if (description) description.textContent = "Please enter a new password for your account.";
+    if (submitButton) submitButton.textContent = "Reset Password";
+  } else {
+    // Password setup mode (invite link)
+    if (heading) heading.textContent = "Set Up Your Account";
+    if (description) description.textContent = "Please set a password to complete your account setup.";
+    if (submitButton) submitButton.textContent = "Set Password";
+  }
   
   // Show the user's email if we have a session
   if (state.session?.user?.email) {
@@ -1375,7 +1439,14 @@ async function handlePasswordSetup(event) {
   
   // Disable button
   if (submitBtn) submitBtn.disabled = true;
-  setPasswordSetupMessage("Setting up your account...");
+  
+  // Show appropriate message based on mode
+  if (state.isPasswordReset) {
+    setPasswordSetupMessage("Resetting your password...");
+  } else {
+    setPasswordSetupMessage("Setting up your account...");
+  }
+  
   setTimeout(() => {
     window.location.reload();
   }, 3000);
@@ -1400,12 +1471,17 @@ async function handlePasswordSetup(event) {
         clearTimeout(window.__passwordSetupTimeout);
         delete window.__passwordSetupTimeout;
       }
-      setPasswordSetupMessage("Invalid invite link. Please request a new invite.", true);
+      const errorMsg = state.isPasswordReset 
+        ? "Invalid or expired password reset link. Please request a new one."
+        : "Invalid invite link. Please request a new invite.";
+      setPasswordSetupMessage(errorMsg, true);
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
     
     console.log('✅ Session found, updating password for user:', session.user.email);
+    console.log('  - isPasswordReset:', state.isPasswordReset);
+    console.log('  - isPasswordSetup:', state.isPasswordSetup);
     
     // Update the user's password
     const { error: updateError } = await supabase.auth.updateUser({
@@ -1426,52 +1502,72 @@ async function handlePasswordSetup(event) {
     
     console.log('✅ Password updated successfully');
     
-    // Create profile and migrate pending invites with timeout
-    console.log('👤 Creating profile and migrating invites...');
-    try {
-      await Promise.race([
-        createProfileAndMigrateInvites(session.user),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Profile creation timeout')), 3000)
-        )
-      ]);
-      console.log('✅ Profile created and invites migrated');
-    } catch (profileError) {
-      console.error('⚠️ Profile creation error or timeout:', profileError);
-      // Continue anyway - profile might have been created, or we'll reload and it will be created
+    if (state.isPasswordReset) {
+      // Password reset flow: user already has a profile, just update password and keep them logged in
+      console.log('🔄 Password reset complete, keeping user logged in...');
+      
+      // Clean up URL and reset password reset flag
+      window.history.replaceState(null, '', window.location.pathname);
+      state.isPasswordReset = false;
+      
+      // Clear the auto-reload timeout since we're reloading now
+      clearTimeout(reloadTimeout);
+      if (window.__passwordSetupTimeout) {
+        clearTimeout(window.__passwordSetupTimeout);
+        delete window.__passwordSetupTimeout;
+      }
+      
+      // Reload the page to show the app (user is already logged in)
+      console.log('🔄 Reloading page to show app...');
+      window.location.reload();
+    } else {
+      // Password setup flow (invite link): create profile and migrate invites
+      console.log('👤 Creating profile and migrating invites...');
+      try {
+        await Promise.race([
+          createProfileAndMigrateInvites(session.user),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Profile creation timeout')), 3000)
+          )
+        ]);
+        console.log('✅ Profile created and invites migrated');
+      } catch (profileError) {
+        console.error('⚠️ Profile creation error or timeout:', profileError);
+        // Continue anyway - profile might have been created, or we'll reload and it will be created
+      }
+      
+      // Sign out the user so they can log in with their new password
+      console.log('🔓 Signing out user to redirect to login...');
+      try {
+        await Promise.race([
+          supabase.auth.signOut(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Sign out timeout')), 2000)
+          )
+        ]);
+      } catch (signOutError) {
+        console.error('⚠️ Sign out error or timeout:', signOutError);
+        // Continue anyway - we'll reload
+      }
+      
+      // Clean up URL and reset password setup flag
+      window.history.replaceState(null, '', window.location.pathname);
+      state.isPasswordSetup = false;
+      state.session = null;
+      state.profile = null;
+      
+      // Clear the auto-reload timeout since we're reloading now
+      clearTimeout(reloadTimeout);
+      if (window.__passwordSetupTimeout) {
+        clearTimeout(window.__passwordSetupTimeout);
+        delete window.__passwordSetupTimeout;
+      }
+      
+      // Reload the page to show the login form
+      // This ensures a clean state and the login form appears properly
+      console.log('🔄 Reloading page to show login form...');
+      window.location.reload();
     }
-    
-    // Sign out the user so they can log in with their new password
-    console.log('🔓 Signing out user to redirect to login...');
-    try {
-      await Promise.race([
-        supabase.auth.signOut(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Sign out timeout')), 2000)
-        )
-      ]);
-    } catch (signOutError) {
-      console.error('⚠️ Sign out error or timeout:', signOutError);
-      // Continue anyway - we'll reload
-    }
-    
-    // Clean up URL and reset password setup flag
-    window.history.replaceState(null, '', window.location.pathname);
-    state.isPasswordSetup = false;
-    state.session = null;
-    state.profile = null;
-    
-    // Clear the auto-reload timeout since we're reloading now
-    clearTimeout(reloadTimeout);
-    if (window.__passwordSetupTimeout) {
-      clearTimeout(window.__passwordSetupTimeout);
-      delete window.__passwordSetupTimeout;
-    }
-    
-    // Reload the page to show the login form
-    // This ensures a clean state and the login form appears properly
-    console.log('🔄 Reloading page to show login form...');
-    window.location.reload();
     
   } catch (err) {
     console.error('❌ Unexpected error in handlePasswordSetup:', err);
