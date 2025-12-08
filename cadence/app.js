@@ -1123,8 +1123,14 @@ function showApp() {
   dashboardEl.classList.remove("hidden");
   el("empty-state")?.classList.add("hidden");
   
-  // Ensure set detail view is hidden when showing dashboard
-  hideSetDetail();
+  // Check if there's a saved set ID - if so, don't hide set details yet
+  // (restoration will happen after sets are loaded)
+  const savedSetId = localStorage.getItem('cadence-selected-set-id');
+  if (!savedSetId) {
+    // No saved set ID, hide set detail view normally
+    hideSetDetail();
+  }
+  // If there's a saved set ID, we'll restore it after sets are loaded (in loadSets or renderSets)
   
   // Restore the saved tab, defaulting to "sets" if none is saved
   const savedTab = localStorage.getItem('cadence-active-tab') || 'sets';
@@ -2412,6 +2418,10 @@ async function switchTeam(teamId) {
   // Update current team
   state.currentTeamId = teamId;
   
+  // Clear saved set ID when switching teams (set belongs to different team)
+  localStorage.removeItem('cadence-selected-set-id');
+  hideSetDetail();
+  
   // Update profile.team_id (for backward compatibility and default team)
   // IMPORTANT: Explicitly preserve full_name to prevent it from being reset to email
   if (state.profile) {
@@ -2830,6 +2840,24 @@ async function loadSets() {
   }
   state.sets = data ?? [];
   renderSets();
+  
+  // Restore set detail view if there's a saved set ID
+  restoreSetDetailIfSaved();
+}
+
+function restoreSetDetailIfSaved() {
+  const savedSetId = localStorage.getItem('cadence-selected-set-id');
+  if (!savedSetId || state.sets.length === 0) {
+    return; // No saved set or sets not loaded yet
+  }
+  
+  const setToRestore = state.sets.find(s => s.id.toString() === savedSetId);
+  if (setToRestore) {
+    showSetDetail(setToRestore);
+  } else {
+    // Set not found (might have been deleted), clear the saved ID
+    localStorage.removeItem('cadence-selected-set-id');
+  }
 }
 
 function isUserAssignedToSet(set, userId) {
@@ -3988,6 +4016,10 @@ function switchSetDetailTab(tabName) {
 
 function showSetDetail(set) {
   state.selectedSet = set;
+  // Save selected set ID to localStorage so it persists across page reloads
+  if (set?.id) {
+    localStorage.setItem('cadence-selected-set-id', set.id.toString());
+  }
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
   
@@ -4380,6 +4412,8 @@ function hideSetDetail() {
   dashboard.classList.remove("hidden");
   detailView.classList.add("hidden");
   state.selectedSet = null;
+  // Clear saved set ID from localStorage
+  localStorage.removeItem('cadence-selected-set-id');
 }
 
 // Drag and Drop Functions
