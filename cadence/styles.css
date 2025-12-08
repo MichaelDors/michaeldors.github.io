@@ -1,5 +1,5 @@
 :root {
-  --accent-color: #5d86ff;
+  --accent-color: #ff7b51;
   --accent-light: color-mix(in srgb, var(--accent-color) 20%, black);
   --accent-lighter: color-mix(in srgb, var(--accent-color) 10%, black);
   
@@ -14,7 +14,7 @@
   --text-muted: #a0a0a0;
   --border-color: rgba(255, 255, 255, 0.08);
   --border-light: rgba(255, 255, 255, 0.12);
-  --border-accent: rgba(37, 102, 199, 0.5);
+  --border-accent: rgba(199, 83, 37, 0.5);
   
   /* Allow native controls to adapt */
   color-scheme: dark light;
@@ -33,9 +33,9 @@
     --text-muted: #4b5563;
     --border-color: rgba(0, 0, 0, 0.15);
     --border-light: rgba(0, 0, 0, 0.2);
-    --border-accent: rgba(22, 69, 163, 0.3);
+    --border-accent: rgba(255, 102, 41, 0.3);
     /* Better contrast accent color for light mode */
-    --accent-color: #5473ff;
+    --accent-color: #ff7b51;
     --accent-light: color-mix(in srgb, var(--accent-color) 20%, black);
     --accent-lighter: color-mix(in srgb, var(--accent-color) 10%, black);
   }
