@@ -372,6 +372,11 @@
             <a href="#" id="create-song-link" class="link">Create a new song</a>
           </p>
           <label>
+            Key (optional)
+            <input type="text" id="song-key-select" placeholder="C, Dm, G, etc (leave blank if not specified)" />
+            <p class="muted small-text">You can use any key here, even if it's not in the song's keys list</p>
+          </label>
+          <label>
             Notes
             <textarea id="song-notes" rows="2"></textarea>
           </label>
@@ -479,6 +484,10 @@
               <textarea id="edit-section-description" rows="3"></textarea>
             </label>
           </div>
+          <label id="edit-set-song-key-label" class="hidden">
+            Key (optional)
+            <input type="text" id="edit-set-song-key" placeholder="C, Dm, G, etc (leave blank if not specified)" />
+          </label>
           <label>
             Notes
             <textarea id="edit-set-song-notes" rows="2"></textarea>
@@ -550,10 +559,6 @@
               <input type="number" id="song-edit-bpm" min="0" />
             </label>
             <label>
-              Key
-              <input type="text" id="song-edit-key" placeholder="C, Dm, etc" />
-            </label>
-            <label>
               Time Signature
               <input type="text" id="song-edit-time-signature" placeholder="4/4, 6/8, etc" />
             </label>
@@ -566,9 +571,13 @@
             Description
             <textarea id="song-edit-description" rows="3"></textarea>
           </label>
+          <div class="section-header" style="margin-top: 1rem;">
+            <h4>Keys</h4>
+            <button type="button" id="btn-add-song-key" class="btn secondary">Add Key</button>
+          </div>
+          <div id="song-keys-list"></div>
           <div class="section-header">
             <h4>Links & Resources</h4>
-            <button type="button" id="btn-add-song-link" class="btn secondary">Add Link</button>
           </div>
           <div id="song-links-list"></div>
           <div class="modal-actions">

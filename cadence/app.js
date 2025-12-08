@@ -941,7 +941,7 @@ function bindEvents() {
   el("close-song-edit-modal")?.addEventListener("click", () => closeSongEditModal());
   el("cancel-song-edit")?.addEventListener("click", () => closeSongEditModal());
   el("song-edit-form")?.addEventListener("submit", handleSongEditSubmit);
-  el("btn-add-song-link")?.addEventListener("click", () => addSongLinkInput());
+  el("btn-add-song-key")?.addEventListener("click", () => addSongKeyInput());
   el("close-song-details-modal")?.addEventListener("click", () => closeSongDetailsModal());
   
   // Format duration input to help with MM:SS entry
@@ -2599,10 +2599,15 @@ async function loadSongs() {
     .from("songs")
     .select(`
       *,
+      song_keys (
+        id,
+        key
+      ),
       song_links (
         id,
         title,
-        url
+        url,
+        key
       )
     `)
     .eq("team_id", state.currentTeamId)
@@ -2703,12 +2708,18 @@ async function loadSets() {
         title,
         description,
         song_id,
+        key,
         song:song_id (
-          id, title, bpm, song_key, time_signature, duration_seconds, description,
+          id, title, bpm, time_signature, duration_seconds, description,
+          song_keys (
+            id,
+            key
+          ),
           song_links (
             id,
             title,
-            url
+            url,
+            key
           )
         ),
         song_assignments (
@@ -2767,12 +2778,18 @@ async function loadSets() {
           title,
           description,
           song_id,
+          key,
           song:song_id (
-            id, title, bpm, song_key, time_signature, duration_seconds, description,
+            id, title, bpm, time_signature, duration_seconds, description,
+            song_keys (
+              id,
+              key
+            ),
             song_links (
               id,
               title,
-              url
+              url,
+              key
             )
           ),
           song_assignments (
@@ -4173,14 +4190,42 @@ function renderSetDetailSongs(set) {
           (!setSong.song_assignments || setSong.song_assignments.length === 0);
         
         if (isSectionHeader) {
-          // Render as section header (H1 title)
+          // Render as section header (H1 title) - simple header with line underneath, no card styling
           const headerWrapper = document.createElement("div");
-          headerWrapper.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin: 2rem 0 1rem 0; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;";
+          headerWrapper.className = "draggable-item section-header-wrapper";
+          headerWrapper.dataset.setSongId = setSong.id;
+          headerWrapper.dataset.sequenceOrder = setSong.sequence_order;
+          headerWrapper.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin: 2rem 0 1rem 0; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; position: relative;";
+          headerWrapper.draggable = false; // Will be set to true when dragging from handle
+          
+          // Add drag handle for managers (positioned on the left)
+          const hasDragHandle = isManager();
+          if (hasDragHandle) {
+            const dragHandle = document.createElement("div");
+            dragHandle.className = "drag-handle";
+            dragHandle.style.cssText = "position: absolute; left: 0.5rem; top: 50%; transform: translateY(-50%); cursor: grab; color: var(--text-muted); font-size: 1.2rem; line-height: 1; padding: 0.5rem; display: flex; align-items: center; justify-content: center; transition: color 0.2s ease; flex-shrink: 0; z-index: 1;";
+            dragHandle.textContent = "⋮⋮";
+            dragHandle.title = "Drag to reorder";
+            dragHandle.addEventListener("mousedown", function(e) {
+              headerWrapper.draggable = true;
+            });
+            dragHandle.addEventListener("selectstart", function(e) {
+              e.preventDefault();
+            });
+            dragHandle.style.userSelect = "none";
+            headerWrapper.appendChild(dragHandle);
+          }
           
           const headerElement = document.createElement("h1");
           headerElement.className = "section-header-title";
           headerElement.textContent = setSong.title || "Untitled Header";
-          headerElement.style.cssText = "margin: 0; font-size: 1.75rem; font-weight: 700; color: var(--text-primary); flex: 1;";
+          // If user can edit and there's a drag handle, add padding to move title over
+          // Otherwise, keep title left aligned
+          if (hasDragHandle) {
+            headerElement.style.cssText = "margin: 0; font-size: 1.75rem; font-weight: 700; color: var(--text-primary); flex: 1; padding-left: 2.5rem;";
+          } else {
+            headerElement.style.cssText = "margin: 0; font-size: 1.75rem; font-weight: 700; color: var(--text-primary); flex: 1;";
+          }
           
           headerWrapper.appendChild(headerElement);
           
@@ -4264,8 +4309,11 @@ function renderSetDetailSongs(set) {
           // Render as song
           songNode.querySelector(".song-title").textContent =
             setSong.song?.title ?? "Untitled";
+          const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0 
+            ? setSong.song.song_keys.map(k => k.key).join(", ")
+            : null);
           songNode.querySelector(".song-meta").textContent = [
-            setSong.song?.song_key,
+            displayKey,
             setSong.song?.time_signature,
             setSong.song?.bpm ? `${setSong.song.bpm} BPM` : null,
             setSong.song?.duration_seconds ? formatDuration(setSong.song.duration_seconds) : null,
@@ -4354,7 +4402,7 @@ function renderSetDetailSongs(set) {
         if (viewDetailsBtn && setSong.song) {
           viewDetailsBtn.dataset.songId = setSong.song.id;
           viewDetailsBtn.addEventListener("click", () => {
-            openSongDetailsModal(setSong.song);
+            openSongDetailsModal(setSong.song, setSong.key || null);
           });
         }
 
@@ -4425,7 +4473,8 @@ function setupSongDragAndDrop(container) {
     container.removeEventListener("drop", container._songDragHandlers.containerDrop);
   }
   
-  const items = container.querySelectorAll(".set-song-card.draggable-item");
+  // Include both song cards and section headers in drag and drop
+  const items = container.querySelectorAll(".set-song-card.draggable-item, .section-header-wrapper.draggable-item");
   
   // Define handlers as named functions
   const handleDragStart = function(e) {
@@ -4457,6 +4506,7 @@ function setupSongDragAndDrop(container) {
     container.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
     
     if (afterElement == null) {
+      // Drop at the end
       const addCard = container.querySelector(".add-song-card");
       if (addCard && addCard.previousSibling !== dragging) {
         container.insertBefore(dragging, addCard);
@@ -4470,6 +4520,7 @@ function setupSongDragAndDrop(container) {
         container.appendChild(indicator);
       }
     } else {
+      // Drop before afterElement (could be at beginning, middle, or end)
       container.insertBefore(dragging, afterElement);
       const indicator = document.createElement("div");
       indicator.className = "drop-indicator";
@@ -4480,13 +4531,26 @@ function setupSongDragAndDrop(container) {
   const handleDrop = async function(e) {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Prevent double-processing
+    if (container.dataset.processingDrop === "true") {
+      return;
+    }
+    container.dataset.processingDrop = "true";
+    
     const draggedId = e.dataTransfer.getData("text/plain");
     const draggedItem = container.querySelector(`[data-set-song-id="${draggedId}"]`);
     
-    if (!draggedItem) return;
+    if (!draggedItem) {
+      container.dataset.processingDrop = "false";
+      return;
+    }
     
     // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
+    
+    // Get fresh bounding rects by forcing a reflow
+    container.offsetHeight;
     
     // Calculate where the item should be dropped based on current mouse position
     const afterElement = getDragAfterElement(container, e.clientY, draggedItem);
@@ -4494,13 +4558,14 @@ function setupSongDragAndDrop(container) {
     
     // Move the dragged item to its final position
     if (afterElement == null) {
-      // Drop at the end
+      // Drop at the end (after all items, before add card if it exists)
       if (addCard) {
         container.insertBefore(draggedItem, addCard);
       } else {
         container.appendChild(draggedItem);
       }
     } else {
+      // Drop before the afterElement (which could be at the beginning or middle)
       container.insertBefore(draggedItem, afterElement);
     }
     
@@ -4509,10 +4574,10 @@ function setupSongDragAndDrop(container) {
     draggedItem.style.opacity = "";
     draggedItem.draggable = false;
     
-    // Get the final DOM order
+    // Get the final DOM order (include both song cards and section headers)
     const allItems = Array.from(container.children);
     const items = allItems
-      .filter(el => el.classList.contains("set-song-card") && el.classList.contains("draggable-item"))
+      .filter(el => (el.classList.contains("set-song-card") || el.classList.contains("section-header-wrapper")) && el.classList.contains("draggable-item"))
       .map((el, index) => {
         const id = el.dataset.setSongId;
         if (!id) {
@@ -4530,8 +4595,29 @@ function setupSongDragAndDrop(container) {
       return;
     }
     
+    // Optimistically update the state to match DOM order immediately
+    if (state.selectedSet && state.selectedSet.set_songs) {
+      const orderedSetSongs = items.map(item => {
+        const setSong = state.selectedSet.set_songs.find(ss => String(ss.id) === String(item.id));
+        return setSong ? { ...setSong, sequence_order: item.sequence_order } : null;
+      }).filter(Boolean);
+      
+      // Update state immediately to prevent re-render from reverting DOM
+      state.selectedSet.set_songs = orderedSetSongs;
+      
+      // Update data attributes to match new order
+      allItems.forEach((el, index) => {
+        if ((el.classList.contains("set-song-card") || el.classList.contains("section-header-wrapper")) && el.classList.contains("draggable-item")) {
+          el.dataset.sequenceOrder = index;
+        }
+      });
+    }
+    
     console.log("handleDrop - items to update:", items);
-    await updateSongOrder(items);
+    await updateSongOrder(items, false); // Pass false to skip re-render
+    
+    // Clear processing flag
+    container.dataset.processingDrop = "false";
   };
   
   items.forEach((item) => {
@@ -4560,7 +4646,7 @@ function setupSongDragAndDrop(container) {
     if (!dragging) return;
     
     const addCard = container.querySelector(".add-song-card");
-    const draggableItems = container.querySelectorAll(".set-song-card.draggable-item:not(.dragging)");
+    const draggableItems = container.querySelectorAll(".set-song-card.draggable-item:not(.dragging), .section-header-wrapper.draggable-item:not(.dragging)");
     const lastItem = draggableItems[draggableItems.length - 1];
     
     if (lastItem && e.clientY > lastItem.getBoundingClientRect().bottom) {
@@ -4582,30 +4668,54 @@ function setupSongDragAndDrop(container) {
   
   const handleContainerDrop = async function(e) {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent double-processing
+    if (container.dataset.processingDrop === "true") {
+      return;
+    }
+    
+    // Only handle if the drop didn't happen on a specific item
+    // (items have their own drop handlers that should take precedence)
+    if (e.target.classList.contains("set-song-card") || 
+        e.target.classList.contains("section-header-wrapper") ||
+        e.target.closest(".set-song-card") || 
+        e.target.closest(".section-header-wrapper")) {
+      // Let the item's drop handler deal with it
+      return;
+    }
+    
+    container.dataset.processingDrop = "true";
+    
     const draggedId = e.dataTransfer.getData("text/plain");
     const draggedItem = container.querySelector(`[data-set-song-id="${draggedId}"]`);
     
-    if (!draggedItem) return;
+    if (!draggedItem) {
+      container.dataset.processingDrop = "false";
+      return;
+    }
     
     // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
     
-    // Calculate where the item should be dropped based on current mouse position
+    // Get fresh bounding rects by forcing a reflow
+    container.offsetHeight;
+    
+    // Use the same logic as handleDrop for consistency
+    const afterElement = getDragAfterElement(container, e.clientY, draggedItem);
     const addCard = container.querySelector(".add-song-card");
-    const draggableItems = container.querySelectorAll(".set-song-card.draggable-item:not(.dragging)");
-    const lastItem = draggableItems[draggableItems.length - 1];
     
     // Move the dragged item to its final position
-    if (lastItem && e.clientY > lastItem.getBoundingClientRect().bottom) {
-      // Drop at the end
+    if (afterElement == null) {
+      // Drop at the end (after all items, before add card if it exists)
       if (addCard) {
         container.insertBefore(draggedItem, addCard);
       } else {
         container.appendChild(draggedItem);
       }
-    } else if (lastItem) {
-      // Drop after the last item
-      container.insertBefore(draggedItem, lastItem.nextSibling);
+    } else {
+      // Drop before the afterElement (which could be at the beginning or middle)
+      container.insertBefore(draggedItem, afterElement);
     }
     
     // Clean up dragging state
@@ -4613,10 +4723,10 @@ function setupSongDragAndDrop(container) {
     draggedItem.style.opacity = "";
     draggedItem.draggable = false;
     
-    // Get the final DOM order
+    // Get the final DOM order (include both song cards and section headers)
     const allItems = Array.from(container.children);
     const items = allItems
-      .filter(el => el.classList.contains("set-song-card") && el.classList.contains("draggable-item"))
+      .filter(el => (el.classList.contains("set-song-card") || el.classList.contains("section-header-wrapper")) && el.classList.contains("draggable-item"))
       .map((el, index) => {
         const id = el.dataset.setSongId;
         if (!id) {
@@ -4634,8 +4744,29 @@ function setupSongDragAndDrop(container) {
       return;
     }
     
+    // Optimistically update the state to match DOM order immediately
+    if (state.selectedSet && state.selectedSet.set_songs) {
+      const orderedSetSongs = items.map(item => {
+        const setSong = state.selectedSet.set_songs.find(ss => String(ss.id) === String(item.id));
+        return setSong ? { ...setSong, sequence_order: item.sequence_order } : null;
+      }).filter(Boolean);
+      
+      // Update state immediately to prevent re-render from reverting DOM
+      state.selectedSet.set_songs = orderedSetSongs;
+      
+      // Update data attributes to match new order
+      allItems.forEach((el, index) => {
+        if ((el.classList.contains("set-song-card") || el.classList.contains("section-header-wrapper")) && el.classList.contains("draggable-item")) {
+          el.dataset.sequenceOrder = index;
+        }
+      });
+    }
+    
     console.log("handleContainerDrop - items to update:", items);
-    await updateSongOrder(items);
+    await updateSongOrder(items, false); // Pass false to skip re-render
+    
+    // Clear processing flag
+    container.dataset.processingDrop = "false";
   };
   
   // Store handlers for cleanup
@@ -4649,21 +4780,50 @@ function setupSongDragAndDrop(container) {
 }
 
 function getDragAfterElement(container, y, dragging) {
-  const draggableElements = [...container.querySelectorAll(".set-song-card.draggable-item:not(.dragging)")];
+  // Get all draggable elements, excluding the one being dragged
+  const draggableElements = [...container.querySelectorAll(".set-song-card.draggable-item:not(.dragging), .section-header-wrapper.draggable-item:not(.dragging)")];
   
-  return draggableElements.reduce((closest, child) => {
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
+  if (draggableElements.length === 0) {
+    return null;
+  }
+  
+  // Get fresh bounding rects for all elements
+  const elementsWithRects = draggableElements.map(el => ({
+    element: el,
+    rect: el.getBoundingClientRect()
+  }));
+  
+  // Check if dropping at the very beginning (above all elements)
+  const first = elementsWithRects[0];
+  if (y < first.rect.top) {
+    // Dropping at the beginning - return first element so it gets inserted before it
+    return first.element;
+  }
+  
+  // Check if dropping at the very end (below all elements)
+  const last = elementsWithRects[elementsWithRects.length - 1];
+  if (y > last.rect.bottom) {
+    // Dropping at the end - return null to append
+    return null;
+  }
+  
+  // Find the element to insert before by checking each element's position
+  // We want to find the first element where the mouse Y is above its center
+  for (let i = 0; i < elementsWithRects.length; i++) {
+    const { element, rect } = elementsWithRects[i];
+    const centerY = rect.top + rect.height / 2;
     
-    if (offset < 0 && offset > closest.offset) {
-      return { offset: offset, element: child };
-    } else {
-      return closest;
+    // If mouse is above the center of this element, insert before it
+    if (y < centerY) {
+      return element;
     }
-  }, { offset: Number.NEGATIVE_INFINITY }).element;
+  }
+  
+  // If we get here, mouse is below all element centers, so append at end
+  return null;
 }
 
-async function updateSongOrder(orderedItems) {
+async function updateSongOrder(orderedItems, shouldRerender = true) {
   if (!state.selectedSet) {
     console.warn("No selected set, cannot update song order");
     return;
@@ -4685,6 +4845,15 @@ async function updateSongOrder(orderedItems) {
   if (invalidItems.length > 0) {
     console.error("Some items don't belong to the selected set:", invalidItems);
     toastError("Some songs don't belong to this set. Please refresh and try again.");
+    // Revert optimistic update on error
+    if (!shouldRerender) {
+      await loadSets();
+      const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+      if (updatedSet) {
+        state.selectedSet = updatedSet;
+        renderSetDetailSongs(updatedSet);
+      }
+    }
     return;
   }
   
@@ -4721,12 +4890,21 @@ async function updateSongOrder(orderedItems) {
     console.error("Failed to set temporary values:", errors);
     const errorMessages = errors.map(e => `Song ${e.id}: ${e.error?.message || JSON.stringify(e.error)}`).join("\n");
     toastError(`Failed to reorder songs:\n${errorMessages}\n\nCheck the console for more details.`);
+    // Revert optimistic update on error
+    if (!shouldRerender) {
+      await loadSets();
+      const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+      if (updatedSet) {
+        state.selectedSet = updatedSet;
+        renderSetDetailSongs(updatedSet);
+      }
+    }
     return;
   }
   
   console.log("Phase 2: Setting all songs to their final sequence_order values...");
-  // Phase 2: Set all to their final values
-  for (const { id, sequence_order } of orderedItems) {
+  // Phase 2: Set all to their final values - use Promise.all for parallel updates
+  const updatePromises = orderedItems.map(async ({ id, sequence_order }) => {
     const songId = String(id);
     const orderValue = Number(sequence_order);
     
@@ -4742,37 +4920,66 @@ async function updateSongOrder(orderedItems) {
     if (error) {
       console.error(`Error updating set_song ${songId} to sequence_order ${orderValue}:`, error);
       errors.push({ id: songId, sequence_order: orderValue, error, phase: "final" });
+      return { success: false, id: songId, error };
     } else if (!data || data.length === 0) {
       console.error(`No set_song found with id ${songId} in set ${state.selectedSet.id}`);
       errors.push({ id: songId, sequence_order: orderValue, error: { message: "Song not found in this set" }, phase: "final" });
+      return { success: false, id: songId, error: { message: "Song not found in this set" } };
     } else {
       console.log(`Successfully updated set_song ${songId} to sequence_order ${orderValue}`, data);
+      return { success: true, id: songId, data };
     }
-  }
+  });
+  
+  await Promise.all(updatePromises);
   
   if (errors.length > 0) {
     console.error("Some updates failed:", errors);
     const errorMessages = errors.map(e => `Song ${e.id} (order ${e.sequence_order}): ${e.error?.message || JSON.stringify(e.error)}`).join("\n");
     console.error("Error details:", errorMessages);
     toastError(`Some songs could not be reordered:\n${errorMessages}\n\nCheck the console for more details.`);
+    // Revert optimistic update on error
+    if (!shouldRerender) {
+      await loadSets();
+      const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+      if (updatedSet) {
+        state.selectedSet = updatedSet;
+        renderSetDetailSongs(updatedSet);
+      }
+    }
     return;
   }
   
-  console.log("All updates successful, reloading sets...");
+  console.log("All updates successful");
   
-  // Reload sets to get updated order
-  await loadSets();
-  const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
-  if (updatedSet) {
-    // Ensure set_songs are sorted by sequence_order
-    if (updatedSet.set_songs) {
-      updatedSet.set_songs.sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
-      console.log("Updated set songs order:", updatedSet.set_songs.map(s => ({ id: s.id, title: s.song?.title, order: s.sequence_order })));
+  // Only reload and re-render if explicitly requested (for non-drag operations)
+  if (shouldRerender) {
+    await loadSets();
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      // Ensure set_songs are sorted by sequence_order
+      if (updatedSet.set_songs) {
+        updatedSet.set_songs.sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
+        console.log("Updated set songs order:", updatedSet.set_songs.map(s => ({ id: s.id, title: s.song?.title, order: s.sequence_order })));
+      }
+      state.selectedSet = updatedSet;
+      renderSetDetailSongs(updatedSet);
+    } else {
+      console.error("Could not find updated set after reload");
     }
-    state.selectedSet = updatedSet;
-    renderSetDetailSongs(updatedSet);
   } else {
-    console.error("Could not find updated set after reload");
+    // Just update the state to match what we already have in DOM
+    // The optimistic update was already done, just sync the sequence_order values
+    if (state.selectedSet && state.selectedSet.set_songs) {
+      state.selectedSet.set_songs.forEach(setSong => {
+        const orderedItem = orderedItems.find(item => String(item.id) === String(setSong.id));
+        if (orderedItem) {
+          setSong.sequence_order = orderedItem.sequence_order;
+        }
+      });
+      // Ensure sorted
+      state.selectedSet.set_songs.sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
+    }
   }
 }
 
@@ -5617,7 +5824,9 @@ function renderSetSongsEditor() {
         <div>
           <strong>${setSong.song?.title ?? "Untitled"}</strong>
           <p class="song-meta">${[
-            setSong.song?.song_key,
+            setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0 
+              ? setSong.song.song_keys.map(k => k.key).join(", ")
+              : null),
             setSong.song?.time_signature,
           ].filter(Boolean).join(" • ") || ""}</p>
         </div>
@@ -5640,6 +5849,12 @@ async function openSongModal() {
   document.body.style.overflow = "hidden";
   await populateSongOptions();
   
+  // Reset key input
+  const keySelect = el("song-key-select");
+  if (keySelect) {
+    keySelect.value = "";
+  }
+  
   // Hide assignments section if in per-set mode
   const assignmentSection = songModal.querySelector(".assignment-section");
   const assignmentMode = getSetAssignmentMode(state.selectedSet);
@@ -5660,6 +5875,10 @@ function closeSongModal() {
   el("song-form").reset();
   el("assignments-list").innerHTML = "";
   el("import-assignments-container").innerHTML = "";
+  const keySelect = el("song-key-select");
+  if (keySelect) {
+    keySelect.value = "";
+  }
   importAssignmentsDropdown = null;
 }
 
@@ -5733,7 +5952,7 @@ async function populateSongOptions() {
     label: song.title,
     meta: {
       bpm: song.bpm,
-      key: song.song_key,
+      key: (song.song_keys || []).map(k => k.key).join(", "),
       timeSignature: song.time_signature,
       duration: song.duration_seconds ? formatDuration(song.duration_seconds) : null,
       weeksSinceLastPerformed: weeksSinceMap.get(song.id) || null,
@@ -5818,6 +6037,7 @@ async function handleAddSongToSet(event) {
     return;
   }
   const notes = el("song-notes").value;
+  const selectedKey = el("song-key-select")?.value.trim() || null;
   const assignments = collectAssignments();
 
   // Calculate sequence_order from the current set's songs
@@ -5828,6 +6048,7 @@ async function handleAddSongToSet(event) {
     .insert({
       set_id: state.selectedSet.id,
       song_id: songId,
+      key: selectedKey,
       notes,
       sequence_order: currentSequenceOrder,
       team_id: state.currentTeamId,
@@ -6168,6 +6389,19 @@ function openEditSetSongModal(setSong) {
   const sectionFields = el("edit-section-fields");
   const editSongBtn = el("btn-edit-song-from-set");
   const assignmentSection = el("edit-set-song-modal")?.querySelector(".assignment-section");
+  const keyLabel = el("edit-set-song-key-label");
+  const keyInput = el("edit-set-song-key");
+  
+  // Show/hide key field based on whether it's a song or section
+  if (keyLabel && keyInput) {
+    if (isSection) {
+      keyLabel.classList.add("hidden");
+      keyInput.value = "";
+    } else {
+      keyLabel.classList.remove("hidden");
+      keyInput.value = setSong.key || "";
+    }
+  }
   
   // Hide assignments section if in per-set mode
   const assignmentMode = getSetAssignmentMode(state.selectedSet);
@@ -6244,6 +6478,10 @@ function closeEditSetSongModal() {
   el("edit-set-song-form").reset();
   el("edit-assignments-list").innerHTML = "";
   el("import-edit-assignments-container").innerHTML = "";
+  const keyInput = el("edit-set-song-key");
+  if (keyInput) {
+    keyInput.value = "";
+  }
   importEditAssignmentsDropdown = null;
   delete el("edit-set-song-form").dataset.setSongId;
 }
@@ -6585,9 +6823,11 @@ async function handleEditSetSongSubmit(event) {
     updateData.description = description || null;
     updateData.notes = notes || null;
   } else {
-    // Song: only update notes
+    // Song: update notes and key
     const notes = el("edit-set-song-notes").value.trim();
+    const key = el("edit-set-song-key")?.value.trim() || null;
     updateData.notes = notes || null;
+    updateData.key = key;
   }
   
   // Update set_song
@@ -7467,7 +7707,8 @@ function renderSongCatalog() {
     const allMatches = state.songs.filter((song) => {
       const titleMatch = (song.title || "").toLowerCase().includes(searchTerm);
       const bpmMatch = song.bpm ? String(song.bpm).includes(searchTerm) : false;
-      const keyMatch = (song.song_key || "").toLowerCase().includes(searchTerm);
+      const keys = (song.song_keys || []).map(k => k.key).join(" ");
+      const keyMatch = keys.toLowerCase().includes(searchTerm);
       const timeMatch = (song.time_signature || "").toLowerCase().includes(searchTerm);
       const durationMatch = song.duration_seconds ? formatDuration(song.duration_seconds).toLowerCase().includes(searchTerm) : false;
       return titleMatch || bpmMatch || keyMatch || timeMatch || durationMatch;
@@ -7496,7 +7737,8 @@ function renderSongCatalog() {
     // Highlight search term in title and metadata (use raw search term for highlighting)
     const highlightedTitle = searchTermRaw ? highlightMatch(song.title || "", searchTermRaw) : escapeHtml(song.title || "");
     const highlightedBpm = song.bpm ? (searchTerm && String(song.bpm).includes(searchTerm) ? `<span>BPM: ${highlightMatch(String(song.bpm), searchTermRaw)}</span>` : `<span>BPM: ${song.bpm}</span>`) : '';
-    const highlightedKey = song.song_key ? (searchTerm && song.song_key.toLowerCase().includes(searchTerm) ? `<span>Key: ${highlightMatch(song.song_key, searchTermRaw)}</span>` : `<span>Key: ${song.song_key}</span>`) : '';
+    const keys = (song.song_keys || []).map(k => k.key).join(", ");
+    const highlightedKey = keys ? (searchTerm && keys.toLowerCase().includes(searchTerm.toLowerCase()) ? `<span>Key: ${highlightMatch(keys, searchTermRaw)}</span>` : `<span>Key: ${keys}</span>`) : '';
     const highlightedTime = song.time_signature ? (searchTerm && song.time_signature.toLowerCase().includes(searchTerm) ? `<span>Time: ${highlightMatch(song.time_signature, searchTermRaw)}</span>` : `<span>Time: ${escapeHtml(song.time_signature)}</span>`) : '';
     const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
     const highlightedDuration = durationStr ? (searchTerm && durationStr.toLowerCase().includes(searchTerm) ? `<span>Duration: ${highlightMatch(durationStr, searchTermRaw)}</span>` : `<span>Duration: ${durationStr}</span>`) : '';
@@ -7547,7 +7789,7 @@ function renderSongCatalog() {
   });
 }
 
-function openSongEditModal(songId = null) {
+async function openSongEditModal(songId = null) {
   if (!isManager()) return;
   const modal = el("song-edit-modal");
   const title = el("song-edit-modal-title");
@@ -7562,17 +7804,44 @@ function openSongEditModal(songId = null) {
       title.textContent = "Edit Song";
       el("song-edit-title").value = song.title || "";
       el("song-edit-bpm").value = song.bpm || "";
-      el("song-edit-key").value = song.song_key || "";
       el("song-edit-time-signature").value = song.time_signature || "";
       el("song-edit-duration").value = song.duration_seconds ? formatDuration(song.duration_seconds) : "";
       el("song-edit-description").value = song.description || "";
       form.dataset.songId = songId;
-      renderSongLinks(song.song_links || []);
+      
+      // Load song keys and links
+      const { data: songData } = await supabase
+        .from("songs")
+        .select(`
+          *,
+          song_keys (
+            id,
+            key
+          ),
+          song_links (
+            id,
+            title,
+            url,
+            key,
+            display_order
+          )
+        `)
+        .eq("id", songId)
+        .single();
+      
+      if (songData) {
+        renderSongKeys(songData.song_keys || []);
+        renderSongLinks(songData.song_links || []);
+      } else {
+        renderSongKeys([]);
+        renderSongLinks([]);
+      }
     }
   } else {
     title.textContent = "New Song";
     form.reset();
     delete form.dataset.songId;
+    renderSongKeys([]);
     renderSongLinks([]);
   }
   
@@ -7598,6 +7867,7 @@ function closeSongEditModal() {
   el("song-edit-form").reset();
   delete el("song-edit-form").dataset.songId;
   el("song-links-list").innerHTML = "";
+  el("song-keys-list").innerHTML = "";
   
   // Reset creatingSongFromModal if cancelled (not saved)
   // This will be set to false in handleSongEditSubmit if saved successfully
@@ -7606,7 +7876,7 @@ function closeSongEditModal() {
   }
 }
 
-async function openSongDetailsModal(song) {
+async function openSongDetailsModal(song, selectedKey = null) {
   if (!song) return;
   
   const modal = el("song-details-modal");
@@ -7620,17 +7890,22 @@ async function openSongDetailsModal(song) {
   
   title.textContent = song.title || "Song Details";
   
-  // If song_links aren't loaded, fetch them
+  // Fetch song with keys and links
   let songWithLinks = song;
-  if (!song.song_links) {
+  if (!song.song_links || !song.song_keys) {
     const { data } = await supabase
       .from("songs")
       .select(`
         *,
+        song_keys (
+          id,
+          key
+        ),
         song_links (
           id,
           title,
           url,
+          key,
           display_order
         )
       `)
@@ -7642,6 +7917,27 @@ async function openSongDetailsModal(song) {
     }
   }
   
+  // Organize links by key
+  const generalLinks = (songWithLinks.song_links || []).filter(link => !link.key);
+  const selectedKeyLinks = selectedKey 
+    ? (songWithLinks.song_links || []).filter(link => link.key === selectedKey)
+    : [];
+  const otherKeysLinks = selectedKey
+    ? (songWithLinks.song_links || []).filter(link => link.key && link.key !== selectedKey)
+    : (songWithLinks.song_links || []).filter(link => link.key);
+  
+  // Group other keys links by key
+  const linksByKey = {};
+  otherKeysLinks.forEach(link => {
+    if (!linksByKey[link.key]) {
+      linksByKey[link.key] = [];
+    }
+    linksByKey[link.key].push(link);
+  });
+  
+  const hasLinks = (songWithLinks.song_links || []).length > 0;
+  const hasKeys = (songWithLinks.song_keys || []).length > 0;
+  
   // Render all song information in an expanded view
     content.innerHTML = `
       <div class="song-details-section">
@@ -7652,9 +7948,13 @@ async function openSongDetailsModal(song) {
             <span class="detail-label">BPM</span>
             <span class="detail-value">${songWithLinks.bpm}</span>
           </div>` : ''}
-          ${songWithLinks.song_key ? `<div class="detail-item">
-            <span class="detail-label">Key</span>
-            <span class="detail-value">${escapeHtml(songWithLinks.song_key)}</span>
+          ${hasKeys ? `<div class="detail-item">
+            <span class="detail-label">Keys</span>
+            <span class="detail-value">${(songWithLinks.song_keys || []).map(k => escapeHtml(k.key)).join(", ")}</span>
+          </div>` : ''}
+          ${selectedKey ? `<div class="detail-item">
+            <span class="detail-label">Selected Key</span>
+            <span class="detail-value">${escapeHtml(selectedKey)}</span>
           </div>` : ''}
           ${songWithLinks.time_signature ? `<div class="detail-item">
             <span class="detail-label">Time Signature</span>
@@ -7687,7 +7987,7 @@ async function openSongDetailsModal(song) {
         </div>
         ` : ''}
         
-        ${songWithLinks.song_links && songWithLinks.song_links.length > 0 ? `
+        ${hasLinks ? `
         <div class="song-details-section">
           <h3 class="section-title" style="margin-top:1.25rem;">Resources & Links</h3>
           <div class="song-details-links"></div>
@@ -7696,11 +7996,94 @@ async function openSongDetailsModal(song) {
       </div>
     `;
   
-  // Render links if they exist
-    if (songWithLinks.song_links && songWithLinks.song_links.length > 0) {
+  // Render links organized by key
+    if (hasLinks) {
       const linksContainer = content.querySelector(".song-details-links");
       if (linksContainer) {
-        renderSongLinksDisplay(songWithLinks.song_links, linksContainer);
+        // Render general links
+        if (generalLinks.length > 0) {
+          const generalSection = document.createElement("div");
+          generalSection.style.marginBottom = "1.5rem";
+          const generalTitle = document.createElement("h4");
+          generalTitle.className = "section-subtitle";
+          generalTitle.textContent = "General";
+          generalTitle.style.marginBottom = "0.5rem";
+          generalSection.appendChild(generalTitle);
+          const generalLinksContainer = document.createElement("div");
+          renderSongLinksDisplay(generalLinks, generalLinksContainer);
+          generalSection.appendChild(generalLinksContainer);
+          linksContainer.appendChild(generalSection);
+        }
+        
+        // Render selected key links
+        if (selectedKey && selectedKeyLinks.length > 0) {
+          const selectedSection = document.createElement("div");
+          selectedSection.style.marginBottom = "1.5rem";
+          const selectedTitle = document.createElement("h4");
+          selectedTitle.className = "section-subtitle";
+          selectedTitle.textContent = `Key: ${escapeHtml(selectedKey)}`;
+          selectedTitle.style.marginBottom = "0.5rem";
+          selectedSection.appendChild(selectedTitle);
+          const selectedLinksContainer = document.createElement("div");
+          renderSongLinksDisplay(selectedKeyLinks, selectedLinksContainer);
+          selectedSection.appendChild(selectedLinksContainer);
+          linksContainer.appendChild(selectedSection);
+        }
+        
+        // Render other keys links
+        if (Object.keys(linksByKey).length > 0) {
+          const otherKeysSection = document.createElement("div");
+          const otherKeysHeader = document.createElement("div");
+          otherKeysHeader.style.display = "flex";
+          otherKeysHeader.style.alignItems = "center";
+          otherKeysHeader.style.gap = "0.5rem";
+          otherKeysHeader.style.cursor = "pointer";
+          otherKeysHeader.style.marginBottom = "0.5rem";
+          
+          const otherKeysTitle = document.createElement("h4");
+          otherKeysTitle.className = "section-subtitle";
+          otherKeysTitle.textContent = "Other Keys";
+          otherKeysTitle.style.margin = "0";
+          
+          const toggleIcon = document.createElement("i");
+          toggleIcon.className = "fa-solid fa-chevron-down";
+          toggleIcon.style.transition = "transform 0.2s";
+          
+          otherKeysHeader.appendChild(otherKeysTitle);
+          otherKeysHeader.appendChild(toggleIcon);
+          
+          const otherKeysContent = document.createElement("div");
+          otherKeysContent.style.display = selectedKey ? "none" : "block";
+          if (selectedKey) {
+            toggleIcon.style.transform = "rotate(-90deg)";
+          }
+          
+          // Render links for each key
+          Object.keys(linksByKey).sort().forEach(key => {
+            const keySection = document.createElement("div");
+            keySection.style.marginBottom = "1rem";
+            const keyTitle = document.createElement("h5");
+            keyTitle.className = "section-subtitle";
+            keyTitle.textContent = `Key: ${escapeHtml(key)}`;
+            keyTitle.style.marginBottom = "0.5rem";
+            keyTitle.style.fontSize = "0.9rem";
+            keySection.appendChild(keyTitle);
+            const keyLinksContainer = document.createElement("div");
+            renderSongLinksDisplay(linksByKey[key], keyLinksContainer);
+            keySection.appendChild(keyLinksContainer);
+            otherKeysContent.appendChild(keySection);
+          });
+          
+          otherKeysHeader.addEventListener("click", () => {
+            const isHidden = otherKeysContent.style.display === "none";
+            otherKeysContent.style.display = isHidden ? "block" : "none";
+            toggleIcon.style.transform = isHidden ? "rotate(0deg)" : "rotate(-90deg)";
+          });
+          
+          otherKeysSection.appendChild(otherKeysHeader);
+          otherKeysSection.appendChild(otherKeysContent);
+          linksContainer.appendChild(otherKeysSection);
+        }
       }
     }
     
@@ -7746,113 +8129,329 @@ function closeSongDetailsModal() {
   }
 }
 
+function updateLinkSections() {
+  // Re-render links when keys change to show new key sections
+  const links = collectSongLinks();
+  renderSongLinks(links);
+}
+
+function renderSongKeys(keys) {
+  const container = el("song-keys-list");
+  if (!container) return;
+  
+  container.innerHTML = "";
+  
+  keys.forEach((keyItem, index) => {
+    const div = document.createElement("div");
+    div.className = "song-key-row";
+    div.dataset.keyId = keyItem.id || `new-${index}`;
+    div.innerHTML = `
+      <input type="text" class="song-key-input" placeholder="C, Dm, G, etc" value="${escapeHtml(keyItem.key || '')}" required />
+      ${keyItem.id ? `<input type="hidden" class="song-key-id" value="${keyItem.id}" />` : ''}
+      <button type="button" class="btn small ghost remove-song-key">Remove</button>
+    `;
+    
+    const removeBtn = div.querySelector(".remove-song-key");
+    removeBtn.addEventListener("click", () => {
+      container.removeChild(div);
+      updateLinkSections();
+    });
+    
+    const keyInput = div.querySelector(".song-key-input");
+    // Use a debounced input handler to avoid too many re-renders
+    let inputTimeout;
+    keyInput.addEventListener("input", () => {
+      clearTimeout(inputTimeout);
+      inputTimeout = setTimeout(() => {
+        updateLinkSections();
+      }, 300);
+    });
+    
+    // Also update on blur (when user finishes typing)
+    keyInput.addEventListener("blur", () => {
+      clearTimeout(inputTimeout);
+      updateLinkSections();
+    });
+    
+    container.appendChild(div);
+  });
+  
+  updateLinkSections();
+}
+
+function addSongKeyInput() {
+  const container = el("song-keys-list");
+  if (!container) return;
+  
+  const div = document.createElement("div");
+  div.className = "song-key-row";
+  div.dataset.keyId = `new-${Date.now()}`;
+  div.innerHTML = `
+    <input type="text" class="song-key-input" placeholder="C, Dm, G, etc" required />
+    <button type="button" class="btn small ghost remove-song-key">Remove</button>
+  `;
+  
+  const removeBtn = div.querySelector(".remove-song-key");
+  removeBtn.addEventListener("click", () => {
+    container.removeChild(div);
+    updateLinkSections();
+  });
+  
+  const keyInput = div.querySelector(".song-key-input");
+  // Use a debounced input handler to avoid too many re-renders
+  let inputTimeout;
+  keyInput.addEventListener("input", () => {
+    clearTimeout(inputTimeout);
+    inputTimeout = setTimeout(() => {
+      updateLinkSections();
+    }, 300);
+  });
+  
+  // Also update on blur (when user finishes typing)
+  keyInput.addEventListener("blur", () => {
+    clearTimeout(inputTimeout);
+    updateLinkSections();
+  });
+  
+  container.appendChild(div);
+  keyInput.focus();
+  // Update immediately when adding a new key
+  updateLinkSections();
+}
+
+function collectSongKeys() {
+  const container = el("song-keys-list");
+  if (!container) return [];
+  
+  const rows = Array.from(container.querySelectorAll(".song-key-row"));
+  const keys = [];
+  
+  rows.forEach((row) => {
+    const keyInput = row.querySelector(".song-key-input");
+    const idInput = row.querySelector(".song-key-id");
+    
+    const key = keyInput?.value.trim();
+    const id = idInput?.value;
+    
+    if (key) {
+      keys.push({
+        id: id || null,
+        key: key,
+      });
+    }
+  });
+  
+  return keys;
+}
+
 function renderSongLinks(links) {
   const container = el("song-links-list");
   if (!container) return;
   
   container.innerHTML = "";
   
-  // Sort by display_order
-  const sortedLinks = [...links].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+  // Get available keys
+  const keys = collectSongKeys();
   
-  sortedLinks.forEach((link, index) => {
-    const div = document.createElement("div");
-    div.className = "song-link-row draggable-item";
-    div.draggable = isManager() || false;
-    div.dataset.linkId = link.id || `new-${index}`;
-    div.dataset.displayOrder = link.display_order || index;
-    div.innerHTML = `
-      ${isManager() ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
-      <label>
-        Title
-        <input type="text" class="song-link-title-input" placeholder="Recording" value="${escapeHtml(link.title || '')}" required />
-      </label>
-      <label>
-        URL
-        <input type="url" class="song-link-url-input" placeholder="https://..." value="${escapeHtml(link.url || '')}" required />
-      </label>
-      ${link.id ? `<input type="hidden" class="song-link-id" value="${link.id}" />` : ''}
-      <button type="button" class="btn small ghost remove-song-link">Remove</button>
-    `;
-    
-    div.querySelector(".remove-song-link").addEventListener("click", () => {
-      container.removeChild(div);
-    });
-    
-    // Setup drag and drop for links
-    if (isManager()) {
-      setupLinkDragAndDrop(div, container);
+  // Group links by key
+  const generalLinks = links.filter(link => !link.key);
+  const linksByKey = {};
+  links.forEach(link => {
+    if (link.key) {
+      if (!linksByKey[link.key]) {
+        linksByKey[link.key] = [];
+      }
+      linksByKey[link.key].push(link);
     }
+  });
+  
+  // Render General Links section
+  const generalSection = document.createElement("div");
+  generalSection.className = "song-links-section";
+  generalSection.dataset.key = "";
+  const generalHeader = document.createElement("div");
+  generalHeader.className = "song-links-section-header";
+  generalHeader.innerHTML = `
+    <h4>General Links</h4>
+    <button type="button" class="btn small secondary add-link-to-section" data-key="">Add Link</button>
+  `;
+  generalSection.appendChild(generalHeader);
+  const generalLinksContainer = document.createElement("div");
+  generalLinksContainer.className = "song-links-section-content";
+  generalLinks.forEach((link, index) => {
+    const linkRow = createLinkRow(link, index, "");
+    generalLinksContainer.appendChild(linkRow);
+  });
+  generalSection.appendChild(generalLinksContainer);
+  container.appendChild(generalSection);
+  
+  // Render section for each key
+  keys.forEach(keyItem => {
+    const key = keyItem.key;
+    const keyLinks = linksByKey[key] || [];
     
-    container.appendChild(div);
+    const keySection = document.createElement("div");
+    keySection.className = "song-links-section";
+    keySection.dataset.key = key;
+    const keyHeader = document.createElement("div");
+    keyHeader.className = "song-links-section-header";
+    keyHeader.innerHTML = `
+      <h4>Key: ${escapeHtml(key)}</h4>
+      <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
+    `;
+    keySection.appendChild(keyHeader);
+    const keyLinksContainer = document.createElement("div");
+    keyLinksContainer.className = "song-links-section-content";
+    keyLinks.forEach((link, index) => {
+      const linkRow = createLinkRow(link, index, key);
+      keyLinksContainer.appendChild(linkRow);
+    });
+    keySection.appendChild(keyLinksContainer);
+    container.appendChild(keySection);
+  });
+  
+  // Add event listeners for "Add Link" buttons
+  container.querySelectorAll(".add-link-to-section").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.key || "";
+      addSongLinkToSection(key);
+    });
   });
 }
 
-function addSongLinkInput() {
-  const container = el("song-links-list");
-  if (!container) return;
-  
-  const existingItems = container.querySelectorAll(".song-link-row");
-  const nextOrder = existingItems.length;
-  
+function createLinkRow(link, index, key) {
   const div = document.createElement("div");
   div.className = "song-link-row draggable-item";
-  div.draggable = state.profile?.can_manage || false;
-  div.dataset.linkId = `new-${Date.now()}`;
-  div.dataset.displayOrder = nextOrder;
+  div.draggable = isManager() || false;
+  div.dataset.linkId = link.id || `new-${Date.now()}-${index}`;
+  div.dataset.displayOrder = link.display_order || index;
+  div.dataset.key = key;
+  
   div.innerHTML = `
-    ${state.profile?.can_manage ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
+    ${isManager() ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
     <label>
       Title
-      <input type="text" class="song-link-title-input" placeholder="Recording" required />
+      <input type="text" class="song-link-title-input" placeholder="Recording" value="${escapeHtml(link.title || '')}" required />
     </label>
     <label>
       URL
-      <input type="url" class="song-link-url-input" placeholder="https://..." required />
+      <input type="url" class="song-link-url-input" placeholder="https://..." value="${escapeHtml(link.url || '')}" required />
     </label>
+    ${link.id ? `<input type="hidden" class="song-link-id" value="${link.id}" />` : ''}
+    <input type="hidden" class="song-link-key" value="${escapeHtml(key)}" />
     <button type="button" class="btn small ghost remove-song-link">Remove</button>
   `;
   
   div.querySelector(".remove-song-link").addEventListener("click", () => {
-    container.removeChild(div);
-    updateLinkOrder(container);
+    const section = div.closest(".song-links-section");
+    const sectionContent = section?.querySelector(".song-links-section-content");
+    if (sectionContent) {
+      sectionContent.removeChild(div);
+      updateLinkOrder(sectionContent);
+    }
   });
   
-  // Setup drag and drop for new link
+  // Setup drag and drop for links
   if (isManager()) {
-    setupLinkDragAndDrop(div, container);
+    const sectionContent = div.closest(".song-links-section")?.querySelector(".song-links-section-content");
+    if (sectionContent) {
+      setupLinkDragAndDrop(div, sectionContent);
+    }
   }
   
-  container.appendChild(div);
+  return div;
+}
+
+function addSongLinkInput() {
+  // Add to general section by default
+  addSongLinkToSection("");
+}
+
+function addSongLinkToSection(key) {
+  const container = el("song-links-list");
+  if (!container) return;
+  
+  // Find the section for this key
+  let section = container.querySelector(`[data-key="${key}"]`);
+  if (!section) {
+    // If section doesn't exist, create it
+    section = document.createElement("div");
+    section.className = "song-links-section";
+    section.dataset.key = key;
+    const sectionHeader = document.createElement("div");
+    sectionHeader.className = "song-links-section-header";
+    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Links";
+    sectionHeader.innerHTML = `
+      <h4>${sectionTitle}</h4>
+      <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
+    `;
+    section.appendChild(sectionHeader);
+    const sectionContent = document.createElement("div");
+    sectionContent.className = "song-links-section-content";
+    section.appendChild(sectionContent);
+    
+    // Insert after general section or at the end
+    const generalSection = container.querySelector('[data-key=""]');
+    if (generalSection && !key) {
+      container.insertBefore(section, generalSection);
+    } else if (generalSection) {
+      generalSection.insertAdjacentElement("afterend", section);
+    } else {
+      container.appendChild(section);
+    }
+    
+    // Add event listener for the new button
+    sectionHeader.querySelector(".add-link-to-section").addEventListener("click", () => {
+      addSongLinkToSection(key);
+    });
+  }
+  
+  const sectionContent = section.querySelector(".song-links-section-content");
+  if (!sectionContent) return;
+  
+  const existingItems = sectionContent.querySelectorAll(".song-link-row");
+  const nextOrder = existingItems.length;
+  
+  const linkRow = createLinkRow({ id: null, title: "", url: "", key: key, display_order: nextOrder }, nextOrder, key);
+  sectionContent.appendChild(linkRow);
+  updateLinkOrder(sectionContent);
 }
 
 function collectSongLinks() {
   const container = el("song-links-list");
   if (!container) return [];
   
-  // Get rows in DOM order (the order they appear visually after reordering)
-  const rows = Array.from(container.querySelectorAll(".song-link-row"));
   const links = [];
+  let globalOrder = 0;
   
-  rows.forEach((row, index) => {
-    const titleInput = row.querySelector(".song-link-title-input");
-    const urlInput = row.querySelector(".song-link-url-input");
-    const idInput = row.querySelector(".song-link-id");
+  // Collect links from all sections, maintaining section order
+  const sections = Array.from(container.querySelectorAll(".song-links-section"));
+  sections.forEach(section => {
+    const sectionContent = section.querySelector(".song-links-section-content");
+    if (!sectionContent) return;
     
-    const title = titleInput?.value.trim();
-    const url = urlInput?.value.trim();
-    const id = idInput?.value;
-    
-    // Use the index (DOM position) as the display_order
-    // This ensures the order matches what the user sees after dragging
-    if (title && url) {
-      links.push({
-        id: id || null,
-        title,
-        url,
-        display_order: index,
-      });
-    }
+    const rows = Array.from(sectionContent.querySelectorAll(".song-link-row"));
+    rows.forEach((row) => {
+      const titleInput = row.querySelector(".song-link-title-input");
+      const urlInput = row.querySelector(".song-link-url-input");
+      const keyInput = row.querySelector(".song-link-key");
+      const idInput = row.querySelector(".song-link-id");
+      
+      const title = titleInput?.value.trim();
+      const url = urlInput?.value.trim();
+      const key = keyInput?.value || null;
+      const id = idInput?.value;
+      
+      if (title && url) {
+        links.push({
+          id: id || null,
+          title,
+          url,
+          key: key || null,
+          display_order: globalOrder++,
+        });
+      }
+    });
   });
   
   return links;
@@ -7864,7 +8463,6 @@ async function handleSongEditSubmit(event) {
   const songId = form.dataset.songId;
   const title = el("song-edit-title").value.trim();
   const bpm = el("song-edit-bpm").value ? parseInt(el("song-edit-bpm").value) : null;
-  const songKey = el("song-edit-key").value.trim() || null;
   const timeSignature = el("song-edit-time-signature").value.trim() || null;
   const duration = parseDuration(el("song-edit-duration").value);
   const description = el("song-edit-description").value.trim() || null;
@@ -7884,7 +8482,6 @@ async function handleSongEditSubmit(event) {
   const songData = {
     title,
     bpm,
-    song_key: songKey,
     time_signature: timeSignature,
     duration_seconds: duration,
     description,
@@ -7917,8 +8514,56 @@ async function handleSongEditSubmit(event) {
   }
   
   const finalSongId = response.data.id;
+  const keys = collectSongKeys();
   const links = collectSongLinks();
   
+  // Handle song keys
+  // Get existing keys
+  const { data: existingKeys } = await supabase
+    .from("song_keys")
+    .select("*")
+    .eq("song_id", finalSongId);
+  
+  // Determine which to delete, update, and insert
+  const existingKeyIds = new Set(existingKeys?.map(k => k.id) || []);
+  const newKeys = keys.filter(k => !k.id);
+  const updatedKeys = keys.filter(k => k.id && existingKeyIds.has(k.id));
+  const deletedKeyIds = Array.from(existingKeyIds).filter(id => 
+    !keys.some(k => k.id === id)
+  );
+  
+  // Delete removed keys
+  if (deletedKeyIds.length > 0) {
+    await supabase
+      .from("song_keys")
+      .delete()
+      .in("id", deletedKeyIds);
+  }
+  
+  // Update existing keys
+  for (const keyItem of updatedKeys) {
+    await supabase
+      .from("song_keys")
+      .update({
+        key: keyItem.key,
+      })
+      .eq("id", keyItem.id);
+  }
+  
+  // Insert new keys
+  if (newKeys.length > 0) {
+    await supabase
+      .from("song_keys")
+      .insert(
+        newKeys.map(keyItem => ({
+          song_id: finalSongId,
+          key: keyItem.key,
+          team_id: state.currentTeamId,
+        }))
+      );
+  }
+  
+  // Handle song links
   // Get existing links
   const { data: existingLinks } = await supabase
     .from("song_links")
@@ -7948,6 +8593,7 @@ async function handleSongEditSubmit(event) {
       .update({
         title: link.title,
         url: link.url,
+        key: link.key || null,
         display_order: link.display_order,
       })
       .eq("id", link.id);
@@ -7962,6 +8608,7 @@ async function handleSongEditSubmit(event) {
           song_id: finalSongId,
           title: link.title,
           url: link.url,
+          key: link.key || null,
           display_order: link.display_order,
           team_id: state.currentTeamId,
         }))
