@@ -2409,14 +2409,6 @@ async function switchTeam(teamId) {
     return;
   }
   
-  // Hide set detail view and clear saved set ID when switching teams
-  if (!el("set-detail").classList.contains("hidden")) {
-    hideSetDetail();
-  } else {
-    // Clear saved set ID even if detail view is already hidden
-    localStorage.removeItem('cadence_selected_set_id');
-  }
-  
   // Update current team
   state.currentTeamId = teamId;
   
@@ -2838,9 +2830,6 @@ async function loadSets() {
   }
   state.sets = data ?? [];
   renderSets();
-  
-  // Restore set detail view if it was open before reload
-  restoreSetDetailView();
 }
 
 function isUserAssignedToSet(set, userId) {
@@ -3143,7 +3132,7 @@ function renderSets() {
   }, 100);
 }
 
-function switchTab(tabName) {  
+function switchTab(tabName) {
   // Save the current tab to localStorage
   localStorage.setItem('cadence-active-tab', tabName);
   
@@ -4002,11 +3991,6 @@ function showSetDetail(set) {
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
   
-  // Save the selected set ID to localStorage for persistence across reloads
-  if (set?.id) {
-    localStorage.setItem('cadence_selected_set_id', set.id);
-  }
-  
   dashboard.classList.add("hidden");
   detailView.classList.remove("hidden");
   
@@ -4393,39 +4377,9 @@ function hideSetDetail() {
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
   
-  // Clear the selected set ID from localStorage
-  localStorage.removeItem('cadence_selected_set_id');
-  
   dashboard.classList.remove("hidden");
   detailView.classList.add("hidden");
   state.selectedSet = null;
-}
-
-function restoreSetDetailView() {
-  // Check if there's a saved set ID in localStorage
-  const savedSetId = localStorage.getItem('cadence_selected_set_id');
-  if (!savedSetId) {
-    return; // No saved set to restore
-  }
-  
-  // Find the set in the loaded sets
-  const setToRestore = state.sets.find(set => set.id === savedSetId);
-  if (!setToRestore) {
-    // Set doesn't exist anymore (might have been deleted or team changed)
-    localStorage.removeItem('cadence_selected_set_id');
-    return;
-  }
-  
-  // Verify the set belongs to the current team
-  if (setToRestore.team_id !== state.currentTeamId) {
-    // Set belongs to a different team, don't restore
-    localStorage.removeItem('cadence_selected_set_id');
-    return;
-  }
-  
-  // Restore the set detail view
-  console.log('🔄 Restoring set detail view for set:', setToRestore.id);
-  showSetDetail(setToRestore);
 }
 
 // Drag and Drop Functions
