@@ -84,6 +84,73 @@ const forgotPasswordMessage = el("forgot-password-message");
 // Team leader signup mode - allows team leaders to create teams
 let isSignUpMode = false;
 
+// Toast System
+function showToast(message, type = 'info', duration = 5000) {
+  const container = el('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  // Add icon based on type
+  const icon = document.createElement('div');
+  icon.className = 'toast-icon';
+  if (type === 'error') {
+    icon.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+  } else if (type === 'success') {
+    icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+  } else {
+    icon.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
+  }
+  
+  const content = document.createElement('div');
+  content.className = 'toast-content';
+  content.textContent = message;
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'toast-close';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+  closeBtn.onclick = () => removeToast(toast);
+  
+  toast.appendChild(icon);
+  toast.appendChild(content);
+  toast.appendChild(closeBtn);
+  container.appendChild(toast);
+  
+  // Auto-remove after duration
+  if (duration > 0) {
+    setTimeout(() => {
+      removeToast(toast);
+    }, duration);
+  }
+  
+  return toast;
+}
+
+function removeToast(toast) {
+  if (!toast || !toast.parentElement) return;
+  toast.classList.add('slide-out');
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.parentElement.removeChild(toast);
+    }
+  }, 300);
+}
+
+// Convenience functions
+function toastError(message, duration = 6000) {
+  return showToast(message, 'error', duration);
+}
+
+function toastSuccess(message, duration = 4000) {
+  return showToast(message, 'success', duration);
+}
+
+function toastInfo(message, duration = 5000) {
+  return showToast(message, 'info', duration);
+}
+
 // Helper function to check if user has manager permissions
 // Returns false if in member view mode, even if user is a manager
 // Returns true for both owners and managers
@@ -495,8 +562,22 @@ function bindEvents() {
   el("btn-edit-account")?.addEventListener("click", () => openEditAccountModal());
   
   // Team management buttons (owners only)
-  el("btn-rename-team")?.addEventListener("click", () => openRenameTeamModal());
-  el("btn-delete-team")?.addEventListener("click", () => deleteTeam());
+  el("btn-rename-team")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const dropdownMenu = el("team-management-dropdown-menu");
+    if (dropdownMenu) {
+      dropdownMenu.classList.add("hidden");
+    }
+    openRenameTeamModal();
+  });
+  el("btn-delete-team")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const dropdownMenu = el("team-management-dropdown-menu");
+    if (dropdownMenu) {
+      dropdownMenu.classList.add("hidden");
+    }
+    deleteTeam();
+  });
   el("btn-leave-team")?.addEventListener("click", () => {
     const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
     if (currentTeam) {
@@ -737,6 +818,24 @@ function bindEvents() {
     closeHeaderDropdown();
     if (state.selectedSet) {
       openSectionHeaderModal();
+    }
+  });
+  
+  // Team management dropdown toggle
+  el("btn-team-management-toggle")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const dropdownMenu = el("team-management-dropdown-menu");
+    if (dropdownMenu) {
+      dropdownMenu.classList.toggle("hidden");
+    }
+  });
+  
+  // Close team management dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    const container = el("team-management-dropdown-container");
+    const menu = el("team-management-dropdown-menu");
+    if (container && menu && !container.contains(e.target) && !menu.classList.contains("hidden")) {
+      menu.classList.add("hidden");
     }
   });
   
@@ -984,15 +1083,17 @@ function showApp() {
   // Update team switcher
   updateTeamSwitcher();
   
-  // Update team name in People tab
+  // Update team name header above tabs
   const teamNameDisplay = el("team-name-display");
-  const teamInfoSection = el("team-info-section");
+  const teamNameHeader = el("team-name-header");
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
   if (teamNameDisplay && currentTeam) {
     teamNameDisplay.textContent = currentTeam.name;
-    if (teamInfoSection) teamInfoSection.classList.remove("hidden");
-  } else if (teamInfoSection) {
-    teamInfoSection.classList.add("hidden");
+    if (teamNameHeader) {
+      teamNameHeader.classList.remove("hidden");
+    }
+  } else if (teamNameHeader) {
+    teamNameHeader.classList.add("hidden");
   }
   
   // Show/hide manager buttons based on actual manager status (not member view)
@@ -1035,12 +1136,12 @@ function showApp() {
     if (inviteMemberBtnEl) inviteMemberBtnEl.classList.add("hidden");
   }
   
-  // Show/hide team management buttons for owners only (in People tab)
-  const teamManagementEl = el("team-management");
+  // Show/hide team management dropdown for owners only
+  const teamManagementDropdown = el("team-management-dropdown-container");
   if (isOwner()) {
-    if (teamManagementEl) teamManagementEl.classList.remove("hidden");
+    if (teamManagementDropdown) teamManagementDropdown.classList.remove("hidden");
   } else {
-    if (teamManagementEl) teamManagementEl.classList.add("hidden");
+    if (teamManagementDropdown) teamManagementDropdown.classList.add("hidden");
   }
   
   // Verify the changes took effect
@@ -3219,15 +3320,17 @@ function renderPeople() {
   const peopleList = el("people-list");
   if (!peopleList) return;
   
-  // Update team name display when rendering people
+  // Update team name display when rendering people (already handled in showApp, but keep for consistency)
   const teamNameDisplay = el("team-name-display");
-  const teamInfoSection = el("team-info-section");
+  const teamNameHeader = el("team-name-header");
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
   if (teamNameDisplay && currentTeam) {
     teamNameDisplay.textContent = currentTeam.name;
-    if (teamInfoSection) teamInfoSection.classList.remove("hidden");
-  } else if (teamInfoSection) {
-    teamInfoSection.classList.add("hidden");
+    if (teamNameHeader) {
+      teamNameHeader.classList.remove("hidden");
+    }
+  } else if (teamNameHeader) {
+    teamNameHeader.classList.add("hidden");
   }
   
   // Show/hide leave team button
@@ -4215,7 +4318,7 @@ async function updateSongOrder(orderedItems) {
   
   if (!isManager()) {
     console.warn("Only managers can reorder songs");
-    alert("Only managers can reorder songs.");
+    toastError("Only managers can reorder songs.");
     return;
   }
   
@@ -4228,7 +4331,7 @@ async function updateSongOrder(orderedItems) {
   
   if (invalidItems.length > 0) {
     console.error("Some items don't belong to the selected set:", invalidItems);
-    alert("Some songs don't belong to this set. Please refresh and try again.");
+    toastError("Some songs don't belong to this set. Please refresh and try again.");
     return;
   }
   
@@ -4264,7 +4367,7 @@ async function updateSongOrder(orderedItems) {
   if (errors.length > 0) {
     console.error("Failed to set temporary values:", errors);
     const errorMessages = errors.map(e => `Song ${e.id}: ${e.error?.message || JSON.stringify(e.error)}`).join("\n");
-    alert(`Failed to reorder songs:\n${errorMessages}\n\nCheck the console for more details.`);
+    toastError(`Failed to reorder songs:\n${errorMessages}\n\nCheck the console for more details.`);
     return;
   }
   
@@ -4298,7 +4401,7 @@ async function updateSongOrder(orderedItems) {
     console.error("Some updates failed:", errors);
     const errorMessages = errors.map(e => `Song ${e.id} (order ${e.sequence_order}): ${e.error?.message || JSON.stringify(e.error)}`).join("\n");
     console.error("Error details:", errorMessages);
-    alert(`Some songs could not be reordered:\n${errorMessages}\n\nCheck the console for more details.`);
+    toastError(`Some songs could not be reordered:\n${errorMessages}\n\nCheck the console for more details.`);
     return;
   }
   
@@ -4620,7 +4723,7 @@ async function handleSetSubmit(event) {
   }
 
   if (response.error) {
-    alert("Unable to save set. Check console.");
+    toastError("Unable to save set. Check console.");
     console.error(response.error);
     return;
   }
@@ -4744,7 +4847,7 @@ async function removeSongFromSet(setSongId, setId) {
   
   if (error) {
     console.error(error);
-    alert("Unable to remove song from set.");
+    toastError("Unable to remove song from set.");
     return;
   }
   
@@ -4946,7 +5049,7 @@ async function handleAddSongToSet(event) {
   event.preventDefault();
   const songId = songDropdown?.getValue();
   if (!songId) {
-    alert("Please select a song.");
+    toastError("Please select a song.");
     return;
   }
   const notes = el("song-notes").value;
@@ -4969,7 +5072,7 @@ async function handleAddSongToSet(event) {
 
   if (error) {
     console.error(error);
-    alert("Unable to add song.");
+    toastError("Unable to add song.");
     return;
   }
 
@@ -4989,7 +5092,7 @@ async function handleAddSongToSet(event) {
       );
     if (assignmentError) {
       console.error(assignmentError);
-      alert("Assignments partially failed.");
+      toastError("Assignments partially failed.");
     }
   }
 
@@ -5010,7 +5113,7 @@ async function handleAddSectionToSet(event) {
   event.preventDefault();
   const title = el("section-title").value.trim();
   if (!title) {
-    alert("Please enter a section title.");
+    toastError("Please enter a section title.");
     return;
   }
   const description = el("section-description").value.trim();
@@ -5053,9 +5156,9 @@ async function handleAddSectionToSet(event) {
     console.error("Error adding section:", error);
     // 409 is HTTP conflict, could be from unique constraint or other conflicts
     if (error.code === '23505' || error.status === 409 || error.statusCode === 409) {
-      alert("Unable to add section due to a conflict. Please refresh and try again.");
+      toastError("Unable to add section due to a conflict. Please refresh and try again.");
     } else {
-      alert("Unable to add section. Please try again.");
+      toastError("Unable to add section. Please try again.");
     }
     return;
   }
@@ -5076,7 +5179,7 @@ async function handleAddSectionToSet(event) {
       );
     if (assignmentError) {
       console.error(assignmentError);
-      alert("Assignments partially failed.");
+      toastError("Assignments partially failed.");
     }
   }
 
@@ -5097,7 +5200,7 @@ async function handleAddSectionHeaderToSet(event) {
   event.preventDefault();
   const title = el("section-header-title").value.trim();
   if (!title) {
-    alert("Please enter a header title.");
+    toastError("Please enter a header title.");
     return;
   }
 
@@ -5137,9 +5240,9 @@ async function handleAddSectionHeaderToSet(event) {
     console.error("Error adding section header:", error);
     // 409 is HTTP conflict, could be from unique constraint or other conflicts
     if (error.code === '23505' || error.status === 409 || error.statusCode === 409) {
-      alert("Unable to add section header due to a conflict. Please refresh and try again.");
+      toastError("Unable to add section header due to a conflict. Please refresh and try again.");
     } else {
-      alert("Unable to add section header. Please try again.");
+      toastError("Unable to add section header. Please try again.");
     }
     return;
   }
@@ -5493,7 +5596,7 @@ function handleImportAssignments(selectedValue) {
   // Find the set song
   const setSong = state.selectedSet.set_songs?.find(ss => ss.id === selectedValue);
   if (!setSong || !setSong.song_assignments?.length) {
-    alert("Selected song has no assignments to import.");
+    toastError("Selected song has no assignments to import.");
     // Reset dropdown
     if (importAssignmentsDropdown) {
       importAssignmentsDropdown.setValue("");
@@ -5521,7 +5624,7 @@ function handleImportEditAssignments(selectedValue) {
   // Find the set song
   const setSong = state.selectedSet.set_songs?.find(ss => ss.id === selectedValue);
   if (!setSong || !setSong.song_assignments?.length) {
-    alert("Selected song has no assignments to import.");
+    toastError("Selected song has no assignments to import.");
     // Reset dropdown
     if (importEditAssignmentsDropdown) {
       importEditAssignmentsDropdown.setValue("");
@@ -5677,7 +5780,7 @@ async function handleEditSetSongSubmit(event) {
   const isSectionHeader = form.dataset.isSectionHeader === "true";
   
   if (!setSongId) {
-    alert("Missing set song ID.");
+    toastError("Missing set song ID.");
     return;
   }
   
@@ -5688,7 +5791,7 @@ async function handleEditSetSongSubmit(event) {
   if (isSectionHeader) {
     const title = el("edit-section-title").value.trim();
     if (!title) {
-      alert("Header title is required.");
+      toastError("Header title is required.");
       return;
     }
     updateData.title = title;
@@ -5700,7 +5803,7 @@ async function handleEditSetSongSubmit(event) {
     const description = el("edit-section-description").value.trim();
     const notes = el("edit-set-song-notes").value.trim();
     if (!title) {
-      alert("Section title is required.");
+      toastError("Section title is required.");
       return;
     }
     updateData.title = title;
@@ -5721,7 +5824,7 @@ async function handleEditSetSongSubmit(event) {
   if (updateError) {
     console.error(updateError);
     const itemType = isSectionHeader ? 'section header' : (isSection ? 'section' : 'song');
-    alert(`Unable to update ${itemType}.`);
+    toastError(`Unable to update ${itemType}.`);
     return;
   }
   
@@ -5876,7 +5979,7 @@ async function deleteSet(set) {
       
       if (error) {
         console.error(error);
-        alert("Unable to delete set. Check console.");
+        toastError("Unable to delete set. Check console.");
         return;
       }
       
@@ -5908,7 +6011,7 @@ async function deleteSong(songId) {
       
       if (error) {
         console.error(error);
-        alert("Unable to delete song. Check console.");
+        toastError("Unable to delete song. Check console.");
         return;
       }
       
@@ -6289,7 +6392,7 @@ async function leaveTeam(teamId, teamName) {
   
   if (error) {
     console.error("Error leaving team:", error);
-    alert("Unable to leave team. Check console.");
+    toastError("Unable to leave team. Check console.");
     return;
   }
   
@@ -6374,7 +6477,7 @@ async function handleEditPersonSubmit(event) {
   const fullName = el("edit-person-name").value.trim();
   
   if (!personId || !fullName) {
-    alert("Missing required information.");
+    toastError("Missing required information.");
     return;
   }
   
@@ -6385,7 +6488,7 @@ async function handleEditPersonSubmit(event) {
   
   if (error) {
     console.error(error);
-    alert("Unable to update member. Check console.");
+    toastError("Unable to update member. Check console.");
     return;
   }
   
@@ -6397,13 +6500,13 @@ async function deletePerson(person) {
   if (!isManager() || !person) return;
   
   if (person.id === state.profile.id) {
-    alert("You cannot remove yourself from the band.");
+    toastError("You cannot remove yourself from the band.");
     return;
   }
   
   // Check if person is an owner - owners cannot be removed, they must transfer ownership first
   if (person.is_owner) {
-    alert("You cannot remove an owner from the team. The owner must transfer ownership first.");
+    toastError("You cannot remove an owner from the team. The owner must transfer ownership first.");
     return;
   }
   
@@ -6425,7 +6528,7 @@ async function deletePerson(person) {
       if (assignmentsError) {
         console.error('❌ Error deleting assignments by person_id:', assignmentsError);
         const errorMsg = assignmentsError.message || assignmentsError.code || 'Unknown error';
-        alert(`Unable to remove member assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+        toastError(`Unable to remove member assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
       
@@ -6451,7 +6554,7 @@ async function deletePerson(person) {
           if (pendingAssignmentsError) {
             console.error('❌ Error deleting assignments by pending_invite_id:', pendingAssignmentsError);
             const errorMsg = pendingAssignmentsError.message || pendingAssignmentsError.code || 'Unknown error';
-            alert(`Unable to remove pending invite assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+            toastError(`Unable to remove pending invite assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
             return;
           }
           
@@ -6465,7 +6568,7 @@ async function deletePerson(person) {
           if (pendingError) {
             console.error('❌ Error deleting pending_invite:', pendingError);
             const errorMsg = pendingError.message || pendingError.code || 'Unknown error';
-            alert(`Unable to remove pending invite.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+            toastError(`Unable to remove pending invite.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
             return;
           }
         }
@@ -6484,7 +6587,7 @@ async function deletePerson(person) {
       if (teamMemberError) {
         console.error('❌ Error removing from team_members:', teamMemberError);
         const errorMsg = teamMemberError.message || teamMemberError.code || 'Unknown error';
-        alert(`Unable to remove member from team.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+        toastError(`Unable to remove member from team.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
       
@@ -6522,7 +6625,7 @@ async function cancelPendingInvite(invite) {
       if (assignmentsError) {
         console.error('❌ Error deleting assignments by pending_invite_id:', assignmentsError);
         const errorMsg = assignmentsError.message || assignmentsError.code || 'Unknown error';
-        alert(`Unable to remove pending invite assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+        toastError(`Unable to remove pending invite assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
       
@@ -6536,7 +6639,7 @@ async function cancelPendingInvite(invite) {
       if (inviteError) {
         console.error('❌ Error deleting pending_invite:', inviteError);
         const errorMsg = inviteError.message || inviteError.code || 'Unknown error';
-        alert(`Unable to cancel invite.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.\n\nYou may need to add DELETE policies for:\n- pending_invites table (for users with can_manage = true)\n- song_assignments table (for users with can_manage = true)`);
+        toastError(`Unable to cancel invite.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.\n\nYou may need to add DELETE policies for:\n- pending_invites table (for users with can_manage = true)\n- song_assignments table (for users with can_manage = true)`);
         return;
       }
       
@@ -6992,7 +7095,7 @@ async function handleSongEditSubmit(event) {
   const description = el("song-edit-description").value.trim() || null;
   
   if (!title) {
-    alert("Title is required.");
+    toastError("Title is required.");
     return;
   }
   
@@ -7034,7 +7137,7 @@ async function handleSongEditSubmit(event) {
   
   if (response.error) {
     console.error(response.error);
-    alert("Unable to save song. Check console.");
+    toastError("Unable to save song. Check console.");
     return;
   }
   
@@ -7388,7 +7491,7 @@ function createClickSound(audioContext) {
 
 function startMetronome(bpm) {
   if (!bpm || bpm <= 0) {
-    alert("Song needs a BPM to play click track.");
+    toastError("Song needs a BPM to play click track.");
     return;
   }
   
@@ -7886,7 +7989,7 @@ async function handleEditAccountSubmit(e) {
   const newName = input.value.trim();
   
   if (!newName) {
-    alert("Name cannot be empty.");
+    toastError("Name cannot be empty.");
     return;
   }
   
@@ -7903,7 +8006,7 @@ async function handleEditAccountSubmit(e) {
   
   if (error) {
     console.error("Error updating account name:", error);
-    alert("Unable to update account name. Check console.");
+    toastError("Unable to update account name. Check console.");
     return;
   }
   
@@ -7947,7 +8050,7 @@ async function deleteAccount() {
       
       if (profileError) {
         console.error("Error deleting profile:", profileError);
-        alert("Unable to delete account. Check console.");
+        toastError("Unable to delete account. Check console.");
         return;
       }
       
@@ -7995,7 +8098,7 @@ async function handleRenameTeamSubmit(e) {
   const newName = input.value.trim();
   
   if (!newName) {
-    alert("Team name cannot be empty.");
+    toastError("Team name cannot be empty.");
     return;
   }
   
@@ -8013,7 +8116,7 @@ async function handleRenameTeamSubmit(e) {
   
   if (error) {
     console.error("Error renaming team:", error);
-    alert("Unable to rename team. Check console.");
+    toastError("Unable to rename team. Check console.");
     return;
   }
   
@@ -8045,7 +8148,7 @@ async function deleteTeam() {
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
   if (!currentTeam) {
     console.error("Current team not found in userTeams");
-    alert("Unable to find team. Please refresh the page.");
+    toastError("Unable to find team. Please refresh the page.");
     return;
   }
   
@@ -8062,14 +8165,14 @@ async function deleteTeam() {
   
   if (verifyError || !teamData) {
     console.error("Error verifying team ownership:", verifyError);
-    alert("Unable to verify team ownership. You may not be the owner of this team.");
+    toastError("Unable to verify team ownership. You may not be the owner of this team.");
     return;
   }
   
   // Double-check the team ID matches
   if (teamData.id !== teamId) {
     console.error("Team ID mismatch during verification");
-    alert("Team verification failed. Please refresh the page.");
+    toastError("Team verification failed. Please refresh the page.");
     return;
   }
   
@@ -8089,7 +8192,7 @@ async function deleteTeam() {
       
       if (finalVerifyError || !finalVerify || finalVerify.id !== teamId) {
         console.error("Final verification failed before deletion:", finalVerifyError);
-        alert("Team ownership verification failed. Deletion cancelled for safety.");
+        toastError("Team ownership verification failed. Deletion cancelled for safety.");
         return;
       }
       
@@ -8103,14 +8206,14 @@ async function deleteTeam() {
         .single();
       
       if (!preDeleteCheck) {
-        alert("Team ownership verification failed. Deletion cancelled for safety.");
+        toastError("Team ownership verification failed. Deletion cancelled for safety.");
         return;
       }
       
       // CRITICAL: Verify teamId is valid and not empty
       if (!teamId || typeof teamId !== 'string' || teamId.trim() === '') {
         console.error("CRITICAL: Invalid teamId for deletion:", teamId);
-        alert("ERROR: Invalid team ID. Deletion cancelled for safety.");
+        toastError("ERROR: Invalid team ID. Deletion cancelled for safety.");
         return;
       }
       
@@ -8124,7 +8227,7 @@ async function deleteTeam() {
       
       if (countError) {
         console.error("Error counting teams before deletion:", countError);
-        alert("Unable to verify team count. Deletion cancelled for safety.");
+        toastError("Unable to verify team count. Deletion cancelled for safety.");
         return;
       }
       
@@ -8137,7 +8240,7 @@ async function deleteTeam() {
         console.error("CRITICAL: Team to delete not found in user's teams!");
         console.error("  - teamId:", teamId);
         console.error("  - User's teams:", teamsBeforeDelete?.map(t => t.id));
-        alert("ERROR: Team not found in your teams. Deletion cancelled for safety.");
+        toastError("ERROR: Team not found in your teams. Deletion cancelled for safety.");
         return;
       }
       
@@ -8153,13 +8256,13 @@ async function deleteTeam() {
       
       if (exactCheckError || !exactTeamCheck) {
         console.error("CRITICAL: Cannot verify exact team before deletion:", exactCheckError);
-        alert("ERROR: Cannot verify team before deletion. Operation cancelled for safety.");
+        toastError("ERROR: Cannot verify team before deletion. Operation cancelled for safety.");
         return;
       }
       
       if (exactTeamCheck.id !== teamId) {
         console.error("CRITICAL: Team ID mismatch in final check!");
-        alert("ERROR: Team verification failed. Operation cancelled for safety.");
+        toastError("ERROR: Team verification failed. Operation cancelled for safety.");
         return;
       }
       
@@ -8172,7 +8275,7 @@ async function deleteTeam() {
       if (error) {
         console.error("Error deleting team:", error);
         console.error("Error details:", JSON.stringify(error, null, 2));
-        alert("Unable to delete team. Check console.");
+        toastError("Unable to delete team. Check console.");
         return;
       }
       
@@ -8180,7 +8283,7 @@ async function deleteTeam() {
       if (!deleteResult || !deleteResult.success) {
         const errorMsg = deleteResult?.error || 'Unknown error';
         console.error("🚨 Team deletion failed:", errorMsg);
-        alert(`Unable to delete team: ${errorMsg}`);
+        toastError(`Unable to delete team: ${errorMsg}`);
         return;
       }
       
@@ -8422,7 +8525,7 @@ async function promoteToManager(personId) {
   if (!isOwner()) return;
   
   if (personId === state.profile.id) {
-    alert("You are already the team owner.");
+    toastError("You are already the team owner.");
     return;
   }
   
@@ -8438,7 +8541,7 @@ async function promoteToManager(personId) {
   
   if (error) {
     console.error("Error promoting to manager:", error);
-    alert("Unable to promote user. Check console.");
+    toastError("Unable to promote user. Check console.");
     return;
   }
   
@@ -8454,14 +8557,14 @@ async function promoteToManager(personId) {
   await fetchProfile();
   await loadPeople();
   
-  alert("User promoted to manager.");
+  toastSuccess("User promoted to manager.");
 }
 
 async function demoteFromManager(personId) {
   if (!isOwner()) return;
   
   if (personId === state.profile.id) {
-    alert("You cannot demote yourself. Transfer ownership first.");
+    toastError("You cannot demote yourself. Transfer ownership first.");
     return;
   }
   
@@ -8477,7 +8580,7 @@ async function demoteFromManager(personId) {
   
   if (error) {
     console.error("Error demoting manager:", error);
-    alert("Unable to demote user. Check console.");
+    toastError("Unable to demote user. Check console.");
     return;
   }
   
@@ -8493,7 +8596,7 @@ async function demoteFromManager(personId) {
   await fetchProfile();
   await loadPeople();
   
-  alert("User demoted from manager.");
+  toastSuccess("User demoted from manager.");
 }
 
 async function transferOwnership(person) {
@@ -8508,7 +8611,7 @@ async function transferOwnership(person) {
   }
   
   if (person.id === state.profile.id) {
-    alert("You are already the team owner.");
+    toastError("You are already the team owner.");
     return;
   }
   
@@ -8585,7 +8688,7 @@ async function transferOwnership(person) {
         
         if (!newOwnerBefore) {
           console.error("❌ New owner not found in team_members!");
-          alert("New owner is not a member of this team. Transfer cancelled.");
+          toastError("New owner is not a member of this team. Transfer cancelled.");
           return;
         }
         
@@ -8620,7 +8723,7 @@ async function transferOwnership(person) {
           console.error("  - Error message:", newOwnerError.message);
           console.error("  - Error details:", newOwnerError.details);
           console.error("  - Error hint:", newOwnerError.hint);
-          alert(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Check console for details.`);
+          toastError(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Check console for details.`);
           return;
         }
         
@@ -8645,7 +8748,7 @@ async function transferOwnership(person) {
           console.error("  - Current user ID:", state.profile.id);
           console.error("  - Match:", teamCheck?.owner_id === state.profile.id);
           
-          alert("Failed to promote new owner. The RLS policy might be blocking the update. Check console for details.");
+          toastError("Failed to promote new owner. The RLS policy might be blocking the update. Check console for details.");
           return;
         }
         
@@ -8662,7 +8765,7 @@ async function transferOwnership(person) {
           console.error("❌ New owner was not properly promoted:", verifyNewOwner);
           console.error("  - Expected is_owner: true");
           console.error("  - Actual is_owner:", verifyNewOwner?.is_owner);
-          alert("Failed to promote new owner. Transfer cancelled.");
+          toastError("Failed to promote new owner. Transfer cancelled.");
           return;
         }
         
@@ -8690,7 +8793,7 @@ async function transferOwnership(person) {
             .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
             .eq("team_id", state.currentTeamId)
             .eq("user_id", person.id);
-          alert(`Unable to transfer ownership: ${oldOwnerError.message || 'Unknown error'}. Check console.`);
+          toastError(`Unable to transfer ownership: ${oldOwnerError.message || 'Unknown error'}. Check console.`);
           return;
         }
         
@@ -8711,7 +8814,7 @@ async function transferOwnership(person) {
             .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
             .eq("team_id", state.currentTeamId)
             .eq("user_id", person.id);
-          alert("Failed to demote old owner. Transfer cancelled.");
+          toastError("Failed to demote old owner. Transfer cancelled.");
           return;
         }
         
@@ -8797,7 +8900,7 @@ async function transferOwnership(person) {
             .eq("team_id", state.currentTeamId)
             .eq("user_id", state.profile.id);
           
-          alert("Failed to update team_members. The RLS policy might be blocking the update. Transfer cancelled. Check console.");
+          toastError("Failed to update team_members. The RLS policy might be blocking the update. Transfer cancelled. Check console.");
           return;
         }
         
@@ -8814,7 +8917,7 @@ async function transferOwnership(person) {
             .eq("team_id", state.currentTeamId)
             .eq("user_id", person.id);
           
-          alert("Failed to demote old owner. Transfer cancelled. Check console.");
+          toastError("Failed to demote old owner. Transfer cancelled. Check console.");
           return;
         }
         
@@ -8841,7 +8944,7 @@ async function transferOwnership(person) {
             .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
             .eq("team_id", state.currentTeamId)
             .eq("user_id", person.id);
-          alert(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Changes reverted. Check console.`);
+          toastError(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Changes reverted. Check console.`);
           return;
         }
         
@@ -8858,14 +8961,14 @@ async function transferOwnership(person) {
           console.error("❌ CRITICAL: teams.owner_id does not match new owner!");
           console.error("  - Expected owner_id:", person.id);
           console.error("  - Actual owner_id:", verifyTeam?.owner_id);
-          alert("Transfer incomplete: teams.owner_id was not updated correctly. Check console.");
+          toastError("Transfer incomplete: teams.owner_id was not updated correctly. Check console.");
           return;
         }
       } else if (rpcError && !(rpcError.code === '42883' || rpcError.message?.includes('function'))) {
         // RPC function exists but returned a real error (not "function doesn't exist")
         console.error("❌ Error transferring ownership via RPC:", rpcError);
         const errorMsg = rpcError.message || 'Unknown error';
-        alert(`Unable to transfer ownership: ${errorMsg}. Check console.`);
+        toastError(`Unable to transfer ownership: ${errorMsg}. Check console.`);
         return;
       } else if (result && result.success) {
         // RPC function succeeded
@@ -8873,7 +8976,7 @@ async function transferOwnership(person) {
       } else {
         // This shouldn't happen, but just in case
         console.error("❌ Unexpected RPC result:", result, rpcError);
-        alert('Unexpected error during ownership transfer. Check console.');
+        toastError('Unexpected error during ownership transfer. Check console.');
         return;
       }
       
@@ -8917,7 +9020,7 @@ async function transferOwnership(person) {
       refreshActiveTab();
       showApp();
       
-      alert("Ownership transferred successfully. You are now a manager.");
+      toastSuccess("Ownership transferred successfully. You are now a manager.");
     },
     {
       title: "Transfer Ownership",

@@ -125,6 +125,24 @@
       </section>
 
       <section id="dashboard" class="hidden">
+        <div id="team-name-header" class="team-name-header hidden">
+          <h1 id="team-name-display"></h1>
+          <div class="header-dropdown-container" id="team-management-dropdown-container">
+            <button id="btn-team-management-toggle" class="btn ghost small" type="button">
+              <i class="fa-solid fa-ellipsis-vertical"></i>
+            </button>
+            <div class="header-dropdown-menu hidden" id="team-management-dropdown-menu">
+              <button type="button" class="header-dropdown-item" id="btn-rename-team">
+                <i class="fa-solid fa-pencil"></i>
+                <span>Rename Team</span>
+              </button>
+              <button type="button" class="header-dropdown-item" id="btn-delete-team" style="color: var(--error-color);">
+                <i class="fa-solid fa-trash"></i>
+                <span>Delete Team</span>
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="dashboard-tabs">
           <button class="tab-btn active" data-tab="sets"><i class="fa-solid fa-rectangle-list"></i> Sets</button>
           <button class="tab-btn" data-tab="songs"><i class="fa-solid fa-file-waveform"></i> Songs</button>
@@ -176,17 +194,6 @@
           <div class="dashboard-header">
             <div>
               <h2><i class="fa-solid fa-address-book"></i> Team Members</h2>
-              <div id="team-info-section" class="hidden" style="margin-top: 0.5rem;">
-                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                  <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <h1 id="team-name-display"></h1>
-                  </div>
-                  <div id="team-management" class="hidden" style="display: flex; gap: 0.5rem;">
-                    <button id="btn-rename-team" class="btn small secondary"><i class="fa-solid fa-pencil"></i> Rename Team</button>
-                    <button id="btn-delete-team" class="btn small ghost" style="color: var(--error-color);"><i class="fa-solid fa-trash"></i> Delete Team</button>
-                  </div>
-                </div>
-              </div>
             </div>
             <div class="header-actions">
               <button id="btn-leave-team" class="btn ghost hidden" style="color: var(--error-color);"><i class="fa-solid fa-sign-out-alt"></i> Leave Team</button>
@@ -762,6 +769,8 @@
         <span class="assignment-person"></span>
       </span>
     </template>
+
+    <div id="toast-container" class="toast-container"></div>
 
     <script type="module" src="app.js"></script>
   </body>
