@@ -4961,26 +4961,33 @@ function openSetModal(set = null) {
   const overrideText = el("set-override-assignment-mode-text");
   
   if (overrideCheckbox && overrideText) {
-    const overrideMode = set?.assignment_mode_override;
-    const hasExplicitOverride = overrideMode !== null && overrideMode !== undefined;
-    
-    // Get the effective mode (what the set is actually using)
-    const effectiveMode = getSetAssignmentMode(set);
     const teamMode = state.teamAssignmentMode || 'per_set';
-    
-    // Checkbox should be checked ONLY if we're actually overriding the team mode
-    // 1) Explicit override exists and differs from team mode
-    // 2) No explicit override but effective mode differs from team mode (legacy sets)
-    const shouldBeChecked =
-      (hasExplicitOverride && overrideMode !== teamMode) ||
-      (!hasExplicitOverride && effectiveMode !== teamMode);
-    overrideCheckbox.checked = shouldBeChecked;
     
     // Set the text based on current team mode
     if (teamMode === 'per_set') {
       overrideText.textContent = 'Use per-song assignments';
     } else {
       overrideText.textContent = 'Use per-set assignments';
+    }
+    
+    // For new sets, checkbox is always unchecked (no override yet)
+    if (!set) {
+      overrideCheckbox.checked = false;
+    } else {
+      // For existing sets, check if we're overriding the team mode
+      const overrideMode = set.assignment_mode_override;
+      const hasExplicitOverride = overrideMode !== null && overrideMode !== undefined;
+      
+      // Get the effective mode (what the set is actually using)
+      const effectiveMode = getSetAssignmentMode(set);
+      
+      // Checkbox should be checked ONLY if we're actually overriding the team mode
+      // 1) Explicit override exists and differs from team mode
+      // 2) No explicit override but effective mode differs from team mode (legacy sets)
+      const shouldBeChecked =
+        (hasExplicitOverride && overrideMode !== teamMode) ||
+        (!hasExplicitOverride && effectiveMode !== teamMode);
+      overrideCheckbox.checked = shouldBeChecked;
     }
   }
 }
