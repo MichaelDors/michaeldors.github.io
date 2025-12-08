@@ -1293,6 +1293,12 @@ textarea {
   .mobile-only {
     display: block !important;
   }
+
+  /* Mobile dropdown menu positioned dynamically based on click */
+  #mobile-header-add-dropdown-container .header-dropdown-menu {
+    right: auto;
+    /* left will be set dynamically via JavaScript */
+  }
 }
 
 @media (max-width: 640px) {

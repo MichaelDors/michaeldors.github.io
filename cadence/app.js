@@ -780,7 +780,7 @@ function bindEvents() {
     }
   });
   
-  // Header dropdown toggle
+  // Header dropdown toggle (desktop)
   el("btn-header-add-toggle")?.addEventListener("click", (e) => {
     e.stopPropagation();
     const dropdownMenu = el("header-add-dropdown-menu");
@@ -789,7 +789,49 @@ function bindEvents() {
     }
   });
   
-  // Header dropdown items
+  // Mobile header dropdown toggle
+  el("btn-mobile-header-add-toggle")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const dropdownMenu = el("mobile-header-add-dropdown-menu");
+    const button = e.currentTarget;
+    if (dropdownMenu && button) {
+      const isHidden = dropdownMenu.classList.contains("hidden");
+      if (isHidden) {
+        // Get click position relative to the button
+        const buttonRect = button.getBoundingClientRect();
+        const clickX = e.clientX - buttonRect.left;
+        
+        // Position dropdown based on click position
+        // Align the left edge of dropdown with the click position
+        const dropdownWidth = 180; // min-width from CSS
+        const container = button.closest('.header-dropdown-container');
+        
+        if (container) {
+          const containerRect = container.getBoundingClientRect();
+          
+          // Start with click position as left edge
+          let leftPosition = clickX;
+          
+          // Ensure dropdown doesn't go off the right edge of container
+          const maxLeft = containerRect.width - dropdownWidth;
+          if (leftPosition > maxLeft) {
+            leftPosition = maxLeft;
+          }
+          
+          // Ensure dropdown doesn't go off the left edge of container
+          if (leftPosition < 0) {
+            leftPosition = 0;
+          }
+          
+          dropdownMenu.style.left = `${leftPosition}px`;
+          dropdownMenu.style.right = 'auto';
+        }
+      }
+      dropdownMenu.classList.toggle("hidden");
+    }
+  });
+  
+  // Header dropdown items (desktop)
   el("btn-header-add-song")?.addEventListener("click", (e) => {
     e.stopPropagation();
     closeHeaderDropdown();
@@ -814,11 +856,41 @@ function bindEvents() {
     }
   });
   
+  // Mobile header dropdown items
+  el("btn-mobile-header-add-song")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeHeaderDropdown();
+    if (state.selectedSet) {
+      openSongModal();
+    }
+  });
+  
+  el("btn-mobile-header-add-section")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeHeaderDropdown();
+    if (state.selectedSet) {
+      openSectionModal();
+    }
+  });
+  
+  el("btn-mobile-header-add-section-header")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeHeaderDropdown();
+    if (state.selectedSet) {
+      openSectionHeaderModal();
+    }
+  });
+  
   // Close dropdown when clicking outside
   document.addEventListener("click", (e) => {
     const container = el("header-add-dropdown-container");
     const menu = el("header-add-dropdown-menu");
+    const mobileContainer = el("mobile-header-add-dropdown-container");
+    const mobileMenu = el("mobile-header-add-dropdown-menu");
     if (container && menu && !container.contains(e.target) && !menu.classList.contains("hidden")) {
+      closeHeaderDropdown();
+    }
+    if (mobileContainer && mobileMenu && !mobileContainer.contains(e.target) && !mobileMenu.classList.contains("hidden")) {
       closeHeaderDropdown();
     }
   });
@@ -2337,6 +2409,14 @@ async function switchTeam(teamId) {
     return;
   }
   
+  // Hide set detail view and clear saved set ID when switching teams
+  if (!el("set-detail").classList.contains("hidden")) {
+    hideSetDetail();
+  } else {
+    // Clear saved set ID even if detail view is already hidden
+    localStorage.removeItem('cadence_selected_set_id');
+  }
+  
   // Update current team
   state.currentTeamId = teamId;
   
@@ -2758,6 +2838,9 @@ async function loadSets() {
   }
   state.sets = data ?? [];
   renderSets();
+  
+  // Restore set detail view if it was open before reload
+  restoreSetDetailView();
 }
 
 function isUserAssignedToSet(set, userId) {
@@ -3061,8 +3144,7 @@ function renderSets() {
 }
 
 function switchTab(tabName) {
-  // Hide set detail view when switching tabs
-  hideSetDetail();
+  // Don't hide set detail view when switching tabs - user wants it to stay open
   
   // Save the current tab to localStorage
   localStorage.setItem('cadence-active-tab', tabName);
@@ -3922,6 +4004,11 @@ function showSetDetail(set) {
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
   
+  // Save the selected set ID to localStorage for persistence across reloads
+  if (set?.id) {
+    localStorage.setItem('cadence_selected_set_id', set.id);
+  }
+  
   dashboard.classList.add("hidden");
   detailView.classList.remove("hidden");
   
@@ -3941,6 +4028,7 @@ function showSetDetail(set) {
   const deleteBtn = el("btn-delete-set-detail");
   const viewAsMemberDetailBtn = el("btn-view-as-member-detail");
   const headerAddDropdown = el("header-add-dropdown-container");
+  const mobileHeaderAddDropdown = el("mobile-header-add-dropdown-container");
   
   if (isManager()) {
     editBtn.classList.remove("hidden");
@@ -3948,11 +4036,17 @@ function showSetDetail(set) {
     if (headerAddDropdown) {
       headerAddDropdown.classList.remove("hidden");
     }
+    if (mobileHeaderAddDropdown) {
+      mobileHeaderAddDropdown.classList.remove("hidden");
+    }
   } else {
     editBtn.classList.add("hidden");
     deleteBtn.classList.add("hidden");
     if (headerAddDropdown) {
       headerAddDropdown.classList.add("hidden");
+    }
+    if (mobileHeaderAddDropdown) {
+      mobileHeaderAddDropdown.classList.add("hidden");
     }
   }
   
@@ -4018,6 +4112,21 @@ function showSetDetail(set) {
   if (songsTab) songsTab.classList.remove("hidden");
   if (assignmentsTab) assignmentsTab.classList.add("hidden");
   if (timesTab) timesTab.classList.add("hidden");
+  
+  // Show/hide assignments tab button on mobile based on assignment mode
+  const assignmentMode = getSetAssignmentMode(set);
+  const assignmentsTabButton = document.querySelector('.set-detail-tabs .tab-btn[data-detail-tab="assignments"]');
+  if (assignmentsTabButton) {
+    if (assignmentMode === 'per_set') {
+      assignmentsTabButton.classList.remove("hidden");
+    } else {
+      assignmentsTabButton.classList.add("hidden");
+      // If assignments tab is currently active, switch to songs tab
+      if (assignmentsTabButton.classList.contains("active")) {
+        switchSetDetailTab("songs");
+      }
+    }
+  }
   
   // Reset to songs tab on mobile (only if tabs are visible)
   const tabsContainer = document.querySelector(".set-detail-tabs");
@@ -4286,9 +4395,39 @@ function hideSetDetail() {
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
   
+  // Clear the selected set ID from localStorage
+  localStorage.removeItem('cadence_selected_set_id');
+  
   dashboard.classList.remove("hidden");
   detailView.classList.add("hidden");
   state.selectedSet = null;
+}
+
+function restoreSetDetailView() {
+  // Check if there's a saved set ID in localStorage
+  const savedSetId = localStorage.getItem('cadence_selected_set_id');
+  if (!savedSetId) {
+    return; // No saved set to restore
+  }
+  
+  // Find the set in the loaded sets
+  const setToRestore = state.sets.find(set => set.id === savedSetId);
+  if (!setToRestore) {
+    // Set doesn't exist anymore (might have been deleted or team changed)
+    localStorage.removeItem('cadence_selected_set_id');
+    return;
+  }
+  
+  // Verify the set belongs to the current team
+  if (setToRestore.team_id !== state.currentTeamId) {
+    // Set belongs to a different team, don't restore
+    localStorage.removeItem('cadence_selected_set_id');
+    return;
+  }
+  
+  // Restore the set detail view
+  console.log('🔄 Restoring set detail view for set:', setToRestore.id);
+  showSetDetail(setToRestore);
 }
 
 // Drag and Drop Functions
@@ -5573,8 +5712,12 @@ function closeSectionHeaderModal() {
 
 function closeHeaderDropdown() {
   const dropdownMenu = el("header-add-dropdown-menu");
+  const mobileDropdownMenu = el("mobile-header-add-dropdown-menu");
   if (dropdownMenu) {
     dropdownMenu.classList.add("hidden");
+  }
+  if (mobileDropdownMenu) {
+    mobileDropdownMenu.classList.add("hidden");
   }
 }
 
