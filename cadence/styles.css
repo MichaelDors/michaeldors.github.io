@@ -1,5 +1,5 @@
 :root {
-  --accent-color: #dcff51;
+  --accent-color: #5d86ff;
   --accent-light: color-mix(in srgb, var(--accent-color) 20%, black);
   --accent-lighter: color-mix(in srgb, var(--accent-color) 10%, black);
   
@@ -14,7 +14,71 @@
   --text-muted: #a0a0a0;
   --border-color: rgba(255, 255, 255, 0.08);
   --border-light: rgba(255, 255, 255, 0.12);
-  --border-accent: rgba(220, 255, 81, 0.3);
+  --border-accent: rgba(37, 102, 199, 0.5);
+  
+  /* Allow native controls to adapt */
+  color-scheme: dark light;
+}
+
+/* Light mode palette driven by system preference */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f3f4f6;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f9fafb;
+    --text-primary: #000000;
+    --text-secondary: #111827;
+    --text-muted: #4b5563;
+    --border-color: rgba(0, 0, 0, 0.15);
+    --border-light: rgba(0, 0, 0, 0.2);
+    --border-accent: rgba(22, 69, 163, 0.3);
+    /* Better contrast accent color for light mode */
+    --accent-color: #5473ff;
+    --accent-light: color-mix(in srgb, var(--accent-color) 20%, black);
+    --accent-lighter: color-mix(in srgb, var(--accent-color) 10%, black);
+  }
+  
+  /* Remove ALL shadows in light mode for cleaner look */
+  * {
+    box-shadow: none !important;
+  }
+  
+  /* Keep only focus indicators for accessibility */
+  input:focus,
+  textarea:focus,
+  select:focus,
+  .searchable-dropdown-input:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 25%, transparent) !important;
+  }
+  
+  .draggable-item.drag-over {
+    box-shadow: 0 0 0 2px var(--accent-color) !important;
+  }
+  
+  /* Improve contrast with stronger borders in light mode */
+  .card,
+  .set-detail-times,
+  .set-assignments-card,
+  .person-card,
+  .set-song-card {
+    border-width: 1.5px;
+  }
+  
+  .modal-content {
+    border-width: 1.5px;
+  }
+  
+  /* Improve modal overlay contrast in light mode */
+  .modal {
+    background: rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Remove or reduce backdrop blur in light mode for better clarity */
+  .app-header {
+    backdrop-filter: none;
+  }
 }
 
 *,
