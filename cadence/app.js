@@ -7533,17 +7533,30 @@ async function deletePerson(person) {
     async () => {
       console.log('🗑️ Removing person from team:', person.id, personName);
       
-      // Step 1: Delete all song_assignments that reference this person by person_id
+      // Step 1: Delete all song_assignments and set_assignments that reference this person by person_id
       console.log('  - Step 1: Deleting song assignments by person_id...');
-      const { error: assignmentsError } = await supabase
+      const { error: songAssignmentsError } = await supabase
         .from("song_assignments")
         .delete()
         .eq("person_id", person.id);
       
-      if (assignmentsError) {
-        console.error('❌ Error deleting assignments by person_id:', assignmentsError);
-        const errorMsg = assignmentsError.message || assignmentsError.code || 'Unknown error';
-        toastError(`Unable to remove member assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+      if (songAssignmentsError) {
+        console.error('❌ Error deleting song assignments by person_id:', songAssignmentsError);
+        const errorMsg = songAssignmentsError.message || songAssignmentsError.code || 'Unknown error';
+        toastError(`Unable to remove member song assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+        return;
+      }
+      
+      console.log('  - Step 1b: Deleting set assignments by person_id...');
+      const { error: setAssignmentsError } = await supabase
+        .from("set_assignments")
+        .delete()
+        .eq("person_id", person.id);
+      
+      if (setAssignmentsError) {
+        console.error('❌ Error deleting set assignments by person_id:', setAssignmentsError);
+        const errorMsg = setAssignmentsError.message || setAssignmentsError.code || 'Unknown error';
+        toastError(`Unable to remove member set assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
       
@@ -7560,16 +7573,30 @@ async function deletePerson(person) {
         
         if (pendingInvite) {
           console.log('  - Step 2a: Deleting song assignments by pending_invite_id...');
-          // Delete assignments that reference this pending_invite
-          const { error: pendingAssignmentsError } = await supabase
+          // Delete song assignments that reference this pending_invite
+          const { error: pendingSongAssignmentsError } = await supabase
             .from("song_assignments")
             .delete()
             .eq("pending_invite_id", pendingInvite.id);
           
-          if (pendingAssignmentsError) {
-            console.error('❌ Error deleting assignments by pending_invite_id:', pendingAssignmentsError);
-            const errorMsg = pendingAssignmentsError.message || pendingAssignmentsError.code || 'Unknown error';
-            toastError(`Unable to remove pending invite assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+          if (pendingSongAssignmentsError) {
+            console.error('❌ Error deleting song assignments by pending_invite_id:', pendingSongAssignmentsError);
+            const errorMsg = pendingSongAssignmentsError.message || pendingSongAssignmentsError.code || 'Unknown error';
+            toastError(`Unable to remove pending invite song assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+            return;
+          }
+          
+          console.log('  - Step 2a2: Deleting set assignments by pending_invite_id...');
+          // Delete set assignments that reference this pending_invite
+          const { error: pendingSetAssignmentsError } = await supabase
+            .from("set_assignments")
+            .delete()
+            .eq("pending_invite_id", pendingInvite.id);
+          
+          if (pendingSetAssignmentsError) {
+            console.error('❌ Error deleting set assignments by pending_invite_id:', pendingSetAssignmentsError);
+            const errorMsg = pendingSetAssignmentsError.message || pendingSetAssignmentsError.code || 'Unknown error';
+            toastError(`Unable to remove pending invite set assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
             return;
           }
           
@@ -7630,17 +7657,30 @@ async function cancelPendingInvite(invite) {
     async () => {
       console.log('🚫 Canceling pending invite:', invite.id, inviteName);
       
-      // Step 1: Delete all song_assignments that reference this pending_invite
+      // Step 1: Delete all song_assignments and set_assignments that reference this pending_invite
       console.log('  - Step 1: Deleting song assignments by pending_invite_id...');
-      const { error: assignmentsError } = await supabase
+      const { error: songAssignmentsError } = await supabase
         .from("song_assignments")
         .delete()
         .eq("pending_invite_id", invite.id);
       
-      if (assignmentsError) {
-        console.error('❌ Error deleting assignments by pending_invite_id:', assignmentsError);
-        const errorMsg = assignmentsError.message || assignmentsError.code || 'Unknown error';
-        toastError(`Unable to remove pending invite assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+      if (songAssignmentsError) {
+        console.error('❌ Error deleting song assignments by pending_invite_id:', songAssignmentsError);
+        const errorMsg = songAssignmentsError.message || songAssignmentsError.code || 'Unknown error';
+        toastError(`Unable to remove pending invite song assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
+        return;
+      }
+      
+      console.log('  - Step 1b: Deleting set assignments by pending_invite_id...');
+      const { error: setAssignmentsError } = await supabase
+        .from("set_assignments")
+        .delete()
+        .eq("pending_invite_id", invite.id);
+      
+      if (setAssignmentsError) {
+        console.error('❌ Error deleting set assignments by pending_invite_id:', setAssignmentsError);
+        const errorMsg = setAssignmentsError.message || setAssignmentsError.code || 'Unknown error';
+        toastError(`Unable to remove pending invite set assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
       
