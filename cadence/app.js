@@ -4961,17 +4961,19 @@ function openSetModal(set = null) {
   const overrideText = el("set-override-assignment-mode-text");
   
   if (overrideCheckbox && overrideText) {
-    // Check if set has an explicit override
-    const hasExplicitOverride = set?.assignment_mode_override !== null && set?.assignment_mode_override !== undefined;
+    const overrideMode = set?.assignment_mode_override;
+    const hasExplicitOverride = overrideMode !== null && overrideMode !== undefined;
     
     // Get the effective mode (what the set is actually using)
     const effectiveMode = getSetAssignmentMode(set);
     const teamMode = state.teamAssignmentMode || 'per_set';
     
-    // Checkbox should be checked if:
-    // 1. Set has an explicit override, OR
-    // 2. Set's effective mode differs from team default (effectively overridden)
-    const shouldBeChecked = hasExplicitOverride || (effectiveMode !== teamMode);
+    // Checkbox should be checked ONLY if we're actually overriding the team mode
+    // 1) Explicit override exists and differs from team mode
+    // 2) No explicit override but effective mode differs from team mode (legacy sets)
+    const shouldBeChecked =
+      (hasExplicitOverride && overrideMode !== teamMode) ||
+      (!hasExplicitOverride && effectiveMode !== teamMode);
     overrideCheckbox.checked = shouldBeChecked;
     
     // Set the text based on current team mode
@@ -9076,6 +9078,11 @@ async function handleTeamSettingsSubmit(e) {
     const overrideText = el("set-override-assignment-mode-text");
     
     if (overrideCheckbox && overrideText) {
+      // Refresh selectedSet from latest loaded sets
+      const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+      if (updatedSet) {
+        state.selectedSet = updatedSet;
+      }
       const set = state.selectedSet;
       
       // Get the effective mode (what the set is actually using)
@@ -9083,11 +9090,15 @@ async function handleTeamSettingsSubmit(e) {
       const teamMode = state.teamAssignmentMode || 'per_set';
       
       // Check if set has an explicit override
-      const hasExplicitOverride = set?.assignment_mode_override !== null && set?.assignment_mode_override !== undefined;
+      const overrideMode = set?.assignment_mode_override;
+      const hasExplicitOverride = overrideMode !== null && overrideMode !== undefined;
       
-      // Checkbox should be checked if effective mode differs from team default
-      // (set is effectively overridden, even if not explicitly)
-      overrideCheckbox.checked = hasExplicitOverride || (effectiveMode !== teamMode);
+      // Checkbox should be checked ONLY if we're actually overriding the team mode
+      // 1) Explicit override exists and differs from team mode
+      // 2) No explicit override but effective mode differs from team mode (legacy sets)
+      overrideCheckbox.checked =
+        (hasExplicitOverride && overrideMode !== teamMode) ||
+        (!hasExplicitOverride && effectiveMode !== teamMode);
       
       // Update the text based on new team mode
       if (teamMode === 'per_set') {
