@@ -1650,7 +1650,7 @@ i{
 
 .toast-content {
   flex: 1;
-  color: var(--text-primary);
+  color: white;
   font-size: 0.875rem;
   line-height: 1.4;
   white-space: pre-wrap;
@@ -1661,7 +1661,7 @@ i{
 .toast-close {
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: #7f7f7f;
   cursor: pointer;
   padding: 0.25rem;
   display: flex;
@@ -1676,7 +1676,7 @@ i{
 }
 
 .toast-close:hover {
-  color: var(--text-primary);
+  color: white;
   opacity: 1;
   background: rgba(255, 255, 255, 0.05);
 }
