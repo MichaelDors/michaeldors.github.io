@@ -1600,6 +1600,7 @@ i{
 
 .toast {
   background: black;
+  color: white;
   border: 1px solid var(--border-color);
   border-radius: 1rem;
   padding: 0.875rem 1rem;
@@ -1640,7 +1641,7 @@ i{
 }
 
 .toast.success .toast-icon {
-  color: var(--accent-color);
+  color: #c2ff3d;
 }
 
 .toast.info .toast-icon {
