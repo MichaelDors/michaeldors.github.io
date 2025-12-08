@@ -179,6 +179,7 @@ main {
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
   gap: 1rem;
+  margin-top:50px;
 }
 
 .team-name-header h1 {
@@ -291,6 +292,72 @@ main {
   padding: 1.5rem;
   border: 1px solid var(--border-color);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  margin-bottom: 1.5rem;
+}
+
+.set-assignments-card {
+  background: var(--bg-card);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.set-assignments-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.set-assignments-card h3 i {
+  color: var(--accent-color);
+  margin-right: 0;
+}
+
+.assignment-role-item {
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.assignment-role-item:last-child {
+  margin-bottom: 0;
+}
+
+.assignment-role-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.assignment-role-people {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.assignment-role-person {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  padding-left: 0.5rem;
+}
+
+.assignment-role-person.pending {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.no-assignments {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
 }
 
 .times-section {
@@ -365,6 +432,10 @@ main {
   }
   
   #set-detail-tab-times {
+    display: none !important;
+  }
+  
+  #set-detail-tab-assignments {
     display: none !important;
   }
   
@@ -544,7 +615,7 @@ main {
 
 .set-song-card {
   background: var(--bg-card);
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   padding: 1rem;
   border: 1px solid var(--border-color);
   transition: all 0.2s ease;
@@ -565,7 +636,6 @@ main {
 
 .add-song-card:hover {
   border-color: var(--border-light);
-  background: var(--bg-secondary);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
   transform: translateY(-1px);
 }
@@ -649,11 +719,13 @@ main {
 
 .add-item-half {
   transition: background-color 0.2s ease;
-  border-radius: 0.5rem;
+  border-radius: 0.3rem;
+  transition: all 0.2s ease;
+  outline: 1px solid transparent;
 }
 
 .add-item-half:hover {
-  background: var(--accent-light);
+  outline: 1px solid var(--accent-color);
 }
 
 .assignment-pill {
@@ -1532,4 +1604,73 @@ i{
     height: 18px;
     font-size: 0.875rem;
   }
+}
+
+/* Custom Checkbox Styles */
+.custom-checkbox-label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.5;
+  vertical-align: middle;
+  position: relative;
+}
+
+.custom-checkbox {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.custom-checkbox-label::before {
+  content: '';
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  border: 2px solid var(--border-color);
+  border-radius: 0.375rem;
+  background: var(--bg-secondary);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin: 0;
+}
+
+.custom-checkbox-label:has(.custom-checkbox:checked)::before {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.custom-checkbox-label::after {
+  content: '';
+  position: absolute;
+  left: 0.4375rem;
+  top: 0.3125rem;
+  width: 0.375rem;
+  height: 0.625rem;
+  border: solid var(--bg-primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  opacity: 0;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.custom-checkbox-label:has(.custom-checkbox:checked)::after {
+  transform: rotate(45deg) scale(1);
+  opacity: 1;
+}
+
+.custom-checkbox-label span {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1.5;
 }

@@ -127,21 +127,9 @@
       <section id="dashboard" class="hidden">
         <div id="team-name-header" class="team-name-header hidden">
           <h1 id="team-name-display"></h1>
-          <div class="header-dropdown-container" id="team-management-dropdown-container">
-            <button id="btn-team-management-toggle" class="btn ghost small" type="button">
-              <i class="fa-solid fa-ellipsis-vertical"></i>
-            </button>
-            <div class="header-dropdown-menu hidden" id="team-management-dropdown-menu">
-              <button type="button" class="header-dropdown-item" id="btn-rename-team">
-                <i class="fa-solid fa-pencil"></i>
-                <span>Rename Team</span>
+          <button id="btn-team-settings" class="btn ghost small" type="button">
+            <i class="fa-solid fa-gear"></i> Settings
               </button>
-              <button type="button" class="header-dropdown-item" id="btn-delete-team" style="color: var(--error-color);">
-                <i class="fa-solid fa-trash"></i>
-                <span>Delete Team</span>
-              </button>
-            </div>
-          </div>
         </div>
         <div class="dashboard-tabs">
           <button class="tab-btn active" data-tab="sets"><i class="fa-solid fa-rectangle-list"></i> Sets</button>
@@ -213,12 +201,28 @@
           <div class="set-detail-sidebar desktop-only">
             <div id="set-detail-times" class="set-detail-times">
               <div id="service-times-display" class="times-section">
-                <h3><i class="fa-solid fa-church"></i> Service Times</h3>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                  <h3 style="margin: 0;"><i class="fa-solid fa-church"></i> Service Times</h3>
+                </div>
                 <div id="service-times-content"></div>
               </div>
               <div id="rehearsal-times-display" class="times-section">
-                <h3><i class="fa-solid fa-guitar"></i> Rehearsal Times</h3>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                  <h3 style="margin: 0;"><i class="fa-solid fa-guitar"></i> Rehearsal Times</h3>
+                </div>
                 <div id="rehearsal-times-content"></div>
+              </div>
+              <div style="margin-top: 1.5rem;">
+                <button id="btn-edit-times" class="btn secondary small hidden" style="width: 100%;"><i class="fa-solid fa-pencil"></i> Edit Times</button>
+              </div>
+            </div>
+            <div id="set-assignments-display" class="set-assignments-card desktop-only hidden">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <h3 style="margin: 0;"><i class="fa-solid fa-users"></i> Assignments</h3>
+              </div>
+              <div id="set-assignments-content"></div>
+              <div style="margin-top: 1.5rem;">
+                <button id="btn-edit-assignments" class="btn secondary small hidden" style="width: 100%;"><i class="fa-solid fa-pencil"></i> Edit Assignments</button>
               </div>
             </div>
           </div>
@@ -257,10 +261,22 @@
             </div>
             <div class="set-detail-tabs mobile-only">
               <button type="button" class="tab-btn active" data-detail-tab="songs"><i class="fa-solid fa-list-ul"></i> Order</button>
+              <button type="button" class="tab-btn" data-detail-tab="assignments"><i class="fa-solid fa-users"></i> Assignments</button>
               <button type="button" class="tab-btn" data-detail-tab="times"><i class="fa-solid fa-clock"></i> Times</button>
             </div>
             <div id="set-detail-tab-songs" class="set-detail-tab-content">
               <div id="detail-songs-list" class="song-list"></div>
+            </div>
+            <div id="set-detail-tab-assignments" class="set-detail-tab-content hidden">
+              <div id="set-assignments-display-mobile" class="set-assignments-card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                  <h3 style="margin: 0;"><i class="fa-solid fa-users"></i> Assignments</h3>
+                </div>
+                <div id="set-assignments-content-mobile"></div>
+                <div style="margin-top: 1.5rem;">
+                  <button id="btn-edit-assignments-mobile" class="btn secondary small hidden" style="width: 100%;"><i class="fa-solid fa-pencil"></i> Edit Assignments</button>
+                </div>
+              </div>
             </div>
             <div id="set-detail-tab-times" class="set-detail-tab-content hidden">
               <div id="set-detail-times-mobile" class="set-detail-times">
@@ -271,6 +287,9 @@
                 <div id="rehearsal-times-display-mobile" class="times-section">
                   <h3><i class="fa-solid fa-guitar"></i> Rehearsal Times</h3>
                   <div id="rehearsal-times-content-mobile"></div>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                  <button id="btn-edit-times-mobile" class="btn secondary small hidden" style="width: 100%;"><i class="fa-solid fa-pencil"></i> Edit Times</button>
                 </div>
               </div>
             </div>
@@ -301,19 +320,12 @@
             <textarea id="set-description" rows="3"></textarea>
           </label>
           
-          <div class="section-header" style="margin-top: 1rem;">
-            <h4>Service Times</h4>
-            <button type="button" id="btn-add-service-time" class="btn secondary small">Add Service Time</button>
+          <div id="set-assignment-mode-section" class="hidden">
+            <label class="custom-checkbox-label">
+              <input type="checkbox" id="set-override-assignment-mode" class="custom-checkbox" />
+              <span id="set-override-assignment-mode-text"></span>
+            </label>
           </div>
-          <div id="service-times-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
-          <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">Service times are optional and will be shown with the service date.</p>
-          
-          <div class="section-header" style="margin-top: 1rem;">
-            <h4>Rehearsal Times</h4>
-            <button type="button" id="btn-add-rehearsal-time" class="btn secondary small">Add Rehearsal</button>
-          </div>
-          <div id="rehearsal-times-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
-          <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">Rehearsal times are optional and can be on different dates than the service.</p>
           
           <div class="modal-actions">
             <button type="button" class="btn ghost" id="cancel-set">Cancel</button>
@@ -659,24 +671,32 @@
       </div>
     </div>
 
-    <div id="rename-team-modal" class="modal hidden">
+    <div id="team-settings-modal" class="modal hidden">
       <div class="modal-content">
         <header>
-          <h3>Rename Team</h3>
-          <button class="icon-btn" id="close-rename-team-modal" aria-label="Close modal">
+          <h3>Team Settings</h3>
+          <button class="icon-btn" id="close-team-settings-modal" aria-label="Close modal">
             <i class="fa-solid fa-circle-xmark"></i>
           </button>
         </header>
-        <form id="rename-team-form">
+        <form id="team-settings-form">
           <label>
             Team Name
-            <input type="text" id="rename-team-input" placeholder="Enter team name" required autocomplete="off" />
+            <input type="text" id="team-settings-name-input" placeholder="Enter team name" required autocomplete="off" />
+          </label>
+          <label>
+            Assignment Mode
+            <div id="team-assignment-mode-container"></div>
+            <p class="muted small-text">Assignments apply to the entire set or individual songs</p>
           </label>
           <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-rename-team">Cancel</button>
+            <button type="button" class="btn ghost" id="cancel-team-settings">Cancel</button>
             <button type="submit" class="btn primary">Save</button>
           </div>
         </form>
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn ghost" id="btn-delete-team-settings" style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Team</button>
+        </div>
       </div>
     </div>
 
@@ -724,6 +744,61 @@
           </div>
         </form>
         <p class="muted small-text" id="create-team-message"></p>
+      </div>
+    </div>
+
+    <div id="set-assignments-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Edit Set Assignments</h3>
+          <button class="icon-btn" id="close-set-assignments-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <form id="set-assignments-form">
+          <div class="section-header" style="margin-top: 0;">
+            <h4>Assignments</h4>
+            <button type="button" id="btn-add-set-assignment" class="btn secondary small">Add Assignment</button>
+          </div>
+          <div id="set-assignments-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
+          <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">Assignments apply to all songs in this set.</p>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-set-assignments">Cancel</button>
+            <button type="submit" class="btn primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="times-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Edit Times</h3>
+          <button class="icon-btn" id="close-times-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <form id="times-form">
+          <div class="section-header" style="margin-top: 0;">
+            <h4>Service Times</h4>
+            <button type="button" id="btn-add-service-time" class="btn secondary small">Add Service Time</button>
+          </div>
+          <div id="service-times-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
+          <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1.5rem;">Service times are optional and will be shown with the service date.</p>
+          
+          <div class="section-header">
+            <h4>Rehearsal Times</h4>
+            <button type="button" id="btn-add-rehearsal-time" class="btn secondary small">Add Rehearsal</button>
+          </div>
+          <div id="rehearsal-times-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
+          <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">Rehearsal times are optional and can be on different dates than the service.</p>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-times">Cancel</button>
+            <button type="submit" class="btn primary">Save</button>
+          </div>
+        </form>
       </div>
     </div>
 

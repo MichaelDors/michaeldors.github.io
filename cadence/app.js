@@ -51,6 +51,7 @@ const state = {
   isMemberView: false, // Track if manager is viewing as member
   currentTeamId: null, // Current team the user is viewing/working with
   userTeams: [], // Array of all teams the user is a member of
+  teamAssignmentMode: 'per_set', // Team-wide assignment mode (default: per_set)
   metronome: {
     isPlaying: false,
     bpm: null,
@@ -561,22 +562,25 @@ function bindEvents() {
   // Account management
   el("btn-edit-account")?.addEventListener("click", () => openEditAccountModal());
   
-  // Team management buttons (owners only)
-  el("btn-rename-team")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const dropdownMenu = el("team-management-dropdown-menu");
-    if (dropdownMenu) {
-      dropdownMenu.classList.add("hidden");
+  // Team settings button (owners only)
+  el("btn-team-settings")?.addEventListener("click", () => {
+    if (isOwner()) {
+      openTeamSettingsModal();
     }
-    openRenameTeamModal();
   });
-  el("btn-delete-team")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const dropdownMenu = el("team-management-dropdown-menu");
-    if (dropdownMenu) {
-      dropdownMenu.classList.add("hidden");
-    }
+  
+  // Team settings modal
+  el("team-settings-form")?.addEventListener("submit", handleTeamSettingsSubmit);
+  el("cancel-team-settings")?.addEventListener("click", () => closeTeamSettingsModal());
+  el("close-team-settings-modal")?.addEventListener("click", () => closeTeamSettingsModal());
+  el("btn-delete-team-settings")?.addEventListener("click", () => {
+    closeTeamSettingsModal();
     deleteTeam();
+  });
+  el("team-settings-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "team-settings-modal") {
+      closeTeamSettingsModal();
+    }
   });
   el("btn-leave-team")?.addEventListener("click", () => {
     const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
@@ -611,16 +615,6 @@ function bindEvents() {
   });
   el("btn-delete-account")?.addEventListener("click", () => deleteAccount());
   
-  // Rename team modal
-  el("rename-team-form")?.addEventListener("submit", handleRenameTeamSubmit);
-  el("cancel-rename-team")?.addEventListener("click", () => {
-    el("rename-team-modal")?.classList.add("hidden");
-    document.body.style.overflow = "";
-  });
-  el("close-rename-team-modal")?.addEventListener("click", () => {
-    el("rename-team-modal")?.classList.add("hidden");
-    document.body.style.overflow = "";
-  });
   
   // Account switcher
   const accountMenuBtn = el("btn-account-menu");
@@ -772,12 +766,11 @@ function bindEvents() {
   }, true); // Use capture phase to catch event early
   el("btn-edit-set-detail")?.addEventListener("click", () => {
     if (state.selectedSet) {
-      // Preserve the set before hiding detail view (which clears state.selectedSet)
+      // Open the modal without hiding the detail view
+      // The modal will overlay on top of the detail view
       const setToEdit = state.selectedSet;
       openSetModal(setToEdit);
-      hideSetDetail();
-      // Restore state.selectedSet after opening modal (since openSetModal sets it)
-      state.selectedSet = setToEdit;
+      // Don't hide the detail view - we want to stay on it after closing the modal
     }
   });
   el("btn-delete-set-detail")?.addEventListener("click", () => {
@@ -821,24 +814,6 @@ function bindEvents() {
     }
   });
   
-  // Team management dropdown toggle
-  el("btn-team-management-toggle")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const dropdownMenu = el("team-management-dropdown-menu");
-    if (dropdownMenu) {
-      dropdownMenu.classList.toggle("hidden");
-    }
-  });
-  
-  // Close team management dropdown when clicking outside
-  document.addEventListener("click", (e) => {
-    const container = el("team-management-dropdown-container");
-    const menu = el("team-management-dropdown-menu");
-    if (container && menu && !container.contains(e.target) && !menu.classList.contains("hidden")) {
-      menu.classList.add("hidden");
-    }
-  });
-  
   // Close dropdown when clicking outside
   document.addEventListener("click", (e) => {
     const container = el("header-add-dropdown-container");
@@ -850,6 +825,17 @@ function bindEvents() {
   el("close-set-modal")?.addEventListener("click", () => closeSetModal());
   el("cancel-set")?.addEventListener("click", () => closeSetModal());
   el("set-form")?.addEventListener("submit", handleSetSubmit);
+  el("btn-edit-times")?.addEventListener("click", () => openTimesModal());
+  el("btn-edit-times-mobile")?.addEventListener("click", () => openTimesModal());
+  el("btn-edit-assignments")?.addEventListener("click", () => openSetAssignmentsModal());
+  el("btn-edit-assignments-mobile")?.addEventListener("click", () => openSetAssignmentsModal());
+  el("close-times-modal")?.addEventListener("click", () => closeTimesModal());
+  el("cancel-times")?.addEventListener("click", () => closeTimesModal());
+  el("times-form")?.addEventListener("submit", handleTimesSubmit);
+  el("close-set-assignments-modal")?.addEventListener("click", () => closeSetAssignmentsModal());
+  el("cancel-set-assignments")?.addEventListener("click", () => closeSetAssignmentsModal());
+  el("set-assignments-form")?.addEventListener("submit", handleSetAssignmentsSubmit);
+  el("btn-add-set-assignment")?.addEventListener("click", () => addSetAssignmentInput());
   el("btn-add-service-time")?.addEventListener("click", () => addServiceTimeRow());
   el("btn-add-rehearsal-time")?.addEventListener("click", () => addRehearsalTimeRow());
   el("btn-add-song")?.addEventListener("click", () => openSongModal());
@@ -1136,12 +1122,12 @@ function showApp() {
     if (inviteMemberBtnEl) inviteMemberBtnEl.classList.add("hidden");
   }
   
-  // Show/hide team management dropdown for owners only
-  const teamManagementDropdown = el("team-management-dropdown-container");
+  // Show/hide team settings button for owners only
+  const teamSettingsBtn = el("btn-team-settings");
   if (isOwner()) {
-    if (teamManagementDropdown) teamManagementDropdown.classList.remove("hidden");
+    if (teamSettingsBtn) teamSettingsBtn.classList.remove("hidden");
   } else {
-    if (teamManagementDropdown) teamManagementDropdown.classList.add("hidden");
+    if (teamSettingsBtn) teamSettingsBtn.classList.add("hidden");
   }
   
   // Verify the changes took effect
@@ -2576,6 +2562,26 @@ async function loadSets() {
   console.log('  - Loading sets for team_id:', state.currentTeamId);
   console.log('  - Testing sets query...');
   
+  // Load team assignment mode (handle gracefully if column doesn't exist yet)
+  try {
+    const { data: teamData } = await supabase
+      .from("teams")
+      .select("assignment_mode")
+      .eq("id", state.currentTeamId)
+      .single();
+    
+    if (teamData?.assignment_mode) {
+      state.teamAssignmentMode = teamData.assignment_mode;
+    } else {
+      // Default to per_set if not set
+      state.teamAssignmentMode = 'per_set';
+    }
+  } catch (err) {
+    // If assignment_mode column doesn't exist yet, default to per_set
+    console.warn('Assignment mode column may not exist yet, defaulting to per_set');
+    state.teamAssignmentMode = 'per_set';
+  }
+  
   // Try to load with service/rehearsal times first
   let { data, error } = await supabase
     .from("sets")
@@ -2590,6 +2596,23 @@ async function loadSets() {
         id,
         rehearsal_date,
         rehearsal_time
+      ),
+      set_assignments (
+        id,
+        person_id,
+        person_name,
+        person_email,
+        pending_invite_id,
+        role,
+        person:person_id (
+          id,
+          full_name
+        ),
+        pending_invite:pending_invite_id (
+          id,
+          full_name,
+          email
+        )
       ),
       set_songs (
         id,
@@ -2629,8 +2652,8 @@ async function loadSets() {
     .eq("team_id", state.currentTeamId)
     .order("scheduled_date", { ascending: true });
 
-  // If error is due to missing tables (service_times or rehearsal_times), fall back to query without them
-  if (error && (error.message?.includes("service_times") || error.message?.includes("rehearsal_times") || error.code === "PGRST116" || error.code === "42P01")) {
+  // If error is due to missing tables (service_times, rehearsal_times, or set_assignments), fall back to query without them
+  if (error && (error.message?.includes("service_times") || error.message?.includes("rehearsal_times") || error.message?.includes("set_assignments") || error.code === "PGRST116" || error.code === "42P01")) {
     console.warn("service_times or rehearsal_times tables not found, loading sets without them:", error.message);
     console.log('  - Falling back to query without service/rehearsal times...');
     const fallbackResult = await supabase
@@ -2638,6 +2661,23 @@ async function loadSets() {
       .select(
         `
         *,
+        set_assignments (
+          id,
+          person_id,
+          person_name,
+          person_email,
+          pending_invite_id,
+          role,
+          person:person_id (
+            id,
+            full_name
+          ),
+          pending_invite:pending_invite_id (
+            id,
+            full_name,
+            email
+          )
+        ),
         set_songs (
           id,
           sequence_order,
@@ -2687,12 +2727,13 @@ async function loadSets() {
     }
     
     data = fallbackResult.data;
-    // Add empty arrays for service_times and rehearsal_times if they don't exist
+    // Add empty arrays for service_times, rehearsal_times, and set_assignments if they don't exist
     if (data) {
       data = data.map(set => ({
         ...set,
         service_times: [],
-        rehearsal_times: []
+        rehearsal_times: [],
+        set_assignments: []
       }));
     }
   } else if (error) {
@@ -2720,14 +2761,24 @@ async function loadSets() {
 }
 
 function isUserAssignedToSet(set, userId) {
-  if (!userId || !set.set_songs) return false;
+  if (!userId) return false;
   
-  // Check if user is assigned to any song in this set
+  const assignmentMode = getSetAssignmentMode(set);
+  
+  if (assignmentMode === 'per_set') {
+    // Check set-level assignments
+    return set.set_assignments?.some(assignment => 
+      assignment.person_id === userId
+    ) || false;
+  } else {
+    // Check song-level assignments
+    if (!set.set_songs) return false;
   return set.set_songs.some(setSong => 
     setSong.song_assignments?.some(assignment => 
       assignment.person_id === userId
     )
   );
+  }
 }
 
 function calculateVisiblePills(card, pills, rolesWrapper) {
@@ -2876,10 +2927,25 @@ function renderSetCard(set, container) {
   // Display user roles if this is in "Your Sets" (after appending to DOM so we can measure)
   const userRolesContainer = card.querySelector(".user-roles-container");
   const currentUserId = state.profile?.id;
-  if (container === yourSetsList && currentUserId && set.set_songs) {
-    // Collect all assignments for the current user, sorted by setlist order
+  if (container === yourSetsList && currentUserId) {
+    const assignmentMode = getSetAssignmentMode(set);
     const userAssignments = [];
-    // Sort set_songs by sequence_order to maintain setlist order
+    
+    if (assignmentMode === 'per_set') {
+      // Collect set-level assignments
+      if (set.set_assignments) {
+        set.set_assignments.forEach(assignment => {
+          if (assignment.person_id === currentUserId) {
+            userAssignments.push({
+              role: assignment.role,
+              isSetLevel: true
+            });
+          }
+        });
+      }
+    } else {
+      // Collect song-level assignments, sorted by setlist order
+      if (set.set_songs) {
     const sortedSetSongs = [...set.set_songs].sort((a, b) => {
       const orderA = a.sequence_order ?? 0;
       const orderB = b.sequence_order ?? 0;
@@ -2897,12 +2963,15 @@ function renderSetCard(set, container) {
             userAssignments.push({
               songTitle,
               role: assignment.role,
-              sequenceOrder: setSong.sequence_order ?? 0
+                  sequenceOrder: setSong.sequence_order ?? 0,
+                  isSetLevel: false
             });
           }
         });
       }
     });
+      }
+    }
 
     if (userAssignments.length > 0) {
       const rolesWrapper = document.createElement("div");
@@ -2914,7 +2983,12 @@ function renderSetCard(set, container) {
       userAssignments.forEach((assignment) => {
         const pill = document.createElement("span");
         pill.className = "assignment-pill user-role-pill";
+        // For per-set: just show role. For per-song: show song - role
+        if (assignment.isSetLevel) {
+          pill.textContent = assignment.role;
+        } else {
         pill.textContent = `${assignment.songTitle} - ${assignment.role}`;
+        }
         rolesWrapper.appendChild(pill);
         pills.push(pill);
       });
@@ -3643,6 +3717,18 @@ function formatTime(timeString) {
 }
 
 function renderTimes(serviceTimesContent, rehearsalTimesContent, set) {
+  // Show/hide edit buttons for managers
+  const editTimesBtn = el("btn-edit-times");
+  const editTimesBtnMobile = el("btn-edit-times-mobile");
+  
+  if (isManager()) {
+    if (editTimesBtn) editTimesBtn.classList.remove("hidden");
+    if (editTimesBtnMobile) editTimesBtnMobile.classList.remove("hidden");
+  } else {
+    if (editTimesBtn) editTimesBtn.classList.add("hidden");
+    if (editTimesBtnMobile) editTimesBtnMobile.classList.add("hidden");
+  }
+  
   // Render service times
   serviceTimesContent.innerHTML = "";
   if (set.service_times && set.service_times.length > 0) {
@@ -3691,6 +3777,105 @@ function renderTimes(serviceTimesContent, rehearsalTimesContent, set) {
   }
 }
 
+// Helper function to get effective assignment mode for a set
+function getSetAssignmentMode(set) {
+  // If set has assignment_mode_override set, use it
+  if (set.assignment_mode_override) {
+    return set.assignment_mode_override;
+  }
+  
+  // If no override, check what assignments the set actually has to determine mode
+  // This preserves the mode for sets created before the override feature
+  if (set.set_assignments && set.set_assignments.length > 0) {
+    // Has set-level assignments, so it's per-set
+    return 'per_set';
+  }
+  
+  // Check if any songs have assignments (per-song mode)
+  if (set.set_songs && set.set_songs.length > 0) {
+    const hasSongAssignments = set.set_songs.some(setSong => 
+      setSong.song_assignments && setSong.song_assignments.length > 0
+    );
+    if (hasSongAssignments) {
+      return 'per_song';
+    }
+  }
+  
+  // If no assignments exist, use team default
+  return state.teamAssignmentMode || 'per_set';
+}
+
+// Render per-set assignments
+function renderSetAssignments(set, container) {
+  if (!container) return;
+  
+  const assignmentMode = getSetAssignmentMode(set);
+  
+  // Only show assignments card when in per-set mode
+  const assignmentsCard = el("set-assignments-display");
+  const assignmentsCardMobile = el("set-assignments-display-mobile");
+  
+  if (assignmentMode === 'per_set') {
+    if (assignmentsCard) assignmentsCard.classList.remove("hidden");
+    if (assignmentsCardMobile) assignmentsCardMobile.classList.remove("hidden");
+    
+    // Get set-level assignments
+    const setAssignments = set.set_assignments || [];
+    
+    if (setAssignments.length === 0) {
+      container.innerHTML = '<div class="no-assignments">No assignments yet.</div>';
+      return;
+    }
+    
+    // Group assignments by role
+    const assignmentsByRole = {};
+    setAssignments.forEach(assignment => {
+      if (!assignmentsByRole[assignment.role]) {
+        assignmentsByRole[assignment.role] = [];
+      }
+      assignmentsByRole[assignment.role].push(assignment);
+    });
+    
+    // Render grouped assignments
+    container.innerHTML = "";
+    Object.keys(assignmentsByRole).sort().forEach(role => {
+      const roleItem = document.createElement("div");
+      roleItem.className = "assignment-role-item";
+      
+      const roleName = document.createElement("div");
+      roleName.className = "assignment-role-name";
+      roleName.textContent = role;
+      roleItem.appendChild(roleName);
+      
+      const peopleList = document.createElement("div");
+      peopleList.className = "assignment-role-people";
+      
+      assignmentsByRole[role].forEach(assignment => {
+        const personEl = document.createElement("div");
+        const isPending = Boolean(assignment.pending_invite_id);
+        const personName =
+          assignment.person?.full_name ||
+          assignment.pending_invite?.full_name ||
+          assignment.person_name ||
+          assignment.person_email ||
+          assignment.pending_invite?.email ||
+          "Unknown";
+        
+        personEl.className = `assignment-role-person ${isPending ? 'pending' : ''}`;
+        personEl.textContent = personName + (isPending ? ' (Pending)' : '');
+        peopleList.appendChild(personEl);
+      });
+      
+      roleItem.appendChild(peopleList);
+      container.appendChild(roleItem);
+    });
+  } else {
+    // Hide assignments card when in per-song mode
+    if (assignmentsCard) assignmentsCard.classList.add("hidden");
+    if (assignmentsCardMobile) assignmentsCardMobile.classList.add("hidden");
+  }
+}
+
 function switchSetDetailTab(tabName) {
   // Only switch tabs on mobile (tabs are hidden on desktop)
   const tabsContainer = document.querySelector(".set-detail-tabs");
@@ -3709,6 +3894,7 @@ function switchSetDetailTab(tabName) {
   
   // Update tab content
   const songsTab = el("set-detail-tab-songs");
+  const assignmentsTab = el("set-detail-tab-assignments");
   const timesTab = el("set-detail-tab-times");
   
   if (!songsTab || !timesTab) {
@@ -3718,9 +3904,15 @@ function switchSetDetailTab(tabName) {
   
   if (tabName === "songs") {
     songsTab.classList.remove("hidden");
+    if (assignmentsTab) assignmentsTab.classList.add("hidden");
+    timesTab.classList.add("hidden");
+  } else if (tabName === "assignments") {
+    songsTab.classList.add("hidden");
+    if (assignmentsTab) assignmentsTab.classList.remove("hidden");
     timesTab.classList.add("hidden");
   } else if (tabName === "times") {
     songsTab.classList.add("hidden");
+    if (assignmentsTab) assignmentsTab.classList.add("hidden");
     timesTab.classList.remove("hidden");
   }
 }
@@ -3793,10 +3985,38 @@ function showSetDetail(set) {
     renderTimes(serviceTimesContentMobile, rehearsalTimesContentMobile, set);
   }
   
+  // Render assignments (desktop sidebar)
+  const assignmentsContent = el("set-assignments-content");
+  const editAssignmentsBtn = el("btn-edit-assignments");
+  if (assignmentsContent) {
+    renderSetAssignments(set, assignmentsContent);
+    // Show/hide edit button for managers
+    if (isManager() && getSetAssignmentMode(set) === 'per_set') {
+      if (editAssignmentsBtn) editAssignmentsBtn.classList.remove("hidden");
+    } else {
+      if (editAssignmentsBtn) editAssignmentsBtn.classList.add("hidden");
+    }
+  }
+  
+  // Render assignments (mobile tab)
+  const assignmentsContentMobile = el("set-assignments-content-mobile");
+  const editAssignmentsBtnMobile = el("btn-edit-assignments-mobile");
+  if (assignmentsContentMobile) {
+    renderSetAssignments(set, assignmentsContentMobile);
+    // Show/hide edit button for managers
+    if (isManager() && getSetAssignmentMode(set) === 'per_set') {
+      if (editAssignmentsBtnMobile) editAssignmentsBtnMobile.classList.remove("hidden");
+    } else {
+      if (editAssignmentsBtnMobile) editAssignmentsBtnMobile.classList.add("hidden");
+    }
+  }
+  
   // Ensure songs tab is visible initially
   const songsTab = el("set-detail-tab-songs");
+  const assignmentsTab = el("set-detail-tab-assignments");
   const timesTab = el("set-detail-tab-times");
   if (songsTab) songsTab.classList.remove("hidden");
+  if (assignmentsTab) assignmentsTab.classList.add("hidden");
   if (timesTab) timesTab.classList.add("hidden");
   
   // Reset to songs tab on mobile (only if tabs are visible)
@@ -3934,6 +4154,13 @@ function renderSetDetailSongs(set) {
         }
 
         const assignmentsWrap = songNode.querySelector(".assignments");
+        const assignmentMode = getSetAssignmentMode(set);
+        
+        // Hide assignments section completely when in per-set mode
+        if (assignmentMode === 'per_set') {
+          assignmentsWrap.style.display = 'none';
+        } else {
+          assignmentsWrap.style.display = '';
         if (!setSong.song_assignments?.length) {
           assignmentsWrap.innerHTML =
             '<span class="muted">No assignments yet.</span>';
@@ -3968,6 +4195,7 @@ function renderSetDetailSongs(set) {
             }
             assignmentsWrap.appendChild(pill);
           });
+          }
         }
 
         // Add edit and remove buttons for managers
@@ -4597,6 +4825,65 @@ function openSetModal(set = null) {
   el("set-date").value = set?.scheduled_date ?? "";
   el("set-description").value = set?.description ?? "";
   
+  // Show assignment mode section only for managers
+  const assignmentModeSection = el("set-assignment-mode-section");
+  if (assignmentModeSection) {
+    assignmentModeSection.classList.remove("hidden");
+  }
+  
+  // Set assignment mode override checkbox
+  const overrideCheckbox = el("set-override-assignment-mode");
+  const overrideText = el("set-override-assignment-mode-text");
+  
+  if (overrideCheckbox && overrideText) {
+    // Check if set has an explicit override
+    const hasExplicitOverride = set?.assignment_mode_override !== null && set?.assignment_mode_override !== undefined;
+    
+    // Get the effective mode (what the set is actually using)
+    const effectiveMode = getSetAssignmentMode(set);
+    const teamMode = state.teamAssignmentMode || 'per_set';
+    
+    // Checkbox should be checked if:
+    // 1. Set has an explicit override, OR
+    // 2. Set's effective mode differs from team default (effectively overridden)
+    const shouldBeChecked = hasExplicitOverride || (effectiveMode !== teamMode);
+    overrideCheckbox.checked = shouldBeChecked;
+    
+    // Set the text based on current team mode
+    if (teamMode === 'per_set') {
+      overrideText.textContent = 'Use per-song assignments';
+    } else {
+      overrideText.textContent = 'Use per-set assignments';
+    }
+  }
+}
+
+function closeSetModal() {
+  setModal.classList.add("hidden");
+  document.body.style.overflow = "";
+  el("set-form").reset();
+  
+  // Preserve state.selectedSet if we're in detail view mode
+  // (i.e., if the detail view is currently visible)
+  const detailView = el("set-detail");
+  const isDetailViewVisible = detailView && !detailView.classList.contains("hidden");
+  
+  if (!isDetailViewVisible) {
+    // Only clear selectedSet if we're not in detail view
+    state.selectedSet = null;
+  }
+  // If detail view is visible, keep state.selectedSet so the detail view stays open
+  
+  state.currentSetSongs = [];
+}
+
+function openTimesModal() {
+  if (!isManager() || !state.selectedSet) return;
+  const set = state.selectedSet;
+  const timesModal = el("times-modal");
+  timesModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  
   // Clear and populate service times
   const serviceTimesList = el("service-times-list");
   serviceTimesList.innerHTML = "";
@@ -4616,14 +4903,339 @@ function openSetModal(set = null) {
   }
 }
 
-function closeSetModal() {
-  setModal.classList.add("hidden");
+function closeTimesModal() {
+  const timesModal = el("times-modal");
+  timesModal.classList.add("hidden");
   document.body.style.overflow = "";
-  el("set-form").reset();
+  el("times-form").reset();
   el("service-times-list").innerHTML = "";
   el("rehearsal-times-list").innerHTML = "";
-  state.selectedSet = null;
-  state.currentSetSongs = [];
+}
+
+function openSetAssignmentsModal() {
+  if (!isManager() || !state.selectedSet) return;
+  const set = state.selectedSet;
+  const modal = el("set-assignments-modal");
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  
+  // Clear and populate set assignments
+  const assignmentsList = el("set-assignments-list");
+  assignmentsList.innerHTML = "";
+  if (set?.set_assignments && set.set_assignments.length > 0) {
+    set.set_assignments.forEach((assignment) => {
+      addSetAssignmentInput(assignment);
+    });
+  }
+}
+
+function closeSetAssignmentsModal() {
+  const modal = el("set-assignments-modal");
+  modal.classList.add("hidden");
+  document.body.style.overflow = "";
+  el("set-assignments-form").reset();
+  el("set-assignments-list").innerHTML = "";
+}
+
+function addSetAssignmentInput(existingAssignment = null) {
+  const container = el("set-assignments-list");
+  const div = document.createElement("div");
+  div.className = "assignment-row";
+  
+  // Build person dropdown options
+  const personOptions = buildPersonOptions();
+  
+  div.innerHTML = `
+    <label>
+      Role
+      <input type="text" class="assignment-role-input" placeholder="Lead Vocal" value="${existingAssignment?.role || ''}" required />
+    </label>
+    <label>
+      Person
+      <div class="assignment-person-container"></div>
+    </label>
+    <button type="button" class="btn small ghost remove-assignment">Remove</button>
+  `;
+  
+  // Create searchable dropdown for person
+  const personContainer = div.querySelector(".assignment-person-container");
+  const selectedValue = existingAssignment?.person_id || existingAssignment?.pending_invite_id || null;
+  const personDropdown = createSearchableDropdown(
+    personOptions, 
+    "Select a person...",
+    selectedValue,
+    isManager() ? (name) => openInviteModal(name) : null
+  );
+  personContainer.appendChild(personDropdown);
+  
+  // Store assignment ID if editing
+  if (existingAssignment?.id) {
+    div.dataset.assignmentId = existingAssignment.id;
+  }
+  
+  div.querySelector(".remove-assignment").addEventListener("click", () => {
+    container.removeChild(div);
+  });
+  container.appendChild(div);
+}
+
+async function handleSetAssignmentsSubmit(event) {
+  event.preventDefault();
+  if (!isManager() || !state.selectedSet) return;
+  
+  const set = state.selectedSet;
+  const setId = set.id;
+  
+  const assignments = collectSetAssignments();
+  
+  // Get existing assignments
+  const { data: existingAssignments, error: fetchError } = await supabase
+    .from("set_assignments")
+    .select("*")
+    .eq("set_id", setId);
+  
+  if (fetchError) {
+    console.error("Error fetching existing assignments:", fetchError);
+    toastError("Unable to load existing assignments. Check console.");
+    return;
+  }
+  
+  // Determine which to delete, update, and insert
+  const existingIds = new Set(existingAssignments?.map(a => a.id) || []);
+  const newAssignments = assignments.filter(a => !a.id);
+  const updatedAssignments = assignments.filter(a => a.id && existingIds.has(a.id));
+  const deletedIds = Array.from(existingIds).filter(id => 
+    !assignments.some(a => a.id === id)
+  );
+  
+  // Delete removed assignments
+  if (deletedIds.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("set_assignments")
+      .delete()
+      .in("id", deletedIds);
+    
+    if (deleteError) {
+      console.error("Error deleting assignments:", deleteError);
+      toastError("Unable to delete some assignments. Check console.");
+      return;
+    }
+  }
+  
+  // Update existing assignments
+  for (const assignment of updatedAssignments) {
+    const { error: updateError } = await supabase
+      .from("set_assignments")
+      .update({
+        role: assignment.role,
+        person_id: assignment.person_id || null,
+        pending_invite_id: assignment.pending_invite_id || null,
+        person_name: assignment.person_name || null,
+        person_email: assignment.person_email || null,
+      })
+      .eq("id", assignment.id);
+    
+    if (updateError) {
+      console.error("Error updating assignment:", updateError);
+      toastError("Unable to update some assignments. Check console.");
+      return;
+    }
+  }
+  
+  // Insert new assignments
+  if (newAssignments.length > 0) {
+    const { error: insertError } = await supabase
+      .from("set_assignments")
+      .insert(
+        newAssignments.map((assignment) => ({
+          role: assignment.role,
+          person_id: assignment.person_id || null,
+          pending_invite_id: assignment.pending_invite_id || null,
+          person_name: assignment.person_name || null,
+          person_email: assignment.person_email || null,
+          set_id: setId,
+          team_id: state.currentTeamId,
+        }))
+      );
+    
+    if (insertError) {
+      console.error("Error inserting assignments:", insertError);
+      toastError("Unable to save assignments. Check console.");
+      return;
+    }
+  }
+  
+  toastSuccess("Assignments saved successfully");
+  closeSetAssignmentsModal();
+  await loadSets();
+  
+  // Refresh detail view if it's showing
+  if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      state.selectedSet = updatedSet;
+      showSetDetail(updatedSet);
+    }
+  }
+}
+
+function collectSetAssignments() {
+  const container = el("set-assignments-list");
+  if (!container) return [];
+  
+  const rows = container.querySelectorAll(".assignment-row");
+  const assignments = [];
+  
+  rows.forEach((row) => {
+    const roleInput = row.querySelector(".assignment-role-input");
+    const personContainer = row.querySelector(".assignment-person-container");
+    const personDropdown = personContainer?.querySelector(".searchable-dropdown");
+    
+    if (!roleInput || !personDropdown) return;
+    
+    const role = roleInput.value.trim();
+    if (!role) return;
+    
+    // Get value using the dropdown's getValue method if available
+    let personValue = null;
+    if (personDropdown.getValue) {
+      personValue = personDropdown.getValue();
+    } else {
+      // Fallback: get selected value from dropdown
+      const dropdownInput = personDropdown.querySelector(".searchable-dropdown-input");
+      if (!dropdownInput || dropdownInput.classList.contains("placeholder")) return;
+      
+      // Find the selected option
+      const selectedOption = Array.from(personDropdown.querySelectorAll(".searchable-dropdown-option"))
+        .find(opt => opt.classList.contains("selected"));
+      
+      if (!selectedOption) return;
+      personValue = selectedOption.dataset.value;
+    }
+    
+    if (!personValue) return;
+    
+    // Determine if it's a person or pending invite
+    const personOptions = buildPersonOptions();
+    const option = personOptions.find(opt => opt.value === personValue);
+    
+    if (!option) return;
+    
+    const assignment = {
+      role,
+    };
+    
+    // Store assignment ID if editing
+    if (row.dataset.assignmentId) {
+      assignment.id = row.dataset.assignmentId;
+    }
+    
+    if (option.meta?.isPending) {
+      assignment.pending_invite_id = personValue;
+      assignment.person_name = option.label;
+      assignment.person_email = option.meta?.email || null;
+    } else {
+      assignment.person_id = personValue;
+    }
+    
+    assignments.push(assignment);
+  });
+  
+  return assignments;
+}
+
+async function handleTimesSubmit(event) {
+  event.preventDefault();
+  if (!isManager() || !state.selectedSet) return;
+  
+  const set = state.selectedSet;
+  const setId = set.id;
+  
+  // Handle service times
+  const serviceTimeRows = el("service-times-list").querySelectorAll(".service-time-row");
+  const serviceTimes = Array.from(serviceTimeRows)
+    .map(row => {
+      const input = row.querySelector('input[type="time"]');
+      return input?.value || null;
+    })
+    .filter(time => time);
+
+  // Delete existing service times for this set
+  await supabase
+    .from("service_times")
+    .delete()
+    .eq("set_id", setId);
+
+  // Insert new service times
+  if (serviceTimes.length > 0) {
+    const { error: serviceError } = await supabase
+      .from("service_times")
+      .insert(serviceTimes.map(time => ({
+        set_id: setId,
+        service_time: time,
+        team_id: state.currentTeamId
+      })));
+
+    if (serviceError) {
+      console.error("Error saving service times:", serviceError);
+      toastError("Error saving service times. Check console.");
+      return;
+    }
+  }
+
+  // Handle rehearsal times
+  const rehearsalTimeRows = el("rehearsal-times-list").querySelectorAll(".rehearsal-time-row");
+  const rehearsalTimes = Array.from(rehearsalTimeRows)
+    .map(row => {
+      const dateInput = row.querySelector('input[type="date"]');
+      const timeInput = row.querySelector('input[type="time"]');
+      if (dateInput?.value && timeInput?.value) {
+        return {
+          date: dateInput.value,
+          time: timeInput.value
+        };
+      }
+      return null;
+    })
+    .filter(rt => rt);
+
+  // Delete existing rehearsal times for this set
+  await supabase
+    .from("rehearsal_times")
+    .delete()
+    .eq("set_id", setId);
+
+  // Insert new rehearsal times
+  if (rehearsalTimes.length > 0) {
+    const { error: rehearsalError } = await supabase
+      .from("rehearsal_times")
+      .insert(rehearsalTimes.map(rt => ({
+        set_id: setId,
+        rehearsal_date: rt.date,
+        rehearsal_time: rt.time,
+        team_id: state.currentTeamId
+      })));
+
+    if (rehearsalError) {
+      console.error("Error saving rehearsal times:", rehearsalError);
+      toastError("Error saving rehearsal times. Check console.");
+      return;
+    }
+  }
+  
+  toastSuccess("Times saved successfully");
+  closeTimesModal();
+  
+  // Reload sets to get updated times
+  await loadSets();
+  
+  // Refresh detail view if it's showing the edited set
+  if (!el("set-detail").classList.contains("hidden")) {
+    const updatedSet = state.sets.find(s => s.id === setId);
+    if (updatedSet) {
+      showSetDetail(updatedSet);
+    }
+  }
 }
 
 function addServiceTimeRow(time = "", id = null) {
@@ -4703,6 +5315,45 @@ async function handleSetSubmit(event) {
     description: el("set-description").value,
     team_id: state.currentTeamId,
   };
+  
+  // Handle assignment mode override (only if columns exist)
+  let newAssignmentMode = null;
+  let oldAssignmentMode = null;
+  try {
+    const overrideCheckbox = el("set-override-assignment-mode");
+    if (overrideCheckbox) {
+      const teamMode = state.teamAssignmentMode || 'per_set';
+      if (isEditing) {
+        // Get old assignment mode
+        oldAssignmentMode = getSetAssignmentMode(state.selectedSet);
+        
+        // When editing: checkbox controls whether to override
+        if (overrideCheckbox.checked) {
+          // Checkbox is checked - set override to the opposite of team mode
+          newAssignmentMode = teamMode === 'per_set' ? 'per_song' : 'per_set';
+          payload.assignment_mode_override = newAssignmentMode;
+        } else {
+          // Checkbox is unchecked - remove override (will use team default)
+          newAssignmentMode = teamMode;
+          payload.assignment_mode_override = null;
+        }
+      } else {
+        // When creating: checkbox controls whether to override
+        if (overrideCheckbox.checked) {
+          // User wants to override to the opposite of team mode
+          newAssignmentMode = teamMode === 'per_set' ? 'per_song' : 'per_set';
+          payload.assignment_mode_override = newAssignmentMode;
+        } else {
+          // No override - will use team default (but lock it in so it doesn't change)
+          newAssignmentMode = teamMode;
+          payload.assignment_mode_override = teamMode;
+        }
+      }
+    }
+  } catch (err) {
+    // If assignment_mode_override column doesn't exist yet, skip it
+    console.warn('Assignment mode override column may not exist yet, skipping');
+  }
 
   // Only include created_by when creating a new set
   if (!isEditing) {
@@ -4730,75 +5381,28 @@ async function handleSetSubmit(event) {
 
   const finalSetId = response.data.id;
 
-  // Handle service times
-  const serviceTimeRows = el("service-times-list").querySelectorAll(".service-time-row");
-  const serviceTimes = Array.from(serviceTimeRows)
-    .map(row => {
-      const input = row.querySelector('input[type="time"]');
-      return input?.value || null;
-    })
-    .filter(time => time);
-
-  // Delete existing service times for this set
-  if (isEditing) {
-    await supabase
-      .from("service_times")
-      .delete()
-      .eq("set_id", finalSetId);
-  }
-
-  // Insert new service times
-  if (serviceTimes.length > 0) {
-    const { error: serviceError } = await supabase
-      .from("service_times")
-      .insert(serviceTimes.map(time => ({
-        set_id: finalSetId,
-        service_time: time,
-        team_id: state.profile.team_id
-      })));
-
-    if (serviceError) {
-      console.error("Error saving service times:", serviceError);
-    }
-  }
-
-  // Handle rehearsal times
-  const rehearsalTimeRows = el("rehearsal-times-list").querySelectorAll(".rehearsal-time-row");
-  const rehearsalTimes = Array.from(rehearsalTimeRows)
-    .map(row => {
-      const dateInput = row.querySelector('input[type="date"]');
-      const timeInput = row.querySelector('input[type="time"]');
-      if (dateInput?.value && timeInput?.value) {
-        return {
-          date: dateInput.value,
-          time: timeInput.value
-        };
+  // If switching assignment modes, delete the old type of assignments
+  if (isEditing && oldAssignmentMode && newAssignmentMode && oldAssignmentMode !== newAssignmentMode) {
+    if (oldAssignmentMode === 'per_song' && newAssignmentMode === 'per_set') {
+      // Switching from per-song to per-set: delete song-level assignments
+      const { data: setSongs } = await supabase
+        .from("set_songs")
+        .select("id")
+        .eq("set_id", finalSetId);
+      
+      if (setSongs && setSongs.length > 0) {
+        const setSongIds = setSongs.map(ss => ss.id);
+        await supabase
+          .from("song_assignments")
+          .delete()
+          .in("set_song_id", setSongIds);
       }
-      return null;
-    })
-    .filter(rt => rt);
-
-  // Delete existing rehearsal times for this set
-  if (isEditing) {
-    await supabase
-      .from("rehearsal_times")
-      .delete()
-      .eq("set_id", finalSetId);
-  }
-
-  // Insert new rehearsal times
-  if (rehearsalTimes.length > 0) {
-    const { error: rehearsalError } = await supabase
-      .from("rehearsal_times")
-      .insert(rehearsalTimes.map(rt => ({
-        set_id: finalSetId,
-        rehearsal_date: rt.date,
-        rehearsal_time: rt.time,
-        team_id: state.profile.team_id
-      })));
-
-    if (rehearsalError) {
-      console.error("Error saving rehearsal times:", rehearsalError);
+    } else if (oldAssignmentMode === 'per_set' && newAssignmentMode === 'per_song') {
+      // Switching from per-set to per-song: delete set-level assignments
+      await supabase
+        .from("set_assignments")
+        .delete()
+        .eq("set_id", finalSetId);
     }
   }
 
@@ -4901,8 +5505,19 @@ async function openSongModal() {
   songModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   await populateSongOptions();
+  
+  // Hide assignments section if in per-set mode
+  const assignmentSection = songModal.querySelector(".assignment-section");
+  const assignmentMode = getSetAssignmentMode(state.selectedSet);
+  if (assignmentSection) {
+    if (assignmentMode === 'per_set') {
+      assignmentSection.style.display = 'none';
+    } else {
+      assignmentSection.style.display = 'block';
   populateImportAssignmentsDropdown("import-assignments-container", null);
   el("assignments-list").innerHTML = "";
+    }
+  }
 }
 
 function closeSongModal() {
@@ -4918,7 +5533,18 @@ async function openSectionModal() {
   if (!isManager() || !state.selectedSet) return;
   sectionModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
+  
+  // Hide assignments section if in per-set mode
+  const assignmentSection = sectionModal.querySelector(".assignment-section");
+  const assignmentMode = getSetAssignmentMode(state.selectedSet);
+  if (assignmentSection) {
+    if (assignmentMode === 'per_set') {
+      assignmentSection.style.display = 'none';
+    } else {
+      assignmentSection.style.display = 'block';
   el("section-assignments-list").innerHTML = "";
+    }
+  }
 }
 
 function closeSectionModal() {
@@ -4953,6 +5579,7 @@ function closeHeaderDropdown() {
 }
 
 let songDropdown = null;
+let teamAssignmentModeDropdown = null;
 
 async function populateSongOptions() {
   const container = el("song-select-container");
@@ -5403,6 +6030,16 @@ function openEditSetSongModal(setSong) {
   const sectionFields = el("edit-section-fields");
   const editSongBtn = el("btn-edit-song-from-set");
   const assignmentSection = el("edit-set-song-modal")?.querySelector(".assignment-section");
+  
+  // Hide assignments section if in per-set mode
+  const assignmentMode = getSetAssignmentMode(state.selectedSet);
+  if (assignmentSection) {
+    if (assignmentMode === 'per_set') {
+      assignmentSection.style.display = 'none';
+    } else {
+      assignmentSection.style.display = 'block';
+    }
+  }
   
   if (sectionFields) {
     if (isSection) {
@@ -7894,6 +8531,119 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
   return container;
 }
 
+// Create a simple non-searchable dropdown (looks like searchable but shows all options)
+function createSimpleDropdown(options, placeholder = "Select...", selectedValue = null) {
+  const container = document.createElement("div");
+  container.className = "searchable-dropdown";
+
+  const normalizedOptions = options || [];
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "searchable-dropdown-input";
+  input.placeholder = placeholder;
+  input.setAttribute("readonly", "");
+
+  const optionsList = document.createElement("div");
+  optionsList.className = "searchable-dropdown-options";
+
+  let selectedOption = null;
+
+  // Find selected option
+  if (selectedValue) {
+    selectedOption = normalizedOptions.find((opt) => opt.value === selectedValue) || null;
+    if (selectedOption) {
+      input.value = selectedOption.label;
+      input.classList.remove("placeholder");
+    } else {
+      input.classList.add("placeholder");
+    }
+  } else {
+    input.classList.add("placeholder");
+  }
+
+  function renderOptions() {
+    optionsList.innerHTML = "";
+    
+    if (normalizedOptions.length === 0) {
+      const noResults = document.createElement("div");
+      noResults.className = "searchable-dropdown-option no-results";
+      noResults.textContent = "No options available";
+      optionsList.appendChild(noResults);
+      return;
+    }
+
+    normalizedOptions.forEach((option) => {
+      const optionEl = document.createElement("div");
+      optionEl.className = "searchable-dropdown-option";
+      if (selectedOption && option.value === selectedOption.value) {
+        optionEl.classList.add("selected");
+      }
+      
+      optionEl.innerHTML = `
+        <div class="searchable-option-row" style="display: flex; align-items: center; width: 100%;">
+          <span class="searchable-option-label">${option.label}</span>
+        </div>
+      `;
+      optionEl.dataset.value = option.value;
+
+      optionEl.addEventListener("click", () => {
+        selectOption(option);
+      });
+
+      optionsList.appendChild(optionEl);
+    });
+  }
+
+  function selectOption(option) {
+    selectedOption = option;
+    input.value = option.label;
+    input.classList.remove("placeholder");
+    optionsList.classList.remove("open");
+    
+    const event = new CustomEvent("change", {
+      detail: { value: option.value, option },
+    });
+    container.dispatchEvent(event);
+  }
+
+  // Toggle dropdown on input click
+  input.addEventListener("click", (e) => {
+    e.stopPropagation();
+    optionsList.classList.toggle("open");
+  });
+
+  // Close when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!container.contains(e.target)) {
+      optionsList.classList.remove("open");
+    }
+  });
+
+  renderOptions();
+
+  container.appendChild(input);
+  container.appendChild(optionsList);
+
+  container.getValue = () => selectedOption?.value || null;
+  container.setValue = (value) => {
+    if (value === "" || value === null || value === undefined) {
+      selectedOption = null;
+      input.value = "";
+      input.classList.add("placeholder");
+      renderOptions();
+    } else {
+      const option = normalizedOptions.find((opt) => opt.value === value);
+      if (option) {
+        selectOption(option);
+      }
+    }
+  };
+  container.getSelectedOption = () => selectedOption;
+
+  return container;
+}
+
 // Diagnostic function to test team access
 async function testTeamAccess() {
   console.log('🔍 Testing team access...');
@@ -8066,80 +8816,169 @@ async function deleteAccount() {
   );
 }
 
-function openRenameTeamModal() {
+let teamAssignmentModeSelectedValue = null;
+
+function openTeamSettingsModal() {
   if (!isOwner()) return;
   
-  const modal = el("rename-team-modal");
-  const input = el("rename-team-input");
+  const modal = el("team-settings-modal");
+  const nameInput = el("team-settings-name-input");
+  const assignmentModeContainer = el("team-assignment-mode-container");
   
-  if (!modal || !input) return;
+  if (!modal || !nameInput || !assignmentModeContainer) return;
   
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
   const currentTeamName = currentTeam?.name || "";
-  input.value = currentTeamName;
-  input.select();
+  nameInput.value = currentTeamName;
+  
+  // Reset selected value
+  teamAssignmentModeSelectedValue = state.teamAssignmentMode || 'per_set';
+  
+  // Create simple non-searchable dropdown (looks like searchable but shows both options)
+  assignmentModeContainer.innerHTML = "";
+  const currentMode = state.teamAssignmentMode || 'per_set';
+  const options = [
+    { value: 'per_set', label: 'Per Set' },
+    { value: 'per_song', label: 'Per Song' }
+  ];
+  teamAssignmentModeDropdown = createSimpleDropdown(options, "Select assignment mode...", currentMode);
+  
+  // Listen for changes
+  teamAssignmentModeDropdown.addEventListener("change", (e) => {
+    teamAssignmentModeSelectedValue = e.detail.value;
+  });
+  
+  assignmentModeContainer.appendChild(teamAssignmentModeDropdown);
   
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
 
-async function handleRenameTeamSubmit(e) {
+function closeTeamSettingsModal() {
+  const modal = el("team-settings-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+  }
+}
+
+async function handleTeamSettingsSubmit(e) {
   e.preventDefault();
   
   if (!isOwner()) return;
   
-  const modal = el("rename-team-modal");
-  const input = el("rename-team-input");
+  const modal = el("team-settings-modal");
+  const nameInput = el("team-settings-name-input");
   
-  if (!input) return;
+  if (!nameInput || !teamAssignmentModeDropdown) return;
   
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
   const currentTeamName = currentTeam?.name || "Team";
-  const newName = input.value.trim();
+  const newName = nameInput.value.trim();
+  
+  // Get value from dropdown
+  const newAssignmentMode = teamAssignmentModeDropdown.getValue() || teamAssignmentModeSelectedValue || state.teamAssignmentMode || 'per_set';
   
   if (!newName) {
     toastError("Team name cannot be empty.");
     return;
   }
   
-  if (newName === currentTeamName) {
-    // No change, just close modal
-    modal?.classList.add("hidden");
-    document.body.style.overflow = "";
+  const updates = {};
+  let hasChanges = false;
+  
+  if (newName !== currentTeamName) {
+    updates.name = newName;
+    hasChanges = true;
+  }
+  
+  if (newAssignmentMode !== state.teamAssignmentMode) {
+    updates.assignment_mode = newAssignmentMode;
+    hasChanges = true;
+  }
+  
+  if (!hasChanges) {
+    // No changes, just close modal
+    closeTeamSettingsModal();
     return;
   }
   
   const { error } = await supabase
     .from("teams")
-    .update({ name: newName })
+    .update(updates)
     .eq("id", state.currentTeamId);
   
   if (error) {
-    console.error("Error renaming team:", error);
-    toastError("Unable to rename team. Check console.");
+    console.error("Error updating team settings:", error);
+    toastError("Unable to save team settings. Check console.");
     return;
   }
   
   // Update local state
   if (currentTeam) {
-    currentTeam.name = newName;
+    if (updates.name) {
+      currentTeam.name = updates.name;
+    }
   }
-  if (state.profile?.team) {
-    state.profile.team.name = newName;
+  if (state.profile?.team && updates.name) {
+    state.profile.team.name = updates.name;
+  }
+  
+  if (updates.assignment_mode) {
+    state.teamAssignmentMode = updates.assignment_mode;
   }
   
   // Update team name displays
   const teamNameDisplay = el("team-name-display");
-  if (teamNameDisplay) {
-    teamNameDisplay.textContent = newName;
+  if (teamNameDisplay && updates.name) {
+    teamNameDisplay.textContent = updates.name;
   }
   
   // Refresh team switcher to show updated name
   updateTeamSwitcher();
   
+  // Reload sets to reflect assignment mode changes
+  await loadSets();
+  
+  // Update checkbox in set modal if it's open
+  const setModal = el("set-modal");
+  if (setModal && !setModal.classList.contains("hidden") && state.selectedSet) {
+    const overrideCheckbox = el("set-override-assignment-mode");
+    const overrideText = el("set-override-assignment-mode-text");
+    
+    if (overrideCheckbox && overrideText) {
+      const set = state.selectedSet;
+      
+      // Get the effective mode (what the set is actually using)
+      const effectiveMode = getSetAssignmentMode(set);
+      const teamMode = state.teamAssignmentMode || 'per_set';
+      
+      // Check if set has an explicit override
+      const hasExplicitOverride = set?.assignment_mode_override !== null && set?.assignment_mode_override !== undefined;
+      
+      // Checkbox should be checked if effective mode differs from team default
+      // (set is effectively overridden, even if not explicitly)
+      overrideCheckbox.checked = hasExplicitOverride || (effectiveMode !== teamMode);
+      
+      // Update the text based on new team mode
+      if (teamMode === 'per_set') {
+        overrideText.textContent = 'Use per-song assignments';
+      } else {
+        overrideText.textContent = 'Use per-set assignments';
+      }
+    }
+  }
+  
+  // Refresh detail view if it's showing
+  if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      showSetDetail(updatedSet);
+    }
+  }
+  
   // Close modal
-  modal?.classList.add("hidden");
-  document.body.style.overflow = "";
+  closeTeamSettingsModal();
 }
 
 async function deleteTeam() {
