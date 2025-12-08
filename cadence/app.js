@@ -3143,9 +3143,7 @@ function renderSets() {
   }, 100);
 }
 
-function switchTab(tabName) {
-  // Don't hide set detail view when switching tabs - user wants it to stay open
-  
+function switchTab(tabName) {  
   // Save the current tab to localStorage
   localStorage.setItem('cadence-active-tab', tabName);
   
