@@ -70,6 +70,7 @@ const setsList = el("sets-list");
 const yourSetsList = el("your-sets-list");
 const setModal = el("set-modal");
 const songModal = el("song-modal");
+const tagModal = el("tag-modal");
 const sectionModal = el("section-modal");
 const sectionHeaderModal = el("section-header-modal");
 const authForm = el("auth-form");
@@ -84,6 +85,19 @@ const forgotPasswordEmailInput = el("forgot-password-email");
 const forgotPasswordMessage = el("forgot-password-message");
 // Team leader signup mode - allows team leaders to create teams
 let isSignUpMode = false;
+
+const TAG_PRESET_OPTIONS = [
+  { value: "chorus", label: "Chorus" },
+  { value: "verse", label: "Verse" },
+  { value: "bridge", label: "Bridge" },
+  { value: "pre-chorus", label: "Pre-Chorus" },
+  { value: "intro", label: "Intro" },
+  { value: "outro", label: "Outro" },
+  { value: "instrumental", label: "Instrumental" },
+  { value: "tag", label: "Tag" },
+  { value: "custom", label: "Custom" },
+  { value: "none", label: "Clear Tag" },
+];
 
 // Toast System
 function showToast(message, type = 'info', duration = 5000) {
@@ -840,6 +854,14 @@ function bindEvents() {
     }
   });
   
+  el("btn-header-add-tag")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeHeaderDropdown();
+    if (state.selectedSet) {
+      openTagModal();
+    }
+  });
+  
   el("btn-header-add-section")?.addEventListener("click", (e) => {
     e.stopPropagation();
     closeHeaderDropdown();
@@ -862,6 +884,14 @@ function bindEvents() {
     closeHeaderDropdown();
     if (state.selectedSet) {
       openSongModal();
+    }
+  });
+  
+  el("btn-mobile-header-add-tag")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeHeaderDropdown();
+    if (state.selectedSet) {
+      openTagModal();
     }
   });
   
@@ -913,6 +943,9 @@ function bindEvents() {
   el("btn-add-song")?.addEventListener("click", () => openSongModal());
   el("close-song-modal")?.addEventListener("click", () => closeSongModal());
   el("cancel-song")?.addEventListener("click", () => closeSongModal());
+  el("close-tag-modal")?.addEventListener("click", () => closeTagModal());
+  el("cancel-tag")?.addEventListener("click", () => closeTagModal());
+  el("tag-form")?.addEventListener("submit", handleAddTagToSong);
   el("close-section-modal")?.addEventListener("click", () => closeSectionModal());
   el("cancel-section")?.addEventListener("click", () => closeSectionModal());
   el("close-section-header-modal")?.addEventListener("click", () => closeSectionHeaderModal());
@@ -998,6 +1031,7 @@ function bindEvents() {
   el("close-edit-set-song-modal")?.addEventListener("click", () => closeEditSetSongModal());
   el("cancel-edit-set-song")?.addEventListener("click", () => closeEditSetSongModal());
   el("edit-set-song-form")?.addEventListener("submit", handleEditSetSongSubmit);
+  el("edit-set-song-tag")?.addEventListener("change", handleEditTagTypeChange);
   el("btn-add-edit-assignment")?.addEventListener("click", addEditAssignmentInput);
   
   console.log('  - ✅ Events bound');
@@ -4180,8 +4214,12 @@ function renderSetDetailSongs(set) {
       set.set_songs
       .sort((a, b) => a.sequence_order - b.sequence_order)
       .forEach((setSong, index) => {
+        // Check if this is a tag
+        const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
+        const isTagItem = !!tagInfo;
+        
         // Check if this is a section (no song_id) or a song
-        const isSection = !setSong.song_id;
+        const isSection = !setSong.song_id && !isTagItem;
         
         // Check if this is a section header (section with no description, notes, or assignments)
         const isSectionHeader = isSection && 
@@ -4295,7 +4333,29 @@ function renderSetDetailSongs(set) {
           }
         }
         
-        if (isSection) {
+        if (isTagItem) {
+          // Render as tag
+          const tagSongTitle = setSong.song?.title ?? "Untitled";
+          const partName = setSong.title || "Untitled Part";
+          songNode.querySelector(".song-title").textContent = `${tagSongTitle} - ${partName}`;
+          
+          // Add tag indicator class
+          card.classList.add("set-song-tag-card");
+          
+          const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0 
+            ? setSong.song.song_keys.map(k => k.key).join(", ")
+            : null);
+          songNode.querySelector(".song-meta").textContent = [
+            displayKey,
+            setSong.song?.time_signature,
+            setSong.song?.bpm ? `${setSong.song.bpm} BPM` : null,
+            setSong.song?.duration_seconds ? formatDuration(setSong.song.duration_seconds) : null,
+          ]
+            .filter(Boolean)
+            .join(" • ");
+          songNode.querySelector(".song-notes").textContent =
+            setSong.notes || "";
+        } else if (isSection) {
           // Render as section
           songNode.querySelector(".song-title").textContent = setSong.title || "Untitled Section";
           songNode.querySelector(".song-meta").textContent = setSong.description || "";
@@ -4322,6 +4382,12 @@ function renderSetDetailSongs(set) {
             .join(" • ");
           songNode.querySelector(".song-notes").textContent =
             setSong.notes || "";
+        }
+
+        // Remove old tag pill code - tags are now separate items
+        const tagsWrap = songNode.querySelector(".set-song-tags");
+        if (tagsWrap) {
+          tagsWrap.innerHTML = "";
         }
 
         const assignmentsWrap = songNode.querySelector(".assignments");
@@ -4397,13 +4463,15 @@ function renderSetDetailSongs(set) {
           }
         }
         
-        // Add view details button
+        // Add view details button (for songs and tags, not sections)
         const viewDetailsBtn = songNode.querySelector(".view-song-details-btn");
-        if (viewDetailsBtn && setSong.song) {
+        if (viewDetailsBtn && setSong.song && !isSection) {
           viewDetailsBtn.dataset.songId = setSong.song.id;
           viewDetailsBtn.addEventListener("click", () => {
             openSongDetailsModal(setSong.song, setSong.key || null);
           });
+        } else if (viewDetailsBtn && isSection) {
+          viewDetailsBtn.style.display = "none";
         }
 
         songsList.appendChild(songNode);
@@ -4473,7 +4541,7 @@ function setupSongDragAndDrop(container) {
     container.removeEventListener("drop", container._songDragHandlers.containerDrop);
   }
   
-  // Include both song cards and section headers in drag and drop
+  // Include song cards, section headers, and tag cards in drag and drop
   const items = container.querySelectorAll(".set-song-card.draggable-item, .section-header-wrapper.draggable-item");
   
   // Define handlers as named functions
@@ -4614,6 +4682,46 @@ function setupSongDragAndDrop(container) {
     }
     
     console.log("handleDrop - items to update:", items);
+    
+    // Check if the dragged item is a tag and update its parent if needed
+    const draggedSetSong = state.selectedSet?.set_songs?.find(ss => String(ss.id) === String(draggedId));
+    if (draggedSetSong && isTag(draggedSetSong)) {
+      // Find the nearest song above the tag (not a section or another tag)
+      const finalIndex = Array.from(container.children).indexOf(draggedItem);
+      let parentSetSong = null;
+      
+      // Look backwards from the tag's position to find the nearest song
+      for (let i = finalIndex - 1; i >= 0; i--) {
+        const prevItem = container.children[i];
+        if (prevItem.classList.contains("set-song-card") || prevItem.classList.contains("section-header-wrapper")) {
+          const prevId = prevItem.dataset.setSongId;
+          if (prevId) {
+            const prevSetSong = state.selectedSet.set_songs.find(ss => String(ss.id) === String(prevId));
+            if (prevSetSong && prevSetSong.song_id && !isTag(prevSetSong)) {
+              parentSetSong = prevSetSong;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (parentSetSong) {
+        // Update tag's parent reference
+        const tagInfo = parseTagDescription(draggedSetSong);
+        if (tagInfo && tagInfo.parentSetSongId !== parentSetSong.id) {
+          const newDescription = JSON.stringify({
+            parentSetSongId: parentSetSong.id,
+            tagType: tagInfo.tagType,
+          });
+          
+          await supabase
+            .from("set_songs")
+            .update({ description: newDescription })
+            .eq("id", draggedSetSong.id);
+        }
+      }
+    }
+    
     await updateSongOrder(items, false); // Pass false to skip re-render
     
     // Clear processing flag
@@ -4741,7 +4849,47 @@ function setupSongDragAndDrop(container) {
     
     if (items.length === 0) {
       console.warn("No items to update in handleContainerDrop");
+      container.dataset.processingDrop = "false";
       return;
+    }
+    
+    // Check if the dragged item is a tag and update its parent if needed
+    const draggedSetSong = state.selectedSet?.set_songs?.find(ss => String(ss.id) === String(draggedId));
+    if (draggedSetSong && isTag(draggedSetSong)) {
+      // Find the nearest song above the tag (not a section or another tag)
+      const finalIndex = Array.from(container.children).indexOf(draggedItem);
+      let parentSetSong = null;
+      
+      // Look backwards from the tag's position to find the nearest song
+      for (let i = finalIndex - 1; i >= 0; i--) {
+        const prevItem = container.children[i];
+        if (prevItem.classList.contains("set-song-card") || prevItem.classList.contains("section-header-wrapper")) {
+          const prevId = prevItem.dataset.setSongId;
+          if (prevId) {
+            const prevSetSong = state.selectedSet.set_songs.find(ss => String(ss.id) === String(prevId));
+            if (prevSetSong && prevSetSong.song_id && !isTag(prevSetSong)) {
+              parentSetSong = prevSetSong;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (parentSetSong) {
+        // Update tag's parent reference
+        const tagInfo = parseTagDescription(draggedSetSong);
+        if (tagInfo && tagInfo.parentSetSongId !== parentSetSong.id) {
+          const newDescription = JSON.stringify({
+            parentSetSongId: parentSetSong.id,
+            tagType: tagInfo.tagType,
+          });
+          
+          await supabase
+            .from("set_songs")
+            .update({ description: newDescription })
+            .eq("id", draggedSetSong.id);
+        }
+      }
     }
     
     // Optimistically update the state to match DOM order immediately
@@ -5882,6 +6030,401 @@ function closeSongModal() {
   importAssignmentsDropdown = null;
 }
 
+function handleTagTypeChange() {
+  const customLabel = el("tag-custom-label");
+  if (!tagTypeDropdown || !customLabel) return;
+  const selectedValue = tagTypeDropdown.getValue();
+  if (selectedValue === "custom") {
+    customLabel.classList.remove("hidden");
+  } else {
+    customLabel.classList.add("hidden");
+    const customInput = el("tag-custom-input");
+    if (customInput) customInput.value = "";
+  }
+}
+
+function handleEditTagTypeChange() {
+  const typeSelect = el("edit-set-song-tag");
+  const customLabel = el("edit-set-song-tag-custom-label");
+  if (!typeSelect || !customLabel) return;
+  if (typeSelect.value === "custom") {
+    customLabel.classList.remove("hidden");
+  } else {
+    customLabel.classList.add("hidden");
+    const customInput = el("edit-set-song-tag-custom");
+    if (customInput) customInput.value = "";
+  }
+}
+
+function resolveTagLabel(selectedValue, customValue = "") {
+  if (selectedValue === "custom") {
+    return customValue?.trim() || null;
+  }
+  if (selectedValue === "none") {
+    return null;
+  }
+  const preset = TAG_PRESET_OPTIONS.find(opt => opt.value === selectedValue);
+  return preset?.label ?? (selectedValue || null);
+}
+
+function findPresetValueByLabel(label) {
+  if (!label) return "none";
+  const normalized = label.trim().toLowerCase();
+  const preset = TAG_PRESET_OPTIONS.find(opt => opt.label.toLowerCase() === normalized);
+  return preset?.value ?? "custom";
+}
+
+function populateTagSongOptions() {
+  const container = el("tag-song-select-container");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const options = state.songs.map(song => ({
+    value: song.id,
+    label: song.title,
+    meta: {
+      bpm: song.bpm,
+      key: (song.song_keys || []).map(k => k.key).join(", "),
+      timeSignature: song.time_signature,
+      duration: song.duration_seconds ? formatDuration(song.duration_seconds) : null,
+    }
+  }));
+  
+  tagSongDropdown = createSearchableDropdown(options, "Select a song to tag...");
+  container.appendChild(tagSongDropdown);
+}
+
+function populateTagParentOptions() {
+  const container = el("tag-parent-select-container");
+  if (!container || !state.selectedSet) return;
+  container.innerHTML = "";
+  
+  // Only include actual songs (not sections or tags) from the current set
+  const setSongs = (state.selectedSet.set_songs || [])
+    .filter(ss => ss.song_id && !isTag(ss))
+    .sort((a, b) => a.sequence_order - b.sequence_order);
+  
+  if (!setSongs.length) {
+    const noSongs = document.createElement("div");
+    noSongs.className = "muted small-text";
+    noSongs.textContent = "No songs in this set to attach tag to";
+    container.appendChild(noSongs);
+    return;
+  }
+  
+  const options = setSongs.map((setSong, idx) => ({
+    value: String(setSong.id), // Ensure value is a string for consistency
+    label: `${idx + 1}. ${setSong.song?.title || "Untitled Song"}`,
+  }));
+  
+  tagParentDropdown = createSimpleDropdown(options, "Select song to attach tag to...");
+  container.appendChild(tagParentDropdown);
+}
+
+function populateTagTypeOptions() {
+  const container = el("tag-type-select-container");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const options = TAG_PRESET_OPTIONS.map(opt => ({
+    value: opt.value,
+    label: opt.label,
+  }));
+  
+  tagTypeDropdown = createSimpleDropdown(options, "Select part...");
+  tagTypeDropdown.addEventListener("change", handleTagTypeChange);
+  container.appendChild(tagTypeDropdown);
+}
+
+async function openTagModal() {
+  if (!isManager() || !state.selectedSet) return;
+  const modal = el("tag-modal");
+  if (!modal) return;
+  
+  // Ensure we have fresh set and song data
+  await loadSets();
+  await loadSongs?.(); // safeguard if helper exists
+  const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+  if (updatedSet) {
+    state.selectedSet = updatedSet;
+  }
+  
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  
+  populateTagSongOptions();
+  populateTagTypeOptions();
+  populateTagParentOptions();
+  
+  // Set default to "chorus"
+  if (tagTypeDropdown) {
+    tagTypeDropdown.setValue("chorus");
+  }
+  
+  const customInput = el("tag-custom-input");
+  if (customInput) {
+    customInput.value = "";
+  }
+  handleTagTypeChange();
+}
+
+function closeTagModal() {
+  const modal = el("tag-modal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  document.body.style.overflow = "";
+  
+  // Clear dropdowns
+  const songContainer = el("tag-song-select-container");
+  const typeContainer = el("tag-type-select-container");
+  const parentContainer = el("tag-parent-select-container");
+  if (songContainer) songContainer.innerHTML = "";
+  if (typeContainer) typeContainer.innerHTML = "";
+  if (parentContainer) parentContainer.innerHTML = "";
+  
+  tagSongDropdown = null;
+  tagTypeDropdown = null;
+  tagParentDropdown = null;
+  
+  const form = el("tag-form");
+  form?.reset();
+  const customLabel = el("tag-custom-label");
+  if (customLabel) customLabel.classList.add("hidden");
+  const customInput = el("tag-custom-input");
+  if (customInput) customInput.value = "";
+}
+
+function isTag(setSong) {
+  if (!setSong || !setSong.description) return false;
+  try {
+    const desc = JSON.parse(setSong.description);
+    return desc && typeof desc === 'object' && desc.parentSetSongId !== undefined;
+  } catch {
+    return false;
+  }
+}
+
+function parseTagDescription(setSong) {
+  if (!isTag(setSong)) return null;
+  try {
+    return JSON.parse(setSong.description);
+  } catch {
+    return null;
+  }
+}
+
+function resolveTagPartName(tagType, customValue = "") {
+  if (tagType === "custom") {
+    return customValue?.trim() || null;
+  }
+  const preset = TAG_PRESET_OPTIONS.find(opt => opt.value === tagType);
+  return preset?.label ?? null;
+}
+
+async function handleAddTagToSong(event) {
+  event.preventDefault();
+  if (!isManager() || !state.selectedSet) return;
+  
+  const songId = tagSongDropdown?.getValue();           // uuid string
+  const tagType = tagTypeDropdown?.getValue();
+  const parentSetSongId = tagParentDropdown?.getValue(); // uuid string
+  const customInput = el("tag-custom-input");
+  const customValue = customInput?.value || "";
+  
+  if (!songId) {
+    toastError("Please select a song to tag.");
+    return;
+  }
+  
+  if (!tagType) {
+    toastError("Please select a part of the song.");
+    return;
+  }
+  
+  if (!parentSetSongId) {
+    toastError("Please select a song to attach the tag to.");
+    return;
+  }
+  
+  const partName = resolveTagPartName(tagType, customValue);
+  if (tagType === "custom" && !partName) {
+    toastError("Enter a custom part name.");
+    return;
+  }
+  
+  // Ensure we have fresh set data
+  if (!state.selectedSet.set_songs || state.selectedSet.set_songs.length === 0) {
+    await loadSets();
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      state.selectedSet = updatedSet;
+    }
+  }
+  
+  // Find parent song to get its sequence_order (match by UUID string)
+  const parentSong = (state.selectedSet.set_songs || []).find(ss => {
+    if (!ss) return false;
+    return String(ss.id) === String(parentSetSongId);
+  });
+  
+  if (!parentSong) {
+    console.error("Parent song not found.", {
+      parentSetSongId,
+      availableSongs: (state.selectedSet.set_songs || []).map(ss => ({ 
+        id: ss.id, 
+        idType: typeof ss.id,
+        title: ss.song?.title || ss.title,
+        song_id: ss.song_id 
+      }))
+    });
+    toastError("Parent song not found. Please refresh and try again.");
+    return;
+  }
+  
+  // Get the song being tagged
+  let taggedSong = state.songs.find(s => String(s.id) === String(songId));
+  if (!taggedSong) {
+    // Refresh songs in case state is stale
+    await loadSongs?.();
+    taggedSong = state.songs.find(s => String(s.id) === String(songId));
+  }
+  if (!taggedSong) {
+    console.error("Tagged song not found.", {
+      songId,
+      availableSongs: state.songs.map(s => ({ id: s.id, title: s.title }))
+    });
+    toastError("Tagged song not found. Please refresh and try again.");
+    return;
+  }
+  
+  // Calculate sequence_order (right after parent and any existing tags attached to parent)
+  const parentOrder = parentSong.sequence_order || 0;
+  
+  // Find all items that come after the parent (including tags attached to the parent)
+  // Tags attached to the parent should stay grouped with the parent
+  const itemsAfterParent = state.selectedSet.set_songs.filter(ss => {
+    const ssOrder = ss.sequence_order || 0;
+    if (ssOrder <= parentOrder) return false;
+    
+    // If it's a tag, check if it's attached to this parent
+    if (isTag(ss)) {
+      const tagInfo = parseTagDescription(ss);
+      return tagInfo && String(tagInfo.parentSetSongId) === String(parentSetSongId);
+    }
+    
+    // For non-tags, include if they come after the parent
+    return true;
+  });
+  
+  // Find the maximum sequence_order among items that should stay grouped with parent
+  // (parent itself + tags attached to parent)
+  const parentGroupItems = state.selectedSet.set_songs.filter(ss => {
+    if (String(ss.id) === String(parentSetSongId)) return true;
+    if (isTag(ss)) {
+      const tagInfo = parseTagDescription(ss);
+      return tagInfo && String(tagInfo.parentSetSongId) === String(parentSetSongId);
+    }
+    return false;
+  });
+  
+  const maxParentGroupOrder = parentGroupItems.length > 0
+    ? Math.max(...parentGroupItems.map(ss => ss.sequence_order || 0))
+    : parentOrder;
+  
+  // New tag should go right after the last item in the parent group
+  const newSequenceOrder = maxParentGroupOrder + 1;
+  
+  // Shift all items that come after the parent group down by 1
+  const itemsToShift = state.selectedSet.set_songs.filter(ss => 
+    (ss.sequence_order || 0) >= newSequenceOrder
+  );
+  
+  // Update sequence orders for items that need to shift (in reverse order to avoid conflicts)
+  const sortedItemsToShift = [...itemsToShift].sort((a, b) => 
+    (b.sequence_order || 0) - (a.sequence_order || 0)
+  );
+  
+  for (const item of sortedItemsToShift) {
+    const { error: shiftError } = await supabase
+      .from("set_songs")
+      .update({ sequence_order: (item.sequence_order || 0) + 1 })
+      .eq("id", item.id);
+    
+    if (shiftError) {
+      console.error("Error shifting item:", shiftError);
+      toastError("Unable to reorder items. Please try again.");
+      return;
+    }
+  }
+  
+  // Refresh set data to ensure we have the latest sequence_order values
+  await loadSets();
+  const refreshedSet = state.sets.find(s => s.id === state.selectedSet.id);
+  if (refreshedSet) {
+    state.selectedSet = refreshedSet;
+    
+    // Recalculate newSequenceOrder in case it changed after shifts
+    const refreshedParentGroupItems = refreshedSet.set_songs.filter(ss => {
+      if (String(ss.id) === String(parentSetSongId)) return true;
+      if (isTag(ss)) {
+        const tagInfo = parseTagDescription(ss);
+        return tagInfo && String(tagInfo.parentSetSongId) === String(parentSetSongId);
+      }
+      return false;
+    });
+    
+    const refreshedMaxOrder = refreshedParentGroupItems.length > 0
+      ? Math.max(...refreshedParentGroupItems.map(ss => ss.sequence_order || 0))
+      : (refreshedSet.set_songs.find(ss => String(ss.id) === String(parentSetSongId))?.sequence_order || 0);
+    
+    const finalSequenceOrder = refreshedMaxOrder + 1;
+    
+    // Create tag entry
+    const tagDescription = JSON.stringify({
+      parentSetSongId: String(parentSetSongId),
+      tagType: tagType,
+    });
+    
+    const { data: newTag, error } = await supabase
+      .from("set_songs")
+      .insert({
+        set_id: state.selectedSet.id,
+        song_id: String(songId),
+        title: partName,
+        description: tagDescription,
+        sequence_order: finalSequenceOrder,
+        team_id: state.currentTeamId,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating tag:", error);
+      if (error.code === "23505") {
+        toastError("A tag already exists at this position. Please refresh and try again.");
+      } else {
+        toastError("Unable to add tag.");
+      }
+      return;
+    }
+  } else {
+    toastError("Unable to refresh set data. Please try again.");
+    return;
+  }
+
+  toastSuccess("Tag added successfully.");
+  closeTagModal();
+  await loadSets();
+
+  if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
+    const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
+    if (updatedSet) {
+      state.selectedSet = updatedSet;
+      renderSetDetailSongs(updatedSet);
+    }
+  }
+}
+
 async function openSectionModal() {
   if (!isManager() || !state.selectedSet) return;
   sectionModal.classList.remove("hidden");
@@ -5937,6 +6480,9 @@ function closeHeaderDropdown() {
 
 let songDropdown = null;
 let teamAssignmentModeDropdown = null;
+let tagSongDropdown = null;
+let tagTypeDropdown = null;
+let tagParentDropdown = null;
 
 async function populateSongOptions() {
   const container = el("song-select-container");
@@ -6391,6 +6937,10 @@ function openEditSetSongModal(setSong) {
   const assignmentSection = el("edit-set-song-modal")?.querySelector(".assignment-section");
   const keyLabel = el("edit-set-song-key-label");
   const keyInput = el("edit-set-song-key");
+  const tagLabelEl = el("edit-set-song-tag-label");
+  const tagSelect = el("edit-set-song-tag");
+  const tagCustomLabel = el("edit-set-song-tag-custom-label");
+  const tagCustomInput = el("edit-set-song-tag-custom");
   
   // Show/hide key field based on whether it's a song or section
   if (keyLabel && keyInput) {
@@ -6433,6 +6983,26 @@ function openEditSetSongModal(setSong) {
       }
     } else {
       sectionFields.classList.add("hidden");
+    }
+  }
+  if (tagLabelEl && tagSelect && tagCustomLabel && tagCustomInput) {
+    if (isSection) {
+      tagLabelEl.classList.add("hidden");
+      tagCustomLabel.classList.add("hidden");
+      tagSelect.value = "none";
+      tagCustomInput.value = "";
+    } else {
+      tagLabelEl.classList.remove("hidden");
+      const existingTag = setSong.tag_label || setSong.song_tag || setSong.tag || setSong.description || "";
+      const presetValue = findPresetValueByLabel(existingTag);
+      tagSelect.value = presetValue;
+      if (presetValue === "custom") {
+        tagCustomLabel.classList.remove("hidden");
+        tagCustomInput.value = existingTag || "";
+      } else {
+        tagCustomLabel.classList.add("hidden");
+        tagCustomInput.value = "";
+      }
     }
   }
   if (editSongBtn) {
@@ -6482,6 +7052,14 @@ function closeEditSetSongModal() {
   if (keyInput) {
     keyInput.value = "";
   }
+  const tagSelect = el("edit-set-song-tag");
+  const tagCustomInput = el("edit-set-song-tag-custom");
+  const tagLabelEl = el("edit-set-song-tag-label");
+  const tagCustomLabel = el("edit-set-song-tag-custom-label");
+  if (tagSelect) tagSelect.value = "none";
+  if (tagCustomInput) tagCustomInput.value = "";
+  if (tagLabelEl) tagLabelEl.classList.add("hidden");
+  if (tagCustomLabel) tagCustomLabel.classList.add("hidden");
   importEditAssignmentsDropdown = null;
   delete el("edit-set-song-form").dataset.setSongId;
 }
@@ -6826,8 +7404,15 @@ async function handleEditSetSongSubmit(event) {
     // Song: update notes and key
     const notes = el("edit-set-song-notes").value.trim();
     const key = el("edit-set-song-key")?.value.trim() || null;
+    const tagValue = el("edit-set-song-tag")?.value || "none";
+    const tagLabel = resolveTagLabel(tagValue, el("edit-set-song-tag-custom")?.value || "");
+    if (tagValue === "custom" && !tagLabel) {
+      toastError("Custom tag text is required.");
+      return;
+    }
     updateData.notes = notes || null;
     updateData.key = key;
+    updateData.description = tagLabel || null;
   }
   
   // Update set_song

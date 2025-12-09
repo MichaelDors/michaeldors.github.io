@@ -247,6 +247,10 @@
                       <i class="fa-solid fa-compact-disc"></i>
                       <span>Add Song</span>
                     </button>
+                    <button type="button" class="header-dropdown-item" id="btn-header-add-tag">
+                      <i class="fa-solid fa-tag"></i>
+                      <span>Add Tag</span>
+                    </button>
                     <button type="button" class="header-dropdown-item" id="btn-header-add-section">
                       <i class="fa-solid fa-microphone-lines"></i>
                       <span>Add Section</span>
@@ -274,6 +278,10 @@
                   <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-song">
                     <i class="fa-solid fa-compact-disc"></i>
                     <span>Add Song</span>
+                  </button>
+                  <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-tag">
+                    <i class="fa-solid fa-tag"></i>
+                    <span>Add Tag</span>
                   </button>
                   <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-section">
                     <i class="fa-solid fa-microphone-lines"></i>
@@ -400,6 +408,41 @@
       </div>
     </div>
 
+    <div id="tag-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Add Tag</h3>
+          <button class="icon-btn" id="close-tag-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <form id="tag-form">
+          <label>
+            Song to Tag
+            <div id="tag-song-select-container"></div>
+            <p class="muted small-text">Select the song you want to tag a part from (e.g., "Make Room")</p>
+          </label>
+          <label>
+            Part of Song
+            <div id="tag-type-select-container"></div>
+          </label>
+          <label id="tag-custom-label" class="hidden">
+            Custom Part Name
+            <input type="text" id="tag-custom-input" placeholder="e.g., Acoustic, Alt ending" />
+          </label>
+          <label>
+            Attach to Song
+            <div id="tag-parent-select-container"></div>
+            <p class="muted small-text">Select which song in this set to attach the tag to</p>
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancel-tag">Cancel</button>
+            <button type="submit" class="btn primary">Add Tag</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div id="section-modal" class="modal hidden">
       <div class="modal-content">
         <header>
@@ -487,6 +530,25 @@
           <label id="edit-set-song-key-label" class="hidden">
             Key (optional)
             <input type="text" id="edit-set-song-key" placeholder="C, Dm, G, etc (leave blank if not specified)" />
+          </label>
+          <label id="edit-set-song-tag-label" class="hidden">
+            Tag (optional)
+            <select id="edit-set-song-tag">
+              <option value="chorus">Chorus</option>
+              <option value="verse">Verse</option>
+              <option value="bridge">Bridge</option>
+              <option value="pre-chorus">Pre-Chorus</option>
+              <option value="intro">Intro</option>
+              <option value="outro">Outro</option>
+              <option value="instrumental">Instrumental</option>
+              <option value="tag">Tag</option>
+              <option value="custom">Custom</option>
+              <option value="none">Clear Tag</option>
+            </select>
+          </label>
+          <label id="edit-set-song-tag-custom-label" class="hidden">
+            Custom Tag
+            <input type="text" id="edit-set-song-tag-custom" placeholder="e.g., Acoustic, Alt ending" />
           </label>
           <label>
             Notes
@@ -855,6 +917,7 @@
             <div class="set-song-info">
               <h4 class="song-title"></h4>
               <p class="song-meta"></p>
+            <div class="set-song-tags"></div>
             </div>
             <div class="set-song-actions">
               <button class="btn small secondary view-song-details-btn" data-song-id="">View Details</button>

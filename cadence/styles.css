@@ -736,6 +736,70 @@ main {
   font-size: 0.9rem;
 }
 
+.set-song-tags {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.set-song-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+  color: var(--text-primary);
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 40%, var(--border-color));
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.set-song-tag-card {
+  margin-left: 2rem;
+  margin-top: 0.25rem;
+  position: relative;
+  border-left: 2px solid color-mix(in srgb, var(--accent-color) 50%, var(--border-color));
+  padding-left: 1rem;
+  background: color-mix(in srgb, var(--accent-color) 2%, var(--bg-card));
+}
+
+.set-song-tag-card::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: -0.5rem;
+  width: 2px;
+  height: 0.5rem;
+  background: color-mix(in srgb, var(--accent-color) 50%, var(--border-color));
+  z-index: 1;
+}
+
+.set-song-tag-card::after {
+  content: "";
+  position: absolute;
+  left: -1rem;
+  top: -0.5rem;
+  width: 1rem;
+  height: 2px;
+  background: color-mix(in srgb, var(--accent-color) 50%, var(--border-color));
+  z-index: 1;
+}
+
+.set-song-tag-card .song-title {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.set-song-tag-card .song-title::before {
+  content: "↳ ";
+  color: var(--accent-color);
+  font-weight: 700;
+  margin-right: 0.25rem;
+}
+
 .song-meta-text {
   color: var(--text-secondary);
   font-size: 0.9rem;
