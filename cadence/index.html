@@ -294,6 +294,12 @@
                 </div>
               </div>
               <div id="detail-songs-list" class="song-list"></div>
+              <div id="service-length-footer" class="service-length-footer hidden">
+                <div class="service-length-row">
+                  <span class="service-length-label"><i class="fa-solid fa-clock"></i> Service Length</span>
+                  <span id="service-length-value" class="service-length-value"></span>
+                </div>
+              </div>
             </div>
             <div id="set-detail-tab-assignments" class="set-detail-tab-content hidden">
               <div id="set-assignments-display-mobile" class="set-assignments-card">
@@ -388,6 +394,11 @@
             Notes
             <textarea id="song-notes" rows="2"></textarea>
           </label>
+          <label>
+            Length in service (optional)
+            <input type="text" id="song-service-duration" placeholder="e.g., 3:45" />
+            <p class="muted small-text">Overrides the song length for this set only.</p>
+          </label>
           <div class="modal-actions">
             <button type="button" class="btn ghost" id="cancel-song">Cancel</button>
             <button type="submit" class="btn primary">Add</button>
@@ -464,6 +475,11 @@
             Notes
             <textarea id="section-notes" rows="2"></textarea>
           </label>
+          <label>
+            Length (optional)
+            <input type="text" id="section-duration" placeholder="e.g., 30:00" />
+            <p class="muted small-text">Use MM:SS or minutes.</p>
+          </label>
           <div class="modal-actions">
             <button type="button" class="btn ghost" id="cancel-section">Cancel</button>
             <button type="submit" class="btn primary">Add</button>
@@ -530,6 +546,11 @@
           <label id="edit-set-song-key-label" class="hidden">
             Key (optional)
             <input type="text" id="edit-set-song-key" placeholder="C, Dm, G, etc (leave blank if not specified)" />
+          </label>
+          <label id="edit-set-song-duration-label">
+            Length in service (optional)
+            <input type="text" id="edit-set-song-duration" placeholder="e.g., 4:00" />
+            <p id="edit-set-song-duration-hint" class="muted small-text">Leave blank to use the song's default length.</p>
           </label>
           <label>
             Notes

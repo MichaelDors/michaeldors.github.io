@@ -2740,6 +2740,7 @@ async function loadSets() {
         notes,
         title,
         description,
+        planned_duration_seconds,
         song_id,
         key,
         song:song_id (
@@ -2810,6 +2811,7 @@ async function loadSets() {
           notes,
           title,
           description,
+          planned_duration_seconds,
           song_id,
           key,
           song:song_id (
@@ -4086,6 +4088,7 @@ function showSetDetail(set) {
     year: "numeric",
   }) : "";
   el("detail-set-description").textContent = set.description || "No description yet";
+  updateServiceLengthDisplay(set);
   
   // Show/hide edit/delete buttons for managers
   const editBtn = el("btn-edit-set-detail");
@@ -4207,12 +4210,48 @@ function renderSetDetailSongs(set) {
   songsList.innerHTML = "";
   // Reset drag setup flag since we're re-rendering
   delete songsList.dataset.dragSetup;
+  const svcIconHtml = '<i class="fa-solid fa-pen-nib"></i>';
+  const safeJoinMeta = (el, parts) => {
+    if (!el) return;
+    const safe = (str) => {
+      if (str === null || str === undefined) return "";
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    };
+    const html = parts
+      .filter(Boolean)
+      .map((part) => {
+        if (typeof part === "string") return safe(part);
+        if (part?.html) return part.value;
+        return "";
+      })
+      .filter(Boolean)
+      .join(" • ");
+    el.innerHTML = html;
+  };
   
   // Render existing songs
   if (set.set_songs?.length) {
       set.set_songs
       .sort((a, b) => a.sequence_order - b.sequence_order)
       .forEach((setSong, index) => {
+        const plannedDurationSeconds = getSetSongDurationSeconds(setSong);
+        const baseSongDurationSeconds = setSong.song?.duration_seconds || null;
+        const durationLabel = (() => {
+          if (plannedDurationSeconds !== undefined && plannedDurationSeconds !== null) {
+            const base = formatDuration(plannedDurationSeconds);
+            if (setSong.song_id && baseSongDurationSeconds && plannedDurationSeconds !== baseSongDurationSeconds) {
+              return { html: true, value: `${base} ${svcIconHtml}` };
+            }
+            return base;
+          }
+          return baseSongDurationSeconds ? formatDuration(baseSongDurationSeconds) : null;
+        })();
+        
         // Check if this is a tag
         const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
         const isTagItem = !!tagInfo;
@@ -4344,20 +4383,21 @@ function renderSetDetailSongs(set) {
           const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0 
             ? setSong.song.song_keys.map(k => k.key).join(", ")
             : null);
-          songNode.querySelector(".song-meta").textContent = [
+          safeJoinMeta(songNode.querySelector(".song-meta"), [
             displayKey,
             setSong.song?.time_signature,
             setSong.song?.bpm ? `${setSong.song.bpm} BPM` : null,
-            setSong.song?.duration_seconds ? formatDuration(setSong.song.duration_seconds) : null,
-          ]
-            .filter(Boolean)
-            .join(" • ");
+            durationLabel,
+          ]);
           songNode.querySelector(".song-notes").textContent =
             setSong.notes || "";
         } else if (isSection) {
           // Render as section
           songNode.querySelector(".song-title").textContent = setSong.title || "Untitled Section";
-          songNode.querySelector(".song-meta").textContent = setSong.description || "";
+          const sectionMetaParts = [];
+          if (setSong.description) sectionMetaParts.push(setSong.description);
+          if (durationLabel) sectionMetaParts.push({ html: true, value: durationLabel.html ? `Length: ${durationLabel.value}` : `Length: ${durationLabel}` });
+          safeJoinMeta(songNode.querySelector(".song-meta"), sectionMetaParts);
           songNode.querySelector(".song-notes").textContent = setSong.notes || "";
           // Hide "View Details" button for sections
           const viewDetailsBtn = songNode.querySelector(".view-song-details-btn");
@@ -4371,14 +4411,12 @@ function renderSetDetailSongs(set) {
           const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0 
             ? setSong.song.song_keys.map(k => k.key).join(", ")
             : null);
-          songNode.querySelector(".song-meta").textContent = [
+          safeJoinMeta(songNode.querySelector(".song-meta"), [
             displayKey,
             setSong.song?.time_signature,
             setSong.song?.bpm ? `${setSong.song.bpm} BPM` : null,
-            setSong.song?.duration_seconds ? formatDuration(setSong.song.duration_seconds) : null,
-          ]
-            .filter(Boolean)
-            .join(" • ");
+            durationLabel,
+          ]);
           songNode.querySelector(".song-notes").textContent =
             setSong.notes || "";
         }
@@ -4517,6 +4555,8 @@ function renderSetDetailSongs(set) {
   } else if (!set.set_songs?.length) {
     songsList.innerHTML = '<p class="muted">No songs or sections added to this set yet.</p>';
   }
+  
+  updateServiceLengthDisplay(set);
 }
 
 function hideSetDetail() {
@@ -6026,6 +6066,11 @@ function closeSongModal() {
   if (keySelect) {
     keySelect.value = "";
   }
+  const durationInput = el("song-service-duration");
+  if (durationInput) {
+    durationInput.value = "";
+    durationInput.placeholder = "e.g., 3:45";
+  }
   importAssignmentsDropdown = null;
 }
 
@@ -6435,6 +6480,11 @@ function closeSectionModal() {
   el("section-form").reset();
   el("section-assignments-list").innerHTML = "";
   el("import-section-assignments-container").innerHTML = "";
+  const sectionDurationInput = el("section-duration");
+  if (sectionDurationInput) {
+    sectionDurationInput.value = "";
+    sectionDurationInput.placeholder = "e.g., 30:00";
+  }
 }
 
 async function openSectionHeaderModal() {
@@ -6487,12 +6537,26 @@ async function populateSongOptions() {
       key: (song.song_keys || []).map(k => k.key).join(", "),
       timeSignature: song.time_signature,
       duration: song.duration_seconds ? formatDuration(song.duration_seconds) : null,
+      durationSeconds: song.duration_seconds || null,
       weeksSinceLastPerformed: weeksSinceMap.get(song.id) || null,
     }
   }));
   
   songDropdown = createSearchableDropdown(options, "Select a song...");
   container.appendChild(songDropdown);
+  
+  if (songDropdown) {
+    songDropdown.addEventListener("change", (e) => {
+      const durationInput = el("song-service-duration");
+      if (!durationInput) return;
+      const baseSeconds = e.detail?.option?.meta?.durationSeconds;
+      if (baseSeconds) {
+        durationInput.placeholder = `Default ${formatDuration(baseSeconds)} (optional)`;
+      } else {
+        durationInput.placeholder = "e.g., 3:45";
+      }
+    });
+  }
 }
 
 async function getWeeksSinceLastPerformance() {
@@ -6583,6 +6647,16 @@ async function handleAddSongToSet(event) {
   }
   const notes = el("song-notes").value;
   const selectedKey = el("song-key-select")?.value.trim() || null;
+  const plannedDurationRaw = el("song-service-duration")?.value.trim() || "";
+  let plannedDurationSeconds = null;
+  if (plannedDurationRaw) {
+    const parsedDuration = parseDuration(plannedDurationRaw);
+    if (parsedDuration === null) {
+      toastError("Please enter a valid length (use MM:SS or minutes).");
+      return;
+    }
+    plannedDurationSeconds = parsedDuration;
+  }
   const assignments = collectAssignments();
 
   // Calculate sequence_order from the current set's songs
@@ -6595,6 +6669,7 @@ async function handleAddSongToSet(event) {
       song_id: songId,
       key: selectedKey,
       notes,
+      planned_duration_seconds: plannedDurationSeconds,
       sequence_order: currentSequenceOrder,
       team_id: state.currentTeamId,
     })
@@ -6649,6 +6724,16 @@ async function handleAddSectionToSet(event) {
   }
   const description = el("section-description").value.trim();
   const notes = el("section-notes").value.trim();
+  const durationRaw = el("section-duration")?.value.trim() || "";
+  let plannedDurationSeconds = null;
+  if (durationRaw) {
+    const parsedDuration = parseDuration(durationRaw);
+    if (parsedDuration === null) {
+      toastError("Please enter a valid length (use MM:SS or minutes).");
+      return;
+    }
+    plannedDurationSeconds = parsedDuration;
+  }
   const assignments = collectAssignments("section-assignments-list");
 
   // Refresh set data to get latest sequence_order values
@@ -6677,6 +6762,7 @@ async function handleAddSectionToSet(event) {
       title: title,
       description: description || null,
       notes: notes || null,
+      planned_duration_seconds: plannedDurationSeconds,
       sequence_order: currentSequenceOrder,
       team_id: state.currentTeamId,
     })
@@ -6907,6 +6993,9 @@ function openEditSetSongModal(setSong) {
   const notesInput = el("edit-set-song-notes");
   const assignmentsList = el("edit-assignments-list");
   const isSection = !setSong.song_id;
+  const durationLabel = el("edit-set-song-duration-label");
+  const durationInput = el("edit-set-song-duration");
+  const durationHint = el("edit-set-song-duration-hint");
   
   // Check if this is a section header (section with no description, notes, or assignments)
   const isSectionHeader = isSection && 
@@ -6945,6 +7034,25 @@ function openEditSetSongModal(setSong) {
     } else {
       keyLabel.classList.remove("hidden");
       keyInput.value = setSong.key || "";
+    }
+  }
+  
+  if (durationLabel && durationInput) {
+    if (isSectionHeader) {
+      durationLabel.classList.add("hidden");
+      durationInput.value = "";
+      if (durationHint) durationHint.classList.add("hidden");
+    } else {
+      durationLabel.classList.remove("hidden");
+      const hasPlannedDuration = setSong.planned_duration_seconds !== undefined && setSong.planned_duration_seconds !== null;
+      durationInput.value = hasPlannedDuration ? formatDuration(setSong.planned_duration_seconds) : "";
+      if (!isSection && setSong.song?.duration_seconds) {
+        durationInput.placeholder = `${formatDuration(setSong.song.duration_seconds)}`;
+        if (durationHint) durationHint.classList.remove("hidden");
+      } else {
+        durationInput.placeholder = "e.g., 30:00";
+        if (durationHint) durationHint.classList.add("hidden");
+      }
     }
   }
   
@@ -7026,6 +7134,11 @@ function closeEditSetSongModal() {
   const keyInput = el("edit-set-song-key");
   if (keyInput) {
     keyInput.value = "";
+  }
+  const durationInput = el("edit-set-song-duration");
+  if (durationInput) {
+    durationInput.value = "";
+    durationInput.placeholder = "e.g., 4:00";
   }
   importEditAssignmentsDropdown = null;
   delete el("edit-set-song-form").dataset.setSongId;
@@ -7344,6 +7457,19 @@ async function handleEditSetSongSubmit(event) {
   
   // Build update object
   const updateData = {};
+  let plannedDurationSeconds = null;
+  
+  if (!isSectionHeader) {
+    const durationValue = el("edit-set-song-duration")?.value.trim() || "";
+    if (durationValue) {
+      const parsedDuration = parseDuration(durationValue);
+      if (parsedDuration === null) {
+        toastError("Please enter a valid length (use MM:SS or minutes).");
+        return;
+      }
+      plannedDurationSeconds = parsedDuration;
+    }
+  }
   
   // If it's a section header, only update title
   if (isSectionHeader) {
@@ -7355,6 +7481,7 @@ async function handleEditSetSongSubmit(event) {
     updateData.title = title;
     updateData.description = null;
     updateData.notes = null;
+    updateData.planned_duration_seconds = null;
   } else if (isSection) {
     // Regular section: update title, description, and notes
     const title = el("edit-section-title").value.trim();
@@ -7367,12 +7494,14 @@ async function handleEditSetSongSubmit(event) {
     updateData.title = title;
     updateData.description = description || null;
     updateData.notes = notes || null;
+    updateData.planned_duration_seconds = plannedDurationSeconds;
   } else {
     // Song: update notes and key
     const notes = el("edit-set-song-notes").value.trim();
     const key = el("edit-set-song-key")?.value.trim() || null;
     updateData.notes = notes || null;
     updateData.key = key;
+    updateData.planned_duration_seconds = plannedDurationSeconds;
   }
   
   // Update set_song
@@ -9351,6 +9480,59 @@ function parseDuration(durationStr) {
   }
   
   return null;
+}
+
+function formatLongDuration(seconds) {
+  if (!seconds) return "0m";
+  const totalSeconds = Math.max(0, Math.round(seconds));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  const parts = [];
+  if (hours) {
+    parts.push(`${hours}h`);
+  }
+  if (minutes || hours) {
+    const minuteStr = hours ? minutes.toString().padStart(2, "0") : minutes.toString();
+    parts.push(`${minuteStr}m`);
+  }
+  if (secs && !hours) {
+    parts.push(`${secs}s`);
+  }
+  return parts.join(" ");
+}
+
+function getSetSongDurationSeconds(setSong) {
+  if (!setSong) return null;
+  if (setSong.planned_duration_seconds !== undefined && setSong.planned_duration_seconds !== null) {
+    return setSong.planned_duration_seconds;
+  }
+  if (setSong.song_id && setSong.song?.duration_seconds) {
+    return setSong.song.duration_seconds;
+  }
+  return null;
+}
+
+function calculateServiceLengthSeconds(set) {
+  if (!set?.set_songs || set.set_songs.length === 0) return 0;
+  return set.set_songs.reduce((total, setSong) => {
+    const duration = getSetSongDurationSeconds(setSong);
+    return total + (duration || 0);
+  }, 0);
+}
+
+function updateServiceLengthDisplay(set) {
+  const footer = el("service-length-footer");
+  const valueEl = el("service-length-value");
+  if (!footer || !valueEl) return;
+  const totalSeconds = calculateServiceLengthSeconds(set);
+  if (totalSeconds > 0) {
+    valueEl.textContent = formatLongDuration(totalSeconds);
+    footer.classList.remove("hidden");
+  } else {
+    valueEl.textContent = "";
+    footer.classList.add("hidden");
+  }
 }
 
 function escapeHtml(text) {
