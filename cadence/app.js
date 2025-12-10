@@ -1031,7 +1031,6 @@ function bindEvents() {
   el("close-edit-set-song-modal")?.addEventListener("click", () => closeEditSetSongModal());
   el("cancel-edit-set-song")?.addEventListener("click", () => closeEditSetSongModal());
   el("edit-set-song-form")?.addEventListener("submit", handleEditSetSongSubmit);
-  el("edit-set-song-tag")?.addEventListener("change", handleEditTagTypeChange);
   el("btn-add-edit-assignment")?.addEventListener("click", addEditAssignmentInput);
   
   console.log('  - ✅ Events bound');
@@ -6043,19 +6042,6 @@ function handleTagTypeChange() {
   }
 }
 
-function handleEditTagTypeChange() {
-  const typeSelect = el("edit-set-song-tag");
-  const customLabel = el("edit-set-song-tag-custom-label");
-  if (!typeSelect || !customLabel) return;
-  if (typeSelect.value === "custom") {
-    customLabel.classList.remove("hidden");
-  } else {
-    customLabel.classList.add("hidden");
-    const customInput = el("edit-set-song-tag-custom");
-    if (customInput) customInput.value = "";
-  }
-}
-
 function resolveTagLabel(selectedValue, customValue = "") {
   if (selectedValue === "custom") {
     return customValue?.trim() || null;
@@ -6937,10 +6923,6 @@ function openEditSetSongModal(setSong) {
   const assignmentSection = el("edit-set-song-modal")?.querySelector(".assignment-section");
   const keyLabel = el("edit-set-song-key-label");
   const keyInput = el("edit-set-song-key");
-  const tagLabelEl = el("edit-set-song-tag-label");
-  const tagSelect = el("edit-set-song-tag");
-  const tagCustomLabel = el("edit-set-song-tag-custom-label");
-  const tagCustomInput = el("edit-set-song-tag-custom");
   
   // Show/hide key field based on whether it's a song or section
   if (keyLabel && keyInput) {
@@ -6983,26 +6965,6 @@ function openEditSetSongModal(setSong) {
       }
     } else {
       sectionFields.classList.add("hidden");
-    }
-  }
-  if (tagLabelEl && tagSelect && tagCustomLabel && tagCustomInput) {
-    if (isSection) {
-      tagLabelEl.classList.add("hidden");
-      tagCustomLabel.classList.add("hidden");
-      tagSelect.value = "none";
-      tagCustomInput.value = "";
-    } else {
-      tagLabelEl.classList.remove("hidden");
-      const existingTag = setSong.tag_label || setSong.song_tag || setSong.tag || setSong.description || "";
-      const presetValue = findPresetValueByLabel(existingTag);
-      tagSelect.value = presetValue;
-      if (presetValue === "custom") {
-        tagCustomLabel.classList.remove("hidden");
-        tagCustomInput.value = existingTag || "";
-      } else {
-        tagCustomLabel.classList.add("hidden");
-        tagCustomInput.value = "";
-      }
     }
   }
   if (editSongBtn) {
@@ -7052,14 +7014,6 @@ function closeEditSetSongModal() {
   if (keyInput) {
     keyInput.value = "";
   }
-  const tagSelect = el("edit-set-song-tag");
-  const tagCustomInput = el("edit-set-song-tag-custom");
-  const tagLabelEl = el("edit-set-song-tag-label");
-  const tagCustomLabel = el("edit-set-song-tag-custom-label");
-  if (tagSelect) tagSelect.value = "none";
-  if (tagCustomInput) tagCustomInput.value = "";
-  if (tagLabelEl) tagLabelEl.classList.add("hidden");
-  if (tagCustomLabel) tagCustomLabel.classList.add("hidden");
   importEditAssignmentsDropdown = null;
   delete el("edit-set-song-form").dataset.setSongId;
 }
@@ -7404,15 +7358,8 @@ async function handleEditSetSongSubmit(event) {
     // Song: update notes and key
     const notes = el("edit-set-song-notes").value.trim();
     const key = el("edit-set-song-key")?.value.trim() || null;
-    const tagValue = el("edit-set-song-tag")?.value || "none";
-    const tagLabel = resolveTagLabel(tagValue, el("edit-set-song-tag-custom")?.value || "");
-    if (tagValue === "custom" && !tagLabel) {
-      toastError("Custom tag text is required.");
-      return;
-    }
     updateData.notes = notes || null;
     updateData.key = key;
-    updateData.description = tagLabel || null;
   }
   
   // Update set_song
