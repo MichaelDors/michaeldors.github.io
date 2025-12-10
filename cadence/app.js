@@ -6476,7 +6476,7 @@ async function populateSongOptions() {
   
   container.innerHTML = "";
   
-  // Get weeks since last performance for each song
+  // Get weeks offset to nearest scheduled performance (past or future) for each song
   const weeksSinceMap = await getWeeksSinceLastPerformance();
   
   const options = state.songs.map(song => ({
@@ -6504,7 +6504,7 @@ async function getWeeksSinceLastPerformance() {
   
   const songIds = state.songs.map(s => s.id);
   
-  // Query to find the most recent set date for each song
+  // Query to find all set dates for each song
   const { data, error } = await supabase
     .from("set_songs")
     .select(`
@@ -6520,41 +6520,54 @@ async function getWeeksSinceLastPerformance() {
     return weeksMap;
   }
   
-  // Group by song_id and get the most recent date (only past dates)
-  const songToDateMap = new Map();
   const now = new Date();
   now.setHours(0, 0, 0, 0); // Normalize to start of day
+  
+  // Track nearest future date and most recent past date for each song
+  const songScheduleMap = new Map();
   
   if (data) {
     data.forEach(item => {
       const songId = item.song_id;
       // Handle both object and array responses from Supabase
-      const setData = Array.isArray(item.set) ? item.set[0] : item.set;
-      const scheduledDate = setData?.scheduled_date;
+      const setEntries = Array.isArray(item.set) ? item.set : [item.set].filter(Boolean);
       
-      if (scheduledDate) {
+      setEntries.forEach(setData => {
+        const scheduledDate = setData?.scheduled_date;
+        if (!scheduledDate) return;
+        
         const dateValue = new Date(scheduledDate);
         dateValue.setHours(0, 0, 0, 0);
         
-        // Only consider dates in the past
-        if (dateValue <= now) {
-          const existingDate = songToDateMap.get(songId);
-          if (!existingDate || dateValue > new Date(existingDate)) {
-            songToDateMap.set(songId, scheduledDate);
+        const entry = songScheduleMap.get(songId) || { next: null, last: null };
+        
+        if (dateValue >= now) {
+          if (!entry.next || dateValue < entry.next) {
+            entry.next = dateValue;
+          }
+        } else {
+          if (!entry.last || dateValue > entry.last) {
+            entry.last = dateValue;
           }
         }
-      }
+        
+        songScheduleMap.set(songId, entry);
+      });
     });
   }
   
-  // Calculate weeks since for each song
-  songToDateMap.forEach((lastDate, songId) => {
-    const date = new Date(lastDate);
-    date.setHours(0, 0, 0, 0); // Normalize to start of day
-    const diffTime = now - date;
-    const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
-    if (diffWeeks >= 0) {
-      weeksMap.set(songId, diffWeeks);
+  const weekMs = 1000 * 60 * 60 * 24 * 7;
+  
+  // Prefer future schedule if present; otherwise show most recent past
+  songScheduleMap.forEach((entry, songId) => {
+    if (entry.next) {
+      const diffWeeks = Math.round((entry.next.getTime() - now.getTime()) / weekMs);
+      const label = diffWeeks > 0 ? `+${diffWeeks}` : "0";
+      weeksMap.set(songId, label);
+    } else if (entry.last) {
+      const diffWeeks = Math.round((now.getTime() - entry.last.getTime()) / weekMs);
+      const label = diffWeeks > 0 ? `-${diffWeeks}` : "0";
+      weeksMap.set(songId, label);
     }
   });
   
@@ -8279,8 +8292,14 @@ function renderSongCatalog() {
     const allMatches = state.songs.filter((song) => {
       const titleMatch = (song.title || "").toLowerCase().includes(searchTerm);
       const bpmMatch = song.bpm ? String(song.bpm).includes(searchTerm) : false;
-      const keys = (song.song_keys || []).map(k => k.key).join(" ");
-      const keyMatch = keys.toLowerCase().includes(searchTerm);
+      const keyList = [
+        song.song_key || "",
+        ...(song.song_keys || []).map(k => k.key || "")
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const keyMatch = keyList.includes(searchTerm);
       const timeMatch = (song.time_signature || "").toLowerCase().includes(searchTerm);
       const durationMatch = song.duration_seconds ? formatDuration(song.duration_seconds).toLowerCase().includes(searchTerm) : false;
       return titleMatch || bpmMatch || keyMatch || timeMatch || durationMatch;

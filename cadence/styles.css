@@ -857,7 +857,7 @@ main {
 }
 
 .assignment-pill {
-  background: rgba(220, 255, 81, 0.15);
+  background: rgba(255, 145, 81, 0.15);
   color: var(--accent-color);
   padding: 0.4rem 0.85rem;
   border-radius: 999px;
@@ -865,14 +865,14 @@ main {
   display: inline-flex;
   gap: 0.4rem;
   font-weight: 500;
-  border: 1px solid rgba(220, 255, 81, 0.3);
+  border: 1px solid rgba(255, 162, 81, 0.3);
   backdrop-filter: blur(4px);
   transition: all 0.2s ease;
 }
 
 .assignment-pill:hover {
-  background: rgba(220, 255, 81, 0.2);
-  border-color: rgba(220, 255, 81, 0.5);
+  background: rgba(255, 154, 81, 0.2);
+  border-color: rgba(255, 142, 81, 0.5);
 }
 
 .assignment-pill.pending {
