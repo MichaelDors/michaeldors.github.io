@@ -778,6 +778,11 @@ function bindEvents() {
       return false;
     }
   }, true); // Use capture phase to catch event early
+  el("btn-export-set-print")?.addEventListener("click", () => {
+    if (state.selectedSet) {
+      openPrintSet(state.selectedSet);
+    }
+  });
   el("btn-edit-set-detail")?.addEventListener("click", () => {
     if (state.selectedSet) {
       // Open the modal without hiding the detail view
@@ -9533,6 +9538,143 @@ function updateServiceLengthDisplay(set) {
     valueEl.textContent = "";
     footer.classList.add("hidden");
   }
+}
+
+function renderSetPrintPreview(set) {
+  const container = el("print-set-content");
+  if (!container || !set) return;
+
+  const sortedSetSongs = (set.set_songs || []).slice().sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
+  const totalSeconds = calculateServiceLengthSeconds(set);
+  const date = parseLocalDate(set.scheduled_date);
+  const dateLabel = date ? date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }) : "";
+
+  const rowsHtml = sortedSetSongs.map((setSong, index) => {
+    const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
+    const isSection = !setSong.song_id && !tagInfo;
+    const isSectionHeader = isSection &&
+      !setSong.description &&
+      !setSong.notes &&
+      (!setSong.song_assignments || setSong.song_assignments.length === 0);
+
+    const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0
+      ? setSong.song.song_keys.map(k => k.key).join(", ")
+      : "");
+    const bpm = setSong.song?.bpm ? `${setSong.song.bpm}` : "";
+    const lengthSeconds = getSetSongDurationSeconds(setSong);
+    const lengthLabel = (lengthSeconds !== null && lengthSeconds !== undefined && lengthSeconds !== 0)
+      ? formatDuration(lengthSeconds)
+      : "";
+
+    let title = setSong.song?.title ?? setSong.title ?? "Untitled";
+    if (tagInfo) {
+      const partName = resolveTagPartName(tagInfo.tagType, tagInfo.customValue) || setSong.title || "Tag";
+      title = `${setSong.song?.title ?? "Untitled"} — ${partName}`;
+    } else if (isSection) {
+      title = setSong.title || "Section";
+    }
+
+    const notesParts = [];
+    if (setSong.notes) notesParts.push(setSong.notes);
+    if (isSection && setSong.description) notesParts.push(setSong.description);
+
+    const rowClass = isSectionHeader ? ' class="print-section-row"' : "";
+    
+    // For sections, merge Key and BPM columns into Notes (colspan=3 covers Key+BPM+Notes)
+    if (isSection) {
+      return `
+        <tr${rowClass}>
+          <td>${index + 1}</td>
+          <td>
+            ${escapeHtml(title)}
+          </td>
+          <td>${escapeHtml(lengthLabel)}</td>
+          <td colspan="3">${notesParts.map(part => `<div class="print-notes">${escapeHtml(part)}</div>`).join("")}</td>
+        </tr>
+      `;
+    }
+    
+    // For songs/tags, show all columns
+    return `
+      <tr${rowClass}>
+        <td>${index + 1}</td>
+        <td>
+          ${escapeHtml(title)}
+        </td>
+        <td>${escapeHtml(lengthLabel)}</td>
+        <td>${escapeHtml(displayKey || "")}</td>
+        <td>${escapeHtml(bpm)}</td>
+        <td>${notesParts.map(part => `<div class="print-notes">${escapeHtml(part)}</div>`).join("")}</td>
+      </tr>
+    `;
+  }).join("") || `
+      <tr>
+        <td colspan="6" style="text-align: center; padding: 1rem; color: #6b7280;">
+          No items in this set yet.
+        </td>
+      </tr>
+    `;
+
+  container.innerHTML = `
+    <div class="print-set-header">
+      <div>
+        <p class="print-set-meta">Service</p>
+        <h1 class="print-set-title">${escapeHtml(set.title || "Untitled Set")}</h1>
+        ${dateLabel ? `<p class="print-set-meta">${escapeHtml(dateLabel)}</p>` : ""}
+        ${set.description ? `<p class="print-set-meta">${escapeHtml(set.description)}</p>` : ""}
+      </div>
+      <div class="print-summary">
+        <div class="print-summary-item">Total Length: ${totalSeconds ? formatLongDuration(totalSeconds) : "—"}</div>
+        ${set.team_name ? `<div class="print-summary-item">Team: ${escapeHtml(set.team_name)}</div>` : ""}
+      </div>
+    </div>
+    <table class="print-set-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Item</th>
+          <th>Length</th>
+          <th>Key</th>
+          <th>BPM</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+    <div class="print-total">Overall Length: ${totalSeconds ? formatLongDuration(totalSeconds) : "—"}</div>
+  `;
+}
+
+function openPrintSet(set) {
+  const wrapper = el("print-set-container");
+  if (!wrapper || !set) return;
+
+  renderSetPrintPreview(set);
+  // Keep it visually hidden on screen; print styles will reveal it
+  wrapper.setAttribute("aria-hidden", "false");
+
+  const afterPrint = () => {
+    wrapper.setAttribute("aria-hidden", "true");
+    window.removeEventListener("afterprint", afterPrint);
+  };
+  window.addEventListener("afterprint", afterPrint);
+
+  // Small delay to ensure DOM is updated before print dialog
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.print();
+    });
+  });
+
+  // Fallback in case afterprint doesn't fire
+  setTimeout(afterPrint, 3000);
 }
 
 function escapeHtml(text) {

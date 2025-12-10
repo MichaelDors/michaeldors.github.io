@@ -1930,3 +1930,284 @@ i{
   font-size: 1rem;
   color: var(--text-primary);
 }
+
+/* Print/export layout */
+.print-set-container {
+  position: fixed;
+  inset: 0;
+  padding: 2rem;
+  overflow: auto;
+  background: var(--bg-primary);
+  z-index: 2000;
+}
+
+.print-set-container.hidden {
+  display: none !important;
+}
+
+.print-set-content {
+  max-width: 960px;
+  margin: 0 auto;
+  background: white;
+  color: #111;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  font-family: "Google Sans Flex", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.print-set-header,
+.print-summary,
+.print-total {
+  page-break-inside: avoid;
+}
+  .print-set-header,
+  .print-summary {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+.print-set-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.print-set-title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.print-set-meta {
+  color: #4b5563;
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+}
+
+.print-summary {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.print-summary-item {
+  background: #f3f4f6;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.4rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.print-set-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.print-set-table th,
+.print-set-table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.print-set-table th:nth-child(1),
+.print-set-table td:nth-child(1) {
+  width: 3rem;
+  text-align: center;
+}
+
+.print-set-table th:nth-child(2),
+.print-set-table td:nth-child(2) {
+  width: auto;
+  min-width: 200px;
+}
+
+.print-set-table th:nth-child(3),
+.print-set-table td:nth-child(3),
+.print-set-table th:nth-child(4),
+.print-set-table td:nth-child(4),
+.print-set-table th:nth-child(5),
+.print-set-table td:nth-child(5) {
+  width: 5rem;
+  white-space: nowrap;
+}
+
+.print-set-table th:nth-child(6),
+.print-set-table td:nth-child(6) {
+  width: auto;
+  min-width: 150px;
+}
+
+.print-set-table th {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+  font-weight: 600;
+  border-bottom: 2px solid #d1d5db;
+}
+
+.print-set-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.print-notes {
+  color: #374151;
+  margin-top: 0.35rem;
+}
+
+.print-section-row td {
+  background: #f9fafb;
+  font-weight: 700;
+}
+
+.print-total {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: flex-end;
+  font-weight: 700;
+  color: #111827;
+  font-size: 0.9rem;
+}
+
+@media print {
+  /* Hide everything except the print container */
+  body > *:not(#print-set-container),
+  body > *:not(#print-set-container) * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Ensure print container is visible and properly styled */
+  #print-set-container.hidden,
+  #print-set-container {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    inset: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    z-index: 1 !important;
+    overflow: visible !important;
+  }
+
+  .print-set-content {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0.4in !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: white !important;
+    color: #000 !important;
+  }
+
+  .print-set-header {
+    margin-bottom: 0.5rem !important;
+    padding-bottom: 0.4rem !important;
+  }
+
+  .print-set-title {
+    font-size: 1.4rem !important;
+  }
+
+  .print-set-table {
+    font-size: 0.85rem !important;
+    margin-top: 0.3rem !important;
+  }
+
+  .print-set-table th,
+  .print-set-table td {
+    padding: 0.3rem 0.4rem !important;
+  }
+
+  /* Page setup */
+  @page {
+    margin: 0.4in !important;
+    size: letter;
+  }
+
+  /* Ensure all print content is visible */
+  #print-set-container * {
+    visibility: visible !important;
+  }
+
+  #print-set-container div,
+  #print-set-container p,
+  #print-set-container h1,
+  #print-set-container h2,
+  #print-set-container h3 {
+    display: block !important;
+  }
+
+  #print-set-container table {
+    display: table !important;
+    width: 100% !important;
+  }
+
+  #print-set-container tr {
+    display: table-row !important;
+  }
+
+  #print-set-container td,
+  #print-set-container th {
+    display: table-cell !important;
+  }
+
+  #print-set-container thead {
+    display: table-header-group !important;
+  }
+
+  #print-set-container tbody {
+    display: table-row-group !important;
+  }
+
+  #print-set-container .print-summary {
+    display: flex !important;
+  }
+
+  /* Force header and table to stay together */
+  .print-set-header + .print-set-table {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  .print-set-table {
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  .print-set-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Allow more rows per page */
+  .print-set-table tbody tr {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /* Page break handling */
+  .print-set-table {
+    page-break-inside: avoid;
+  }
+
+  .print-set-table tr {
+    page-break-inside: avoid;
+  }
+
+  /* Hide any buttons or interactive elements */
+  button,
+  .btn {
+    display: none !important;
+  }
+}
