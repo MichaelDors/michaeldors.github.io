@@ -6556,7 +6556,7 @@ async function populateSongOptions() {
       if (!durationInput) return;
       const baseSeconds = e.detail?.option?.meta?.durationSeconds;
       if (baseSeconds) {
-        durationInput.placeholder = `Default ${formatDuration(baseSeconds)} (optional)`;
+        durationInput.placeholder = `${formatDuration(baseSeconds)}`;
       } else {
         durationInput.placeholder = "e.g., 3:45";
       }
@@ -8462,7 +8462,9 @@ function renderSongCatalog() {
     // Highlight search term in title and metadata (use raw search term for highlighting)
     const highlightedTitle = searchTermRaw ? highlightMatch(song.title || "", searchTermRaw) : escapeHtml(song.title || "");
     const highlightedBpm = song.bpm ? (searchTerm && String(song.bpm).includes(searchTerm) ? `<span>BPM: ${highlightMatch(String(song.bpm), searchTermRaw)}</span>` : `<span>BPM: ${song.bpm}</span>`) : '';
-    const keys = (song.song_keys || []).map(k => k.key).join(", ");
+    // Only use keys from the song itself (song_keys relationship), remove duplicates
+    const keysSet = new Set((song.song_keys || []).map(k => k.key).filter(Boolean));
+    const keys = Array.from(keysSet).join(", ");
     const highlightedKey = keys ? (searchTerm && keys.toLowerCase().includes(searchTerm.toLowerCase()) ? `<span>Key: ${highlightMatch(keys, searchTermRaw)}</span>` : `<span>Key: ${keys}</span>`) : '';
     const highlightedTime = song.time_signature ? (searchTerm && song.time_signature.toLowerCase().includes(searchTerm) ? `<span>Time: ${highlightMatch(song.time_signature, searchTermRaw)}</span>` : `<span>Time: ${escapeHtml(song.time_signature)}</span>`) : '';
     const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
