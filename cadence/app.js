@@ -9555,6 +9555,34 @@ function renderSetPrintPreview(set) {
     day: "numeric",
     year: "numeric",
   }) : "";
+  const assignmentMode = getSetAssignmentMode(set);
+
+  const formatAssignmentName = (assignment) =>
+    assignment.person?.full_name ||
+    assignment.pending_invite?.full_name ||
+    assignment.person_name ||
+    assignment.person_email ||
+    assignment.pending_invite?.email ||
+    "Unknown";
+
+  const setAssignments = assignmentMode === "per_set" ? (set.set_assignments || []) : [];
+  const setAssignmentsByRole = setAssignments.reduce((acc, assignment) => {
+    const role = assignment.role || "Unassigned";
+    if (!acc[role]) acc[role] = [];
+    acc[role].push(formatAssignmentName(assignment));
+    return acc;
+  }, {});
+
+  const setAssignmentsHtml = setAssignments.length
+    ? `
+      <div class="print-assignments-inline">
+        ${Object.keys(setAssignmentsByRole).sort().map(role => `
+          <span class="print-assignment-role">${escapeHtml(role)}:</span>
+          <span class="print-assignment-names">${escapeHtml(setAssignmentsByRole[role].join(", "))}</span>
+        `).join(' • ')}
+      </div>
+    `
+    : "";
 
   const rowsHtml = sortedSetSongs.map((setSong, index) => {
     const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
@@ -9585,6 +9613,17 @@ function renderSetPrintPreview(set) {
     if (setSong.notes) notesParts.push(setSong.notes);
     if (isSection && setSong.description) notesParts.push(setSong.description);
 
+    let assignmentSummary = "";
+    if (assignmentMode === "per_song" && setSong.song_assignments?.length) {
+      const byRole = setSong.song_assignments.reduce((acc, assignment) => {
+        const role = assignment.role || "Unassigned";
+        if (!acc[role]) acc[role] = [];
+        acc[role].push(formatAssignmentName(assignment));
+        return acc;
+      }, {});
+      assignmentSummary = Object.keys(byRole).sort().map(role => `${role}: ${byRole[role].join(", ")}`).join(" • ");
+    }
+
     const rowClass = isSectionHeader ? ' class="print-section-row"' : "";
     
     // For sections, merge Key and BPM columns into Notes (colspan=3 covers Key+BPM+Notes)
@@ -9598,6 +9637,12 @@ function renderSetPrintPreview(set) {
           <td>${escapeHtml(lengthLabel)}</td>
           <td colspan="3">${notesParts.map(part => `<div class="print-notes">${escapeHtml(part)}</div>`).join("")}</td>
         </tr>
+        ${assignmentSummary ? `
+          <tr class="print-assignment-subrow">
+            <td></td>
+            <td colspan="5">${escapeHtml(assignmentSummary)}</td>
+          </tr>
+        ` : ""}
       `;
     }
     
@@ -9613,6 +9658,12 @@ function renderSetPrintPreview(set) {
         <td>${escapeHtml(bpm)}</td>
         <td>${notesParts.map(part => `<div class="print-notes">${escapeHtml(part)}</div>`).join("")}</td>
       </tr>
+      ${assignmentSummary ? `
+        <tr class="print-assignment-subrow">
+          <td></td>
+          <td colspan="5">${escapeHtml(assignmentSummary)}</td>
+        </tr>
+      ` : ""}
     `;
   }).join("") || `
       <tr>
@@ -9634,6 +9685,7 @@ function renderSetPrintPreview(set) {
         <div class="print-summary-item">Total Length: ${totalSeconds ? formatLongDuration(totalSeconds) : "—"}</div>
         ${set.team_name ? `<div class="print-summary-item">Team: ${escapeHtml(set.team_name)}</div>` : ""}
       </div>
+      ${assignmentMode === "per_set" ? setAssignmentsHtml : ""}
     </div>
     <table class="print-set-table">
       <thead>

@@ -1966,6 +1966,28 @@ i{
     page-break-after: avoid;
     break-after: avoid;
   }
+.print-assignments-inline {
+  margin-top: 0.25rem;
+  display: block;
+  font-size: 0.85rem;
+  color: #111827;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.print-assignments-inline .print-assignment-role {
+  font-weight: 700;
+}
+.print-assignments-inline .print-assignment-names {
+  color: #374151;
+}
+
+.print-assignment-subrow td {
+  font-size: 0.8rem;
+  color: #374151;
+  padding-top: 0.2rem;
+  padding-bottom: 0.3rem;
+  border: none;
+}
 
 .print-set-header {
   display: flex;
