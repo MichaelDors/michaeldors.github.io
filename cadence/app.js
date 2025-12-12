@@ -5188,6 +5188,11 @@ function setupLinkDragAndDrop(item, container) {
     dragHandle.addEventListener("mousedown", (e) => {
       item.draggable = true;
     });
+    // Prevent text selection on the drag handle
+    dragHandle.addEventListener("selectstart", (e) => {
+      e.preventDefault();
+    });
+    dragHandle.style.userSelect = "none";
   }
   
   item.addEventListener("dragstart", (e) => {
@@ -5236,10 +5241,10 @@ function setupLinkDragAndDrop(item, container) {
   item.addEventListener("drop", async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    // Update the order in the DOM
-    updateLinkOrder(container);
-    // Save the order to the database immediately
-    await saveLinkOrder(container);
+    // Update the order in the DOM (global across all link sections)
+    updateAllLinkOrderInDom();
+    // Save the order to the database immediately (like song/section reorder)
+    await saveAllLinkOrder();
     // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
   });
@@ -5276,10 +5281,10 @@ function setupLinkDragAndDrop(item, container) {
       const dragging = container.querySelector(".dragging");
       if (!dragging) return;
       
-      // Update the order in the DOM
-      updateLinkOrder(container);
-      // Save the order to the database immediately
-      await saveLinkOrder(container);
+      // Update the order in the DOM (global across all link sections)
+      updateAllLinkOrderInDom();
+      // Save the order to the database immediately (like song/section reorder)
+      await saveAllLinkOrder();
       // Remove indicators
       container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
     });
@@ -5308,41 +5313,97 @@ function updateLinkOrder(container) {
   });
 }
 
-async function saveLinkOrder(container) {
+function updateAllLinkOrderInDom() {
+  const linksRoot = el("song-links-list");
+  if (!linksRoot) return;
+  let globalOrder = 0;
+  const sections = Array.from(linksRoot.querySelectorAll(".song-links-section"));
+  sections.forEach(section => {
+    const sectionContent = section.querySelector(".song-links-section-content");
+    if (!sectionContent) return;
+    const items = Array.from(sectionContent.querySelectorAll(".song-link-row.draggable-item"));
+    items.forEach((item) => {
+      item.dataset.displayOrder = String(globalOrder++);
+    });
+  });
+}
+
+function getOrderedExistingSongLinksFromDom() {
+  const linksRoot = el("song-links-list");
+  if (!linksRoot) return [];
+  const orderedLinks = [];
+  let globalOrder = 0;
+  const sections = Array.from(linksRoot.querySelectorAll(".song-links-section"));
+  sections.forEach(section => {
+    const sectionContent = section.querySelector(".song-links-section-content");
+    if (!sectionContent) return;
+    const items = Array.from(sectionContent.querySelectorAll(".song-link-row.draggable-item"));
+    items.forEach((item) => {
+      const idInput = item.querySelector(".song-link-id");
+      const linkId = idInput?.value;
+      if (linkId) {
+        orderedLinks.push({ id: linkId, display_order: globalOrder });
+      }
+      globalOrder += 1;
+    });
+  });
+  return orderedLinks;
+}
+
+async function reorderSongLinks(orderedLinks, songId) {
+  if (!songId || !Array.isArray(orderedLinks) || orderedLinks.length === 0) return;
+  
+  // Two-phase update, matching the set song/section reorder strategy.
+  // This avoids unique constraint collisions on (song_id, display_order).
+  const errors = [];
+  
+  // Phase 1: move everything to unique temporary values
+  const tempBase = -1000000;
+  const phase1 = orderedLinks.map(async ({ id }, idx) => {
+    const tempValue = tempBase - idx;
+    const { error } = await supabase
+      .from("song_links")
+      .update({ display_order: tempValue })
+      .eq("id", id)
+      .eq("song_id", songId);
+    if (error) errors.push({ phase: "temporary", id, error });
+  });
+  await Promise.all(phase1);
+  
+  if (errors.length > 0) {
+    console.error("Failed to set temporary display_order values for song_links:", errors);
+    toastError("Failed to reorder links. Check console for details.");
+    return;
+  }
+  
+  // Phase 2: set final display_order values
+  const phase2 = orderedLinks.map(async ({ id, display_order }) => {
+    const { error } = await supabase
+      .from("song_links")
+      .update({ display_order })
+      .eq("id", id)
+      .eq("song_id", songId);
+    if (error) errors.push({ phase: "final", id, display_order, error });
+  });
+  await Promise.all(phase2);
+  
+  if (errors.length > 0) {
+    console.error("Failed to set final display_order values for song_links:", errors);
+    toastError("Some links could not be reordered. Check console for details.");
+  }
+}
+
+async function saveAllLinkOrder() {
   const form = el("song-edit-form");
   const songId = form?.dataset.songId;
   
   // Only save if we're editing an existing song
   if (!songId) return;
   
-  // Get current order from DOM
-  const items = Array.from(container.querySelectorAll(".song-link-row.draggable-item"));
-  const orderedLinks = [];
+  const orderedLinks = getOrderedExistingSongLinksFromDom();
+  if (orderedLinks.length === 0) return;
   
-  items.forEach((item, index) => {
-    const idInput = item.querySelector(".song-link-id");
-    const linkId = idInput?.value;
-    
-    // Only update existing links (skip new links that haven't been saved yet)
-    if (linkId) {
-      orderedLinks.push({
-        id: linkId,
-        display_order: index
-      });
-    }
-  });
-  
-  // Update display_order for all existing links
-  if (orderedLinks.length > 0) {
-    const updates = orderedLinks.map(({ id, display_order }) =>
-      supabase
-        .from("song_links")
-        .update({ display_order })
-        .eq("id", id)
-    );
-    
-    await Promise.all(updates);
-  }
+  await reorderSongLinks(orderedLinks, songId);
 }
 
 function openSetModal(set = null) {
@@ -8650,6 +8711,18 @@ async function openSongDetailsModal(song, selectedKey = null) {
     }
   }
   
+  // Ensure links are ordered by display_order for consistent rendering
+  if (songWithLinks && Array.isArray(songWithLinks.song_links)) {
+    songWithLinks.song_links = [...songWithLinks.song_links].sort((a, b) => {
+      const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+      const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+      if (ao !== bo) return ao - bo;
+      const at = (a?.title || "").toLowerCase();
+      const bt = (b?.title || "").toLowerCase();
+      return at.localeCompare(bt);
+    });
+  }
+  
   // Organize links by key
   const generalLinks = (songWithLinks.song_links || []).filter(link => !link.key);
   const selectedKeyLinks = selectedKey 
@@ -8983,13 +9056,23 @@ function renderSongLinks(links) {
   
   container.innerHTML = "";
   
+  // Ensure stable ordering (DB fetch does not order by display_order)
+  const sortedLinks = (Array.isArray(links) ? [...links] : []).sort((a, b) => {
+    const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+    const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+    if (ao !== bo) return ao - bo;
+    const at = (a?.title || "").toLowerCase();
+    const bt = (b?.title || "").toLowerCase();
+    return at.localeCompare(bt);
+  });
+  
   // Get available keys
   const keys = collectSongKeys();
   
   // Group links by key
-  const generalLinks = links.filter(link => !link.key);
+  const generalLinks = sortedLinks.filter(link => !link.key);
   const linksByKey = {};
-  links.forEach(link => {
+  sortedLinks.forEach(link => {
     if (link.key) {
       if (!linksByKey[link.key]) {
         linksByKey[link.key] = [];
@@ -9014,6 +9097,7 @@ function renderSongLinks(links) {
   generalLinks.forEach((link, index) => {
     const linkRow = createLinkRow(link, index, "");
     generalLinksContainer.appendChild(linkRow);
+    if (isManager()) setupLinkDragAndDrop(linkRow, generalLinksContainer);
   });
   generalSection.appendChild(generalLinksContainer);
   container.appendChild(generalSection);
@@ -9038,6 +9122,7 @@ function renderSongLinks(links) {
     keyLinks.forEach((link, index) => {
       const linkRow = createLinkRow(link, index, key);
       keyLinksContainer.appendChild(linkRow);
+      if (isManager()) setupLinkDragAndDrop(linkRow, keyLinksContainer);
     });
     keySection.appendChild(keyLinksContainer);
     container.appendChild(keySection);
@@ -9050,12 +9135,16 @@ function renderSongLinks(links) {
       addSongLinkToSection(key);
     });
   });
+  
+  // Normalize data-display-order across all sections after render
+  updateAllLinkOrderInDom();
 }
 
 function createLinkRow(link, index, key) {
   const div = document.createElement("div");
   div.className = "song-link-row draggable-item";
-  div.draggable = isManager() || false;
+  // Match song/section reorder behavior: only draggable when grabbed by handle
+  div.draggable = false;
   div.dataset.linkId = link.id || `new-${Date.now()}-${index}`;
   div.dataset.displayOrder = link.display_order || index;
   div.dataset.key = key;
@@ -9080,17 +9169,9 @@ function createLinkRow(link, index, key) {
     const sectionContent = section?.querySelector(".song-links-section-content");
     if (sectionContent) {
       sectionContent.removeChild(div);
-      updateLinkOrder(sectionContent);
+      updateAllLinkOrderInDom();
     }
   });
-  
-  // Setup drag and drop for links
-  if (isManager()) {
-    const sectionContent = div.closest(".song-links-section")?.querySelector(".song-links-section-content");
-    if (sectionContent) {
-      setupLinkDragAndDrop(div, sectionContent);
-    }
-  }
   
   return div;
 }
