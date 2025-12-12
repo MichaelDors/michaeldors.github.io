@@ -3118,6 +3118,10 @@ function renderSetCard(set, container) {
               ? (setSong.song?.title || "Unknown Song")
               : (setSong.title || "Unknown Section");
             userAssignments.push({
+              setSongId: setSong.id,
+              songId: setSong.song_id || null,
+              song: setSong.song || null,
+              selectedKey: setSong.key || null,
               songTitle,
               role: assignment.role,
                   sequenceOrder: setSong.sequence_order ?? 0,
@@ -3145,6 +3149,22 @@ function renderSetCard(set, container) {
           pill.textContent = assignment.role;
         } else {
         pill.textContent = `${assignment.songTitle} - ${assignment.role}`;
+          // Clicking a "Your Sets" assignment pill should open the set and the song details
+          pill.style.cursor = "pointer";
+          if (assignment.setSongId) pill.dataset.setSongId = String(assignment.setSongId);
+          if (assignment.songId) pill.dataset.songId = String(assignment.songId);
+          if (assignment.selectedKey) pill.dataset.selectedKey = assignment.selectedKey;
+          pill.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showSetDetail(set);
+            // Only open details for real songs (not sections)
+            if (assignment.songId) {
+              const songForModal =
+                assignment.song || { id: assignment.songId, title: assignment.songTitle };
+              await openSongDetailsModal(songForModal, assignment.selectedKey || null);
+            }
+          });
         }
         rolesWrapper.appendChild(pill);
         pills.push(pill);
