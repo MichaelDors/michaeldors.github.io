@@ -4574,6 +4574,12 @@ function hideSetDetail() {
   state.selectedSet = null;
   // Clear saved set ID from localStorage
   localStorage.removeItem('cadence-selected-set-id');
+  
+  // Recalculate assignment pills to show actual assignments instead of "+X more"
+  // Use a small delay to ensure the dashboard is visible and layout is complete
+  setTimeout(() => {
+    recalculateAllAssignmentPills();
+  }, 100);
 }
 
 // Drag and Drop Functions
