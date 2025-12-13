@@ -147,13 +147,18 @@
         
         <div id="sets-tab" class="tab-content">
           <div id="pending-requests-section" class="pending-requests-section hidden">
-            <h3><i class="fa-solid fa-bell"></i> Pending Assignment Requests</h3>
+            <div class="section-header">
+              <div>
+                <h2><i class="fa-solid fa-bell"></i> Pending Assignment Requests <span id="pending-requests-badge" class="badge hidden"></span></h2>
+                <p class="muted">Review and respond to assignment requests</p>
+              </div>
+            </div>
             <div id="pending-requests-list"></div>
           </div>
           <div id="your-sets-section" class="sets-section">
             <div class="section-header">
               <div>
-                <h2><i class="fa-solid fa-user-clock"></i> Your Sets <span id="pending-requests-badge" class="badge hidden"></span></h2>
+                <h2><i class="fa-solid fa-user-clock"></i> Your Sets</h2>
                 <p class="muted">Sets where you're assigned to a song</p>
               </div>
             </div>
@@ -955,6 +960,36 @@
         <span class="assignment-person"></span>
       </span>
     </template>
+
+    <div id="assignment-details-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h3>Assignment Details</h3>
+          <button class="icon-btn" id="close-assignment-details-modal" aria-label="Close modal">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </header>
+        <div id="assignment-details-content" style="padding: 1.5rem 0;">
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Person</label>
+            <div id="assignment-details-person" style="font-size: 1.1rem; font-weight: 500;"></div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Role</label>
+            <div id="assignment-details-role" style="font-size: 1rem;"></div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Song</label>
+            <div id="assignment-details-song" style="font-size: 1rem;"></div>
+          </div>
+          <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Status</label>
+            <div id="assignment-details-status"></div>
+          </div>
+          <div id="assignment-details-actions" style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-color);"></div>
+        </div>
+      </div>
+    </div>
 
     <div id="toast-container" class="toast-container"></div>
 

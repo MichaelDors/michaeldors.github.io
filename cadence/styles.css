@@ -457,28 +457,27 @@ main {
 
 .pending-requests-section {
   margin-bottom: 2rem;
-  padding: 1rem;
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid rgba(255, 193, 7, 0.3);
-  border-radius: 0.5rem;
 }
 
-.pending-requests-section h3 {
-  margin: 0 0 1rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.pending-requests-section .section-header {
+  margin-bottom: 1rem;
 }
 
 .pending-request-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.pending-request-item:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .pending-request-info {
@@ -984,6 +983,27 @@ main {
   opacity: 0.6;
   text-decoration: line-through;
   border-color: rgba(220, 53, 69, 0.3);
+}
+
+.assignment-pill.pending-status {
+  background: transparent !important;
+  border: 1px dashed rgba(255, 193, 7, 0.6) !important;
+  color: rgba(255, 193, 7, 0.9) !important;
+  opacity: 0.9;
+}
+
+.assignment-pill.declined-status {
+  background: rgba(220, 53, 69, 0.15) !important;
+  border: 1px solid rgba(220, 53, 69, 0.5) !important;
+  color: #dc3545 !important;
+  opacity: 0.9;
+  text-decoration: line-through;
+}
+
+.assignment-status-badge.accepted {
+  background: rgba(40, 167, 69, 0.2);
+  color: #28a745;
+  border: 1px solid rgba(40, 167, 69, 0.3);
 }
 
 .pending-inline-tag {
