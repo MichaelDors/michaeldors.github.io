@@ -5781,6 +5781,15 @@ function hideSetDetail() {
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
   
+  // Stop all audio players in the set detail view before hiding
+  if (detailView) {
+    const audioPlayers = detailView.querySelectorAll("audio");
+    audioPlayers.forEach(audio => {
+      audio.pause();
+      audio.currentTime = 0; // Reset to beginning
+    });
+  }
+  
   dashboard.classList.remove("hidden");
   detailView.classList.add("hidden");
   state.selectedSet = null;
@@ -10438,6 +10447,13 @@ async function openSongDetailsModal(song, selectedKey = null) {
 function closeSongDetailsModal() {
   const modal = el("song-details-modal");
   if (modal) {
+    // Stop all audio players in the modal
+    const audioPlayers = modal.querySelectorAll("audio");
+    audioPlayers.forEach(audio => {
+      audio.pause();
+      audio.currentTime = 0; // Reset to beginning
+    });
+    
     modal.classList.add("hidden");
     document.body.style.overflow = "";
     state.currentSongDetailsId = null;
