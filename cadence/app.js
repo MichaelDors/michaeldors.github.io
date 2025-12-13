@@ -2768,6 +2768,7 @@ async function loadSets() {
           person_email,
           pending_invite_id,
           role,
+          status,
           person:person_id (
             id,
             full_name
@@ -2800,6 +2801,7 @@ async function loadSets() {
           person_email,
           pending_invite_id,
           role,
+          status,
           person:person_id (
             id,
             full_name
@@ -2839,6 +2841,7 @@ async function loadSets() {
             person_email,
             pending_invite_id,
             role,
+            status,
             person:person_id (
               id,
               full_name
@@ -2898,8 +2901,75 @@ async function loadSets() {
   state.sets = data ?? [];
   renderSets();
   
+  // Load and render pending requests
+  await loadPendingRequests();
+  
   // Restore set detail view if there's a saved set ID
   restoreSetDetailIfSaved();
+}
+
+// Migration function to set existing assignments to 'accepted' status
+// This should be run once after adding the status column to the database
+// Note: This function assumes the status column exists. If it doesn't, the queries will fail gracefully.
+async function migrateExistingAssignmentsToAccepted() {
+  console.log('🔄 Starting migration of existing assignments to accepted status...');
+  
+  try {
+    // Update set_assignments without status (null or missing) to 'accepted'
+    const { data: setAssignments, error: setError } = await supabase
+      .from("set_assignments")
+      .select("id")
+      .is("status", null)
+      .limit(1000);
+    
+    if (setError && !setError.message?.includes("column") && !setError.message?.includes("does not exist")) {
+      console.error("Error fetching set assignments for migration:", setError);
+      return;
+    }
+    
+    if (setAssignments && setAssignments.length > 0) {
+      const { error: updateSetError } = await supabase
+        .from("set_assignments")
+        .update({ status: 'accepted' })
+        .is("status", null);
+      
+      if (updateSetError) {
+        console.error("Error updating set assignments:", updateSetError);
+      } else {
+        console.log(`✅ Migrated ${setAssignments.length} set assignments to accepted status`);
+      }
+    }
+    
+    // Update song_assignments without status (null or missing) to 'accepted'
+    const { data: songAssignments, error: songError } = await supabase
+      .from("song_assignments")
+      .select("id")
+      .is("status", null)
+      .limit(1000);
+    
+    if (songError && !songError.message?.includes("column") && !songError.message?.includes("does not exist")) {
+      console.error("Error fetching song assignments for migration:", songError);
+      return;
+    }
+    
+    if (songAssignments && songAssignments.length > 0) {
+      const { error: updateSongError } = await supabase
+        .from("song_assignments")
+        .update({ status: 'accepted' })
+        .is("status", null);
+      
+      if (updateSongError) {
+        console.error("Error updating song assignments:", updateSongError);
+      } else {
+        console.log(`✅ Migrated ${songAssignments.length} song assignments to accepted status`);
+      }
+    }
+    
+    console.log('✅ Migration complete!');
+  } catch (error) {
+    console.error("Migration error:", error);
+    console.log("⚠️ If you see column errors, make sure to add the status column to set_assignments and song_assignments tables first.");
+  }
 }
 
 function restoreSetDetailIfSaved() {
@@ -2917,22 +2987,256 @@ function restoreSetDetailIfSaved() {
   }
 }
 
+// Load pending assignment requests for current user
+async function loadPendingRequests() {
+  const currentUserId = state.profile?.id;
+  if (!currentUserId) {
+    el("pending-requests-section")?.classList.add("hidden");
+    el("pending-requests-badge")?.classList.add("hidden");
+    return;
+  }
+
+  // Get pending set assignments
+  const { data: pendingSetAssignments } = await supabase
+    .from("set_assignments")
+    .select(`
+      id,
+      role,
+      set_id,
+      set:set_id (
+        id,
+        title,
+        scheduled_date
+      )
+    `)
+    .eq("person_id", currentUserId)
+    .eq("status", "pending");
+
+  // Get pending song assignments grouped by set
+  const { data: pendingSongAssignments } = await supabase
+    .from("song_assignments")
+    .select(`
+      id,
+      role,
+      set_song_id,
+      set_song:set_song_id (
+        id,
+        set_id,
+        set:set_id (
+          id,
+          title,
+          scheduled_date
+        )
+      )
+    `)
+    .eq("person_id", currentUserId)
+    .eq("status", "pending");
+
+  // Group song assignments by set
+  const songAssignmentsBySet = {};
+  if (pendingSongAssignments) {
+    pendingSongAssignments.forEach(assignment => {
+      const setId = assignment.set_song?.set_id;
+      if (setId) {
+        if (!songAssignmentsBySet[setId]) {
+          songAssignmentsBySet[setId] = {
+            set: assignment.set_song.set,
+            assignments: []
+          };
+        }
+        songAssignmentsBySet[setId].assignments.push(assignment);
+      }
+    });
+  }
+
+  const pendingRequests = [];
+
+  // Add set-level pending requests
+  if (pendingSetAssignments) {
+    pendingSetAssignments.forEach(assignment => {
+      pendingRequests.push({
+        type: 'set',
+        assignmentId: assignment.id,
+        setId: assignment.set_id,
+        set: assignment.set,
+        role: assignment.role
+      });
+    });
+  }
+
+  // Add song-level pending requests (one per set)
+  Object.keys(songAssignmentsBySet).forEach(setId => {
+    const { set, assignments } = songAssignmentsBySet[setId];
+    pendingRequests.push({
+      type: 'song',
+      assignmentIds: assignments.map(a => a.id),
+      setId: setId,
+      set: set,
+      roles: [...new Set(assignments.map(a => a.role))],
+      assignmentCount: assignments.length
+    });
+  });
+
+  renderPendingRequests(pendingRequests);
+}
+
+// Render pending requests UI
+function renderPendingRequests(requests) {
+  const section = el("pending-requests-section");
+  const list = el("pending-requests-list");
+  const badge = el("pending-requests-badge");
+
+  if (!section || !list) return;
+
+  if (requests.length === 0) {
+    section.classList.add("hidden");
+    if (badge) badge.classList.add("hidden");
+    return;
+  }
+
+  section.classList.remove("hidden");
+  if (badge) {
+    badge.textContent = requests.length;
+    badge.classList.remove("hidden");
+  }
+
+  list.innerHTML = "";
+
+  requests.forEach(request => {
+    const item = document.createElement("div");
+    item.className = "pending-request-item";
+
+    const info = document.createElement("div");
+    info.className = "pending-request-info";
+
+    const setTitle = document.createElement("div");
+    setTitle.className = "set-title";
+    setTitle.textContent = request.set?.title || "Unknown Set";
+
+    const details = document.createElement("div");
+    details.className = "request-details";
+    if (request.type === 'set') {
+      details.textContent = `Role: ${request.role}`;
+    } else {
+      details.textContent = `${request.assignmentCount} song assignment${request.assignmentCount > 1 ? 's' : ''} - ${request.roles.join(', ')}`;
+    }
+
+    info.appendChild(setTitle);
+    info.appendChild(details);
+
+    const actions = document.createElement("div");
+    actions.className = "pending-request-actions";
+
+    const acceptBtn = document.createElement("button");
+    acceptBtn.className = "btn primary small";
+    acceptBtn.innerHTML = '<i class="fa-solid fa-check"></i> Accept';
+    acceptBtn.onclick = () => handleAcceptRequest(request);
+
+    const declineBtn = document.createElement("button");
+    declineBtn.className = "btn ghost small";
+    declineBtn.innerHTML = '<i class="fa-solid fa-x"></i> Decline';
+    declineBtn.onclick = () => handleDeclineRequest(request);
+
+    actions.appendChild(acceptBtn);
+    actions.appendChild(declineBtn);
+
+    item.appendChild(info);
+    item.appendChild(actions);
+    list.appendChild(item);
+  });
+}
+
+// Handle accepting an assignment request
+async function handleAcceptRequest(request) {
+  const currentUserId = state.profile?.id;
+  if (!currentUserId) return;
+
+  try {
+    if (request.type === 'set') {
+      // Accept set-level assignment
+      const { error } = await supabase
+        .from("set_assignments")
+        .update({ status: 'accepted' })
+        .eq("id", request.assignmentId);
+
+      if (error) throw error;
+    } else {
+      // Accept all song assignments for this set (per-song mode)
+      const { error } = await supabase
+        .from("song_assignments")
+        .update({ status: 'accepted' })
+        .in("id", request.assignmentIds);
+
+      if (error) throw error;
+
+      // Create set acceptance record for future auto-acceptance
+      const { error: acceptanceError } = await supabase
+        .from("set_acceptances")
+        .upsert({
+          set_id: request.setId,
+          person_id: currentUserId,
+          accepted_at: new Date().toISOString()
+        }, {
+          onConflict: 'set_id,person_id'
+        });
+
+      if (acceptanceError) {
+        console.warn("Could not create set acceptance record:", acceptanceError);
+        // Don't fail the whole operation if this fails
+      }
+    }
+
+    toastSuccess("Assignment accepted!");
+    await loadSets(); // Reload to refresh UI
+  } catch (error) {
+    console.error("Error accepting request:", error);
+    toastError("Unable to accept assignment. Please try again.");
+  }
+}
+
+// Handle declining an assignment request
+async function handleDeclineRequest(request) {
+  try {
+    if (request.type === 'set') {
+      const { error } = await supabase
+        .from("set_assignments")
+        .update({ status: 'declined' })
+        .eq("id", request.assignmentId);
+
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("song_assignments")
+        .update({ status: 'declined' })
+        .in("id", request.assignmentIds);
+
+      if (error) throw error;
+    }
+
+    toastSuccess("Assignment declined.");
+    await loadSets(); // Reload to refresh UI
+  } catch (error) {
+    console.error("Error declining request:", error);
+    toastError("Unable to decline assignment. Please try again.");
+  }
+}
+
 function isUserAssignedToSet(set, userId) {
   if (!userId) return false;
   
   const assignmentMode = getSetAssignmentMode(set);
   
   if (assignmentMode === 'per_set') {
-    // Check set-level assignments
+    // Check set-level assignments (only accepted ones)
     return set.set_assignments?.some(assignment => 
-      assignment.person_id === userId
+      assignment.person_id === userId && assignment.status === 'accepted'
     ) || false;
   } else {
-    // Check song-level assignments
+    // Check song-level assignments (only accepted ones)
     if (!set.set_songs) return false;
   return set.set_songs.some(setSong => 
     setSong.song_assignments?.some(assignment => 
-      assignment.person_id === userId
+      assignment.person_id === userId && assignment.status === 'accepted'
     )
   );
   }
@@ -3089,10 +3393,10 @@ function renderSetCard(set, container) {
     const userAssignments = [];
     
     if (assignmentMode === 'per_set') {
-      // Collect set-level assignments
+      // Collect set-level assignments (only accepted ones)
       if (set.set_assignments) {
         set.set_assignments.forEach(assignment => {
-          if (assignment.person_id === currentUserId) {
+          if (assignment.person_id === currentUserId && assignment.status === 'accepted') {
             userAssignments.push({
               role: assignment.role,
               isSetLevel: true
@@ -3101,7 +3405,7 @@ function renderSetCard(set, container) {
         });
       }
     } else {
-      // Collect song-level assignments, sorted by setlist order
+      // Collect song-level assignments, sorted by setlist order (only accepted ones)
       if (set.set_songs) {
     const sortedSetSongs = [...set.set_songs].sort((a, b) => {
       const orderA = a.sequence_order ?? 0;
@@ -3112,7 +3416,7 @@ function renderSetCard(set, container) {
     sortedSetSongs.forEach(setSong => {
       if (setSong.song_assignments) {
         setSong.song_assignments.forEach(assignment => {
-          if (assignment.person_id === currentUserId) {
+          if (assignment.person_id === currentUserId && assignment.status === 'accepted') {
             // Get title: from song if it's a song, from title field if it's a section
             const songTitle = setSong.song_id 
               ? (setSong.song?.title || "Unknown Song")
@@ -4026,7 +4330,8 @@ function renderSetAssignments(set, container) {
       
       assignmentsByRole[role].forEach(assignment => {
         const personEl = document.createElement("div");
-        const isPending = Boolean(assignment.pending_invite_id);
+        const isPendingInvite = Boolean(assignment.pending_invite_id);
+        const assignmentStatus = assignment.status || 'pending';
         const personName =
           assignment.person?.full_name ||
           assignment.pending_invite?.full_name ||
@@ -4035,8 +4340,32 @@ function renderSetAssignments(set, container) {
           assignment.pending_invite?.email ||
           "Unknown";
         
-        personEl.className = `assignment-role-person ${isPending ? 'pending' : ''}`;
-        personEl.textContent = personName + (isPending ? ' (Pending)' : '');
+        personEl.className = `assignment-role-person ${isPendingInvite ? 'pending' : ''} status-${assignmentStatus}`;
+        personEl.textContent = personName;
+        
+        // Add status indicator
+        if (assignmentStatus === 'pending') {
+          const statusBadge = document.createElement("span");
+          statusBadge.className = "assignment-status-badge pending";
+          statusBadge.textContent = "Pending";
+          statusBadge.title = "Awaiting acceptance";
+          personEl.appendChild(statusBadge);
+        } else if (assignmentStatus === 'declined') {
+          const statusBadge = document.createElement("span");
+          statusBadge.className = "assignment-status-badge declined";
+          statusBadge.textContent = "Declined";
+          statusBadge.title = "Assignment declined";
+          personEl.appendChild(statusBadge);
+        }
+        
+        if (isPendingInvite) {
+          const inviteBadge = document.createElement("span");
+          inviteBadge.className = "assignment-status-badge invite";
+          inviteBadge.textContent = "Invite";
+          inviteBadge.title = "Pending invite";
+          personEl.appendChild(inviteBadge);
+        }
+        
         peopleList.appendChild(personEl);
       });
       
@@ -4471,7 +4800,8 @@ function renderSetDetailSongs(set) {
             pill.querySelector(".assignment-role").textContent =
               assignment.role;
             const personEl = pill.querySelector(".assignment-person");
-            const isPending = Boolean(assignment.pending_invite_id);
+            const isPendingInvite = Boolean(assignment.pending_invite_id);
+            const assignmentStatus = assignment.status || 'pending';
             const personName =
               assignment.person?.full_name ||
               assignment.pending_invite?.full_name ||
@@ -4481,16 +4811,40 @@ function renderSetDetailSongs(set) {
               "Unknown";
             if (personEl) {
               personEl.textContent = personName;
-              if (isPending) {
-                const pendingTag = document.createElement("span");
-                pendingTag.className = "pending-inline-tag";
-                pendingTag.textContent = " (Pending)";
-                personEl.appendChild(pendingTag);
+              if (isPendingInvite) {
+                const inviteTag = document.createElement("span");
+                inviteTag.className = "pending-inline-tag";
+                inviteTag.textContent = " (Invite)";
+                personEl.appendChild(inviteTag);
+              }
+              // Add status indicator
+              if (assignmentStatus === 'pending') {
+                const statusBadge = document.createElement("span");
+                statusBadge.className = "assignment-status-badge pending";
+                statusBadge.textContent = "Pending";
+                statusBadge.title = "Awaiting acceptance";
+                statusBadge.style.marginLeft = "0.25rem";
+                statusBadge.style.fontSize = "0.7rem";
+                personEl.appendChild(statusBadge);
+              } else if (assignmentStatus === 'declined') {
+                const statusBadge = document.createElement("span");
+                statusBadge.className = "assignment-status-badge declined";
+                statusBadge.textContent = "Declined";
+                statusBadge.title = "Assignment declined";
+                statusBadge.style.marginLeft = "0.25rem";
+                statusBadge.style.fontSize = "0.7rem";
+                personEl.appendChild(statusBadge);
               }
             }
             const pillRoot = pill.querySelector(".assignment-pill");
-            if (isPending && pillRoot) {
+            if (isPendingInvite && pillRoot) {
               pillRoot.classList.add("pending");
+            }
+            if (assignmentStatus === 'pending' && pillRoot) {
+              pillRoot.classList.add("status-pending");
+            }
+            if (assignmentStatus === 'declined' && pillRoot) {
+              pillRoot.classList.add("status-declined");
             }
             assignmentsWrap.appendChild(pill);
           });
@@ -5644,6 +5998,13 @@ async function handleSetAssignmentsSubmit(event) {
   
   // Update existing assignments
   for (const assignment of updatedAssignments) {
+    // Get existing assignment to preserve status
+    const { data: existingAssignment } = await supabase
+      .from("set_assignments")
+      .select("status")
+      .eq("id", assignment.id)
+      .single();
+    
     const { error: updateError } = await supabase
       .from("set_assignments")
       .update({
@@ -5652,6 +6013,8 @@ async function handleSetAssignmentsSubmit(event) {
         pending_invite_id: assignment.pending_invite_id || null,
         person_name: assignment.person_name || null,
         person_email: assignment.person_email || null,
+        // Preserve existing status when updating, or set to pending if person changed
+        status: existingAssignment?.status || 'pending',
       })
       .eq("id", assignment.id);
     
@@ -5675,6 +6038,7 @@ async function handleSetAssignmentsSubmit(event) {
           person_email: assignment.person_email || null,
           set_id: setId,
           team_id: state.currentTeamId,
+          status: 'pending',
         }))
       );
     
@@ -6775,19 +7139,40 @@ async function handleAddSongToSet(event) {
   }
 
   if (assignments.length) {
+    // Check if assigned users have already accepted this set (for per-song mode)
+    const set = state.selectedSet;
+    const assignmentMode = getSetAssignmentMode(set);
+    
+    // For per-song sets, check if each assigned person has already accepted this set
+    const assignmentsToInsert = await Promise.all(assignments.map(async (assignment) => {
+      let shouldAutoAccept = false;
+      
+      if (assignmentMode === 'per_song' && assignment.person_id) {
+        const { data: setAcceptance } = await supabase
+          .from("set_acceptances")
+          .select("id")
+          .eq("set_id", set.id)
+          .eq("person_id", assignment.person_id)
+          .maybeSingle();
+        shouldAutoAccept = !!setAcceptance;
+      }
+      
+      return {
+        role: assignment.role,
+        person_id: assignment.person_id || null,
+        pending_invite_id: assignment.pending_invite_id || null,
+        person_name: assignment.person_name || null,
+        person_email: assignment.person_email || null,
+        set_song_id: setSong.id,
+        team_id: state.currentTeamId,
+        status: shouldAutoAccept ? 'accepted' : 'pending',
+      };
+    }));
+    
     const { error: assignmentError } = await supabase
       .from("song_assignments")
-      .insert(
-        assignments.map((assignment) => ({
-          role: assignment.role,
-          person_id: assignment.person_id || null,
-          pending_invite_id: assignment.pending_invite_id || null,
-          person_name: assignment.person_name || null,
-          person_email: assignment.person_email || null,
-          set_song_id: setSong.id,
-          team_id: state.currentTeamId,
-        }))
-      );
+      .insert(assignmentsToInsert);
+      
     if (assignmentError) {
       console.error(assignmentError);
       toastError("Assignments partially failed.");
@@ -6873,19 +7258,40 @@ async function handleAddSectionToSet(event) {
   }
 
   if (assignments.length) {
+    // Check if assigned users have already accepted this set (for per-song mode)
+    const set = state.selectedSet;
+    const assignmentMode = getSetAssignmentMode(set);
+    
+    // For per-song sets, check if each assigned person has already accepted this set
+    const assignmentsToInsert = await Promise.all(assignments.map(async (assignment) => {
+      let shouldAutoAccept = false;
+      
+      if (assignmentMode === 'per_song' && assignment.person_id) {
+        const { data: setAcceptance } = await supabase
+          .from("set_acceptances")
+          .select("id")
+          .eq("set_id", set.id)
+          .eq("person_id", assignment.person_id)
+          .maybeSingle();
+        shouldAutoAccept = !!setAcceptance;
+      }
+      
+      return {
+        role: assignment.role,
+        person_id: assignment.person_id || null,
+        pending_invite_id: assignment.pending_invite_id || null,
+        person_name: assignment.person_name || null,
+        person_email: assignment.person_email || null,
+        set_song_id: setSong.id,
+        team_id: state.currentTeamId,
+        status: shouldAutoAccept ? 'accepted' : 'pending',
+      };
+    }));
+    
     const { error: assignmentError } = await supabase
       .from("song_assignments")
-      .insert(
-        assignments.map((assignment) => ({
-          role: assignment.role,
-          person_id: assignment.person_id || null,
-          pending_invite_id: assignment.pending_invite_id || null,
-          person_name: assignment.person_name || null,
-          person_email: assignment.person_email || null,
-          set_song_id: setSong.id,
-          team_id: state.currentTeamId,
-        }))
-      );
+      .insert(assignmentsToInsert);
+      
     if (assignmentError) {
       console.error(assignmentError);
       toastError("Assignments partially failed.");
@@ -7645,6 +8051,8 @@ async function handleEditSetSongSubmit(event) {
         pending_invite_id: assignment.pending_invite_id || null,
         person_name: assignment.person_name || null,
         person_email: assignment.person_email || null,
+        // Preserve existing status when updating, or set to pending if person changed
+        status: assignment.status || 'pending',
       })
       .eq("id", assignment.id);
   }
@@ -7662,6 +8070,7 @@ async function handleEditSetSongSubmit(event) {
           person_email: assignment.person_email || null,
           set_song_id: setSongId,
           team_id: state.currentTeamId,
+          status: 'pending',
         }))
       );
     }

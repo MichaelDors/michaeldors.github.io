@@ -418,6 +418,100 @@ main {
   font-style: italic;
 }
 
+.assignment-status-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.assignment-status-badge.pending {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.assignment-status-badge.declined {
+  background: rgba(220, 53, 69, 0.2);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.assignment-status-badge.invite {
+  background: rgba(108, 117, 125, 0.2);
+  color: #6c757d;
+  border: 1px solid rgba(108, 117, 125, 0.3);
+}
+
+.assignment-role-person.status-pending {
+  opacity: 0.8;
+}
+
+.assignment-role-person.status-declined {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.pending-requests-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 0.5rem;
+}
+
+.pending-requests-section h3 {
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pending-request-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+}
+
+.pending-request-info {
+  flex: 1;
+}
+
+.pending-request-info .set-title {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.pending-request-info .request-details {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.pending-request-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: var(--accent-color);
+  color: var(--bg-primary);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
 .no-assignments {
   color: var(--text-muted);
   font-style: italic;
@@ -879,6 +973,17 @@ main {
   background: transparent;
   border: 1px dashed var(--border-color);
   color: var(--text-secondary);
+}
+
+.assignment-pill.status-pending {
+  opacity: 0.8;
+  border-color: rgba(255, 193, 7, 0.5);
+}
+
+.assignment-pill.status-declined {
+  opacity: 0.6;
+  text-decoration: line-through;
+  border-color: rgba(220, 53, 69, 0.3);
 }
 
 .pending-inline-tag {
