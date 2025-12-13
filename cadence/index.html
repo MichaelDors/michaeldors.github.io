@@ -993,6 +993,17 @@
 
     <div id="toast-container" class="toast-container"></div>
 
+    <div id="database-error-overlay" class="database-error-overlay hidden">
+      <div class="database-error-content">
+        <div class="database-error-icon">
+          <i class="fa-solid fa-database"></i>
+        </div>
+        <h2>Database Unresponsive</h2>
+        <p>The database is currently unavailable or not responding. Please check your internet connection and try again.</p>
+        <button id="database-error-retry" class="btn primary">Retry Connection</button>
+      </div>
+    </div>
+
     <script type="module" src="app.js"></script>
   </body>
 </html>

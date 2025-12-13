@@ -166,6 +166,125 @@ function toastInfo(message, duration = 5000) {
   return showToast(message, 'info', duration);
 }
 
+// Database Error Overlay System
+function showDatabaseError() {
+  const overlay = el('database-error-overlay');
+  if (overlay) {
+    overlay.classList.remove('hidden');
+    // Prevent body scroll when overlay is shown
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function hideDatabaseError() {
+  const overlay = el('database-error-overlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    // Restore body scroll
+    document.body.style.overflow = '';
+  }
+}
+
+// Check if an error indicates database is unresponsive
+function isDatabaseUnresponsive(error) {
+  if (!error) return false;
+  
+  // Network errors
+  if (error.message?.includes('Failed to fetch') || 
+      error.message?.includes('NetworkError') ||
+      error.message?.includes('Network request failed') ||
+      error.message?.includes('fetch failed')) {
+    return true;
+  }
+  
+  // Timeout errors
+  if (error.message?.includes('timeout') || 
+      error.message?.includes('timed out') ||
+      error.message?.includes('aborted')) {
+    return true;
+  }
+  
+  // Connection errors
+  if (error.message?.includes('ERR_INTERNET_DISCONNECTED') ||
+      error.message?.includes('ERR_CONNECTION_REFUSED') ||
+      error.message?.includes('ERR_CONNECTION_RESET') ||
+      error.message?.includes('ERR_CONNECTION_CLOSED') ||
+      error.message?.includes('ERR_CONNECTION_TIMED_OUT')) {
+    return true;
+  }
+  
+  // Supabase-specific errors
+  if (error.code === 'PGRST301' || // Service unavailable
+      error.code === 'PGRST302' || // Connection timeout
+      error.message?.includes('service unavailable') ||
+      error.message?.includes('connection refused') ||
+      error.message?.includes('503') ||
+      error.message?.includes('502') ||
+      error.message?.includes('504')) {
+    return true;
+  }
+  
+  // Check for network error in the error object
+  if (error.name === 'NetworkError' || 
+      error.name === 'TypeError' && error.message?.includes('fetch')) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Wrapper function to handle Supabase operations with database error detection
+async function safeSupabaseOperation(operation, options = {}) {
+  const { 
+    showErrorOnFailure = true,
+    retryOnError = false,
+    maxRetries = 0,
+    timeout = 30000 // 30 second default timeout
+  } = options;
+  
+  try {
+    // Wrap operation in timeout
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Operation timed out')), timeout)
+    );
+    
+    const result = await Promise.race([operation(), timeoutPromise]);
+    
+    // If we got here, operation succeeded - hide error overlay
+    if (result?.error && isDatabaseUnresponsive(result.error)) {
+      if (showErrorOnFailure) {
+        showDatabaseError();
+      }
+      return result;
+    }
+    
+    // Success - hide error overlay
+    hideDatabaseError();
+    return result;
+    
+  } catch (error) {
+    console.error('Database operation error:', error);
+    
+    if (isDatabaseUnresponsive(error)) {
+      if (showErrorOnFailure) {
+        showDatabaseError();
+      }
+      
+      // Return error in Supabase format for consistency
+      return { 
+        data: null, 
+        error: {
+          message: error.message || 'Database is unresponsive',
+          code: error.code || 'DATABASE_UNRESPONSIVE'
+        }
+      };
+    }
+    
+    // For non-database errors, rethrow or return
+    throw error;
+  }
+}
+
 // Helper function to check if user has manager permissions
 // Returns false if in member view mode, even if user is a manager
 // Returns true for both owners and managers
@@ -542,6 +661,32 @@ function bindEvents() {
   console.log('  - loginEmailInput element:', loginEmailInput);
   console.log('  - loginPasswordInput element:', loginPasswordInput);
   console.log('  - authSubmitBtn element:', authSubmitBtn);
+  
+  // Database error retry button
+  const retryBtn = el('database-error-retry');
+  retryBtn?.addEventListener('click', async () => {
+    hideDatabaseError();
+    // Try to reconnect by testing a simple query
+    try {
+      const { error } = await safeSupabaseOperation(async () => {
+        return await supabase.from('profiles').select('id').limit(1);
+      });
+      
+      if (!error || !isDatabaseUnresponsive(error)) {
+        // Database is responsive, reload data
+        if (state.session) {
+          await Promise.all([fetchProfile(), loadSongs(), loadSets(), loadPeople()]);
+          refreshActiveTab();
+        }
+      } else {
+        // Still unresponsive, show error again
+        showDatabaseError();
+      }
+    } catch (err) {
+      console.error('Retry failed:', err);
+      showDatabaseError();
+    }
+  });
   
   authForm?.addEventListener("submit", handleAuth);
   
@@ -2131,40 +2276,29 @@ async function fetchProfile() {
   try {
     console.log('  - Querying profiles table...');
     
-    // Wrap query in timeout to prevent hanging
     // IMPORTANT: Select team_id explicitly to ensure it's available
-    const queryPromise = supabase
-      .from("profiles")
-      .select(`
-        id,
-        full_name,
-        email,
-        can_manage,
-        is_owner,
-        team_id,
-        created_at,
-        team:team_id (
+    const result = await safeSupabaseOperation(async () => {
+      return await supabase
+        .from("profiles")
+        .select(`
           id,
-          name,
-          owner_id
-        )
-      `)
-      .eq("id", state.session.user.id)
-      .single();
+          full_name,
+          email,
+          can_manage,
+          is_owner,
+          team_id,
+          created_at,
+          team:team_id (
+            id,
+            name,
+            owner_id
+          )
+        `)
+        .eq("id", state.session.user.id)
+        .single();
+    }, { timeout: 2000 });
     
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Profile query timeout after 2 seconds')), 2000)
-    );
-    
-    let data, error;
-    try {
-      const result = await Promise.race([queryPromise, timeoutPromise]);
-      data = result.data;
-      error = result.error;
-    } catch (timeoutErr) {
-      console.error('  - ⚠️ Query timed out:', timeoutErr.message);
-      throw timeoutErr;
-    }
+    const { data, error } = result;
 
     console.log('  - Query completed. Error:', error?.code || 'none');
     console.log('  - Data:', data ? 'found' : 'not found');
@@ -2640,30 +2774,34 @@ async function loadSongs() {
   
   // First, test if we can query songs at all (check RLS)
   console.log('  - Testing songs query...');
-  const { data, error } = await supabase
-    .from("songs")
-    .select(`
-      *,
-      song_keys (
-        id,
-        key
-      ),
-      song_links (
-        id,
-        title,
-        url,
-        key
-      )
-    `)
-    .eq("team_id", state.currentTeamId)
-    .order("title");
+  const result = await safeSupabaseOperation(async () => {
+    return await supabase
+      .from("songs")
+      .select(`
+        *,
+        song_keys (
+          id,
+          key
+        ),
+        song_links (
+          id,
+          title,
+          url,
+          key
+        )
+      `)
+      .eq("team_id", state.currentTeamId)
+      .order("title");
+  });
+  
+  const { data, error } = result;
   
   if (error) {
     console.error('❌ Error loading songs:', error);
     console.error('  - Error code:', error.code);
     console.error('  - Error message:', error.message);
     console.error('  - Error details:', JSON.stringify(error, null, 2));
-    console.error('  - Query was for team_id:', state.profile.team_id);
+    console.error('  - Query was for team_id:', state.profile?.team_id);
     state.songs = [];
     return;
   }
@@ -2715,10 +2853,11 @@ async function loadSets() {
   }
   
   // Try to load with service/rehearsal times first
-  let { data, error } = await supabase
-    .from("sets")
-    .select(
-      `
+  let result = await safeSupabaseOperation(async () => {
+    return await supabase
+      .from("sets")
+      .select(
+        `
       *,
       service_times (
         id,
@@ -2792,12 +2931,16 @@ async function loadSets() {
     )
     .eq("team_id", state.currentTeamId)
     .order("scheduled_date", { ascending: true });
+  });
+  
+  let { data, error } = result;
 
   // If error is due to missing tables (service_times, rehearsal_times, or set_assignments), fall back to query without them
   if (error && (error.message?.includes("service_times") || error.message?.includes("rehearsal_times") || error.message?.includes("set_assignments") || error.code === "PGRST116" || error.code === "42P01")) {
     console.warn("service_times or rehearsal_times tables not found, loading sets without them:", error.message);
     console.log('  - Falling back to query without service/rehearsal times...');
-    const fallbackResult = await supabase
+    const fallbackResult = await safeSupabaseOperation(async () => {
+      return await supabase
       .from("sets")
       .select(
         `
@@ -2865,6 +3008,7 @@ async function loadSets() {
       )
       .eq("team_id", state.currentTeamId)
       .order("scheduled_date", { ascending: true });
+    });
     
     console.log('  - Fallback query result - error:', fallbackResult.error?.code || 'none');
     console.log('  - Fallback query result - data count:', fallbackResult.data?.length || 0);
@@ -4023,40 +4167,62 @@ async function loadPeople() {
   
   // Query team_members WITHOUT profile join first to avoid RLS issues
   // Then fetch profiles separately and merge
-  const [
-    { data: teamMembers, error: teamMembersError },
-    { data: pendingInvites, error: pendingError },
-  ] = await Promise.all([
-    supabase
-      .from("team_members")
-      .select(`
-        id,
-        user_id,
-        role,
-        is_owner,
-        can_manage,
-        joined_at
-      `)
-      .eq("team_id", state.currentTeamId)
-      .order("joined_at", { ascending: true }),
-    supabase
-      .from("pending_invites")
-      .select("*")
-      .eq("team_id", state.currentTeamId)
-      .is("resolved_at", null)
-      .order("full_name", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true }),
-  ]);
+  let teamMembers, teamMembersError, pendingInvites, pendingError;
+  
+  try {
+    const [
+      teamMembersResult,
+      pendingInvitesResult
+    ] = await Promise.all([
+      safeSupabaseOperation(async () => {
+        return await supabase
+          .from("team_members")
+          .select(`
+            id,
+            user_id,
+            role,
+            is_owner,
+            can_manage,
+            joined_at
+          `)
+          .eq("team_id", state.currentTeamId)
+          .order("joined_at", { ascending: true });
+      }),
+      safeSupabaseOperation(async () => {
+        return await supabase
+          .from("pending_invites")
+          .select("*")
+          .eq("team_id", state.currentTeamId)
+          .is("resolved_at", null)
+          .order("full_name", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true });
+      }),
+    ]);
+    
+    teamMembers = teamMembersResult?.data;
+    teamMembersError = teamMembersResult?.error;
+    pendingInvites = pendingInvitesResult?.data;
+    pendingError = pendingInvitesResult?.error;
+  } catch (err) {
+    console.error('Error in loadPeople Promise.all:', err);
+    teamMembersError = err;
+    pendingError = err;
+    teamMembers = null;
+    pendingInvites = null;
+  }
   
   // Now fetch profiles separately for all user_ids to avoid join RLS issues
   let profilesMap = {};
   if (teamMembers && teamMembers.length > 0) {
     const userIds = teamMembers.map(tm => tm.user_id).filter(Boolean);
     console.log('  - Fetching profiles for user_ids:', userIds);
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, team_id, created_at")
-      .in("id", userIds);
+    const profilesResult = await safeSupabaseOperation(async () => {
+      return await supabase
+        .from("profiles")
+        .select("id, full_name, email, team_id, created_at")
+        .in("id", userIds);
+    });
+    const { data: profiles, error: profilesError } = profilesResult;
     
     if (profilesError) {
       console.error('  - ❌ Error fetching profiles:', profilesError);
