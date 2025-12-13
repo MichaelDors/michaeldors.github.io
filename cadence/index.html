@@ -502,6 +502,10 @@
             <input type="text" id="section-duration" placeholder="e.g., 30:00" />
             <p class="muted small-text">Use MM:SS or minutes.</p>
           </label>
+          <div class="section-header">
+            <h4>Links & Resources</h4>
+          </div>
+          <div id="section-links-list"></div>
           <div class="modal-actions">
             <button type="button" class="btn ghost" id="cancel-section">Cancel</button>
             <button type="submit" class="btn primary">Add</button>
@@ -578,6 +582,12 @@
             Notes
             <textarea id="edit-set-song-notes" rows="2"></textarea>
           </label>
+          <div id="edit-section-links-container" class="hidden">
+            <div class="section-header">
+              <h4>Links & Resources</h4>
+            </div>
+            <div id="edit-section-links-list"></div>
+          </div>
           <div class="modal-actions">
             <button type="button" class="btn ghost" id="cancel-edit-set-song">Cancel</button>
             <button type="submit" class="btn primary">Save</button>

@@ -2787,7 +2787,11 @@ async function loadSongs() {
           id,
           title,
           url,
-          key
+          key,
+          file_path,
+          file_name,
+          file_type,
+          is_file_upload
         )
       `)
       .eq("team_id", state.currentTeamId)
@@ -2905,8 +2909,23 @@ async function loadSets() {
             id,
             title,
             url,
-            key
+            key,
+            file_path,
+            file_name,
+            file_type,
+            is_file_upload
           )
+        ),
+        song_links (
+          id,
+          title,
+          url,
+          key,
+          display_order,
+          file_path,
+          file_name,
+          file_type,
+          is_file_upload
         ),
         song_assignments (
           id,
@@ -2985,6 +3004,17 @@ async function loadSets() {
               key
             )
           ),
+        song_links (
+          id,
+          title,
+          url,
+          key,
+          display_order,
+          file_path,
+          file_name,
+          file_type,
+          is_file_upload
+        ),
           song_assignments (
             id,
             person_id,
@@ -5347,10 +5377,191 @@ function renderSetDetailSongs(set) {
           if (durationLabel) sectionMetaParts.push({ html: true, value: durationLabel.html ? `Length: ${durationLabel.value}` : `Length: ${durationLabel}` });
           safeJoinMeta(songNode.querySelector(".song-meta"), sectionMetaParts);
           songNode.querySelector(".song-notes").textContent = setSong.notes || "";
-          // Hide "View Details" button for sections
-          const viewDetailsBtn = songNode.querySelector(".view-song-details-btn");
-          if (viewDetailsBtn) {
-            viewDetailsBtn.style.display = "none";
+          // View Details button will be set up later in the code
+          
+          // Display section links if they exist
+          const sectionLinks = setSong.song_links || [];
+          if (sectionLinks.length > 0) {
+            // Sort links by display_order
+            const sortedLinks = [...sectionLinks].sort((a, b) => {
+              const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+              const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+              if (ao !== bo) return ao - bo;
+              const at = (a?.title || "").toLowerCase();
+              const bt = (b?.title || "").toLowerCase();
+              return at.localeCompare(bt);
+            });
+            
+            // Create links container after notes
+            const notesEl = songNode.querySelector(".song-notes");
+            if (notesEl) {
+              const linksContainer = document.createElement("div");
+              linksContainer.className = "section-links-display";
+              linksContainer.style.marginTop = "1rem";
+              linksContainer.style.paddingTop = "1rem";
+              linksContainer.style.borderTop = "1px solid var(--border-color)";
+              
+              const linksTitle = document.createElement("h4");
+              linksTitle.className = "section-subtitle";
+              linksTitle.textContent = "Links & Resources";
+              linksTitle.style.marginBottom = "0.75rem";
+              linksTitle.style.fontSize = "0.9rem";
+              linksTitle.style.fontWeight = "600";
+              linksTitle.style.color = "var(--text-primary)";
+              linksContainer.appendChild(linksTitle);
+              
+              const linksList = document.createElement("div");
+              linksList.style.display = "flex";
+              linksList.style.flexDirection = "column";
+              linksList.style.gap = "0.5rem";
+              
+              // Render links asynchronously to handle file URL generation
+              (async () => {
+                for (const link of sortedLinks) {
+                  const linkEl = document.createElement("a");
+                  linkEl.className = "song-link-display";
+                  
+                  if (link.is_file_upload && link.file_path) {
+                    console.log('Rendering file upload in set detail:', {
+                      title: link.title,
+                      file_path: link.file_path,
+                      file_name: link.file_name,
+                      is_file_upload: link.is_file_upload
+                    });
+                    
+                    // Check if it's an audio file
+                    const isAudio = isAudioFile(link.file_type, link.file_name);
+                    
+                    // File upload - get signed URL
+                    const fileUrl = await getFileUrl(link.file_path);
+                    
+                    if (isAudio && fileUrl) {
+                      // Create audio player instead of download link
+                      const audioContainer = document.createElement("div");
+                      audioContainer.className = "song-link-display audio-player-container";
+                      audioContainer.style.display = "flex";
+                      audioContainer.style.alignItems = "center";
+                      audioContainer.style.gap = "0.75rem";
+                      audioContainer.style.padding = "0.75rem";
+                      audioContainer.style.background = "var(--bg-secondary)";
+                      audioContainer.style.borderRadius = "0.5rem";
+                      audioContainer.style.border = "1px solid var(--border-color)";
+                      
+                      // Audio icon
+                      const audioIcon = document.createElement("div");
+                      audioIcon.className = "song-link-favicon";
+                      audioIcon.innerHTML = '<i class="fa-solid fa-music" style="font-size: 1.2rem; color: var(--accent-color);"></i>';
+                      
+                      const content = document.createElement("div");
+                      content.className = "song-link-content";
+                      content.style.flex = "1";
+                      content.style.minWidth = "0";
+                      
+                      const title = document.createElement("div");
+                      title.className = "song-link-title";
+                      title.textContent = link.title;
+                      
+                      // Audio player
+                      const audio = document.createElement("audio");
+                      audio.controls = true;
+                      audio.src = fileUrl;
+                      audio.style.width = "100%";
+                      audio.style.marginTop = "0.5rem";
+                      audio.preload = "metadata";
+                      
+                      content.appendChild(title);
+                      content.appendChild(audio);
+                      
+                      audioContainer.appendChild(audioIcon);
+                      audioContainer.appendChild(content);
+                      
+                      linksList.appendChild(audioContainer);
+                      continue; // Skip the link creation for audio files
+                    }
+                    
+                    // For non-audio files, create download link
+                    if (fileUrl) {
+                      linkEl.href = fileUrl;
+                      linkEl.target = "_blank";
+                      linkEl.rel = "noopener noreferrer";
+                      linkEl.download = link.file_name || link.title;
+                      linkEl.style.cursor = "pointer";
+                    } else {
+                      // Don't make it clickable if URL generation failed
+                      linkEl.href = "#";
+                      linkEl.onclick = (e) => {
+                        e.preventDefault();
+                        toastError("Unable to load file. Please try again later.");
+                        return false;
+                      };
+                      linkEl.style.cursor = "not-allowed";
+                      linkEl.style.opacity = "0.6";
+                      linkEl.title = "File unavailable";
+                    }
+                    
+                    // File icon
+                    const fileIcon = document.createElement("div");
+                    fileIcon.className = "song-link-favicon";
+                    fileIcon.innerHTML = '<i class="fa-solid fa-file" style="font-size: 1.2rem; color: var(--text-secondary);"></i>';
+                    
+                    const content = document.createElement("div");
+                    content.className = "song-link-content";
+                    
+                    const title = document.createElement("div");
+                    title.className = "song-link-title";
+                    title.textContent = link.title;
+                    
+                    const fileInfo = document.createElement("div");
+                    fileInfo.className = "song-link-url";
+                    fileInfo.textContent = link.file_name || "File";
+                    if (link.file_type) {
+                      fileInfo.textContent += ` (${link.file_type})`;
+                    }
+                    
+                    content.appendChild(title);
+                    content.appendChild(fileInfo);
+                    
+                    linkEl.appendChild(fileIcon);
+                    linkEl.appendChild(content);
+                  } else {
+                    // URL link
+                    linkEl.href = link.url;
+                    linkEl.target = "_blank";
+                    linkEl.rel = "noopener noreferrer";
+                    
+                    const favicon = document.createElement("img");
+                    favicon.className = "song-link-favicon";
+                    favicon.src = getFaviconUrl(link.url);
+                    favicon.alt = "";
+                    favicon.onerror = () => {
+                      favicon.style.display = "none";
+                    };
+                    
+                    const content = document.createElement("div");
+                    content.className = "song-link-content";
+                    
+                    const title = document.createElement("div");
+                    title.className = "song-link-title";
+                    title.textContent = link.title;
+                    
+                    const url = document.createElement("div");
+                    url.className = "song-link-url";
+                    url.textContent = link.url;
+                    
+                    content.appendChild(title);
+                    content.appendChild(url);
+                    
+                    linkEl.appendChild(favicon);
+                    linkEl.appendChild(content);
+                  }
+                  
+                  linksList.appendChild(linkEl);
+                }
+              })();
+              
+              linksContainer.appendChild(linksList);
+              notesEl.parentNode.insertBefore(linksContainer, notesEl.nextSibling);
+            }
           }
         } else {
           // Render as song
@@ -5500,7 +5711,7 @@ function renderSetDetailSongs(set) {
           }
         }
         
-        // Add view details button (for songs and tags, not sections)
+        // Add view details button (for songs, tags, and sections)
         const viewDetailsBtn = songNode.querySelector(".view-song-details-btn");
         if (viewDetailsBtn && setSong.song && !isSection) {
           viewDetailsBtn.dataset.songId = setSong.song.id;
@@ -5508,7 +5719,13 @@ function renderSetDetailSongs(set) {
             openSongDetailsModal(setSong.song, setSong.key || null);
           });
         } else if (viewDetailsBtn && isSection) {
-          viewDetailsBtn.style.display = "none";
+          // Set up section details button
+          viewDetailsBtn.style.display = "";
+          viewDetailsBtn.textContent = "View Details";
+          viewDetailsBtn.dataset.setSongId = setSong.id;
+          viewDetailsBtn.addEventListener("click", () => {
+            openSectionDetailsModal(setSong);
+          });
         }
 
         songsList.appendChild(songNode);
@@ -7615,6 +7832,10 @@ function closeSectionModal() {
   el("section-form").reset();
   el("section-assignments-list").innerHTML = "";
   el("import-section-assignments-container").innerHTML = "";
+  const sectionLinksList = el("section-links-list");
+  if (sectionLinksList) {
+    sectionLinksList.innerHTML = "";
+  }
   const sectionDurationInput = el("section-duration");
   if (sectionDurationInput) {
     sectionDurationInput.value = "";
@@ -7977,6 +8198,29 @@ async function handleAddSectionToSet(event) {
     }
   }
 
+  // Handle section links
+  const links = collectSectionLinks("section-links-list");
+  if (links.length > 0) {
+    const { error: linksError } = await supabase
+      .from("song_links")
+      .insert(
+        links.map(link => ({
+          set_song_id: setSong.id,
+          song_id: null,
+          title: link.title,
+          url: link.url,
+          key: link.key || null,
+          display_order: link.display_order,
+          team_id: state.currentTeamId,
+        }))
+      );
+    
+    if (linksError) {
+      console.error("Error saving section links:", linksError);
+      toastError("Some links could not be saved. Please try again.");
+    }
+  }
+
   closeSectionModal();
   await loadSets();
   
@@ -8162,7 +8406,7 @@ function collectAssignments(containerId = "assignments-list") {
 }
 
 // Edit Set Song Functions
-function openEditSetSongModal(setSong) {
+async function openEditSetSongModal(setSong) {
   if (!isManager() || !setSong) return;
   
   const modal = el("edit-set-song-modal");
@@ -8297,6 +8541,23 @@ function openEditSetSongModal(setSong) {
   // Populate import dropdown, excluding current song/section
   populateImportAssignmentsDropdown("import-edit-assignments-container", setSong.id);
   
+  // Load section links if this is a section
+  const editSectionLinksContainer = el("edit-section-links-container");
+  const editSectionLinksList = el("edit-section-links-list");
+  if (isSection && editSectionLinksContainer && editSectionLinksList) {
+    editSectionLinksContainer.classList.remove("hidden");
+    // Fetch section links
+    const { data: sectionLinksData } = await supabase
+      .from("song_links")
+      .select("*")
+      .eq("set_song_id", setSong.id)
+      .order("display_order", { ascending: true });
+    
+    renderSectionLinks(sectionLinksData || [], "edit-section-links-list");
+  } else if (editSectionLinksContainer) {
+    editSectionLinksContainer.classList.add("hidden");
+  }
+  
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
@@ -8308,6 +8569,14 @@ function closeEditSetSongModal() {
   el("edit-set-song-form").reset();
   el("edit-assignments-list").innerHTML = "";
   el("import-edit-assignments-container").innerHTML = "";
+  const editSectionLinksList = el("edit-section-links-list");
+  if (editSectionLinksList) {
+    editSectionLinksList.innerHTML = "";
+  }
+  const editSectionLinksContainer = el("edit-section-links-container");
+  if (editSectionLinksContainer) {
+    editSectionLinksContainer.classList.add("hidden");
+  }
   const keyInput = el("edit-set-song-key");
   if (keyInput) {
     keyInput.value = "";
@@ -8752,6 +9021,134 @@ async function handleEditSetSongSubmit(event) {
           status: 'pending',
         }))
       );
+    }
+  }
+  
+  // Handle section links if this is a section
+  if (isSection && !isSectionHeader) {
+    const links = collectSectionLinks("edit-section-links-list");
+    
+    // Get existing links
+    const { data: existingLinks } = await supabase
+      .from("song_links")
+      .select("*")
+      .eq("set_song_id", setSongId);
+    
+    // Determine which to delete, update, and insert
+    const existingIds = new Set(existingLinks?.map(l => l.id) || []);
+    const newLinks = links.filter(l => !l.id);
+    const updatedLinks = links.filter(l => l.id && existingIds.has(l.id));
+    const deletedIds = Array.from(existingIds).filter(id => 
+      !links.some(l => l.id === id)
+    );
+    
+    // Delete removed links and their files
+    if (deletedIds.length > 0) {
+      // Get file paths of links to be deleted
+      const linksToDelete = existingLinks?.filter(l => deletedIds.includes(l.id)) || [];
+      for (const linkToDelete of linksToDelete) {
+        if (linkToDelete.is_file_upload && linkToDelete.file_path) {
+          await deleteFileFromSupabase(linkToDelete.file_path);
+        }
+      }
+      
+      await supabase
+        .from("song_links")
+        .delete()
+        .in("id", deletedIds);
+    }
+    
+    // Update existing links
+    for (const link of updatedLinks) {
+      const existingLink = existingLinks?.find(l => l.id === link.id);
+      let filePath = link.file_path;
+      let fileName = link.file_name;
+      let fileType = link.file_type;
+      
+      // If it's a file upload with a new file, upload it
+      if (link.is_file_upload && link.file) {
+        // Delete old file if it exists
+        if (existingLink?.is_file_upload && existingLink?.file_path) {
+          await deleteFileFromSupabase(existingLink.file_path);
+        }
+        
+        // Upload new file
+        const uploadResult = await uploadFileToSupabase(link.file, null, setSongId, state.currentTeamId);
+        if (!uploadResult.success) {
+          toastError(`Failed to upload file: ${uploadResult.error}`);
+          continue;
+        }
+        filePath = uploadResult.filePath;
+        fileName = uploadResult.fileName;
+        fileType = uploadResult.fileType;
+      } else if (link.is_file_upload && !link.file && existingLink?.file_path) {
+        // Keep existing file if no new file is selected
+        filePath = existingLink.file_path;
+        fileName = existingLink.file_name || link.file_name;
+        fileType = existingLink.file_type || link.file_type;
+      }
+      
+      await supabase
+        .from("song_links")
+        .update({
+          title: link.title,
+          url: link.is_file_upload ? null : link.url,
+          file_path: link.is_file_upload ? filePath : null,
+          file_name: link.is_file_upload ? fileName : null,
+          file_type: link.is_file_upload ? fileType : null,
+          is_file_upload: link.is_file_upload,
+          key: link.key || null,
+          display_order: link.display_order,
+        })
+        .eq("id", link.id);
+    }
+    
+    // Insert new links
+    if (newLinks.length > 0) {
+      const linksToInsert = [];
+      
+      for (const link of newLinks) {
+        let filePath = link.file_path;
+        let fileName = link.file_name;
+        let fileType = link.file_type;
+        
+        // If it's a file upload, upload the file first
+        if (link.is_file_upload && link.file) {
+          const uploadResult = await uploadFileToSupabase(link.file, null, setSongId, state.currentTeamId);
+          if (!uploadResult.success) {
+            toastError(`Failed to upload file: ${uploadResult.error}`);
+            continue;
+          }
+          filePath = uploadResult.filePath;
+          fileName = uploadResult.fileName;
+          fileType = uploadResult.fileType;
+        }
+        
+        linksToInsert.push({
+          set_song_id: setSongId,
+          song_id: null,
+          title: link.title,
+          url: link.is_file_upload ? null : link.url,
+          file_path: link.is_file_upload ? filePath : null,
+          file_name: link.is_file_upload ? fileName : null,
+          file_type: link.is_file_upload ? fileType : null,
+          is_file_upload: link.is_file_upload,
+          key: link.key || null,
+          display_order: link.display_order,
+          team_id: state.currentTeamId,
+        });
+      }
+      
+      if (linksToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from("song_links")
+          .insert(linksToInsert);
+        
+        if (insertError) {
+          console.error("Error inserting section links:", insertError);
+          toastError("Some links could not be saved. Please check that the database migration has been run.");
+        }
+      }
     }
   }
   
@@ -9808,7 +10205,11 @@ async function openSongDetailsModal(song, selectedKey = null) {
           title,
           url,
           key,
-          display_order
+          display_order,
+          file_path,
+          file_name,
+          file_type,
+          is_file_upload
         )
       `)
       .eq("id", song.id)
@@ -10043,6 +10444,201 @@ function closeSongDetailsModal() {
   }
 }
 
+async function openSectionDetailsModal(setSong) {
+  if (!setSong) return;
+  
+  const modal = el("song-details-modal");
+  const content = el("song-details-content");
+  const title = el("song-details-title");
+  
+  if (!modal || !content) return;
+  
+  title.textContent = setSong.title || "Section Details";
+  
+  // Fetch section with links and assignments
+  let sectionWithData = setSong;
+  if (!setSong.song_links || !setSong.song_assignments) {
+    const { data } = await supabase
+      .from("set_songs")
+      .select(`
+        *,
+        song_links (
+          id,
+          title,
+          url,
+          key,
+          display_order,
+          file_path,
+          file_name,
+          file_type,
+          is_file_upload
+        ),
+        song_assignments (
+          id,
+          person_id,
+          person_name,
+          person_email,
+          pending_invite_id,
+          role,
+          status,
+          person:person_id (
+            id,
+            full_name
+          ),
+          pending_invite:pending_invite_id (
+            id,
+            full_name,
+            email
+          )
+        )
+      `)
+      .eq("id", setSong.id)
+      .single();
+    
+    if (data) {
+      sectionWithData = data;
+    }
+  }
+  
+  // Ensure links are ordered by display_order
+  if (sectionWithData && Array.isArray(sectionWithData.song_links)) {
+    sectionWithData.song_links = [...sectionWithData.song_links].sort((a, b) => {
+      const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+      const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+      if (ao !== bo) return ao - bo;
+      const at = (a?.title || "").toLowerCase();
+      const bt = (b?.title || "").toLowerCase();
+      return at.localeCompare(bt);
+    });
+  }
+  
+  const hasLinks = (sectionWithData.song_links || []).length > 0;
+  const hasAssignments = (sectionWithData.song_assignments || []).length > 0;
+  const plannedDurationSeconds = getSetSongDurationSeconds(sectionWithData);
+  const durationLabel = plannedDurationSeconds !== undefined && plannedDurationSeconds !== null
+    ? formatDuration(plannedDurationSeconds)
+    : null;
+  
+  // Render all section information
+  content.innerHTML = `
+    <div class="song-details-section">
+      <h2 class="song-details-title">${escapeHtml(sectionWithData.title || "Untitled Section")}</h2>
+      
+      <div class="song-details-meta">
+        ${durationLabel ? `<div class="detail-item">
+          <span class="detail-label">Duration</span>
+          <span class="detail-value">${durationLabel}</span>
+        </div>` : ''}
+      </div>
+      
+      ${sectionWithData.description ? `
+      <div class="song-details-section">
+        <h3 class="section-title">Description</h3>
+        <p class="song-details-description">${escapeHtml(sectionWithData.description)}</p>
+      </div>
+      ` : ''}
+      
+      ${sectionWithData.notes ? `
+      <div class="song-details-section">
+        <h3 class="section-title">Notes</h3>
+        <p class="song-details-description">${escapeHtml(sectionWithData.notes)}</p>
+      </div>
+      ` : ''}
+      
+      ${hasAssignments ? `
+      <div class="song-details-section">
+        <h3 class="section-title">Assignments</h3>
+        <div class="song-details-assignments"></div>
+      </div>
+      ` : ''}
+      
+      ${hasLinks ? `
+      <div class="song-details-section">
+        <h3 class="section-title" style="margin-top:1.25rem;">Resources & Links</h3>
+        <div class="song-details-links"></div>
+      </div>
+      ` : ''}
+    </div>
+  `;
+  
+  // Render assignments
+  if (hasAssignments) {
+    const assignmentsContainer = content.querySelector(".song-details-assignments");
+    if (assignmentsContainer) {
+      sectionWithData.song_assignments.forEach((assignment) => {
+        const assignmentDiv = document.createElement("div");
+        assignmentDiv.style.marginBottom = "0.75rem";
+        assignmentDiv.style.padding = "0.75rem";
+        assignmentDiv.style.border = "1px solid var(--border-color)";
+        assignmentDiv.style.borderRadius = "0.5rem";
+        
+        const role = document.createElement("div");
+        role.style.fontWeight = "600";
+        role.style.marginBottom = "0.25rem";
+        role.textContent = assignment.role || "Unassigned";
+        
+        const person = document.createElement("div");
+        person.style.color = "var(--text-secondary)";
+        if (assignment.person) {
+          person.textContent = assignment.person.full_name || "Unknown";
+        } else if (assignment.pending_invite) {
+          person.textContent = `${assignment.pending_invite.full_name || assignment.pending_invite.email || "Unknown"} (Pending)`;
+        } else if (assignment.person_name) {
+          person.textContent = assignment.person_name;
+        } else {
+          person.textContent = "Unassigned";
+        }
+        
+        assignmentDiv.appendChild(role);
+        assignmentDiv.appendChild(person);
+        assignmentsContainer.appendChild(assignmentDiv);
+      });
+    }
+  }
+  
+  // Render links
+  if (hasLinks) {
+    const linksContainer = content.querySelector(".song-details-links");
+    if (linksContainer) {
+      const generalLinks = (sectionWithData.song_links || []).filter(link => !link.key);
+      if (generalLinks.length > 0) {
+        const generalSection = document.createElement("div");
+        generalSection.style.marginBottom = "1.5rem";
+        const generalTitle = document.createElement("h4");
+        generalTitle.className = "section-subtitle";
+        generalTitle.textContent = "General";
+        generalTitle.style.marginBottom = "0.5rem";
+        generalSection.appendChild(generalTitle);
+        const generalLinksContainer = document.createElement("div");
+        renderSongLinksDisplay(generalLinks, generalLinksContainer);
+        generalSection.appendChild(generalLinksContainer);
+        linksContainer.appendChild(generalSection);
+      }
+    }
+  }
+  
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  
+  // Close on outside click
+  const handleOutsideClick = (e) => {
+    if (e.target === modal) {
+      closeSongDetailsModal();
+      modal.removeEventListener("click", handleOutsideClick);
+    }
+  };
+  modal.addEventListener("click", handleOutsideClick);
+  
+  // Close on Escape key
+  const handleEscape = (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+      closeSongDetailsModal();
+      document.removeEventListener("keydown", handleEscape);
+    }
+  };
+  document.addEventListener("keydown", handleEscape);
+}
+
 function updateLinkSections() {
   // Re-render links when keys change to show new key sections
   const links = collectSongLinks();
@@ -10158,6 +10754,182 @@ function collectSongKeys() {
   return keys;
 }
 
+// ============================================================================
+// Supabase Storage File Upload Functions
+// ============================================================================
+// NOTE: Before using file uploads, create a Supabase Storage bucket:
+// 1. Go to Supabase Dashboard > Storage
+// 2. Create a new bucket named "song-resources"
+// 3. Set it to private (not public)
+// 4. Configure policies:
+//    - INSERT: Users can upload to their team's folder
+//    - SELECT: Team members can read files from their team's folders
+//    - DELETE: Managers can delete files, users can delete their own uploads
+
+const STORAGE_BUCKET = 'song-resources';
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB in bytes
+
+// Validate file size (20MB limit)
+function validateFileSize(file) {
+  if (file.size > MAX_FILE_SIZE) {
+    return {
+      valid: false,
+      error: `File size exceeds 20MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`
+    };
+  }
+  return { valid: true };
+}
+
+// Get MIME type from file
+function getFileType(file) {
+  return file.type || 'application/octet-stream';
+}
+
+// Generate file path for Supabase Storage
+function generateFilePath(teamId, songId, setSongId, fileName) {
+  const uuid = crypto.randomUUID();
+  const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const timestamp = Date.now();
+  const extension = fileName.split('.').pop();
+  const uniqueFileName = `${uuid}-${timestamp}.${extension}`;
+  
+  if (songId) {
+    return `${teamId}/songs/${songId}/${uniqueFileName}`;
+  } else if (setSongId) {
+    return `${teamId}/sections/${setSongId}/${uniqueFileName}`;
+  }
+  throw new Error('Either songId or setSongId must be provided');
+}
+
+// Upload file to Supabase Storage
+async function uploadFileToSupabase(file, songId, setSongId, teamId) {
+  try {
+    // Validate file size
+    const validation = validateFileSize(file);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+    
+    // Generate file path
+    const filePath = generateFilePath(teamId, songId, setSongId, file.name);
+    
+    // Upload file
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+    
+    if (error) {
+      console.error('File upload error:', error);
+      return { success: false, error: error.message };
+    }
+    
+    return {
+      success: true,
+      filePath: data.path,
+      fileName: file.name,
+      fileType: getFileType(file)
+    };
+  } catch (error) {
+    console.error('File upload exception:', error);
+    return { success: false, error: error.message || 'Failed to upload file' };
+  }
+}
+
+// Delete file from Supabase Storage
+async function deleteFileFromSupabase(filePath) {
+  if (!filePath) return { success: true };
+  
+  try {
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([filePath]);
+    
+    if (error) {
+      console.error('File deletion error:', error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('File deletion exception:', error);
+    return { success: false, error: error.message || 'Failed to delete file' };
+  }
+}
+
+// Get signed URL for file access (valid for 1 hour)
+async function getFileUrl(filePath) {
+  if (!filePath) {
+    console.error('getFileUrl called with null/undefined filePath');
+    return null;
+  }
+  
+  try {
+    console.log('Generating signed URL for:', filePath);
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+    
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      console.error('File path was:', filePath);
+      return null;
+    }
+    
+    if (!data || !data.signedUrl) {
+      console.error('No signed URL returned from Supabase');
+      return null;
+    }
+    
+    console.log('Successfully generated signed URL');
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Exception creating signed URL:', error);
+    return null;
+  }
+}
+
+// Format file size for display
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// Check if a file is an audio file
+function isAudioFile(fileType, fileName) {
+  if (!fileType && !fileName) return false;
+  
+  const audioMimeTypes = [
+    'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/m4a',
+    'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm', 'audio/aac',
+    'audio/flac', 'audio/x-flac', 'audio/opus'
+  ];
+  
+  if (fileType) {
+    const lowerType = fileType.toLowerCase();
+    if (audioMimeTypes.some(type => lowerType.includes(type) || lowerType === type)) {
+      return true;
+    }
+  }
+  
+  if (fileName) {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    const audioExtensions = ['mp3', 'm4a', 'wav', 'ogg', 'webm', 'aac', 'flac', 'opus'];
+    return audioExtensions.includes(ext);
+  }
+  
+  return false;
+}
+
+// ============================================================================
+// Song Links Functions
+// ============================================================================
+
 function renderSongLinks(links) {
   const container = el("song-links-list");
   if (!container) return;
@@ -10197,7 +10969,10 @@ function renderSongLinks(links) {
   generalHeader.className = "song-links-section-header";
   generalHeader.innerHTML = `
     <h4>General Links</h4>
-    <button type="button" class="btn small secondary add-link-to-section" data-key="">Add Link</button>
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="button" class="btn small secondary add-link-to-section" data-key="">Add Link</button>
+      <button type="button" class="btn small secondary add-file-upload-to-section" data-key="">Upload</button>
+    </div>
   `;
   generalSection.appendChild(generalHeader);
   const generalLinksContainer = document.createElement("div");
@@ -10222,7 +10997,10 @@ function renderSongLinks(links) {
     keyHeader.className = "song-links-section-header";
     keyHeader.innerHTML = `
       <h4>Key: ${escapeHtml(key)}</h4>
-      <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
+        <button type="button" class="btn small secondary add-file-upload-to-section" data-key="${escapeHtml(key)}">Upload</button>
+      </div>
     `;
     keySection.appendChild(keyHeader);
     const keyLinksContainer = document.createElement("div");
@@ -10244,6 +11022,14 @@ function renderSongLinks(links) {
     });
   });
   
+  // Add event listeners for "Upload" buttons
+  container.querySelectorAll(".add-file-upload-to-section").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.key || "";
+      addFileUploadToSection(key);
+    });
+  });
+  
   // Normalize data-display-order across all sections after render
   updateAllLinkOrderInDom();
 }
@@ -10256,23 +11042,103 @@ function createLinkRow(link, index, key) {
   div.dataset.linkId = link.id || `new-${Date.now()}-${index}`;
   div.dataset.displayOrder = link.display_order || index;
   div.dataset.key = key;
+  div.dataset.isFileUpload = link.is_file_upload ? 'true' : 'false';
   
-  div.innerHTML = `
-    ${isManager() ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
-    <label>
-      Title
-      <input type="text" class="song-link-title-input" placeholder="Recording" value="${escapeHtml(link.title || '')}" required />
-    </label>
-    <label>
-      URL
-      <input type="url" class="song-link-url-input" placeholder="https://..." value="${escapeHtml(link.url || '')}" required />
-    </label>
-    ${link.id ? `<input type="hidden" class="song-link-id" value="${link.id}" />` : ''}
-    <input type="hidden" class="song-link-key" value="${escapeHtml(key)}" />
-    <button type="button" class="btn small ghost remove-song-link">Remove</button>
-  `;
+  const isFileUpload = link.is_file_upload || false;
   
-  div.querySelector(".remove-song-link").addEventListener("click", () => {
+  if (isFileUpload) {
+    // File upload row
+    div.innerHTML = `
+      ${isManager() ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
+      <label>
+        Title
+        <input type="text" class="song-link-title-input" placeholder="File name" value="${escapeHtml(link.title || link.file_name || '')}" required />
+      </label>
+      <label style="flex: 1; min-width: 200px;">
+        File
+        <div class="file-upload-display">
+          ${link.file_name ? `
+            <div class="file-info">
+              <span class="file-name">${escapeHtml(link.file_name)}</span>
+              ${link.file_type ? `<span class="file-type">${escapeHtml(link.file_type)}</span>` : ''}
+            </div>
+          ` : `
+            <input type="file" class="song-link-file-input" accept="*/*" />
+            <div class="file-upload-status"></div>
+          `}
+        </div>
+      </label>
+      ${link.id ? `<input type="hidden" class="song-link-id" value="${link.id}" />` : ''}
+      ${link.file_path ? `<input type="hidden" class="song-link-file-path" value="${escapeHtml(link.file_path)}" />` : ''}
+      ${link.file_name ? `<input type="hidden" class="song-link-file-name" value="${escapeHtml(link.file_name)}" />` : ''}
+      ${link.file_type ? `<input type="hidden" class="song-link-file-type" value="${escapeHtml(link.file_type)}" />` : ''}
+      <input type="hidden" class="song-link-is-file-upload" value="true" />
+      <input type="hidden" class="song-link-key" value="${escapeHtml(key)}" />
+      <button type="button" class="btn small ghost remove-song-link">Remove</button>
+    `;
+    
+    // Add file input change handler if it's a new file upload
+    const fileInput = div.querySelector(".song-link-file-input");
+    if (fileInput) {
+      fileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const statusDiv = div.querySelector(".file-upload-status");
+          statusDiv.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
+          statusDiv.style.color = "var(--text-secondary)";
+          
+          // Validate file size
+          const validation = validateFileSize(file);
+          if (!validation.valid) {
+            statusDiv.textContent = validation.error;
+            statusDiv.style.color = "var(--error-color)";
+            e.target.value = "";
+            return;
+          }
+          
+          // Update file name input
+          const titleInput = div.querySelector(".song-link-title-input");
+          if (titleInput && !titleInput.value) {
+            titleInput.value = file.name;
+          }
+        }
+      });
+    }
+  } else {
+    // URL link row
+    div.innerHTML = `
+      ${isManager() ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
+      <label>
+        Title
+        <input type="text" class="song-link-title-input" placeholder="Recording" value="${escapeHtml(link.title || '')}" required />
+      </label>
+      <label>
+        URL
+        <input type="url" class="song-link-url-input" placeholder="https://..." value="${escapeHtml(link.url || '')}" required />
+      </label>
+      ${link.id ? `<input type="hidden" class="song-link-id" value="${link.id}" />` : ''}
+      <input type="hidden" class="song-link-is-file-upload" value="false" />
+      <input type="hidden" class="song-link-key" value="${escapeHtml(key)}" />
+      <button type="button" class="btn small ghost remove-song-link">Remove</button>
+    `;
+  }
+  
+  div.querySelector(".remove-song-link").addEventListener("click", async () => {
+    // If it's a file upload, delete the file from storage
+    if (isFileUpload) {
+      // Get file_path from hidden input (in case link object doesn't have it)
+      const filePathInput = div.querySelector(".song-link-file-path");
+      const filePath = filePathInput?.value || link.file_path;
+      if (filePath) {
+        console.log('Deleting file from storage:', filePath);
+        const result = await deleteFileFromSupabase(filePath);
+        if (!result.success) {
+          console.error('Failed to delete file:', result.error);
+          toastError(`Failed to delete file: ${result.error}`);
+        }
+      }
+    }
+    
     const section = div.closest(".song-links-section");
     const sectionContent = section?.querySelector(".song-links-section-content");
     if (sectionContent) {
@@ -10305,7 +11171,10 @@ function addSongLinkToSection(key) {
     const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Links";
     sectionHeader.innerHTML = `
       <h4>${sectionTitle}</h4>
-      <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
+        <button type="button" class="btn small secondary add-file-upload-to-section" data-key="${escapeHtml(key)}">Upload</button>
+      </div>
     `;
     section.appendChild(sectionHeader);
     const sectionContent = document.createElement("div");
@@ -10322,9 +11191,12 @@ function addSongLinkToSection(key) {
       container.appendChild(section);
     }
     
-    // Add event listener for the new button
+    // Add event listeners for the new buttons
     sectionHeader.querySelector(".add-link-to-section").addEventListener("click", () => {
       addSongLinkToSection(key);
+    });
+    sectionHeader.querySelector(".add-file-upload-to-section").addEventListener("click", () => {
+      addFileUploadToSection(key);
     });
   }
   
@@ -10334,7 +11206,73 @@ function addSongLinkToSection(key) {
   const existingItems = sectionContent.querySelectorAll(".song-link-row");
   const nextOrder = existingItems.length;
   
-  const linkRow = createLinkRow({ id: null, title: "", url: "", key: key, display_order: nextOrder }, nextOrder, key);
+  const linkRow = createLinkRow({ id: null, title: "", url: "", key: key, display_order: nextOrder, is_file_upload: false }, nextOrder, key);
+  sectionContent.appendChild(linkRow);
+  updateLinkOrder(sectionContent);
+}
+
+function addFileUploadToSection(key) {
+  const container = el("song-links-list");
+  if (!container) return;
+  
+  // Find the section for this key
+  let section = container.querySelector(`[data-key="${key}"]`);
+  if (!section) {
+    // If section doesn't exist, create it
+    section = document.createElement("div");
+    section.className = "song-links-section";
+    section.dataset.key = key;
+    const sectionHeader = document.createElement("div");
+    sectionHeader.className = "song-links-section-header";
+    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Links";
+    sectionHeader.innerHTML = `
+      <h4>${sectionTitle}</h4>
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
+        <button type="button" class="btn small secondary add-file-upload-to-section" data-key="${escapeHtml(key)}">Upload</button>
+      </div>
+    `;
+    section.appendChild(sectionHeader);
+    const sectionContent = document.createElement("div");
+    sectionContent.className = "song-links-section-content";
+    section.appendChild(sectionContent);
+    
+    // Insert after general section or at the end
+    const generalSection = container.querySelector('[data-key=""]');
+    if (generalSection && !key) {
+      container.insertBefore(section, generalSection);
+    } else if (generalSection) {
+      generalSection.insertAdjacentElement("afterend", section);
+    } else {
+      container.appendChild(section);
+    }
+    
+    // Add event listeners for the new buttons
+    sectionHeader.querySelector(".add-link-to-section").addEventListener("click", () => {
+      addSongLinkToSection(key);
+    });
+    sectionHeader.querySelector(".add-file-upload-to-section").addEventListener("click", () => {
+      addFileUploadToSection(key);
+    });
+  }
+  
+  const sectionContent = section.querySelector(".song-links-section-content");
+  if (!sectionContent) return;
+  
+  const existingItems = sectionContent.querySelectorAll(".song-link-row");
+  const nextOrder = existingItems.length;
+  
+  const linkRow = createLinkRow({ 
+    id: null, 
+    title: "", 
+    url: null, 
+    file_path: null,
+    file_name: null,
+    file_type: null,
+    key: key, 
+    display_order: nextOrder, 
+    is_file_upload: true 
+  }, nextOrder, key);
   sectionContent.appendChild(linkRow);
   updateLinkOrder(sectionContent);
 }
@@ -10356,26 +11294,469 @@ function collectSongLinks() {
     rows.forEach((row) => {
       const titleInput = row.querySelector(".song-link-title-input");
       const urlInput = row.querySelector(".song-link-url-input");
+      const fileInput = row.querySelector(".song-link-file-input");
       const keyInput = row.querySelector(".song-link-key");
       const idInput = row.querySelector(".song-link-id");
+      const isFileUploadInput = row.querySelector(".song-link-is-file-upload");
+      const filePathInput = row.querySelector(".song-link-file-path");
+      const fileNameInput = row.querySelector(".song-link-file-name");
+      const fileTypeInput = row.querySelector(".song-link-file-type");
       
       const title = titleInput?.value.trim();
-      const url = urlInput?.value.trim();
       const key = keyInput?.value || null;
       const id = idInput?.value;
+      const isFileUpload = isFileUploadInput?.value === 'true';
       
-      if (title && url) {
-        links.push({
-          id: id || null,
+      if (isFileUpload) {
+        // File upload - check if file is selected or already uploaded
+        const file = fileInput?.files[0];
+        const existingFilePath = filePathInput?.value;
+        const existingFileName = fileNameInput?.value;
+        const existingFileType = fileTypeInput?.value;
+        
+        console.log("Collecting file upload link:", {
           title,
-          url,
-          key: key || null,
-          display_order: globalOrder++,
+          hasFile: !!file,
+          file: file ? { name: file.name, size: file.size } : null,
+          existingFilePath,
+          existingFileName,
+          existingFileType
         });
+        
+        // For file uploads, we need either:
+        // 1. A title AND a file selected (new upload)
+        // 2. A title AND an existing file path (existing upload)
+        // 3. Just a file selected (we'll use the file name as title)
+        if (file || existingFilePath) {
+          // Use file name as title if title is empty
+          const finalTitle = title || (file ? file.name : existingFileName) || 'Untitled';
+          
+          links.push({
+            id: id || null,
+            title: finalTitle,
+            url: null,
+            file_path: existingFilePath || null, // Will be set after upload
+            file_name: existingFileName || (file ? file.name : null),
+            file_type: existingFileType || (file ? getFileType(file) : null),
+            is_file_upload: true,
+            file: file || null, // Store file object for upload
+            key: key || null,
+            display_order: globalOrder++,
+          });
+        } else if (title) {
+          // If there's a title but no file, still save it (file might be uploaded separately)
+          // But this shouldn't happen in normal flow
+          console.warn("File upload link has title but no file:", { title, row: row });
+        } else {
+          console.warn("File upload link skipped - no file and no title");
+        }
+      } else {
+        // URL link
+        const url = urlInput?.value.trim();
+        if (title && url) {
+          links.push({
+            id: id || null,
+            title,
+            url,
+            file_path: null,
+            file_name: null,
+            file_type: null,
+            is_file_upload: false,
+            key: key || null,
+            display_order: globalOrder++,
+          });
+        }
       }
     });
   });
   
+  return links;
+}
+
+// Section Links Functions (similar to song links but for set sections)
+function renderSectionLinks(links, containerId = "section-links-list") {
+  const container = el(containerId);
+  if (!container) return;
+  
+  container.innerHTML = "";
+  
+  // Ensure stable ordering
+  const sortedLinks = (Array.isArray(links) ? [...links] : []).sort((a, b) => {
+    const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+    const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+    if (ao !== bo) return ao - bo;
+    const at = (a?.title || "").toLowerCase();
+    const bt = (b?.title || "").toLowerCase();
+    return at.localeCompare(bt);
+  });
+  
+  // Render General Links section (sections don't have keys)
+  const generalSection = document.createElement("div");
+  generalSection.className = "song-links-section";
+  generalSection.dataset.key = "";
+  const generalHeader = document.createElement("div");
+  generalHeader.className = "song-links-section-header";
+  generalHeader.innerHTML = `
+    <h4>General Links</h4>
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="button" class="btn small secondary add-section-link-to-section" data-key="">Add Link</button>
+      <button type="button" class="btn small secondary add-section-file-upload-to-section" data-key="">Upload</button>
+    </div>
+  `;
+  generalSection.appendChild(generalHeader);
+  const generalLinksContainer = document.createElement("div");
+  generalLinksContainer.className = "song-links-section-content";
+  sortedLinks.forEach((link, index) => {
+    const linkRow = createSectionLinkRow(link, index, "");
+    generalLinksContainer.appendChild(linkRow);
+    if (isManager()) setupLinkDragAndDrop(linkRow, generalLinksContainer);
+  });
+  generalSection.appendChild(generalLinksContainer);
+  container.appendChild(generalSection);
+  
+  // Add event listeners for buttons
+  generalHeader.querySelector(".add-section-link-to-section").addEventListener("click", () => {
+    addSectionLinkToSection("", containerId);
+  });
+  generalHeader.querySelector(".add-section-file-upload-to-section").addEventListener("click", () => {
+    addSectionFileUploadToSection("", containerId);
+  });
+  
+  // Normalize data-display-order
+  updateAllSectionLinkOrderInDom(containerId);
+}
+
+function createSectionLinkRow(link, index, key) {
+  const div = document.createElement("div");
+  div.className = "song-link-row draggable-item";
+  div.draggable = false;
+  div.dataset.linkId = link.id || `new-${Date.now()}-${index}`;
+  div.dataset.displayOrder = link.display_order || index;
+  div.dataset.key = key;
+  div.dataset.isFileUpload = link.is_file_upload ? 'true' : 'false';
+  
+  const isFileUpload = link.is_file_upload || false;
+  
+  if (isFileUpload) {
+    // File upload row
+    div.innerHTML = `
+      ${isManager() ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
+      <label>
+        Title
+        <input type="text" class="section-link-title-input" placeholder="File name" value="${escapeHtml(link.title || link.file_name || '')}" required />
+      </label>
+      <label style="flex: 1; min-width: 200px;">
+        File
+        <div class="file-upload-display">
+          ${link.file_name ? `
+            <div class="file-info">
+              <span class="file-name">${escapeHtml(link.file_name)}</span>
+              ${link.file_type ? `<span class="file-type">${escapeHtml(link.file_type)}</span>` : ''}
+            </div>
+          ` : `
+            <input type="file" class="section-link-file-input" accept="*/*" />
+            <div class="file-upload-status"></div>
+          `}
+        </div>
+      </label>
+      ${link.id ? `<input type="hidden" class="section-link-id" value="${link.id}" />` : ''}
+      ${link.file_path ? `<input type="hidden" class="section-link-file-path" value="${escapeHtml(link.file_path)}" />` : ''}
+      ${link.file_name ? `<input type="hidden" class="section-link-file-name" value="${escapeHtml(link.file_name)}" />` : ''}
+      ${link.file_type ? `<input type="hidden" class="section-link-file-type" value="${escapeHtml(link.file_type)}" />` : ''}
+      <input type="hidden" class="section-link-is-file-upload" value="true" />
+      <input type="hidden" class="section-link-key" value="${escapeHtml(key)}" />
+      <button type="button" class="btn small ghost remove-section-link">Remove</button>
+    `;
+    
+    // Add file input change handler if it's a new file upload
+    const fileInput = div.querySelector(".section-link-file-input");
+    if (fileInput) {
+      fileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const statusDiv = div.querySelector(".file-upload-status");
+          statusDiv.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
+          statusDiv.style.color = "var(--text-secondary)";
+          
+          // Validate file size
+          const validation = validateFileSize(file);
+          if (!validation.valid) {
+            statusDiv.textContent = validation.error;
+            statusDiv.style.color = "var(--error-color)";
+            e.target.value = "";
+            return;
+          }
+          
+          // Update file name input
+          const titleInput = div.querySelector(".section-link-title-input");
+          if (titleInput && !titleInput.value) {
+            titleInput.value = file.name;
+          }
+        }
+      });
+    }
+  } else {
+    // URL link row
+    div.innerHTML = `
+      ${isManager() ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
+      <label>
+        Title
+        <input type="text" class="section-link-title-input" placeholder="Recording" value="${escapeHtml(link.title || '')}" required />
+      </label>
+      <label>
+        URL
+        <input type="url" class="section-link-url-input" placeholder="https://..." value="${escapeHtml(link.url || '')}" required />
+      </label>
+      ${link.id ? `<input type="hidden" class="section-link-id" value="${link.id}" />` : ''}
+      <input type="hidden" class="section-link-is-file-upload" value="false" />
+      <input type="hidden" class="section-link-key" value="${escapeHtml(key)}" />
+      <button type="button" class="btn small ghost remove-section-link">Remove</button>
+    `;
+  }
+  
+  div.querySelector(".remove-section-link").addEventListener("click", async () => {
+    // If it's a file upload, delete the file from storage
+    if (isFileUpload) {
+      // Get file_path from hidden input (in case link object doesn't have it)
+      const filePathInput = div.querySelector(".section-link-file-path");
+      const filePath = filePathInput?.value || link.file_path;
+      if (filePath) {
+        console.log('Deleting file from storage:', filePath);
+        const result = await deleteFileFromSupabase(filePath);
+        if (!result.success) {
+          console.error('Failed to delete file:', result.error);
+          toastError(`Failed to delete file: ${result.error}`);
+        }
+      }
+    }
+    
+    const section = div.closest(".song-links-section");
+    const sectionContent = section?.querySelector(".song-links-section-content");
+    if (sectionContent) {
+      sectionContent.removeChild(div);
+      updateAllSectionLinkOrderInDom(div.closest('[id*="links-list"]')?.id || "section-links-list");
+    }
+  });
+  
+  return div;
+}
+
+function addSectionLinkToSection(key, containerId = "section-links-list") {
+  const container = el(containerId);
+  if (!container) return;
+  
+  // Find the section for this key
+  let section = container.querySelector(`[data-key="${key}"]`);
+  if (!section) {
+    // If section doesn't exist, create it
+    section = document.createElement("div");
+    section.className = "song-links-section";
+    section.dataset.key = key;
+    const sectionHeader = document.createElement("div");
+    sectionHeader.className = "song-links-section-header";
+    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Links";
+    sectionHeader.innerHTML = `
+      <h4>${sectionTitle}</h4>
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="button" class="btn small secondary add-section-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
+        <button type="button" class="btn small secondary add-section-file-upload-to-section" data-key="${escapeHtml(key)}">Upload</button>
+      </div>
+    `;
+    section.appendChild(sectionHeader);
+    const sectionContent = document.createElement("div");
+    sectionContent.className = "song-links-section-content";
+    section.appendChild(sectionContent);
+    
+    // Insert after general section or at the end
+    const generalSection = container.querySelector('[data-key=""]');
+    if (generalSection && !key) {
+      container.insertBefore(section, generalSection);
+    } else if (generalSection) {
+      generalSection.insertAdjacentElement("afterend", section);
+    } else {
+      container.appendChild(section);
+    }
+    
+    // Add event listeners for the new buttons
+    sectionHeader.querySelector(".add-section-link-to-section").addEventListener("click", () => {
+      addSectionLinkToSection(key, containerId);
+    });
+    sectionHeader.querySelector(".add-section-file-upload-to-section").addEventListener("click", () => {
+      addSectionFileUploadToSection(key, containerId);
+    });
+  }
+  
+  const sectionContent = section.querySelector(".song-links-section-content");
+  if (!sectionContent) return;
+  
+  const existingItems = sectionContent.querySelectorAll(".song-link-row");
+  const nextOrder = existingItems.length;
+  
+  const linkRow = createSectionLinkRow({ id: null, title: "", url: "", key: key, display_order: nextOrder, is_file_upload: false }, nextOrder, key);
+  sectionContent.appendChild(linkRow);
+  updateSectionLinkOrder(sectionContent, containerId);
+}
+
+function addSectionFileUploadToSection(key, containerId = "section-links-list") {
+  const container = el(containerId);
+  if (!container) return;
+  
+  // Find the section for this key
+  let section = container.querySelector(`[data-key="${key}"]`);
+  if (!section) {
+    // If section doesn't exist, create it
+    section = document.createElement("div");
+    section.className = "song-links-section";
+    section.dataset.key = key;
+    const sectionHeader = document.createElement("div");
+    sectionHeader.className = "song-links-section-header";
+    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Links";
+    sectionHeader.innerHTML = `
+      <h4>${sectionTitle}</h4>
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="button" class="btn small secondary add-section-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
+        <button type="button" class="btn small secondary add-section-file-upload-to-section" data-key="${escapeHtml(key)}">Upload</button>
+      </div>
+    `;
+    section.appendChild(sectionHeader);
+    const sectionContent = document.createElement("div");
+    sectionContent.className = "song-links-section-content";
+    section.appendChild(sectionContent);
+    
+    // Insert after general section or at the end
+    const generalSection = container.querySelector('[data-key=""]');
+    if (generalSection && !key) {
+      container.insertBefore(section, generalSection);
+    } else if (generalSection) {
+      generalSection.insertAdjacentElement("afterend", section);
+    } else {
+      container.appendChild(section);
+    }
+    
+    // Add event listeners for the new buttons
+    sectionHeader.querySelector(".add-section-link-to-section").addEventListener("click", () => {
+      addSectionLinkToSection(key, containerId);
+    });
+    sectionHeader.querySelector(".add-section-file-upload-to-section").addEventListener("click", () => {
+      addSectionFileUploadToSection(key, containerId);
+    });
+  }
+  
+  const sectionContent = section.querySelector(".song-links-section-content");
+  if (!sectionContent) return;
+  
+  const existingItems = sectionContent.querySelectorAll(".song-link-row");
+  const nextOrder = existingItems.length;
+  
+  const linkRow = createSectionLinkRow({ 
+    id: null, 
+    title: "", 
+    url: null, 
+    file_path: null,
+    file_name: null,
+    file_type: null,
+    key: key, 
+    display_order: nextOrder, 
+    is_file_upload: true 
+  }, nextOrder, key);
+  sectionContent.appendChild(linkRow);
+  updateSectionLinkOrder(sectionContent, containerId);
+}
+
+function updateSectionLinkOrder(container, containerId) {
+  const items = Array.from(container.querySelectorAll(".song-link-row.draggable-item"));
+  items.forEach((item, index) => {
+    item.dataset.displayOrder = index;
+  });
+  updateAllSectionLinkOrderInDom(containerId);
+}
+
+function updateAllSectionLinkOrderInDom(containerId = "section-links-list") {
+  const linksRoot = el(containerId);
+  if (!linksRoot) return;
+  let globalOrder = 0;
+  const sections = Array.from(linksRoot.querySelectorAll(".song-links-section"));
+  sections.forEach(section => {
+    const sectionContent = section.querySelector(".song-links-section-content");
+    if (!sectionContent) return;
+    const items = Array.from(sectionContent.querySelectorAll(".song-link-row.draggable-item"));
+    items.forEach((item) => {
+      item.dataset.displayOrder = String(globalOrder++);
+    });
+  });
+}
+
+function collectSectionLinks(containerId = "section-links-list") {
+  const container = el(containerId);
+  if (!container) return [];
+
+  const links = [];
+  let globalOrder = 0;
+
+  // Collect links from all sections
+  const sections = Array.from(container.querySelectorAll(".song-links-section"));
+  sections.forEach(section => {
+    const sectionContent = section.querySelector(".song-links-section-content");
+    if (!sectionContent) return;
+
+    const rows = Array.from(sectionContent.querySelectorAll(".song-link-row"));
+    rows.forEach((row) => {
+      const titleInput = row.querySelector(".section-link-title-input");
+      const urlInput = row.querySelector(".section-link-url-input");
+      const fileInput = row.querySelector(".section-link-file-input");
+      const keyInput = row.querySelector(".section-link-key");
+      const idInput = row.querySelector(".section-link-id");
+      const isFileUploadInput = row.querySelector(".section-link-is-file-upload");
+      const filePathInput = row.querySelector(".section-link-file-path");
+      const fileNameInput = row.querySelector(".section-link-file-name");
+      const fileTypeInput = row.querySelector(".section-link-file-type");
+
+      const title = titleInput?.value.trim();
+      const key = keyInput?.value || null;
+      const id = idInput?.value;
+      const isFileUpload = isFileUploadInput?.value === 'true';
+
+      if (isFileUpload) {
+        // File upload - check if file is selected or already uploaded
+        const file = fileInput?.files[0];
+        const existingFilePath = filePathInput?.value;
+        const existingFileName = fileNameInput?.value;
+        const existingFileType = fileTypeInput?.value;
+
+        if (title && (file || existingFilePath)) {
+          links.push({
+            id: id || null,
+            title,
+            url: null,
+            file_path: existingFilePath || null, // Will be set after upload
+            file_name: existingFileName || (file ? file.name : null),
+            file_type: existingFileType || (file ? getFileType(file) : null),
+            is_file_upload: true,
+            file: file || null, // Store file object for upload
+            key: key || null,
+            display_order: globalOrder++,
+          });
+        }
+      } else {
+        // URL link
+        const url = urlInput?.value.trim();
+        if (title && url) {
+          links.push({
+            id: id || null,
+            title,
+            url,
+            file_path: null,
+            file_name: null,
+            file_type: null,
+            is_file_upload: false,
+            key: key || null,
+            display_order: globalOrder++,
+          });
+        }
+      }
+    });
+  });
+
   return links;
 }
 
@@ -10439,6 +11820,9 @@ async function handleSongEditSubmit(event) {
   const keys = collectSongKeys();
   const links = collectSongLinks();
   
+  console.log("Collected links for save:", links);
+  console.log("Final song ID:", finalSongId);
+  
   // Handle song keys
   // Get existing keys
   const { data: existingKeys } = await supabase
@@ -10500,8 +11884,16 @@ async function handleSongEditSubmit(event) {
     !links.some(l => l.id === id)
   );
   
-  // Delete removed links
+  // Delete removed links and their files
   if (deletedIds.length > 0) {
+    // Get file paths of links to be deleted
+    const linksToDelete = existingLinks?.filter(l => deletedIds.includes(l.id)) || [];
+    for (const linkToDelete of linksToDelete) {
+      if (linkToDelete.is_file_upload && linkToDelete.file_path) {
+        await deleteFileFromSupabase(linkToDelete.file_path);
+      }
+    }
+    
     await supabase
       .from("song_links")
       .delete()
@@ -10510,11 +11902,43 @@ async function handleSongEditSubmit(event) {
   
   // Update existing links
   for (const link of updatedLinks) {
+    const existingLink = existingLinks?.find(l => l.id === link.id);
+    let filePath = link.file_path;
+    let fileName = link.file_name;
+    let fileType = link.file_type;
+    
+    // If it's a file upload with a new file, upload it
+    if (link.is_file_upload && link.file) {
+      // Delete old file if it exists
+      if (existingLink?.is_file_upload && existingLink?.file_path) {
+        await deleteFileFromSupabase(existingLink.file_path);
+      }
+      
+      // Upload new file
+      const uploadResult = await uploadFileToSupabase(link.file, finalSongId, null, state.currentTeamId);
+      if (!uploadResult.success) {
+        toastError(`Failed to upload file: ${uploadResult.error}`);
+        continue;
+      }
+      filePath = uploadResult.filePath;
+      fileName = uploadResult.fileName;
+      fileType = uploadResult.fileType;
+    } else if (link.is_file_upload && !link.file && existingLink?.file_path) {
+      // Keep existing file if no new file is selected
+      filePath = existingLink.file_path;
+      fileName = existingLink.file_name || link.file_name;
+      fileType = existingLink.file_type || link.file_type;
+    }
+    
     await supabase
       .from("song_links")
       .update({
         title: link.title,
-        url: link.url,
+        url: link.is_file_upload ? null : link.url,
+        file_path: link.is_file_upload ? filePath : null,
+        file_name: link.is_file_upload ? fileName : null,
+        file_type: link.is_file_upload ? fileType : null,
+        is_file_upload: link.is_file_upload,
         key: link.key || null,
         display_order: link.display_order,
       })
@@ -10523,18 +11947,67 @@ async function handleSongEditSubmit(event) {
   
   // Insert new links
   if (newLinks.length > 0) {
-    await supabase
-      .from("song_links")
-      .insert(
-        newLinks.map(link => ({
-          song_id: finalSongId,
-          title: link.title,
-          url: link.url,
-          key: link.key || null,
-          display_order: link.display_order,
-          team_id: state.currentTeamId,
-        }))
-      );
+    const linksToInsert = [];
+    
+    for (const link of newLinks) {
+      let filePath = link.file_path;
+      let fileName = link.file_name;
+      let fileType = link.file_type;
+      
+      // If it's a file upload, upload the file first
+      if (link.is_file_upload && link.file) {
+        console.log("Uploading file for new link:", link.file.name);
+        const uploadResult = await uploadFileToSupabase(link.file, finalSongId, null, state.currentTeamId);
+        if (!uploadResult.success) {
+          console.error("File upload failed:", uploadResult.error);
+          toastError(`Failed to upload file: ${uploadResult.error}`);
+          continue;
+        }
+        console.log("File uploaded successfully:", uploadResult);
+        filePath = uploadResult.filePath;
+        fileName = uploadResult.fileName;
+        fileType = uploadResult.fileType;
+      } else if (link.is_file_upload && !link.file) {
+        console.warn("File upload link has no file selected:", link);
+        // Still allow saving if there's a title, the file might be uploaded separately
+      }
+      
+      linksToInsert.push({
+        song_id: finalSongId,
+        title: link.title,
+        url: link.is_file_upload ? null : link.url,
+        file_path: link.is_file_upload ? filePath : null,
+        file_name: link.is_file_upload ? fileName : null,
+        file_type: link.is_file_upload ? fileType : null,
+        is_file_upload: link.is_file_upload,
+        key: link.key || null,
+        display_order: link.display_order,
+        team_id: state.currentTeamId,
+      });
+    }
+    
+    if (linksToInsert.length > 0) {
+      const { data: insertedLinks, error: insertError } = await supabase
+        .from("song_links")
+        .insert(linksToInsert)
+        .select();
+      
+      if (insertError) {
+        console.error("Error inserting song links:", insertError);
+        console.error("Links that failed to insert:", linksToInsert);
+        toastError(`Failed to save some links: ${insertError.message}`);
+        
+        // Clean up uploaded files if database insert failed
+        for (const link of linksToInsert) {
+          if (link.is_file_upload && link.file_path) {
+            console.log("Cleaning up uploaded file due to insert failure:", link.file_path);
+            await deleteFileFromSupabase(link.file_path);
+          }
+        }
+      } else {
+        console.log("Successfully inserted song links:", insertedLinks);
+      }
+    }
   }
   
   // Reload songs and update catalog
@@ -10558,7 +12031,11 @@ async function handleSongEditSubmit(event) {
           song_links (
             id,
             title,
-            url
+            url,
+            file_path,
+            file_name,
+            file_type,
+            is_file_upload
           )
         `)
         .eq("id", finalSongId)
@@ -10959,50 +12436,156 @@ function getFaviconUrl(url) {
   }
 }
 
-function renderSongLinksDisplay(links, container) {
+async function renderSongLinksDisplay(links, container) {
   if (!links || links.length === 0) return;
-  
+
   const linksContainer = document.createElement("div");
   linksContainer.style.marginTop = "1rem";
   linksContainer.style.display = "flex";
   linksContainer.style.flexDirection = "column";
   linksContainer.style.gap = "0.5rem";
-  
-  links.forEach(link => {
+
+  for (const link of links) {
     const linkEl = document.createElement("a");
-    linkEl.href = link.url;
-    linkEl.target = "_blank";
-    linkEl.rel = "noopener noreferrer";
     linkEl.className = "song-link-display";
-    
-    const favicon = document.createElement("img");
-    favicon.className = "song-link-favicon";
-    favicon.src = getFaviconUrl(link.url);
-    favicon.alt = "";
-    favicon.onerror = () => {
-      favicon.style.display = "none";
-    };
-    
-    const content = document.createElement("div");
-    content.className = "song-link-content";
-    
-    const title = document.createElement("div");
-    title.className = "song-link-title";
-    title.textContent = link.title;
-    
-    const url = document.createElement("div");
-    url.className = "song-link-url";
-    url.textContent = link.url;
-    
-    content.appendChild(title);
-    content.appendChild(url);
-    
-    linkEl.appendChild(favicon);
-    linkEl.appendChild(content);
-    
+
+    if (link.is_file_upload && link.file_path) {
+      console.log('Rendering file upload link:', {
+        title: link.title,
+        file_path: link.file_path,
+        file_name: link.file_name,
+        is_file_upload: link.is_file_upload
+      });
+      
+      // Check if it's an audio file
+      const isAudio = isAudioFile(link.file_type, link.file_name);
+      
+      // File upload - get signed URL
+      const fileUrl = await getFileUrl(link.file_path);
+      
+      if (isAudio && fileUrl) {
+        // Create audio player instead of download link
+        const audioContainer = document.createElement("div");
+        audioContainer.className = "song-link-display audio-player-container";
+        audioContainer.style.display = "flex";
+        audioContainer.style.alignItems = "center";
+        audioContainer.style.gap = "0.75rem";
+        audioContainer.style.padding = "0.75rem";
+        audioContainer.style.background = "var(--bg-secondary)";
+        audioContainer.style.borderRadius = "0.5rem";
+        audioContainer.style.border = "1px solid var(--border-color)";
+        
+        // Audio icon
+        const audioIcon = document.createElement("div");
+        audioIcon.className = "song-link-favicon";
+        audioIcon.innerHTML = '<i class="fa-solid fa-music" style="font-size: 1.2rem; color: var(--accent-color);"></i>';
+        
+        const content = document.createElement("div");
+        content.className = "song-link-content";
+        content.style.flex = "1";
+        content.style.minWidth = "0";
+        
+        const title = document.createElement("div");
+        title.className = "song-link-title";
+        title.textContent = link.title;
+        
+        // Audio player
+        const audio = document.createElement("audio");
+        audio.controls = true;
+        audio.src = fileUrl;
+        audio.style.width = "100%";
+        audio.style.marginTop = "0.5rem";
+        audio.preload = "metadata";
+        
+        content.appendChild(title);
+        content.appendChild(audio);
+        
+        audioContainer.appendChild(audioIcon);
+        audioContainer.appendChild(content);
+        
+        linksContainer.appendChild(audioContainer);
+        continue; // Skip the link creation for audio files
+      }
+      
+      // For non-audio files, create download link
+      if (fileUrl) {
+        linkEl.href = fileUrl;
+        linkEl.target = "_blank";
+        linkEl.rel = "noopener noreferrer";
+        linkEl.download = link.file_name || link.title;
+        linkEl.style.cursor = "pointer";
+      } else {
+        // Don't make it clickable if URL generation failed
+        linkEl.href = "#";
+        linkEl.onclick = (e) => {
+          e.preventDefault();
+          toastError("Unable to load file. Please try again later.");
+          return false;
+        };
+        linkEl.style.cursor = "not-allowed";
+        linkEl.style.opacity = "0.6";
+        linkEl.title = "File unavailable";
+      }
+      
+      // File icon
+      const fileIcon = document.createElement("div");
+      fileIcon.className = "song-link-favicon";
+      fileIcon.innerHTML = '<i class="fa-solid fa-file" style="font-size: 1.2rem; color: var(--text-secondary);"></i>';
+      
+      const content = document.createElement("div");
+      content.className = "song-link-content";
+      
+      const title = document.createElement("div");
+      title.className = "song-link-title";
+      title.textContent = link.title;
+      
+      const fileInfo = document.createElement("div");
+      fileInfo.className = "song-link-url";
+      fileInfo.textContent = link.file_name || "File";
+      if (link.file_type) {
+        fileInfo.textContent += ` (${link.file_type})`;
+      }
+      
+      content.appendChild(title);
+      content.appendChild(fileInfo);
+      
+      linkEl.appendChild(fileIcon);
+      linkEl.appendChild(content);
+    } else {
+      // URL link
+      linkEl.href = link.url;
+      linkEl.target = "_blank";
+      linkEl.rel = "noopener noreferrer";
+      
+      const favicon = document.createElement("img");
+      favicon.className = "song-link-favicon";
+      favicon.src = getFaviconUrl(link.url);
+      favicon.alt = "";
+      favicon.onerror = () => {
+        favicon.style.display = "none";
+      };
+      
+      const content = document.createElement("div");
+      content.className = "song-link-content";
+      
+      const title = document.createElement("div");
+      title.className = "song-link-title";
+      title.textContent = link.title;
+      
+      const url = document.createElement("div");
+      url.className = "song-link-url";
+      url.textContent = link.url;
+      
+      content.appendChild(title);
+      content.appendChild(url);
+      
+      linkEl.appendChild(favicon);
+      linkEl.appendChild(content);
+    }
+
     linksContainer.appendChild(linkEl);
-  });
-  
+  }
+
   container.appendChild(linksContainer);
 }
 

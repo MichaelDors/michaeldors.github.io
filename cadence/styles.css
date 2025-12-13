@@ -1376,6 +1376,80 @@ textarea {
   white-space: nowrap;
 }
 
+/* File upload display styles */
+.file-upload-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.file-upload-display input[type="file"] {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.375rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.file-upload-display input[type="file"]:hover {
+  border-color: var(--border-light);
+}
+
+.file-upload-status {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+  min-height: 1.2rem;
+}
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: var(--bg-tertiary);
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-color);
+}
+
+.file-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.file-type {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Audio player container */
+.audio-player-container {
+  transition: all 0.2s ease;
+}
+
+.audio-player-container:hover {
+  border-color: var(--border-light);
+  background: var(--bg-tertiary);
+}
+
+.audio-player-container audio {
+  outline: none;
+}
+
+.audio-player-container audio::-webkit-media-controls-panel {
+  background-color: var(--bg-primary);
+}
+
+.audio-player-container audio::-webkit-media-controls-play-button {
+  background-color: var(--accent-color);
+  border-radius: 50%;
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
