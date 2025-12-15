@@ -2303,6 +2303,20 @@ async function fetchProfile() {
     console.log('  - Query completed. Error:', error?.code || 'none');
     console.log('  - Data:', data ? 'found' : 'not found');
 
+    // NEW: Always reconcile any pending invites for this logged-in user.
+    // There should never be a case where a user with an account remains "pending".
+    // This will:
+    // - Attach them to any team that has invited them
+    // - Migrate assignments
+    // - Delete the pending_invites row
+    if (state.session?.user) {
+      try {
+        await createProfileAndMigrateInvites(state.session.user);
+      } catch (reconcileError) {
+        console.error('❌ Error reconciling pending invites for logged-in user:', reconcileError);
+      }
+    }
+
     if (error && error.code !== "PGRST116") {
       console.error('  - ❌ Profile fetch error:', error);
       console.error('  - Error details:', JSON.stringify(error, null, 2));
