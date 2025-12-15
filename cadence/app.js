@@ -288,20 +288,38 @@ async function safeSupabaseOperation(operation, options = {}) {
 // Helper function to check if user has manager permissions
 // Returns false if in member view mode, even if user is a manager
 // Returns true for both owners and managers
+// IMPORTANT: Like isOwner(), this prefers team_members (state.userTeams) over profile flags
 function isManager() {
   if (state.isMemberView) return false;
   
-  // Check if user is owner or can manage from profile (backward compatibility)
-  if (state.profile?.is_owner || state.profile?.can_manage) {
-    return true;
+  // Prefer per-team permissions when we have them
+  if (state.currentTeamId && state.userTeams && state.userTeams.length > 0) {
+    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+    if (currentTeam) {
+      const canManageFromTeam = currentTeam.is_owner === true || currentTeam.can_manage === true;
+      if (canManageFromTeam) {
+        return true;
+      } else {
+        // If team_members says user is NOT manager, treat them as a member
+        // even if older profile flags suggest otherwise (stale data)
+        if (state.profile?.is_owner || state.profile?.can_manage) {
+          console.warn('⚠️ isManager() mismatch: userTeams says NOT manager, but profile flags suggest manager. Using userTeams (correct).', {
+            currentTeamId: state.currentTeamId,
+            currentTeamName: currentTeam.name,
+            'userTeams.is_owner': currentTeam.is_owner,
+            'userTeams.can_manage': currentTeam.can_manage,
+            'profile.is_owner': state.profile.is_owner,
+            'profile.can_manage': state.profile.can_manage
+          });
+        }
+        return false;
+      }
+    }
   }
   
-  // Check if user is owner or can manage in current team (multi-team support)
-  if (state.currentTeamId) {
-    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
-    if (currentTeam && (currentTeam.is_owner || currentTeam.can_manage)) {
-      return true;
-    }
+  // Fallback to profile only if userTeams is not available yet (during initial load)
+  if ((state.profile?.is_owner || state.profile?.can_manage) && (!state.userTeams || state.userTeams.length === 0)) {
+    return true;
   }
   
   return false;
@@ -946,6 +964,8 @@ function bindEvents() {
   
   // Header dropdown toggle (desktop)
   el("btn-header-add-toggle")?.addEventListener("click", (e) => {
+    // Extra safety: if user isn't a manager (or is in member view), do nothing
+    if (!isManager()) return;
     e.stopPropagation();
     const dropdownMenu = el("header-add-dropdown-menu");
     if (dropdownMenu) {
@@ -955,6 +975,8 @@ function bindEvents() {
   
   // Mobile header dropdown toggle
   el("btn-mobile-header-add-toggle")?.addEventListener("click", (e) => {
+    // Extra safety: if user isn't a manager (or is in member view), do nothing
+    if (!isManager()) return;
     e.stopPropagation();
     const dropdownMenu = el("mobile-header-add-dropdown-menu");
     const button = e.currentTarget;
