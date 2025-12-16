@@ -1035,6 +1035,30 @@ main {
   transform: translateY(-1px);
 }
 
+.time-alerts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+
+.time-alert-chip {
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.7rem;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.time-alert-chip.selected {
+  border-color: var(--accent-color);
+  background: var(--accent-color);
+  color: var(--bg-primary);
+}
+
 .btn.primary:active {
   transform: translateY(0);
 }

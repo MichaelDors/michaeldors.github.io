@@ -6734,19 +6734,42 @@ function closeSetModal() {
   state.currentSetSongs = [];
 }
 
-function openTimesModal() {
+async function openTimesModal() {
   if (!isManager() || !state.selectedSet) return;
   const set = state.selectedSet;
   const timesModal = el("times-modal");
   timesModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   
+  // Prepare in-memory map of existing time alerts
+  state.setTimeAlerts = { service: {}, rehearsal: {} };
+  
+  // Load existing alerts BEFORE rendering rows so we can pre-select chips
+  await safeSupabaseOperation(async () => {
+    const { data: timeAlerts, error } = await supabase
+      .from("set_time_alerts")
+      .select("time_type, time_id, offset_days")
+      .eq("set_id", set.id);
+
+    if (error) {
+      console.error("Error loading time alerts:", error);
+      return;
+    }
+
+    (timeAlerts || []).forEach((a) => {
+      const bucket = a.time_type === "rehearsal" ? state.setTimeAlerts.rehearsal : state.setTimeAlerts.service;
+      if (!bucket[a.time_id]) bucket[a.time_id] = new Set();
+      bucket[a.time_id].add(a.offset_days);
+    });
+  });
+  
   // Clear and populate service times
   const serviceTimesList = el("service-times-list");
   serviceTimesList.innerHTML = "";
   if (set?.service_times && set.service_times.length > 0) {
     set.service_times.forEach((st) => {
-      addServiceTimeRow(st.service_time, st.id);
+      const existingOffsets = (state.setTimeAlerts.service[st.id] || new Set());
+      addServiceTimeRow(st.service_time, st.id, Array.from(existingOffsets));
     });
   }
   
@@ -6755,7 +6778,8 @@ function openTimesModal() {
   rehearsalTimesList.innerHTML = "";
   if (set?.rehearsal_times && set.rehearsal_times.length > 0) {
     set.rehearsal_times.forEach((rt) => {
-      addRehearsalTimeRow(rt.rehearsal_date, rt.rehearsal_time, rt.id);
+      const existingOffsets = (state.setTimeAlerts.rehearsal[rt.id] || new Set());
+      addRehearsalTimeRow(rt.rehearsal_date, rt.rehearsal_time, rt.id, Array.from(existingOffsets));
     });
   }
 }
@@ -6836,6 +6860,120 @@ function addSetAssignmentInput(existingAssignment = null) {
   container.appendChild(div);
 }
 
+// Helper to build a stable "identity" key for an assignment row from the database
+function getAssignmentIdentityKeyFromDbRow(row) {
+  if (!row) return null;
+  if (row.person_id) return `person:${row.person_id}`;
+  if (row.pending_invite_id) return `invite:${row.pending_invite_id}`;
+  if (row.person_email) return `email:${String(row.person_email).toLowerCase()}`;
+  return null;
+}
+
+// Helper to build a stable "identity" key for an assignment object from the UI
+function getAssignmentIdentityKeyFromFormAssignment(assignment) {
+  if (!assignment) return null;
+  if (assignment.person_id) return `person:${assignment.person_id}`;
+  if (assignment.pending_invite_id) return `invite:${assignment.pending_invite_id}`;
+  if (assignment.person_email) return `email:${String(assignment.person_email).toLowerCase()}`;
+  return null;
+}
+
+// Fire-and-forget wrapper for sending assignment notification emails via Supabase Edge Function
+async function notifyAssignmentEmails(setId, teamId, recipients, mode) {
+  if (!setId || !teamId || !recipients || recipients.length === 0) return;
+
+  try {
+    // Quick client-side check against team daily email limit so we can
+    // show a toast immediately without waiting for the edge function.
+    try {
+      const { data: teamLimitData, error: teamLimitError } = await supabase
+        .from("teams")
+        .select("daily_email_limit, daily_email_count, daily_email_count_date")
+        .eq("id", teamId)
+        .maybeSingle();
+
+      if (!teamLimitError && teamLimitData) {
+        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const limit =
+          typeof teamLimitData.daily_email_limit === "number"
+            ? teamLimitData.daily_email_limit
+            : 500;
+
+        let count =
+          typeof teamLimitData.daily_email_count === "number"
+            ? teamLimitData.daily_email_count
+            : 0;
+        const countDate = teamLimitData.daily_email_count_date || null;
+
+        if (countDate !== today) {
+          count = 0;
+        }
+
+        const toSend = recipients.length;
+        const newCount = count + toSend;
+
+        if (newCount > limit) {
+          console.warn("Skipping assignment emails due to client-side daily limit check", {
+            teamId,
+            limit,
+            currentCount: count,
+            attemptedToSend: toSend,
+          });
+          toastError(
+            "Couldn't send assignment emails: this team has hit its daily email limit. Please contact support if you think this is a mistake."
+          );
+          return;
+        }
+      }
+    } catch (limitErr) {
+      console.error("Error checking team email limits on client:", limitErr);
+      // If this fails, we still let the edge function enforce limits server-side.
+    }
+
+    console.log("📧 Calling notify-assignments edge function:", {
+      setId,
+      teamId,
+      mode,
+      recipientCount: recipients.length,
+    });
+
+    // Fire-and-forget: don't block UI on email sending.
+    supabase.functions
+      .invoke("notify-assignments", {
+        body: {
+          setId,
+          teamId,
+          mode, // 'per_set' or 'per_song'
+          recipients,
+        },
+      })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("❌ Edge function returned error:", error);
+          const status = error?.context?.response?.status;
+          if (status === 429) {
+            toastError(
+              "Couldn't send assignment emails: this team has hit its daily email limit. Please contact support if you think this is a mistake."
+            );
+          }
+        } else {
+          console.log("✅ Edge function response:", data);
+          if (data?.error === "daily_email_limit_exceeded") {
+            toastError(
+              "Couldn't send assignment emails: this team has hit its daily email limit. Please contact support if you think this is a mistake."
+            );
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Error calling assignment notification edge function:", error);
+      });
+  } catch (error) {
+    console.error("❌ Error calling assignment notification edge function:", error);
+    // Do not block the main flow on email failures
+  }
+}
+
 async function handleSetAssignmentsSubmit(event) {
   event.preventDefault();
   if (!isManager() || !state.selectedSet) return;
@@ -6855,6 +6993,39 @@ async function handleSetAssignmentsSubmit(event) {
     console.error("Error fetching existing assignments:", fetchError);
     toastError("Unable to load existing assignments. Check console.");
     return;
+  }
+
+  // Determine assignment mode and which people are *newly* assigned to this set
+  const assignmentMode = getSetAssignmentMode(set);
+  let newRecipients = [];
+
+  if (assignmentMode === "per_set") {
+    const existingKeys = new Set(
+      (existingAssignments || [])
+        .map((row) => getAssignmentIdentityKeyFromDbRow(row))
+        .filter(Boolean)
+    );
+
+    const currentAssignments = assignments || [];
+    const currentKeys = new Map(); // key -> recipient info for backend
+
+    currentAssignments.forEach((a) => {
+      const key = getAssignmentIdentityKeyFromFormAssignment(a);
+      if (!key) return;
+      if (!currentKeys.has(key)) {
+        currentKeys.set(key, {
+          key,
+          person_id: a.person_id || null,
+          pending_invite_id: a.pending_invite_id || null,
+          person_email: a.person_email || null,
+        });
+      }
+    });
+
+    // Newly assigned = in current but not in existing
+    newRecipients = Array.from(currentKeys.values()).filter(
+      (r) => !existingKeys.has(r.key)
+    );
   }
   
   // Determine which to delete, update, and insert
@@ -6960,7 +7131,12 @@ async function handleSetAssignmentsSubmit(event) {
       return;
     }
   }
-  
+
+  // Send notifications for newly assigned people (per-set mode only)
+  if (assignmentMode === "per_set" && newRecipients.length > 0) {
+    await notifyAssignmentEmails(setId, state.currentTeamId, newRecipients, "per_set");
+  }
+
   toastSuccess("Assignments saved successfully");
   closeSetAssignmentsModal();
   await loadSets();
@@ -7052,9 +7228,39 @@ async function handleTimesSubmit(event) {
   const serviceTimes = Array.from(serviceTimeRows)
     .map(row => {
       const input = row.querySelector('input[type="time"]');
-      return input?.value || null;
+      const time = input?.value || null;
+      const offsets = getSelectedTimeAlertsForRow(row);
+      return time ? { time, offsets } : null;
     })
-    .filter(time => time);
+    .filter(st => st);
+  
+  // Handle rehearsal times
+  const rehearsalTimeRows = el("rehearsal-times-list").querySelectorAll(".rehearsal-time-row");
+  const rehearsalTimes = Array.from(rehearsalTimeRows)
+    .map(row => {
+      const dateInput = row.querySelector('input[type="date"]');
+      const timeInput = row.querySelector('input[type="time"]');
+      const offsets = getSelectedTimeAlertsForRow(row);
+      if (dateInput?.value && timeInput?.value) {
+        return {
+          date: dateInput.value,
+          time: timeInput.value,
+          offsets,
+        };
+      }
+      return null;
+    })
+    .filter(rt => rt);
+
+  // Enforce max 3 alerts per set across all times
+  const totalAlerts =
+    serviceTimes.reduce((sum, st) => sum + (st.offsets?.length || 0), 0) +
+    rehearsalTimes.reduce((sum, rt) => sum + (rt.offsets?.length || 0), 0);
+
+  if (totalAlerts > 3) {
+    toastError("You can set up to 3 alerts per set across all service and rehearsal times.");
+    return;
+  }
 
   // Delete existing service times for this set
   await supabase
@@ -7063,14 +7269,18 @@ async function handleTimesSubmit(event) {
     .eq("set_id", setId);
 
   // Insert new service times
+  let insertedServiceTimes = null;
   if (serviceTimes.length > 0) {
-    const { error: serviceError } = await supabase
+    const { data, error: serviceError } = await supabase
       .from("service_times")
-      .insert(serviceTimes.map(time => ({
+      .insert(serviceTimes.map(st => ({
         set_id: setId,
-        service_time: time,
+        service_time: st.time,
         team_id: state.currentTeamId
-      })));
+      })))
+      .select("id, service_time");
+
+    insertedServiceTimes = data;
 
     if (serviceError) {
       console.error("Error saving service times:", serviceError);
@@ -7079,22 +7289,6 @@ async function handleTimesSubmit(event) {
     }
   }
 
-  // Handle rehearsal times
-  const rehearsalTimeRows = el("rehearsal-times-list").querySelectorAll(".rehearsal-time-row");
-  const rehearsalTimes = Array.from(rehearsalTimeRows)
-    .map(row => {
-      const dateInput = row.querySelector('input[type="date"]');
-      const timeInput = row.querySelector('input[type="time"]');
-      if (dateInput?.value && timeInput?.value) {
-        return {
-          date: dateInput.value,
-          time: timeInput.value
-        };
-      }
-      return null;
-    })
-    .filter(rt => rt);
-
   // Delete existing rehearsal times for this set
   await supabase
     .from("rehearsal_times")
@@ -7102,15 +7296,19 @@ async function handleTimesSubmit(event) {
     .eq("set_id", setId);
 
   // Insert new rehearsal times
+  let insertedRehearsalTimes = null;
   if (rehearsalTimes.length > 0) {
-    const { error: rehearsalError } = await supabase
+    const { data, error: rehearsalError } = await supabase
       .from("rehearsal_times")
       .insert(rehearsalTimes.map(rt => ({
         set_id: setId,
         rehearsal_date: rt.date,
         rehearsal_time: rt.time,
         team_id: state.currentTeamId
-      })));
+      })))
+      .select("id, rehearsal_date, rehearsal_time");
+
+    insertedRehearsalTimes = data;
 
     if (rehearsalError) {
       console.error("Error saving rehearsal times:", rehearsalError);
@@ -7119,7 +7317,56 @@ async function handleTimesSubmit(event) {
     }
   }
   
-  toastSuccess("Times saved successfully");
+  // Delete existing alerts for this set before recreating them
+  await supabase.from("set_time_alerts").delete().eq("set_id", setId);
+
+  // Recreate alerts for service times
+  const alertInserts = [];
+  if (serviceTimes.length > 0 && insertedServiceTimes) {
+    insertedServiceTimes.forEach((row, index) => {
+      const cfg = serviceTimes[index];
+      (cfg.offsets || []).forEach((offset) => {
+        alertInserts.push({
+          set_id: setId,
+          team_id: state.currentTeamId,
+          time_type: "service",
+          time_id: row.id,
+          offset_days: offset,
+          created_by: state.profile.id,
+        });
+      });
+    });
+  }
+
+  // Recreate alerts for rehearsal times
+  if (rehearsalTimes.length > 0 && insertedRehearsalTimes) {
+    insertedRehearsalTimes.forEach((row, index) => {
+      const cfg = rehearsalTimes[index];
+      (cfg.offsets || []).forEach((offset) => {
+        alertInserts.push({
+          set_id: setId,
+          team_id: state.currentTeamId,
+          time_type: "rehearsal",
+          time_id: row.id,
+          offset_days: offset,
+          created_by: state.profile.id,
+        });
+      });
+    });
+  }
+
+  if (alertInserts.length > 0) {
+    const { error: alertError } = await supabase
+      .from("set_time_alerts")
+      .insert(alertInserts);
+
+    if (alertError) {
+      console.error("Error saving time alerts:", alertError);
+      toastError("Times saved, but alerts could not be saved. Check console.");
+    }
+  }
+
+  toastSuccess("Times and alerts saved successfully");
   closeTimesModal();
   
   // Reload sets to get updated times
@@ -7134,7 +7381,33 @@ async function handleTimesSubmit(event) {
   }
 }
 
-function addServiceTimeRow(time = "", id = null) {
+const TIME_ALERT_OPTIONS = [
+  { label: "1w", value: -7 },
+  { label: "3d", value: -3 },
+  { label: "2d", value: -2 },
+  { label: "1d", value: -1 },
+  { label: "Day Of", value: 0 },
+];
+
+function getSelectedTimeAlertsForRow(row) {
+  const chips = row.querySelectorAll(".time-alert-chip.selected");
+  return Array.from(chips).map((chip) => parseInt(chip.dataset.offsetDays, 10));
+}
+
+function applySelectedTimeAlertsToRow(row, offsets = []) {
+  const chips = row.querySelectorAll(".time-alert-chip");
+  const set = new Set(offsets.map((v) => Number(v)));
+  chips.forEach((chip) => {
+    const value = parseInt(chip.dataset.offsetDays, 10);
+    if (set.has(value)) {
+      chip.classList.add("selected");
+    } else {
+      chip.classList.remove("selected");
+    }
+  });
+}
+
+function addServiceTimeRow(time = "", id = null, alertOffsets = []) {
   const container = el("service-times-list");
   const row = document.createElement("div");
   row.className = "service-time-row";
@@ -7142,7 +7415,12 @@ function addServiceTimeRow(time = "", id = null) {
   row.style.gap = "0.75rem";
   row.style.alignItems = "flex-end";
   row.dataset.tempId = id || `temp-${Date.now()}-${Math.random()}`;
-  
+
+  const timeWrapper = document.createElement("div");
+  timeWrapper.style.display = "flex";
+  timeWrapper.style.flexDirection = "column";
+  timeWrapper.style.flex = "1";
+
   const timeInput = document.createElement("input");
   timeInput.type = "time";
   // Convert "HH:MM:SS" to "HH:MM" if needed for time input
@@ -7150,19 +7428,50 @@ function addServiceTimeRow(time = "", id = null) {
   timeInput.value = timeValue;
   timeInput.required = false;
   timeInput.style.flex = "1";
-  
+
+  const alertsRow = document.createElement("div");
+  alertsRow.className = "time-alerts-row";
+  alertsRow.innerHTML = `<span class="muted small-text" style="margin-right: 0.35rem;">Alerts:</span>`;
+
+  TIME_ALERT_OPTIONS.forEach((opt) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "time-alert-chip";
+    chip.dataset.offsetDays = String(opt.value);
+    chip.textContent = opt.label;
+    chip.addEventListener("click", () => {
+      const isSelected = chip.classList.contains("selected");
+      if (!isSelected) {
+        const currentlySelected = document.querySelectorAll("#times-modal .time-alert-chip.selected").length;
+        if (currentlySelected >= 3) {
+          toastError("You can only have up to 3 alerts per set.");
+          return;
+        }
+      }
+      chip.classList.toggle("selected");
+    });
+    alertsRow.appendChild(chip);
+  });
+
+  timeWrapper.appendChild(timeInput);
+  timeWrapper.appendChild(alertsRow);
+
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "btn ghost small";
   removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
   removeBtn.addEventListener("click", () => row.remove());
   
-  row.appendChild(timeInput);
+  row.appendChild(timeWrapper);
   row.appendChild(removeBtn);
   container.appendChild(row);
+
+  if (alertOffsets && alertOffsets.length > 0) {
+    applySelectedTimeAlertsToRow(row, alertOffsets);
+  }
 }
 
-function addRehearsalTimeRow(date = "", time = "", id = null) {
+function addRehearsalTimeRow(date = "", time = "", id = null, alertOffsets = []) {
   const container = el("rehearsal-times-list");
   const row = document.createElement("div");
   row.className = "rehearsal-time-row";
@@ -7170,13 +7479,18 @@ function addRehearsalTimeRow(date = "", time = "", id = null) {
   row.style.gap = "0.75rem";
   row.style.alignItems = "flex-end";
   row.dataset.tempId = id || `temp-${Date.now()}-${Math.random()}`;
-  
+
+  const timeWrapper = document.createElement("div");
+  timeWrapper.style.display = "flex";
+  timeWrapper.style.flexDirection = "column";
+  timeWrapper.style.flex = "1";
+
   const dateInput = document.createElement("input");
   dateInput.type = "date";
   dateInput.value = date;
   dateInput.required = false;
   dateInput.style.flex = "1";
-  
+
   const timeInput = document.createElement("input");
   timeInput.type = "time";
   // Convert "HH:MM:SS" to "HH:MM" if needed for time input
@@ -7184,17 +7498,48 @@ function addRehearsalTimeRow(date = "", time = "", id = null) {
   timeInput.value = timeValue;
   timeInput.required = false;
   timeInput.style.flex = "1";
-  
+
+  const alertsRow = document.createElement("div");
+  alertsRow.className = "time-alerts-row";
+  alertsRow.innerHTML = `<span class="muted small-text" style="margin-right: 0.35rem;">Alerts:</span>`;
+
+  TIME_ALERT_OPTIONS.forEach((opt) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "time-alert-chip";
+    chip.dataset.offsetDays = String(opt.value);
+    chip.textContent = opt.label;
+    chip.addEventListener("click", () => {
+      const isSelected = chip.classList.contains("selected");
+      if (!isSelected) {
+        const currentlySelected = document.querySelectorAll("#times-modal .time-alert-chip.selected").length;
+        if (currentlySelected >= 3) {
+          toastError("You can only have up to 3 alerts per set.");
+          return;
+        }
+      }
+      chip.classList.toggle("selected");
+    });
+    alertsRow.appendChild(chip);
+  });
+
+  timeWrapper.appendChild(dateInput);
+  timeWrapper.appendChild(timeInput);
+  timeWrapper.appendChild(alertsRow);
+
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "btn ghost small";
   removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
   removeBtn.addEventListener("click", () => row.remove());
   
-  row.appendChild(dateInput);
-  row.appendChild(timeInput);
+  row.appendChild(timeWrapper);
   row.appendChild(removeBtn);
   container.appendChild(row);
+
+  if (alertOffsets && alertOffsets.length > 0) {
+    applySelectedTimeAlertsToRow(row, alertOffsets);
+  }
 }
 
 async function handleSetSubmit(event) {
@@ -8113,6 +8458,48 @@ async function handleAddSongToSet(event) {
         status: shouldAutoAccept ? 'accepted' : 'pending',
       };
     }));
+
+    // In per-song mode, compute people who are newly assigned to this set (across all songs)
+    let newSongRecipients = [];
+    if (assignmentMode === 'per_song' && assignmentsToInsert.length > 0) {
+      const { data: existingSetSongAssignments, error: existingSetSongErr } = await supabase
+        .from("song_assignments")
+        .select(`
+          person_id,
+          pending_invite_id,
+          person_email,
+          set_song:set_song_id ( set_id )
+        `)
+        .eq("set_song.set_id", set.id);
+
+      if (existingSetSongErr) {
+        console.error("Error fetching existing song assignments for notifications:", existingSetSongErr);
+      } else {
+        const existingKeys = new Set(
+          (existingSetSongAssignments || [])
+            .map((row) => getAssignmentIdentityKeyFromDbRow(row))
+            .filter(Boolean)
+        );
+
+        const currentKeys = new Map();
+        assignmentsToInsert.forEach((a) => {
+          const key = getAssignmentIdentityKeyFromFormAssignment(a);
+          if (!key) return;
+          if (!currentKeys.has(key)) {
+            currentKeys.set(key, {
+              key,
+              person_id: a.person_id || null,
+              pending_invite_id: a.pending_invite_id || null,
+              person_email: a.person_email || null,
+            });
+          }
+        });
+
+        newSongRecipients = Array.from(currentKeys.values()).filter(
+          (r) => !existingKeys.has(r.key)
+        );
+      }
+    }
     
     const { error: assignmentError } = await supabase
       .from("song_assignments")
@@ -8121,6 +8508,8 @@ async function handleAddSongToSet(event) {
     if (assignmentError) {
       console.error(assignmentError);
       toastError("Assignments partially failed.");
+    } else if (assignmentMode === 'per_song' && newSongRecipients.length > 0) {
+      await notifyAssignmentEmails(set.id, state.currentTeamId, newSongRecipients, "per_song");
     }
   }
 
@@ -8240,6 +8629,8 @@ async function handleAddSectionToSet(event) {
     if (assignmentError) {
       console.error(assignmentError);
       toastError("Assignments partially failed.");
+    } else if (assignmentMode === 'per_song' && newSongRecipients.length > 0) {
+      await notifyAssignmentEmails(set.id, state.currentTeamId, newSongRecipients, "per_song");
     }
   }
 
@@ -8996,10 +9387,12 @@ async function handleEditSetSongSubmit(event) {
   }
   
   // Update set_song
-  const { error: updateError } = await supabase
+  const { data: updatedSetSong, error: updateError } = await supabase
     .from("set_songs")
     .update(updateData)
-    .eq("id", setSongId);
+    .eq("id", setSongId)
+    .select("id, set_id")
+    .single();
   
   if (updateError) {
     console.error(updateError);
@@ -9010,7 +9403,55 @@ async function handleEditSetSongSubmit(event) {
   
   // Skip assignment handling for section headers
   if (!isSectionHeader) {
+    const setId = updatedSetSong?.set_id || state.selectedSet?.id || null;
+    const setForMode = state.selectedSet && state.selectedSet.id === setId
+      ? state.selectedSet
+      : state.selectedSet;
+    const assignmentMode = setForMode ? getSetAssignmentMode(setForMode) : 'per_song';
+
     const assignments = collectEditAssignments();
+    let newSongRecipients = [];
+
+    // For per-song mode, detect people who are newly assigned to this set (across all songs)
+    if (setId && assignmentMode === 'per_song' && assignments.length > 0) {
+      const { data: existingSetSongAssignments, error: existingSetSongErr } = await supabase
+        .from("song_assignments")
+        .select(`
+          person_id,
+          pending_invite_id,
+          person_email,
+          set_song:set_song_id ( set_id )
+        `)
+        .eq("set_song.set_id", setId);
+
+      if (existingSetSongErr) {
+        console.error("Error fetching existing song assignments for notifications:", existingSetSongErr);
+      } else {
+        const existingKeys = new Set(
+          (existingSetSongAssignments || [])
+            .map((row) => getAssignmentIdentityKeyFromDbRow(row))
+            .filter(Boolean)
+        );
+
+        const currentKeys = new Map();
+        assignments.forEach((a) => {
+          const key = getAssignmentIdentityKeyFromFormAssignment(a);
+          if (!key) return;
+          if (!currentKeys.has(key)) {
+            currentKeys.set(key, {
+              key,
+              person_id: a.person_id || null,
+              pending_invite_id: a.pending_invite_id || null,
+              person_email: a.person_email || null,
+            });
+          }
+        });
+
+        newSongRecipients = Array.from(currentKeys.values()).filter(
+          (r) => !existingKeys.has(r.key)
+        );
+      }
+    }
   
   // Get existing assignments
   const { data: existingAssignments } = await supabase
@@ -9066,6 +9507,11 @@ async function handleEditSetSongSubmit(event) {
           status: 'pending',
         }))
       );
+    }
+
+    // Send notifications for newly assigned people in per-song mode
+    if (setId && assignmentMode === 'per_song' && newSongRecipients.length > 0) {
+      await notifyAssignmentEmails(setId, state.currentTeamId, newSongRecipients, "per_song");
     }
   }
   
