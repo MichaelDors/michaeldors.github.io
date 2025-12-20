@@ -2511,3 +2511,47 @@ i{
     display: none !important;
   }
 }
+
+/* Resource Search Styles */
+.resource-search-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  color: var(--text-muted);
+  font-style: italic;
+  animation: fadeIn 0.3s ease;
+}
+
+.badge-resource-match {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  background: rgba(255, 123, 81, 0.15);
+  color: var(--accent-color);
+  border: 1px solid rgba(255, 123, 81, 0.3);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.song-match-context {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg-secondary);
+  border-radius: 0.35rem;
+  border-left: 2px solid var(--accent-color);
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

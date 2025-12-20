@@ -6,13 +6,13 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Check for access_token in URL BEFORE creating Supabase client
 // This way we can intercept it before detectSessionInUrl processes it
 // IMPORTANT: This must run synchronously at module load time, before Supabase client is created
-(function() {
+(function () {
   const urlHash = window.location.hash;
   const hashParams = new URLSearchParams(urlHash.substring(1));
   window.__hasAccessToken = hashParams.get('access_token');
   window.__isRecovery = hashParams.get('type') === 'recovery';
   window.__isInviteLink = window.__hasAccessToken && !window.__isRecovery;
-  
+
   console.log('🔍 Pre-init check - Full URL:', window.location.href);
   console.log('🔍 Pre-init check - URL hash:', urlHash);
   console.log('🔍 Pre-init check - hashParams keys:', Array.from(hashParams.keys()));
@@ -106,7 +106,7 @@ function showToast(message, type = 'info', duration = 5000) {
 
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  
+
   // Add icon based on type
   const icon = document.createElement('div');
   icon.className = 'toast-icon';
@@ -117,29 +117,29 @@ function showToast(message, type = 'info', duration = 5000) {
   } else {
     icon.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
   }
-  
+
   const content = document.createElement('div');
   content.className = 'toast-content';
   content.textContent = message;
-  
+
   const closeBtn = document.createElement('button');
   closeBtn.className = 'toast-close';
   closeBtn.setAttribute('aria-label', 'Close');
   closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
   closeBtn.onclick = () => removeToast(toast);
-  
+
   toast.appendChild(icon);
   toast.appendChild(content);
   toast.appendChild(closeBtn);
   container.appendChild(toast);
-  
+
   // Auto-remove after duration
   if (duration > 0) {
     setTimeout(() => {
       removeToast(toast);
     }, duration);
   }
-  
+
   return toast;
 }
 
@@ -188,68 +188,68 @@ function hideDatabaseError() {
 // Check if an error indicates database is unresponsive
 function isDatabaseUnresponsive(error) {
   if (!error) return false;
-  
+
   // Network errors
-  if (error.message?.includes('Failed to fetch') || 
-      error.message?.includes('NetworkError') ||
-      error.message?.includes('Network request failed') ||
-      error.message?.includes('fetch failed')) {
+  if (error.message?.includes('Failed to fetch') ||
+    error.message?.includes('NetworkError') ||
+    error.message?.includes('Network request failed') ||
+    error.message?.includes('fetch failed')) {
     return true;
   }
-  
+
   // Timeout errors
-  if (error.message?.includes('timeout') || 
-      error.message?.includes('timed out') ||
-      error.message?.includes('aborted')) {
+  if (error.message?.includes('timeout') ||
+    error.message?.includes('timed out') ||
+    error.message?.includes('aborted')) {
     return true;
   }
-  
+
   // Connection errors
   if (error.message?.includes('ERR_INTERNET_DISCONNECTED') ||
-      error.message?.includes('ERR_CONNECTION_REFUSED') ||
-      error.message?.includes('ERR_CONNECTION_RESET') ||
-      error.message?.includes('ERR_CONNECTION_CLOSED') ||
-      error.message?.includes('ERR_CONNECTION_TIMED_OUT')) {
+    error.message?.includes('ERR_CONNECTION_REFUSED') ||
+    error.message?.includes('ERR_CONNECTION_RESET') ||
+    error.message?.includes('ERR_CONNECTION_CLOSED') ||
+    error.message?.includes('ERR_CONNECTION_TIMED_OUT')) {
     return true;
   }
-  
+
   // Supabase-specific errors
   if (error.code === 'PGRST301' || // Service unavailable
-      error.code === 'PGRST302' || // Connection timeout
-      error.message?.includes('service unavailable') ||
-      error.message?.includes('connection refused') ||
-      error.message?.includes('503') ||
-      error.message?.includes('502') ||
-      error.message?.includes('504')) {
+    error.code === 'PGRST302' || // Connection timeout
+    error.message?.includes('service unavailable') ||
+    error.message?.includes('connection refused') ||
+    error.message?.includes('503') ||
+    error.message?.includes('502') ||
+    error.message?.includes('504')) {
     return true;
   }
-  
+
   // Check for network error in the error object
-  if (error.name === 'NetworkError' || 
-      error.name === 'TypeError' && error.message?.includes('fetch')) {
+  if (error.name === 'NetworkError' ||
+    error.name === 'TypeError' && error.message?.includes('fetch')) {
     return true;
   }
-  
+
   return false;
 }
 
 // Wrapper function to handle Supabase operations with database error detection
 async function safeSupabaseOperation(operation, options = {}) {
-  const { 
+  const {
     showErrorOnFailure = true,
     retryOnError = false,
     maxRetries = 0,
     timeout = 30000 // 30 second default timeout
   } = options;
-  
+
   try {
     // Wrap operation in timeout
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Operation timed out')), timeout)
     );
-    
+
     const result = await Promise.race([operation(), timeoutPromise]);
-    
+
     // If we got here, operation succeeded - hide error overlay
     if (result?.error && isDatabaseUnresponsive(result.error)) {
       if (showErrorOnFailure) {
@@ -257,29 +257,29 @@ async function safeSupabaseOperation(operation, options = {}) {
       }
       return result;
     }
-    
+
     // Success - hide error overlay
     hideDatabaseError();
     return result;
-    
+
   } catch (error) {
     console.error('Database operation error:', error);
-    
+
     if (isDatabaseUnresponsive(error)) {
       if (showErrorOnFailure) {
         showDatabaseError();
       }
-      
+
       // Return error in Supabase format for consistency
-      return { 
-        data: null, 
+      return {
+        data: null,
         error: {
           message: error.message || 'Database is unresponsive',
           code: error.code || 'DATABASE_UNRESPONSIVE'
         }
       };
     }
-    
+
     // For non-database errors, rethrow or return
     throw error;
   }
@@ -291,7 +291,7 @@ async function safeSupabaseOperation(operation, options = {}) {
 // IMPORTANT: Like isOwner(), this prefers team_members (state.userTeams) over profile flags
 function isManager() {
   if (state.isMemberView) return false;
-  
+
   // Prefer per-team permissions when we have them
   if (state.currentTeamId && state.userTeams && state.userTeams.length > 0) {
     const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
@@ -316,12 +316,12 @@ function isManager() {
       }
     }
   }
-  
+
   // Fallback to profile only if userTeams is not available yet (during initial load)
   if ((state.profile?.is_owner || state.profile?.can_manage) && (!state.userTeams || state.userTeams.length === 0)) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -329,7 +329,7 @@ function isManager() {
 // Returns false if in member view mode, even if user is an owner
 function isOwner() {
   if (state.isMemberView) return false;
-  
+
   // CRITICAL: Prioritize state.userTeams (from team_members) over state.profile.is_owner
   // state.profile.is_owner can be stale after ownership transfers
   // Check if user is owner in current team (multi-team support)
@@ -357,13 +357,13 @@ function isOwner() {
       }
     }
   }
-  
+
   // Fallback to profile only if userTeams is not available yet (during initial load)
   // This should only happen before fetchUserTeams() completes
   if (state.profile?.is_owner && (!state.userTeams || state.userTeams.length === 0)) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -372,10 +372,10 @@ async function init() {
   console.log('🔍 State.isPasswordSetup:', state.isPasswordSetup);
   console.log('🔍 Current URL hash:', window.location.hash);
   console.log('🔍 isInviteLink (from top level):', isInviteLink);
-  
+
   let initialSessionChecked = false;
   let isProcessingSession = false;
-  
+
   // Set up auth state change handler FIRST so it can handle password setup cases
   supabase.auth.onAuthStateChange(async (event, session) => {
     console.log('🔄 Auth state change event:', event);
@@ -383,28 +383,28 @@ async function init() {
     console.log('  - initialSessionChecked:', initialSessionChecked);
     console.log('  - isProcessingSession:', isProcessingSession);
     console.log('  - Session user:', session?.user?.email);
-    
+
     // Don't process INITIAL_SESSION if we haven't done getSession() yet
     if (!initialSessionChecked && event === 'INITIAL_SESSION') {
       console.log('  - Ignoring INITIAL_SESSION event, waiting for getSession()');
       return;
     }
-    
+
     // Prevent double-processing
     if (isProcessingSession && event === 'SIGNED_IN') {
       console.log('  - Already processing session, skipping duplicate SIGNED_IN');
       return;
     }
-    
+
     state.session = session;
-    
+
     // If we're in password reset mode, show password reset form
     if (state.isPasswordReset && session) {
       console.log('  - Password reset mode with session, showing password reset form');
       showPasswordSetupGate();
       return; // Don't proceed with normal flow
     }
-    
+
     // If we're in password setup mode, check if profile exists
     if (state.isPasswordSetup && session) {
       console.log('  - Password setup mode with session, checking profile...');
@@ -413,7 +413,7 @@ async function init() {
         .select("id")
         .eq("id", session.user.id)
         .maybeSingle();
-      
+
       if (!existingProfile) {
         console.log('  - No profile found in password setup mode, showing password setup form');
         showPasswordSetupGate();
@@ -423,17 +423,17 @@ async function init() {
         state.isPasswordSetup = false; // Profile exists, proceed normally
       }
     }
-    
+
     // Skip normal flow if we're in password setup or reset mode and no session
     if ((state.isPasswordSetup || state.isPasswordReset) && !session) {
       console.log('  - Password setup/reset mode, skipping normal auth flow');
       return;
     }
-    
+
     if (session) {
       console.log('  - Session exists, setting up profile and showing app...');
       isProcessingSession = true;
-      
+
       // Create fallback profile immediately so UI can show
       if (!state.profile) {
         state.profile = {
@@ -443,22 +443,22 @@ async function init() {
         };
         console.log('  - Created temporary profile:', state.profile);
       }
-      
+
       // Show app immediately, don't wait for profile fetch
       console.log('  - Showing app immediately...');
       showApp();
-      
+
       // Fetch profile FIRST, then load data
       const profileTimeout = setTimeout(() => {
         console.log('  - ⚠️ Profile fetch timeout, keeping temporary profile');
         isProcessingSession = false;
       }, 2000); // 2 second timeout
-      
+
       fetchProfile().then(() => {
         clearTimeout(profileTimeout);
         console.log('  - Profile fetch complete, state.profile:', state.profile);
         console.log('  - team_id available:', state.profile?.team_id);
-        
+
         // NOW load data after profile is loaded
         Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
           console.log('  - Data loading complete');
@@ -467,7 +467,7 @@ async function init() {
         }).catch(err => {
           console.error('  - Error loading data:', err);
         });
-        
+
         // Update UI in case profile changed (e.g., can_manage status)
         console.log('  - Updating UI with final profile');
         showApp();
@@ -493,10 +493,10 @@ async function init() {
   // Check localStorage for session data
   const supabaseKeys = Object.keys(localStorage).filter(key => key.startsWith('sb-'));
   console.log('LocalStorage Supabase keys:', supabaseKeys.length > 0 ? supabaseKeys : 'None found');
-  
+
   // Bind events first so password setup form handler is ready
   bindEvents();
-  
+
   // Check for password reset link BEFORE checking for session
   // This must happen first so we don't show the login form
   if (state.isPasswordReset || isRecovery) {
@@ -504,18 +504,18 @@ async function init() {
     console.log('  - state.isPasswordReset:', state.isPasswordReset);
     console.log('  - isRecovery:', isRecovery);
     console.log('  - URL hash:', window.location.hash);
-    
+
     // Ensure flag is set
     state.isPasswordReset = true;
-    
+
     // Wait a moment for Supabase to process the URL (detectSessionInUrl)
     // This gives Supabase time to create the session from the access_token
     console.log('⏳ Waiting for Supabase to process URL...');
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     console.log('🔍 Checking for session after wait...');
     const { data: { session: recoverySession }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (recoverySession && !sessionError) {
       console.log('✅ Session created from password reset link for:', recoverySession.user.email);
       state.session = recoverySession; // Set session so we can use it in password reset
@@ -533,7 +533,7 @@ async function init() {
       return;
     }
   }
-  
+
   // Check for invite link BEFORE checking for session
   // This must happen first so we don't show the login form
   if (state.isPasswordSetup || isInviteLink) {
@@ -541,22 +541,22 @@ async function init() {
     console.log('  - state.isPasswordSetup:', state.isPasswordSetup);
     console.log('  - isInviteLink:', isInviteLink);
     console.log('  - URL hash:', window.location.hash);
-    
+
     // Ensure flag is set
     state.isPasswordSetup = true;
-    
+
     // Wait a moment for Supabase to process the URL (detectSessionInUrl)
     // This gives Supabase time to create the session from the access_token
     console.log('⏳ Waiting for Supabase to process URL...');
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     console.log('🔍 Checking for session after wait...');
     const { data: { session: inviteSession }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (inviteSession && !sessionError) {
       console.log('✅ Session created from invite link for:', inviteSession.user.email);
       state.session = inviteSession; // Set session so we can use it in password setup
-      
+
       // Check if profile exists
       console.log('🔍 Checking if profile exists...');
       const { data: existingProfile } = await supabase
@@ -564,7 +564,7 @@ async function init() {
         .select("id")
         .eq("id", inviteSession.user.id)
         .maybeSingle();
-      
+
       if (!existingProfile) {
         console.log('👤 No profile found, showing password setup form');
         showPasswordSetupGate();
@@ -588,16 +588,16 @@ async function init() {
   } else {
     console.log('ℹ️ Not an invite link, proceeding with normal flow');
   }
-  
+
   // Check for existing session first
   console.log('🔍 Checking for existing session...');
   const { data: { session }, error } = await supabase.auth.getSession();
   initialSessionChecked = true;
-  
+
   if (error) {
     console.error('❌ Session error:', error);
   }
-  
+
   console.log('📋 Initial session check result:', session ? '✅ Found session' : '❌ No session');
   if (session) {
     console.log('  - Session user:', session.user?.email);
@@ -605,13 +605,13 @@ async function init() {
     console.log('  - Current time:', new Date());
     console.log('  - Session expired?', new Date(session.expires_at * 1000) < new Date());
   }
-  
+
   // Only process if we have a session and haven't already processed it via onAuthStateChange
   if (session && !isProcessingSession) {
     console.log('✅ Session found, setting up profile and showing app...');
     state.session = session;
     isProcessingSession = true;
-    
+
     // Create fallback profile immediately so UI can show
     if (!state.profile) {
       state.profile = {
@@ -621,23 +621,23 @@ async function init() {
       };
       console.log('  - Created temporary profile:', state.profile);
     }
-    
+
     // Show app immediately, don't wait for profile fetch
     console.log('  - Showing app immediately...');
     showApp();
-    
+
     // Load data in background (non-blocking)
     // Fetch profile FIRST, then load data
     const profileTimeout = setTimeout(() => {
       console.log('  - ⚠️ Profile fetch timeout, keeping temporary profile');
       isProcessingSession = false;
     }, 2000); // 2 second timeout
-    
+
     fetchProfile().then(() => {
       clearTimeout(profileTimeout);
       console.log('✅ Profile fetch complete, state.profile:', state.profile);
       console.log('  - team_id available:', state.profile?.team_id);
-      
+
       // NOW load data after profile is loaded
       Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
         console.log('✅ Data loading complete');
@@ -646,7 +646,7 @@ async function init() {
       }).catch(err => {
         console.error('❌ Error loading data:', err);
       });
-      
+
       // Update UI in case profile changed (e.g., can_manage status)
       console.log('  - Updating UI with final profile');
       showApp();
@@ -662,7 +662,7 @@ async function init() {
   } else {
     console.log('⏳ Session already being processed by auth state change handler');
   }
-  
+
   // Handle recovery or other auth redirects - clear hash after processing
   if (isRecovery || (hasAccessToken && !isRecovery)) {
     // Supabase will handle this via detectSessionInUrl, but we'll clean up the URL after processing
@@ -679,7 +679,7 @@ function bindEvents() {
   console.log('  - loginEmailInput element:', loginEmailInput);
   console.log('  - loginPasswordInput element:', loginPasswordInput);
   console.log('  - authSubmitBtn element:', authSubmitBtn);
-  
+
   // Database error retry button
   const retryBtn = el('database-error-retry');
   retryBtn?.addEventListener('click', async () => {
@@ -689,7 +689,7 @@ function bindEvents() {
       const { error } = await safeSupabaseOperation(async () => {
         return await supabase.from('profiles').select('id').limit(1);
       });
-      
+
       if (!error || !isDatabaseUnresponsive(error)) {
         // Database is responsive, reload data
         if (state.session) {
@@ -705,9 +705,9 @@ function bindEvents() {
       showDatabaseError();
     }
   });
-  
+
   authForm?.addEventListener("submit", handleAuth);
-  
+
   // Toggle signup mode for team leaders
   const toggleSignupBtn = el("toggle-signup");
   toggleSignupBtn?.addEventListener("click", (e) => {
@@ -715,37 +715,37 @@ function bindEvents() {
     isSignUpMode = !isSignUpMode;
     updateAuthUI();
   });
-  
+
   // Forgot password link
   const forgotPasswordLink = el("forgot-password-link");
   forgotPasswordLink?.addEventListener("click", (e) => {
     e.preventDefault();
     showForgotPasswordForm();
   });
-  
+
   // Back to login link
   const backToLoginLink = el("back-to-login-link");
   backToLoginLink?.addEventListener("click", (e) => {
     e.preventDefault();
     showLoginForm();
   });
-  
+
   // Forgot password form submit
   forgotPasswordForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     await handleForgotPasswordSubmit();
   });
-  
+
   // Account management
   el("btn-edit-account")?.addEventListener("click", () => openEditAccountModal());
-  
+
   // Team settings button (owners only)
   el("btn-team-settings")?.addEventListener("click", () => {
     if (isOwner()) {
       openTeamSettingsModal();
     }
   });
-  
+
   // Team settings modal
   el("team-settings-form")?.addEventListener("submit", handleTeamSettingsSubmit);
   el("cancel-team-settings")?.addEventListener("click", () => closeTeamSettingsModal());
@@ -765,7 +765,7 @@ function bindEvents() {
       openLeaveTeamModal(currentTeam.id, currentTeam.name);
     }
   });
-  
+
   // Leave team modal
   el("confirm-leave-team")?.addEventListener("click", async () => {
     const modal = el("leave-team-modal");
@@ -780,7 +780,7 @@ function bindEvents() {
       closeLeaveTeamModal();
     }
   });
-  
+
   // Edit account modal
   el("edit-account-form")?.addEventListener("submit", handleEditAccountSubmit);
   el("cancel-edit-account")?.addEventListener("click", () => closeEditAccountModal());
@@ -791,8 +791,8 @@ function bindEvents() {
     }
   });
   el("btn-delete-account")?.addEventListener("click", () => deleteAccount());
-  
-  
+
+
   // Account switcher
   const accountMenuBtn = el("btn-account-menu");
   const accountMenu = el("account-menu");
@@ -800,7 +800,7 @@ function bindEvents() {
     e.stopPropagation();
     accountMenu?.classList.toggle("hidden");
   });
-  
+
   // Close account menu when clicking outside
   document.addEventListener("click", (e) => {
     if (accountMenu && !accountMenu.contains(e.target) && !accountMenuBtn?.contains(e.target)) {
@@ -814,24 +814,24 @@ function bindEvents() {
       }
     });
   });
-  
+
   // Account menu buttons
   el("btn-create-team")?.addEventListener("click", () => {
     el("account-menu")?.classList.add("hidden");
     openCreateTeamModal();
   });
-  
+
   // Empty state create team button
   el("btn-create-team-empty")?.addEventListener("click", () => {
     openCreateTeamModal();
   });
-  
+
   el("btn-logout-menu")?.addEventListener("click", () => {
     supabase.auth.signOut();
   });
-  
+
   // Team switcher - handled in updateTeamSwitcher via click events
-  
+
   // Create team modal
   el("create-team-form")?.addEventListener("submit", handleCreateTeamSubmit);
   el("cancel-create-team")?.addEventListener("click", () => {
@@ -842,13 +842,13 @@ function bindEvents() {
     el("create-team-modal")?.classList.add("hidden");
     document.body.style.overflow = "";
   });
-  
+
   // Password setup form
   const passwordSetupForm = el("password-setup-form");
   passwordSetupForm?.addEventListener("submit", handlePasswordSetup);
   createSetBtn?.addEventListener("click", () => openSetModal());
   el("btn-invite-member")?.addEventListener("click", () => openInviteModal());
-  
+
   // Member view toggle (header button)
   el("btn-view-as-member")?.addEventListener("click", () => {
     state.isMemberView = true;
@@ -861,7 +861,7 @@ function bindEvents() {
       refreshActiveTab();
     }
   });
-  
+
   // Member view toggle (set detail button)
   el("btn-view-as-member-detail")?.addEventListener("click", () => {
     state.isMemberView = true;
@@ -873,7 +873,7 @@ function bindEvents() {
       refreshActiveTab();
     }
   });
-  
+
   el("btn-exit-member-view")?.addEventListener("click", () => {
     state.isMemberView = false;
     showApp();
@@ -887,13 +887,13 @@ function bindEvents() {
   });
   el("close-invite-modal")?.addEventListener("click", () => closeInviteModal());
   el("cancel-invite")?.addEventListener("click", () => closeInviteModal());
-  
+
   // In-app invite modal
   el("invite-form")?.addEventListener("submit", handleInviteSubmit);
   el("close-edit-person-modal")?.addEventListener("click", () => closeEditPersonModal());
   el("cancel-edit-person")?.addEventListener("click", () => closeEditPersonModal());
   el("edit-person-form")?.addEventListener("submit", handleEditPersonSubmit);
-  
+
   // Tab switching
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -901,17 +901,17 @@ function bindEvents() {
       switchTab(tab);
     });
   });
-  
+
   // Songs tab search
   el("songs-tab-search")?.addEventListener("input", () => {
     renderSongCatalog();
   });
-  
+
   // People tab search
   el("people-tab-search")?.addEventListener("input", () => {
     renderPeople();
   });
-  
+
   // Window resize handler for recalculating assignment pills
   let resizeTimeout;
   window.addEventListener("resize", () => {
@@ -924,9 +924,9 @@ function bindEvents() {
       }
     }, 150);
   });
-  
+
   el("btn-back")?.addEventListener("click", () => hideSetDetail());
-  
+
   // Set detail tab switching (mobile only) - use event delegation
   document.addEventListener("click", (e) => {
     const tabBtn = e.target.closest(".set-detail-tabs .tab-btn");
@@ -961,7 +961,7 @@ function bindEvents() {
       hideSetDetail();
     }
   });
-  
+
   // Header dropdown toggle (desktop)
   el("btn-header-add-toggle")?.addEventListener("click", (e) => {
     // Extra safety: if user isn't a manager (or is in member view), do nothing
@@ -972,7 +972,7 @@ function bindEvents() {
       dropdownMenu.classList.toggle("hidden");
     }
   });
-  
+
   // Mobile header dropdown toggle
   el("btn-mobile-header-add-toggle")?.addEventListener("click", (e) => {
     // Extra safety: if user isn't a manager (or is in member view), do nothing
@@ -986,29 +986,29 @@ function bindEvents() {
         // Get click position relative to the button
         const buttonRect = button.getBoundingClientRect();
         const clickX = e.clientX - buttonRect.left;
-        
+
         // Position dropdown based on click position
         // Align the left edge of dropdown with the click position
         const dropdownWidth = 180; // min-width from CSS
         const container = button.closest('.header-dropdown-container');
-        
+
         if (container) {
           const containerRect = container.getBoundingClientRect();
-          
+
           // Start with click position as left edge
           let leftPosition = clickX;
-          
+
           // Ensure dropdown doesn't go off the right edge of container
           const maxLeft = containerRect.width - dropdownWidth;
           if (leftPosition > maxLeft) {
             leftPosition = maxLeft;
           }
-          
+
           // Ensure dropdown doesn't go off the left edge of container
           if (leftPosition < 0) {
             leftPosition = 0;
           }
-          
+
           dropdownMenu.style.left = `${leftPosition}px`;
           dropdownMenu.style.right = 'auto';
         }
@@ -1016,7 +1016,7 @@ function bindEvents() {
       dropdownMenu.classList.toggle("hidden");
     }
   });
-  
+
   // Header dropdown items (desktop)
   el("btn-header-add-song")?.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -1025,7 +1025,7 @@ function bindEvents() {
       openSongModal();
     }
   });
-  
+
   el("btn-header-add-tag")?.addEventListener("click", (e) => {
     e.stopPropagation();
     closeHeaderDropdown();
@@ -1033,7 +1033,7 @@ function bindEvents() {
       openTagModal();
     }
   });
-  
+
   el("btn-header-add-section")?.addEventListener("click", (e) => {
     e.stopPropagation();
     closeHeaderDropdown();
@@ -1041,7 +1041,7 @@ function bindEvents() {
       openSectionModal();
     }
   });
-  
+
   el("btn-header-add-section-header")?.addEventListener("click", (e) => {
     e.stopPropagation();
     closeHeaderDropdown();
@@ -1049,7 +1049,7 @@ function bindEvents() {
       openSectionHeaderModal();
     }
   });
-  
+
   // Mobile header dropdown items
   el("btn-mobile-header-add-song")?.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -1058,7 +1058,7 @@ function bindEvents() {
       openSongModal();
     }
   });
-  
+
   el("btn-mobile-header-add-tag")?.addEventListener("click", (e) => {
     e.stopPropagation();
     closeHeaderDropdown();
@@ -1066,7 +1066,7 @@ function bindEvents() {
       openTagModal();
     }
   });
-  
+
   el("btn-mobile-header-add-section")?.addEventListener("click", (e) => {
     e.stopPropagation();
     closeHeaderDropdown();
@@ -1074,7 +1074,7 @@ function bindEvents() {
       openSectionModal();
     }
   });
-  
+
   el("btn-mobile-header-add-section-header")?.addEventListener("click", (e) => {
     e.stopPropagation();
     closeHeaderDropdown();
@@ -1082,7 +1082,7 @@ function bindEvents() {
       openSectionHeaderModal();
     }
   });
-  
+
   // Close dropdown when clicking outside
   document.addEventListener("click", (e) => {
     const container = el("header-add-dropdown-container");
@@ -1155,13 +1155,13 @@ function bindEvents() {
   el("song-edit-form")?.addEventListener("submit", handleSongEditSubmit);
   el("btn-add-song-key")?.addEventListener("click", () => addSongKeyInput());
   el("close-song-details-modal")?.addEventListener("click", () => closeSongDetailsModal());
-  
+
   // Format duration input to help with MM:SS entry
   const durationInput = el("song-edit-duration");
   if (durationInput) {
     durationInput.addEventListener("input", (e) => {
       let value = e.target.value.replace(/[^\d:]/g, ""); // Remove non-digits and colons
-      
+
       // Auto-format as user types
       if (value.length > 0 && !value.includes(":")) {
         // If they type just numbers, format it
@@ -1172,7 +1172,7 @@ function bindEvents() {
           value = `${mins}:${secs.toString().padStart(2, "0")}`;
         }
       }
-      
+
       // Limit to reasonable format (max 999:59)
       const parts = value.split(":");
       if (parts.length === 2) {
@@ -1187,10 +1187,10 @@ function bindEvents() {
           }
         }
       }
-      
+
       e.target.value = value;
     });
-    
+
     // Validate on blur
     durationInput.addEventListener("blur", (e) => {
       const value = e.target.value.trim();
@@ -1206,14 +1206,14 @@ function bindEvents() {
       }
     });
   }
-  
+
   el("close-edit-set-song-modal")?.addEventListener("click", () => closeEditSetSongModal());
   el("cancel-edit-set-song")?.addEventListener("click", () => closeEditSetSongModal());
   el("edit-set-song-form")?.addEventListener("submit", handleEditSetSongSubmit);
   el("btn-add-edit-assignment")?.addEventListener("click", addEditAssignmentInput);
-  
+
   console.log('  - ✅ Events bound');
-  
+
   // Cleanup: stop metronome on page unload
   window.addEventListener("beforeunload", () => {
     stopMetronome();
@@ -1226,16 +1226,16 @@ function showAuthGate() {
   console.log('  - dashboard element:', dashboard);
   console.log('  - Current state.session:', state.session);
   console.log('  - Current state.profile:', state.profile);
-  
+
   // Always close set details when showing auth gate
   hideSetDetail();
-  
+
   const passwordSetupGate = el("password-setup-gate");
   if (passwordSetupGate) passwordSetupGate.classList.add("hidden");
-  
+
   const emptyState = el("empty-state");
   if (emptyState) emptyState.classList.add("hidden");
-  
+
   if (authGate) authGate.classList.remove("hidden");
   if (dashboard) dashboard.classList.add("hidden");
   if (userInfo) userInfo.classList.add("hidden");
@@ -1243,10 +1243,10 @@ function showAuthGate() {
   setAuthMessage("");
   isSignUpMode = false;
   updateAuthUI();
-  
+
   // Ensure login form is shown (not forgot password form)
   showLoginForm();
-  
+
   console.log('  - authGate hidden class removed:', !authGate?.classList.contains('hidden'));
   console.log('  - dashboard hidden class added:', dashboard?.classList.contains('hidden'));
 }
@@ -1255,27 +1255,27 @@ function showPasswordSetupGate() {
   console.log('🔐 showPasswordSetupGate() called');
   console.log('  - isPasswordReset:', state.isPasswordReset);
   console.log('  - isPasswordSetup:', state.isPasswordSetup);
-  
+
   // Always close set details when showing password setup gate
   hideSetDetail();
-  
+
   const passwordSetupGate = el("password-setup-gate");
   const authGateEl = el("auth-gate");
   const dashboardEl = el("dashboard");
-  
+
   if (passwordSetupGate) passwordSetupGate.classList.remove("hidden");
   if (authGateEl) authGateEl.classList.add("hidden");
   if (dashboardEl) dashboardEl.classList.add("hidden");
-  
+
   setPasswordSetupMessage("");
   const form = el("password-setup-form");
   if (form) form.reset();
-  
+
   // Update text based on whether it's password reset or setup
   const heading = passwordSetupGate?.querySelector('h2');
   const description = passwordSetupGate?.querySelector('p:not(.muted)');
   const submitButton = el("password-setup-submit-btn");
-  
+
   if (state.isPasswordReset) {
     // Password reset mode
     if (heading) heading.textContent = "Reset Your Password";
@@ -1287,7 +1287,7 @@ function showPasswordSetupGate() {
     if (description) description.textContent = "Please set a password to complete your account setup.";
     if (submitButton) submitButton.textContent = "Set Password";
   }
-  
+
   // Show the user's email if we have a session
   if (state.session?.user?.email) {
     const emailDisplay = passwordSetupGate?.querySelector('.password-setup-email');
@@ -1302,7 +1302,7 @@ function showApp() {
   console.log('✅ showApp() called');
   console.log('  - state.session:', !!state.session);
   console.log('  - state.profile:', state.profile);
-  
+
   // Re-fetch elements in case they weren't available during init
   const authGateEl = el("auth-gate");
   const passwordSetupGateEl = el("password-setup-gate");
@@ -1312,29 +1312,29 @@ function showApp() {
   const createSetBtnEl = el("btn-create-set");
   const createSongBtnEl = el("btn-create-song");
   const inviteMemberBtnEl = el("btn-invite-member");
-  
+
   console.log('  - authGate element:', authGateEl);
   console.log('  - passwordSetupGate element:', passwordSetupGateEl);
   console.log('  - dashboard element:', dashboardEl);
   console.log('  - userInfo element:', userInfoEl);
-  
+
   if (!authGateEl || !dashboardEl) {
     console.error('❌ Critical elements not found! authGate:', !!authGateEl, 'dashboard:', !!dashboardEl);
     return;
   }
-  
+
   // Check if user has no teams - show empty state
   if (!state.currentTeamId || state.userTeams.length === 0) {
     showEmptyState();
     return;
   }
-  
+
   // Force hide auth gate, password setup gate, and show dashboard
   authGateEl.classList.add("hidden");
   if (passwordSetupGateEl) passwordSetupGateEl.classList.add("hidden");
   dashboardEl.classList.remove("hidden");
   el("empty-state")?.classList.add("hidden");
-  
+
   // Check if there's a saved set ID - if so, don't hide set details yet
   // (restoration will happen after sets are loaded)
   const savedSetId = localStorage.getItem('cadence-selected-set-id');
@@ -1343,22 +1343,22 @@ function showApp() {
     hideSetDetail();
   }
   // If there's a saved set ID, we'll restore it after sets are loaded (in loadSets or renderSets)
-  
+
   // Restore the saved tab, defaulting to "sets" if none is saved
   const savedTab = localStorage.getItem('cadence-active-tab') || 'sets';
   switchTab(savedTab);
-  
+
   if (userInfoEl) {
     userInfoEl.classList.remove("hidden");
   }
-  
+
   if (userNameEl) {
     userNameEl.textContent = state.profile?.full_name ?? "Signed In";
   }
-  
+
   // Update team switcher
   updateTeamSwitcher();
-  
+
   // Update team name header above tabs
   const teamNameDisplay = el("team-name-display");
   const teamNameHeader = el("team-name-header");
@@ -1371,11 +1371,11 @@ function showApp() {
   } else if (teamNameHeader) {
     teamNameHeader.classList.add("hidden");
   }
-  
+
   // Show/hide manager buttons based on actual manager status (not member view)
   const viewAsMemberBtn = el("btn-view-as-member");
   const memberViewBanner = el("member-view-banner");
-  
+
   if (state.profile?.can_manage) {
     // Show "View as Member" button if user is a manager
     if (viewAsMemberBtn) {
@@ -1393,14 +1393,14 @@ function showApp() {
     // Hide "View as Member" button if user is not a manager
     if (viewAsMemberBtn) viewAsMemberBtn.classList.add("hidden");
   }
-  
+
   // Show/hide member view banner
   if (state.isMemberView) {
     if (memberViewBanner) memberViewBanner.classList.remove("hidden");
   } else {
     if (memberViewBanner) memberViewBanner.classList.add("hidden");
   }
-  
+
   // Show/hide management buttons based on isManager() (respects member view)
   if (isManager()) {
     if (createSetBtnEl) createSetBtnEl.classList.remove("hidden");
@@ -1411,7 +1411,7 @@ function showApp() {
     if (createSongBtnEl) createSongBtnEl.classList.add("hidden");
     if (inviteMemberBtnEl) inviteMemberBtnEl.classList.add("hidden");
   }
-  
+
   // Show/hide team settings button for owners only
   const teamSettingsBtn = el("btn-team-settings");
   if (isOwner()) {
@@ -1419,14 +1419,14 @@ function showApp() {
   } else {
     if (teamSettingsBtn) teamSettingsBtn.classList.add("hidden");
   }
-  
+
   // Verify the changes took effect
   const authGateHidden = authGateEl.classList.contains('hidden');
   const dashboardVisible = !dashboardEl.classList.contains('hidden');
-  
+
   console.log('  - authGate hidden:', authGateHidden);
   console.log('  - dashboard visible:', dashboardVisible);
-  
+
   if (!authGateHidden || !dashboardVisible) {
     console.error('❌ UI update failed! Forcing update...');
     // Force update with setTimeout to ensure DOM has processed
@@ -1445,19 +1445,19 @@ function showEmptyState() {
   const emptyStateEl = el("empty-state");
   const userInfoEl = el("user-info");
   const userNameEl = el("user-name");
-  
+
   if (!emptyStateEl) return;
-  
+
   // Hide auth gate, password setup gate, dashboard
   if (authGateEl) authGateEl.classList.add("hidden");
   if (passwordSetupGateEl) passwordSetupGateEl.classList.add("hidden");
   if (dashboardEl) dashboardEl.classList.add("hidden");
-  
+
   // Show empty state and user info
   emptyStateEl.classList.remove("hidden");
   if (userInfoEl) userInfoEl.classList.remove("hidden");
   if (userNameEl) userNameEl.textContent = state.profile?.full_name ?? "Signed In";
-  
+
   // Update team switcher
   updateTeamSwitcher();
 }
@@ -1482,7 +1482,7 @@ function updateAuthUI() {
   // Show login/signup toggle for team leaders
   const heading = authGate?.querySelector("h2");
   const description = authGate?.querySelector("p:first-of-type");
-  
+
   if (isSignUpMode) {
     if (heading) heading.textContent = "Team Leader Signup";
     if (description) description.textContent = "Sign up and create a new team. If you're joining a team, ask your team leader to invite you instead.";
@@ -1492,14 +1492,14 @@ function updateAuthUI() {
     if (description) description.textContent = "Sign in with your email and password.";
     if (authSubmitBtn) authSubmitBtn.textContent = "Sign in";
   }
-  
+
   // Show signup toggle
   const toggleSignup = el("toggle-signup");
   const toggleParagraph = toggleSignup?.parentElement;
   if (toggleParagraph && toggleSignup) {
     toggleParagraph.style.display = "block";
-    toggleSignup.textContent = isSignUpMode 
-      ? "Already have an account? Sign in" 
+    toggleSignup.textContent = isSignUpMode
+      ? "Already have an account? Sign in"
       : "Team leader? Create a team";
   }
 }
@@ -1528,19 +1528,19 @@ async function handleAuth(event) {
 
   console.log('  - ✅ Validation passed, proceeding with auth');
   toggleAuthButton(true);
-  
+
   if (isSignUpMode) {
     // Team leader signup - create account and team
     setAuthMessage("Creating team...");
-    
+
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
     });
-    
+
     if (signUpError) {
       console.error('Signup error:', signUpError);
-      
+
       // Handle rate limiting with a user-friendly message
       if (signUpError.status === 429 || signUpError.message?.includes('security purposes')) {
         const waitTimeMatch = signUpError.message?.match(/(\d+)\s+seconds?/);
@@ -1549,28 +1549,28 @@ async function handleAuth(event) {
       } else {
         setAuthMessage(signUpError.message || "Unable to create account. Please try again.", true);
       }
-      
+
       toggleAuthButton(false);
       return;
     }
-    
+
     if (!signUpData.user) {
       setAuthMessage("Unable to create account. Please try again.", true);
       toggleAuthButton(false);
       return;
     }
-    
+
     // Create profile first, then team, then update profile with team_id
     // Order matters: profile must exist before team (foreign key constraint)
     // Use RPC function to create team since user might not have a session yet
     // (if email confirmation is enabled, signUp doesn't create a session)
     const teamName = email.split('@')[0] + "'s Team"; // Default team name
-    
+
     // Step 1: Create profile first (without team_id, will update later)
     // Use RPC function to create profile since user might not have a session yet
     let profileData;
     let profileError;
-    
+
     // Try using the function first (works even without session)
     const { data: profileId, error: profileFunctionError } = await supabase
       .rpc('create_profile_for_user', {
@@ -1580,7 +1580,7 @@ async function handleAuth(event) {
         p_is_owner: true,
         p_can_manage: true
       });
-    
+
     // If function doesn't exist or fails, fall back to direct insert
     if (profileFunctionError && (profileFunctionError.code === '42883' || profileFunctionError.message?.includes('function'))) {
       console.log('Profile function not available, trying direct insert...');
@@ -1596,7 +1596,7 @@ async function handleAuth(event) {
         })
         .select()
         .single();
-      
+
       profileData = directProfileData;
       profileError = directProfileError;
     } else if (profileFunctionError) {
@@ -1616,32 +1616,32 @@ async function handleAuth(event) {
     } else {
       profileError = new Error('Profile creation function returned no ID');
     }
-    
+
     if (profileError) {
       console.error('Profile creation error:', profileError);
       setAuthMessage("Account created but profile creation failed. Please contact support.", true);
       toggleAuthButton(false);
       return;
     }
-    
+
     if (!profileData || !profileData.id) {
       console.error('Profile creation failed: No profile data returned');
       setAuthMessage("Account created but profile creation failed. Please contact support.", true);
       toggleAuthButton(false);
       return;
     }
-    
+
     // Step 2: Create team (now that profile exists, owner_id foreign key will work)
     let teamData;
     let teamError;
-    
+
     // Try using the function first (works even without session)
     const { data: teamId, error: teamFunctionError } = await supabase
       .rpc('create_team_for_user', {
         p_team_name: teamName,
         p_owner_id: signUpData.user.id
       });
-    
+
     // If function doesn't exist or fails, fall back to direct insert
     if (teamFunctionError && (teamFunctionError.code === '42883' || teamFunctionError.message?.includes('function'))) {
       console.log('Function not available, trying direct insert...');
@@ -1653,7 +1653,7 @@ async function handleAuth(event) {
         })
         .select()
         .single();
-      
+
       teamData = directTeamData;
       teamError = directTeamError;
     } else if (teamFunctionError) {
@@ -1670,7 +1670,7 @@ async function handleAuth(event) {
     } else {
       teamError = new Error('Team creation function returned no ID');
     }
-    
+
     if (teamError) {
       console.error('Team creation error:', teamError);
       // Clean up: delete the profile we just created
@@ -1679,7 +1679,7 @@ async function handleAuth(event) {
       toggleAuthButton(false);
       return;
     }
-    
+
     if (!teamData || !teamData.id) {
       console.error('Team creation failed: No team data returned');
       // Clean up: delete the profile we just created
@@ -1688,7 +1688,7 @@ async function handleAuth(event) {
       toggleAuthButton(false);
       return;
     }
-    
+
     // Step 3: Add user to team_members as owner
     const { error: teamMemberError } = await supabase
       .from("team_members")
@@ -1699,7 +1699,7 @@ async function handleAuth(event) {
         is_owner: true,
         can_manage: true
       });
-    
+
     if (teamMemberError) {
       console.error('Team member creation error:', teamMemberError);
       // Clean up: delete both profile and team
@@ -1709,7 +1709,7 @@ async function handleAuth(event) {
       toggleAuthButton(false);
       return;
     }
-    
+
     // Step 4: Update profile with team_id
     // Use RPC function to update profile since user might not have a session yet
     const { error: updateProfileFunctionError } = await supabase
@@ -1717,28 +1717,28 @@ async function handleAuth(event) {
         p_user_id: signUpData.user.id,
         p_team_id: teamData.id
       });
-    
+
     let updateProfileError = updateProfileFunctionError;
-    
+
     // If function doesn't exist, fall back to direct update
     // IMPORTANT: Explicitly preserve full_name to prevent it from being reset to email
     if (updateProfileFunctionError && (updateProfileFunctionError.code === '42883' || updateProfileFunctionError.message?.includes('function'))) {
       console.log('Update function not available, trying direct update...');
       const updateData = { team_id: teamData.id };
-      
+
       // Preserve full_name if it exists (prevent reset to email)
       if (profileData?.full_name) {
         updateData.full_name = profileData.full_name;
       }
-      
+
       const { error: directUpdateError } = await supabase
         .from("profiles")
         .update(updateData)
         .eq("id", signUpData.user.id);
-      
+
       updateProfileError = directUpdateError;
     }
-    
+
     if (updateProfileError) {
       console.error('Profile update error:', updateProfileError);
       // Clean up: delete team_members, team, and profile
@@ -1749,10 +1749,10 @@ async function handleAuth(event) {
       toggleAuthButton(false);
       return;
     }
-    
+
     // Update local profileData object with team_id
     profileData.team_id = teamData.id;
-    
+
     setAuthMessage("Team created! Please check your email to verify your account.", false);
     toggleAuthButton(false);
     // Don't auto-login - they need to verify email first
@@ -1766,30 +1766,30 @@ async function handleAuth(event) {
       password,
     });
     const error = signInError;
-    
+
     if (!error && signInData.session) {
       console.log('✅ Sign in successful!');
       console.log('  - Session user:', signInData.session.user?.email);
       console.log('  - Session expires at:', new Date(signInData.session.expires_at * 1000));
-      
+
       // Verify session is stored
       const { data: { session: storedSession } } = await supabase.auth.getSession();
       console.log('  - Stored session after sign in:', storedSession ? '✅ Found' : '❌ Not found');
-      
+
       // Update state immediately
       console.log('  - Updating state.session...');
       state.session = signInData.session;
       console.log('  - state.session updated:', !!state.session);
-      
-    console.log('  - Fetching profile...');
-    await fetchProfile();
-    console.log('  - Profile fetched, state.profile:', state.profile);
-    console.log('  - team_id available:', state.profile?.team_id);
-    
-    console.log('  - Loading songs, sets, and people...');
-    await Promise.all([loadSongs(), loadSets(), loadPeople()]);
-    console.log('  - Data loaded');
-      
+
+      console.log('  - Fetching profile...');
+      await fetchProfile();
+      console.log('  - Profile fetched, state.profile:', state.profile);
+      console.log('  - team_id available:', state.profile?.team_id);
+
+      console.log('  - Loading songs, sets, and people...');
+      await Promise.all([loadSongs(), loadSets(), loadPeople()]);
+      console.log('  - Data loaded');
+
       console.log('  - Calling showApp()...');
       showApp();
       setAuthMessage("");
@@ -1800,7 +1800,7 @@ async function handleAuth(event) {
 
     if (error) {
       console.error('Auth error:', error);
-      
+
       // Handle rate limiting with a user-friendly message
       if (error.status === 429 || error.message?.includes('security purposes')) {
         const waitTimeMatch = error.message?.match(/(\d+)\s+seconds?/);
@@ -1809,7 +1809,7 @@ async function handleAuth(event) {
       } else {
         setAuthMessage(error.message || "Unable to sign in. Please check your credentials.", true);
       }
-      
+
       toggleAuthButton(false);
     } else {
       // Fallback - onAuthStateChange should handle this
@@ -1842,21 +1842,21 @@ function setPasswordSetupMessage(message, isError = false) {
 
 function showForgotPasswordForm() {
   console.log('🔐 showForgotPasswordForm() called');
-  
+
   // Hide login form, show forgot password form
   if (loginFormContainer) loginFormContainer.classList.add("hidden");
   if (forgotPasswordContainer) forgotPasswordContainer.classList.remove("hidden");
-  
+
   // Pre-fill email from login form if available
   if (loginEmailInput?.value && forgotPasswordEmailInput) {
     forgotPasswordEmailInput.value = loginEmailInput.value;
   }
-  
+
   // Focus on email input
   if (forgotPasswordEmailInput) {
     setTimeout(() => forgotPasswordEmailInput.focus(), 100);
   }
-  
+
   // Clear any previous messages
   if (forgotPasswordMessage) {
     forgotPasswordMessage.textContent = "";
@@ -1866,18 +1866,18 @@ function showForgotPasswordForm() {
 
 function showLoginForm() {
   console.log('🔐 showLoginForm() called');
-  
+
   // Hide forgot password form, show login form
   if (forgotPasswordContainer) forgotPasswordContainer.classList.add("hidden");
   if (loginFormContainer) loginFormContainer.classList.remove("hidden");
-  
+
   // Clear forgot password form
   if (forgotPasswordForm) forgotPasswordForm.reset();
   if (forgotPasswordMessage) {
     forgotPasswordMessage.textContent = "";
     forgotPasswordMessage.classList.remove("error-text", "muted");
   }
-  
+
   // Clear auth message
   if (authMessage) {
     authMessage.textContent = "";
@@ -1887,14 +1887,14 @@ function showLoginForm() {
 
 async function handleForgotPasswordSubmit() {
   console.log('🔐 handleForgotPasswordSubmit() called');
-  
+
   const email = forgotPasswordEmailInput?.value.trim();
-  
+
   if (!email) {
     setForgotPasswordMessage("Please enter your email address.", true);
     return;
   }
-  
+
   await sendPasswordResetEmail(email);
 }
 
@@ -1908,29 +1908,29 @@ function setForgotPasswordMessage(message, isError = false) {
 async function sendPasswordResetEmail(email) {
   console.log('📧 Sending password reset email to:', email);
   setForgotPasswordMessage("Sending password reset email...", false);
-  
+
   // Disable submit button
   const submitBtn = el("forgot-password-submit-btn");
   if (submitBtn) submitBtn.disabled = true;
-  
+
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}${window.location.pathname}`,
     });
-    
+
     if (error) {
       console.error('❌ Error sending password reset email:', error);
       setForgotPasswordMessage(error.message || "Failed to send password reset email. Please try again.", true);
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
-    
+
     console.log('✅ Password reset email sent successfully');
     setForgotPasswordMessage("Password reset email sent! Please check your inbox and follow the instructions to reset your password.", false);
-    
+
     // Clear the form
     if (forgotPasswordForm) forgotPasswordForm.reset();
-    
+
     // Re-enable button
     if (submitBtn) submitBtn.disabled = false;
   } catch (err) {
@@ -1943,53 +1943,53 @@ async function sendPasswordResetEmail(email) {
 async function handlePasswordSetup(event) {
   event.preventDefault();
   console.log('🔐 handlePasswordSetup() called');
-  
+
   const password = el("setup-password")?.value;
   const passwordConfirm = el("setup-password-confirm")?.value;
   const submitBtn = el("password-setup-submit-btn");
-  
+
   if (!password || !passwordConfirm) {
     setPasswordSetupMessage("Please enter and confirm your password.", true);
     return;
   }
-  
+
   if (password.length < 6) {
     setPasswordSetupMessage("Password must be at least 6 characters.", true);
     return;
   }
-  
+
   if (password !== passwordConfirm) {
     setPasswordSetupMessage("Passwords do not match.", true);
     return;
   }
-  
+
   // Disable button
   if (submitBtn) submitBtn.disabled = true;
-  
+
   // Show appropriate message based on mode
   if (state.isPasswordReset) {
     setPasswordSetupMessage("Resetting your password...");
   } else {
     setPasswordSetupMessage("Setting up your account...");
   }
-  
+
   setTimeout(() => {
     window.location.reload();
   }, 3000);
-  
+
   // Auto-reload after 5 seconds as fallback - set at function scope so it's always accessible
   let reloadTimeout = setTimeout(() => {
     console.log('⏰ Auto-reloading after 5 seconds (fallback)...');
     window.location.reload();
   }, 5000);
-  
+
   // Store timeout ID globally so it can't be lost
   window.__passwordSetupTimeout = reloadTimeout;
-  
+
   try {
     // Get the current session from the access_token
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (sessionError || !session) {
       console.error('❌ No session found:', sessionError);
       clearTimeout(reloadTimeout);
@@ -1997,23 +1997,23 @@ async function handlePasswordSetup(event) {
         clearTimeout(window.__passwordSetupTimeout);
         delete window.__passwordSetupTimeout;
       }
-      const errorMsg = state.isPasswordReset 
+      const errorMsg = state.isPasswordReset
         ? "Invalid or expired password reset link. Please request a new one."
         : "Invalid invite link. Please request a new invite.";
       setPasswordSetupMessage(errorMsg, true);
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
-    
+
     console.log('✅ Session found, updating password for user:', session.user.email);
     console.log('  - isPasswordReset:', state.isPasswordReset);
     console.log('  - isPasswordSetup:', state.isPasswordSetup);
-    
+
     // Update the user's password
     const { error: updateError } = await supabase.auth.updateUser({
       password: password
     });
-    
+
     if (updateError) {
       console.error('❌ Password update error:', updateError);
       clearTimeout(reloadTimeout);
@@ -2025,24 +2025,24 @@ async function handlePasswordSetup(event) {
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
-    
+
     console.log('✅ Password updated successfully');
-    
+
     if (state.isPasswordReset) {
       // Password reset flow: user already has a profile, just update password and keep them logged in
       console.log('🔄 Password reset complete, keeping user logged in...');
-      
+
       // Clean up URL and reset password reset flag
       window.history.replaceState(null, '', window.location.pathname);
       state.isPasswordReset = false;
-      
+
       // Clear the auto-reload timeout since we're reloading now
       clearTimeout(reloadTimeout);
       if (window.__passwordSetupTimeout) {
         clearTimeout(window.__passwordSetupTimeout);
         delete window.__passwordSetupTimeout;
       }
-      
+
       // Reload the page to show the app (user is already logged in)
       console.log('🔄 Reloading page to show app...');
       window.location.reload();
@@ -2052,7 +2052,7 @@ async function handlePasswordSetup(event) {
       try {
         await Promise.race([
           createProfileAndMigrateInvites(session.user),
-          new Promise((_, reject) => 
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Profile creation timeout')), 3000)
           )
         ]);
@@ -2061,13 +2061,13 @@ async function handlePasswordSetup(event) {
         console.error('⚠️ Profile creation error or timeout:', profileError);
         // Continue anyway - profile might have been created, or we'll reload and it will be created
       }
-      
+
       // Sign out the user so they can log in with their new password
       console.log('🔓 Signing out user to redirect to login...');
       try {
         await Promise.race([
           supabase.auth.signOut(),
-          new Promise((_, reject) => 
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Sign out timeout')), 2000)
           )
         ]);
@@ -2075,26 +2075,26 @@ async function handlePasswordSetup(event) {
         console.error('⚠️ Sign out error or timeout:', signOutError);
         // Continue anyway - we'll reload
       }
-      
+
       // Clean up URL and reset password setup flag
       window.history.replaceState(null, '', window.location.pathname);
       state.isPasswordSetup = false;
       state.session = null;
       state.profile = null;
-      
+
       // Clear the auto-reload timeout since we're reloading now
       clearTimeout(reloadTimeout);
       if (window.__passwordSetupTimeout) {
         clearTimeout(window.__passwordSetupTimeout);
         delete window.__passwordSetupTimeout;
       }
-      
+
       // Reload the page to show the login form
       // This ensures a clean state and the login form appears properly
       console.log('🔄 Reloading page to show login form...');
       window.location.reload();
     }
-    
+
   } catch (err) {
     console.error('❌ Unexpected error in handlePasswordSetup:', err);
     clearTimeout(reloadTimeout);
@@ -2109,55 +2109,55 @@ async function handlePasswordSetup(event) {
 
 async function createProfileAndMigrateInvites(user) {
   console.log('👤 createProfileAndMigrateInvites() called for user:', user.email);
-  
+
   const userEmail = user.email?.toLowerCase();
   if (!userEmail) {
     console.error('❌ No email found for user');
     return;
   }
-  
+
   // Find the pending invite FIRST - this is critical for auto-adding to team
   const { data: pendingInvite, error: inviteError } = await supabase
     .from("pending_invites")
     .select("*")
     .eq("email", userEmail)
     .maybeSingle();
-  
+
   if (inviteError && inviteError.code !== "PGRST116") {
     console.error('❌ Error finding pending invite:', inviteError);
   }
-  
+
   const fullName = pendingInvite?.full_name || user.user_metadata?.full_name || userEmail;
   const teamId = pendingInvite?.team_id || null;
-  
+
   // Check if profile already exists
   const { data: existingProfile } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
-  
+
   if (existingProfile) {
     console.log('👤 Profile already exists, updating with pending invite info...');
-    
+
     // Update profile with team_id from pending invite if it exists
     const updateData = {
       full_name: fullName,
       email: userEmail,
     };
-    
+
     // Always update team_id if we have one from pending invite
     if (teamId) {
       updateData.team_id = teamId;
     }
-    
+
     const { data: updatedProfile, error: updateError } = await supabase
       .from("profiles")
       .update(updateData)
       .eq("id", user.id)
       .select()
       .single();
-    
+
     if (updateError) {
       console.error('❌ Error updating profile:', updateError);
       // Continue anyway - might still be able to add to team
@@ -2179,7 +2179,7 @@ async function createProfileAndMigrateInvites(user) {
       })
       .select()
       .single();
-    
+
     if (profileError) {
       console.error('❌ Error creating profile:', profileError);
       // Continue anyway - might still be able to add to team
@@ -2188,12 +2188,12 @@ async function createProfileAndMigrateInvites(user) {
       state.profile = newProfile;
     }
   }
-  
+
   // ALWAYS add user to team_members if there's a pending invite with team_id
   // This ensures invited users are automatically added to the team
   if (teamId) {
     console.log('👥 Auto-adding user to team_members for team:', teamId);
-    
+
     // Check if already a member first
     const { data: existingMember } = await supabase
       .from("team_members")
@@ -2201,7 +2201,7 @@ async function createProfileAndMigrateInvites(user) {
       .eq("team_id", teamId)
       .eq("user_id", user.id)
       .maybeSingle();
-    
+
     if (existingMember) {
       console.log('✅ User already in team_members');
     } else {
@@ -2214,7 +2214,7 @@ async function createProfileAndMigrateInvites(user) {
           p_is_owner: false,
           p_can_manage: false
         });
-      
+
       if (teamMemberError && (teamMemberError.code === '42883' || teamMemberError.message?.includes('function'))) {
         // Function doesn't exist, try direct insert
         console.log('⚠️ add_team_member function not available, trying direct insert...');
@@ -2227,7 +2227,7 @@ async function createProfileAndMigrateInvites(user) {
             is_owner: false,
             can_manage: false
           });
-        
+
         if (directError) {
           // If error is because user is already a member, that's okay
           if (directError.code !== '23505') { // Unique violation
@@ -2250,11 +2250,11 @@ async function createProfileAndMigrateInvites(user) {
       }
     }
   }
-  
+
   // Migrate assignments from pending_invite to the new profile
   if (pendingInvite) {
     console.log('🔄 Migrating assignments from pending invite:', pendingInvite.id);
-    
+
     const { error: migrateError } = await supabase
       .from("song_assignments")
       .update({
@@ -2264,19 +2264,19 @@ async function createProfileAndMigrateInvites(user) {
         pending_invite_id: null,
       })
       .eq("pending_invite_id", pendingInvite.id);
-    
+
     if (migrateError) {
       console.error('❌ Error migrating assignments:', migrateError);
     } else {
       console.log('✅ Assignments migrated successfully');
     }
-    
+
     // Delete the pending invite
     const { error: deleteError } = await supabase
       .from("pending_invites")
       .delete()
       .eq("id", pendingInvite.id);
-    
+
     if (deleteError) {
       console.error('❌ Error deleting pending invite:', deleteError);
     } else {
@@ -2289,15 +2289,15 @@ async function fetchProfile() {
   console.log('👤 fetchProfile() called');
   console.log('  - state.session:', !!state.session);
   console.log('  - state.session.user:', state.session?.user?.id);
-  
+
   if (!state.session?.user?.id) {
     console.error('  - ❌ No session or user ID');
     return;
   }
-  
+
   try {
     console.log('  - Querying profiles table...');
-    
+
     // IMPORTANT: Select team_id explicitly to ensure it's available
     const result = await safeSupabaseOperation(async () => {
       return await supabase
@@ -2319,7 +2319,7 @@ async function fetchProfile() {
         .eq("id", state.session.user.id)
         .single();
     }, { timeout: 2000 });
-    
+
     const { data, error } = result;
 
     console.log('  - Query completed. Error:', error?.code || 'none');
@@ -2354,22 +2354,22 @@ async function fetchProfile() {
 
     if (!data) {
       console.log('  - No profile found, creating new one...');
-      
+
       // Use the migration function to create profile and migrate invites
       await createProfileAndMigrateInvites(state.session.user);
-      
+
       // If profile was created, fetch it again to get the full data
       if (state.profile) {
         console.log('  - ✅ Profile created via migration function:', state.profile);
         return;
       }
-      
+
       // Fallback: try direct insert if migration didn't work
       // First check for pending invite to get team_id
       const userEmail = state.session.user.email?.toLowerCase();
       let pendingInvite = null;
       let teamId = null;
-      
+
       if (userEmail) {
         const { data: invite } = await supabase
           .from("pending_invites")
@@ -2379,7 +2379,7 @@ async function fetchProfile() {
         pendingInvite = invite;
         teamId = invite?.team_id || null;
       }
-      
+
       const insertPromise = supabase
         .from("profiles")
         .insert({
@@ -2390,11 +2390,11 @@ async function fetchProfile() {
         })
         .select()
         .single();
-      
-      const insertTimeoutPromise = new Promise((_, reject) => 
+
+      const insertTimeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Profile insert timeout after 2 seconds')), 2000)
       );
-      
+
       let newProfile, insertError;
       try {
         const result = await Promise.race([insertPromise, insertTimeoutPromise]);
@@ -2404,9 +2404,9 @@ async function fetchProfile() {
         console.error('  - ⚠️ Insert timed out:', timeoutErr.message);
         insertError = timeoutErr;
       }
-      
+
       console.log('  - Insert completed. Error:', insertError?.code || 'none');
-      
+
       if (insertError) {
         console.error('  - ❌ Profile creation error:', insertError);
         console.error('  - Error details:', JSON.stringify(insertError, null, 2));
@@ -2421,7 +2421,7 @@ async function fetchProfile() {
       }
       state.profile = newProfile;
       console.log('  - ✅ Profile created:', newProfile);
-      
+
       // If there's a pending invite with team_id, add user to team_members
       if (teamId && newProfile) {
         console.log('  - 👥 Auto-adding user to team_members (fallback)...');
@@ -2434,7 +2434,7 @@ async function fetchProfile() {
             is_owner: false,
             can_manage: false
           });
-        
+
         if (teamMemberError && teamMemberError.code !== '23505') {
           console.error('  - ❌ Error adding user to team_members (fallback):', teamMemberError);
         } else if (!teamMemberError) {
@@ -2468,7 +2468,7 @@ async function fetchProfile() {
       console.log('  - team_id:', data.team_id);
       console.log('  - team:', data.team);
       console.log('  - Final state.profile.team_id:', state.profile.team_id);
-      
+
       // Double-check: if team_id is still missing, try to fetch it directly
       if (!data.team_id) {
         console.warn('  - ⚠️ Attempting to fetch team_id directly from database...');
@@ -2477,7 +2477,7 @@ async function fetchProfile() {
           .select("team_id")
           .eq("id", state.session.user.id)
           .single();
-        
+
         if (!profileError && profileData?.team_id) {
           data.team_id = profileData.team_id;
           state.profile.team_id = profileData.team_id;
@@ -2486,17 +2486,17 @@ async function fetchProfile() {
           console.error('  - ❌ Could not retrieve team_id:', profileError);
         }
       }
-      
+
       // If we still don't have team_id, this is a critical error
       if (!state.profile.team_id) {
         console.error('  - ❌❌❌ CRITICAL ERROR: Profile has no team_id after all attempts!');
         console.error('  - This user cannot access any data. They need to be assigned to a team.');
       }
     }
-    
+
     // Fetch user teams and set current team
     await fetchUserTeams();
-    
+
   } catch (err) {
     console.error('  - ❌ Unexpected error in fetchProfile:', err);
     // Use fallback profile
@@ -2507,18 +2507,18 @@ async function fetchProfile() {
     };
     console.log('  - ⚠️ Using fallback profile after error:', state.profile);
   }
-  
+
   console.log('  - ✅ fetchProfile() completed. Final state.profile:', state.profile);
 }
 
 async function fetchUserTeams() {
   console.log('👥 fetchUserTeams() called');
-  
+
   if (!state.session?.user?.id) {
     console.error('  - ❌ No session or user ID');
     return;
   }
-  
+
   try {
     // Fetch all teams the user is a member of
     const { data: teamMembers, error } = await supabase
@@ -2536,11 +2536,11 @@ async function fetchUserTeams() {
       `)
       .eq("user_id", state.session.user.id)
       .order("joined_at", { ascending: true });
-    
+
     if (error) {
       console.error('  - ❌ Error fetching user teams:', error);
       console.log('  - ⚠️ Falling back to profile.team_id (migration may not be run yet)');
-      
+
       // Fallback: use profile.team_id if available (backward compatibility)
       if (state.profile?.team_id) {
         state.currentTeamId = state.profile.team_id;
@@ -2559,7 +2559,7 @@ async function fetchUserTeams() {
       }
       return;
     }
-    
+
     state.userTeams = (teamMembers || []).map(tm => ({
       id: tm.team_id,
       name: tm.team?.name || 'Unknown Team',
@@ -2567,10 +2567,10 @@ async function fetchUserTeams() {
       is_owner: tm.is_owner,
       can_manage: tm.can_manage,
     }));
-    
+
     console.log('  - ✅ Found', state.userTeams.length, 'teams');
     console.log('  - Teams:', state.userTeams.map(t => t.name));
-    
+
     // Set current team: use profile.team_id if it exists and user is member, otherwise use first team
     if (state.profile?.team_id) {
       const profileTeam = state.userTeams.find(t => t.id === state.profile.team_id);
@@ -2589,13 +2589,13 @@ async function fetchUserTeams() {
       state.currentTeamId = null;
       console.log('  - ⚠️ User is not a member of any teams');
     }
-    
+
     // Update team switcher UI
     updateTeamSwitcher();
-    
+
   } catch (err) {
     console.error('  - ❌ Unexpected error in fetchUserTeams:', err);
-    
+
     // Fallback: use profile.team_id if available
     if (state.profile?.team_id) {
       state.currentTeamId = state.profile.team_id;
@@ -2617,43 +2617,43 @@ async function fetchUserTeams() {
 
 async function switchTeam(teamId) {
   console.log('🔄 switchTeam() called with teamId:', teamId);
-  
+
   if (!teamId) {
     console.error('  - ❌ No teamId provided');
     return;
   }
-  
+
   // Verify user is a member of this team
   const team = state.userTeams.find(t => t.id === teamId);
   if (!team) {
     console.error('  - ❌ User is not a member of team:', teamId);
     return;
   }
-  
+
   // Update current team
   state.currentTeamId = teamId;
-  
+
   // Clear saved set ID when switching teams (set belongs to different team)
   localStorage.removeItem('cadence-selected-set-id');
   hideSetDetail();
-  
+
   // Update profile.team_id (for backward compatibility and default team)
   // IMPORTANT: Explicitly preserve full_name to prevent it from being reset to email
   if (state.profile) {
-    const updateData = { 
-      team_id: teamId 
+    const updateData = {
+      team_id: teamId
     };
-    
+
     // Preserve full_name if it exists (prevent reset to email)
     if (state.profile.full_name) {
       updateData.full_name = state.profile.full_name;
     }
-    
+
     const { error } = await supabase
       .from("profiles")
       .update(updateData)
       .eq("id", state.session.user.id);
-    
+
     if (error) {
       console.error('  - ❌ Error updating profile team_id:', error);
     } else {
@@ -2661,16 +2661,16 @@ async function switchTeam(teamId) {
       console.log('  - ✅ Updated profile team_id');
     }
   }
-  
+
   // Reload all data for the new team
   console.log('  - 🔄 Reloading data for new team...');
   await Promise.all([loadSongs(), loadSets(), loadPeople()]);
-  
+
   // Refresh UI
   refreshActiveTab();
   updateTeamSwitcher();
   showApp();
-  
+
   console.log('  - ✅ Team switched to:', team.name);
 }
 
@@ -2680,15 +2680,15 @@ function updateTeamSwitcher() {
   const accountMenuTeamName = el("account-menu-team-name");
   const accountMenuTeamSection = el("account-menu-team-section");
   const accountMenuActionsSection = el("account-menu-actions-section");
-  
+
   if (!teamSwitcherContainer || !teamSwitcherList) return;
-  
+
   const hasMultipleTeams = state.userTeams.length > 1;
-  
+
   // Show switcher if user has multiple teams
   if (hasMultipleTeams) {
     teamSwitcherContainer.style.display = "block";
-    
+
     // Clear and populate custom list
     teamSwitcherList.innerHTML = "";
     state.userTeams.forEach(team => {
@@ -2705,7 +2705,7 @@ function updateTeamSwitcher() {
         justify-content: space-between;
         gap: 0.5rem;
       `;
-      
+
       // Highlight current team
       if (team.id === state.currentTeamId) {
         teamItem.style.backgroundColor = "var(--accent-color)";
@@ -2714,7 +2714,7 @@ function updateTeamSwitcher() {
         teamItem.style.backgroundColor = "transparent";
         teamItem.style.color = "var(--text-primary)";
       }
-      
+
       // Hover effect
       teamItem.addEventListener("mouseenter", () => {
         if (team.id !== state.currentTeamId) {
@@ -2726,22 +2726,22 @@ function updateTeamSwitcher() {
           teamItem.style.backgroundColor = "transparent";
         }
       });
-      
+
       // Team name and role
       const teamInfo = document.createElement("div");
       teamInfo.style.cssText = "flex: 1; min-width: 0;";
-      
+
       const teamName = document.createElement("div");
       teamName.textContent = team.name;
       teamName.style.cssText = "font-weight: 500; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
-      
+
       const teamRole = document.createElement("div");
       teamRole.textContent = team.is_owner ? "Owner" : (team.can_manage ? "Manager" : "Member");
       teamRole.style.cssText = "font-size: 0.75rem; opacity: 0.7; margin-top: 0.125rem;";
-      
+
       teamInfo.appendChild(teamName);
       teamInfo.appendChild(teamRole);
-      
+
       // Checkmark for current team
       if (team.id === state.currentTeamId) {
         const checkmark = document.createElement("i");
@@ -2752,7 +2752,7 @@ function updateTeamSwitcher() {
       } else {
         teamItem.appendChild(teamInfo);
       }
-      
+
       // Click handler
       teamItem.addEventListener("click", async () => {
         if (team.id !== state.currentTeamId) {
@@ -2761,13 +2761,13 @@ function updateTeamSwitcher() {
           el("account-menu")?.classList.add("hidden");
         }
       });
-      
+
       teamSwitcherList.appendChild(teamItem);
     });
   } else {
     teamSwitcherContainer.style.display = "none";
   }
-  
+
   // Hide dividers if user only has one team
   if (accountMenuTeamSection && accountMenuActionsSection) {
     if (hasMultipleTeams) {
@@ -2782,7 +2782,7 @@ function updateTeamSwitcher() {
       accountMenuActionsSection.style.marginTop = "0";
     }
   }
-  
+
   // Update current team name display
   if (accountMenuTeamName) {
     const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
@@ -2799,15 +2799,15 @@ function updateTeamSwitcher() {
 async function loadSongs() {
   console.log('🎵 loadSongs() called');
   console.log('  - state.currentTeamId:', state.currentTeamId);
-  
+
   if (!state.currentTeamId) {
     console.warn('⚠️ No currentTeamId, cannot load songs');
     state.songs = [];
     return;
   }
-  
+
   console.log('  - Loading songs for team_id:', state.currentTeamId);
-  
+
   // First, test if we can query songs at all (check RLS)
   console.log('  - Testing songs query...');
   const result = await safeSupabaseOperation(async () => {
@@ -2833,9 +2833,9 @@ async function loadSongs() {
       .eq("team_id", state.currentTeamId)
       .order("title");
   });
-  
+
   const { data, error } = result;
-  
+
   if (error) {
     console.error('❌ Error loading songs:', error);
     console.error('  - Error code:', error.code);
@@ -2845,7 +2845,7 @@ async function loadSongs() {
     state.songs = [];
     return;
   }
-  
+
   console.log('  - ✅ Songs loaded:', data?.length || 0, 'songs');
   if (data && data.length > 0) {
     console.log('  - First song sample:', data[0]);
@@ -2861,17 +2861,17 @@ async function loadSongs() {
 async function loadSets() {
   console.log('📋 loadSets() called');
   console.log('  - state.currentTeamId:', state.currentTeamId);
-  
+
   if (!state.currentTeamId) {
     console.warn('⚠️ No currentTeamId, cannot load sets');
     state.sets = [];
     renderSets();
     return;
   }
-  
+
   console.log('  - Loading sets for team_id:', state.currentTeamId);
   console.log('  - Testing sets query...');
-  
+
   // Load team assignment mode (handle gracefully if column doesn't exist yet)
   try {
     const { data: teamData } = await supabase
@@ -2879,7 +2879,7 @@ async function loadSets() {
       .select("assignment_mode")
       .eq("id", state.currentTeamId)
       .single();
-    
+
     if (teamData?.assignment_mode) {
       state.teamAssignmentMode = teamData.assignment_mode;
     } else {
@@ -2891,7 +2891,7 @@ async function loadSets() {
     console.warn('Assignment mode column may not exist yet, defaulting to per_set');
     state.teamAssignmentMode = 'per_set';
   }
-  
+
   // Try to load with service/rehearsal times first
   let result = await safeSupabaseOperation(async () => {
     return await supabase
@@ -2983,11 +2983,11 @@ async function loadSets() {
         )
       )
     `
-    )
-    .eq("team_id", state.currentTeamId)
-    .order("scheduled_date", { ascending: true });
+      )
+      .eq("team_id", state.currentTeamId)
+      .order("scheduled_date", { ascending: true });
   });
-  
+
   let { data, error } = result;
 
   // If error is due to missing tables (service_times, rehearsal_times, or set_assignments), fall back to query without them
@@ -2996,9 +2996,9 @@ async function loadSets() {
     console.log('  - Falling back to query without service/rehearsal times...');
     const fallbackResult = await safeSupabaseOperation(async () => {
       return await supabase
-      .from("sets")
-      .select(
-        `
+        .from("sets")
+        .select(
+          `
         *,
         set_assignments (
           id,
@@ -3071,21 +3071,21 @@ async function loadSets() {
           )
         )
       `
-      )
-      .eq("team_id", state.currentTeamId)
-      .order("scheduled_date", { ascending: true });
+        )
+        .eq("team_id", state.currentTeamId)
+        .order("scheduled_date", { ascending: true });
     });
-    
+
     console.log('  - Fallback query result - error:', fallbackResult.error?.code || 'none');
     console.log('  - Fallback query result - data count:', fallbackResult.data?.length || 0);
-    
+
     if (fallbackResult.error) {
       console.error("Error loading sets:", fallbackResult.error);
       state.sets = [];
       renderSets();
       return;
     }
-    
+
     data = fallbackResult.data;
     // Add empty arrays for service_times, rehearsal_times, and set_assignments if they don't exist
     if (data) {
@@ -3118,10 +3118,10 @@ async function loadSets() {
   }
   state.sets = data ?? [];
   renderSets();
-  
+
   // Load and render pending requests
   await loadPendingRequests();
-  
+
   // Restore set detail view if there's a saved set ID
   restoreSetDetailIfSaved();
 }
@@ -3131,7 +3131,7 @@ async function loadSets() {
 // Note: This function assumes the status column exists. If it doesn't, the queries will fail gracefully.
 async function migrateExistingAssignmentsToAccepted() {
   console.log('🔄 Starting migration of existing assignments to accepted status...');
-  
+
   try {
     // Update set_assignments without status (null or missing) to 'accepted'
     const { data: setAssignments, error: setError } = await supabase
@@ -3139,50 +3139,50 @@ async function migrateExistingAssignmentsToAccepted() {
       .select("id")
       .is("status", null)
       .limit(1000);
-    
+
     if (setError && !setError.message?.includes("column") && !setError.message?.includes("does not exist")) {
       console.error("Error fetching set assignments for migration:", setError);
       return;
     }
-    
+
     if (setAssignments && setAssignments.length > 0) {
       const { error: updateSetError } = await supabase
         .from("set_assignments")
         .update({ status: 'accepted' })
         .is("status", null);
-      
+
       if (updateSetError) {
         console.error("Error updating set assignments:", updateSetError);
       } else {
         console.log(`✅ Migrated ${setAssignments.length} set assignments to accepted status`);
       }
     }
-    
+
     // Update song_assignments without status (null or missing) to 'accepted'
     const { data: songAssignments, error: songError } = await supabase
       .from("song_assignments")
       .select("id")
       .is("status", null)
       .limit(1000);
-    
+
     if (songError && !songError.message?.includes("column") && !songError.message?.includes("does not exist")) {
       console.error("Error fetching song assignments for migration:", songError);
       return;
     }
-    
+
     if (songAssignments && songAssignments.length > 0) {
       const { error: updateSongError } = await supabase
         .from("song_assignments")
         .update({ status: 'accepted' })
         .is("status", null);
-      
+
       if (updateSongError) {
         console.error("Error updating song assignments:", updateSongError);
       } else {
         console.log(`✅ Migrated ${songAssignments.length} song assignments to accepted status`);
       }
     }
-    
+
     console.log('✅ Migration complete!');
   } catch (error) {
     console.error("Migration error:", error);
@@ -3195,7 +3195,7 @@ function restoreSetDetailIfSaved() {
   if (!savedSetId || state.sets.length === 0) {
     return; // No saved set or sets not loaded yet
   }
-  
+
   const setToRestore = state.sets.find(s => s.id.toString() === savedSetId);
   if (setToRestore) {
     showSetDetail(setToRestore);
@@ -3385,7 +3385,7 @@ async function handleAcceptRequest(request) {
         currentUserId: currentUserId,
         request: request
       });
-      
+
       // First, verify the assignment exists and belongs to the user
       const { data: verifyData, error: verifyError } = await supabase
         .from("set_assignments")
@@ -3393,15 +3393,15 @@ async function handleAcceptRequest(request) {
         .eq("id", request.assignmentId)
         .eq("person_id", currentUserId)
         .single();
-      
+
       if (verifyError || !verifyData) {
         console.error("Cannot verify assignment ownership:", verifyError, verifyData);
         toastError("Unable to accept assignment. You may not have permission.");
         return;
       }
-      
+
       console.log("Assignment verified, current status:", verifyData.status);
-      
+
       // Update the status
       const { data, error } = await supabase
         .from("set_assignments")
@@ -3416,22 +3416,22 @@ async function handleAcceptRequest(request) {
         console.error("Current User ID:", currentUserId);
         throw error;
       }
-      
+
       if (!data || data.length === 0) {
         console.error("Update returned no data - assignment may not exist or permission denied");
         toastError("Unable to accept assignment. Please try again.");
         return;
       }
-      
+
       console.log("Set assignment accepted successfully:", data);
-      
+
       // Verify the update persisted
       const { data: verifyAfter, error: verifyAfterError } = await supabase
         .from("set_assignments")
         .select("id, status")
         .eq("id", request.assignmentId)
         .single();
-      
+
       console.log("Verification after update:", verifyAfter, verifyAfterError);
       if (verifyAfter?.status !== 'accepted') {
         console.error("WARNING: Status did not persist! Expected 'accepted', got:", verifyAfter?.status);
@@ -3452,7 +3452,7 @@ async function handleAcceptRequest(request) {
         person_id: currentUserId,
         request: request
       });
-      
+
       if (!setId) {
         console.error("No set_id available for set_acceptances:", request);
       } else {
@@ -3535,7 +3535,7 @@ async function showAssignmentDetailsModal(assignment) {
 
   // Populate modal content
   if (personEl) personEl.textContent = assignment.personName || "Unknown";
-  
+
   // For per-song assignments, fetch all assignments for this person in this set
   if (assignmentType === 'song' && currentSet && assignment.assignmentId && currentUserId) {
     // Get person_id from the assignment
@@ -3544,7 +3544,7 @@ async function showAssignmentDetailsModal(assignment) {
       .select("person_id")
       .eq("id", assignment.assignmentId)
       .single();
-    
+
     if (assignmentData?.person_id) {
       // Get all song assignments for this person in this set
       const { data: allAssignments } = await supabase
@@ -3566,23 +3566,23 @@ async function showAssignmentDetailsModal(assignment) {
         `)
         .eq("person_id", assignmentData.person_id)
         .in("set_song_id", currentSet.set_songs?.map(ss => ss.id) || []);
-      
+
       if (allAssignments && allAssignments.length > 0) {
         // Separate current assignment from others
         const currentAssignment = allAssignments.find(a => a.id === assignment.assignmentId);
         const otherAssignments = allAssignments.filter(a => a.id !== assignment.assignmentId);
-        
+
         // Build role display
         if (roleEl) {
           roleEl.innerHTML = "";
-          
+
           // Collect all unique roles (current + others)
           const allRoles = new Set();
           if (currentAssignment) {
             allRoles.add(currentAssignment.role);
           }
           otherAssignments.forEach(a => allRoles.add(a.role));
-          
+
           // Show current role first (if it exists)
           if (currentAssignment) {
             const currentRole = document.createElement("div");
@@ -3590,9 +3590,9 @@ async function showAssignmentDetailsModal(assignment) {
             currentRole.textContent = currentAssignment.role;
             roleEl.appendChild(currentRole);
           }
-          
+
           // Add other roles (excluding the current one)
-          const otherRoles = Array.from(allRoles).filter(role => 
+          const otherRoles = Array.from(allRoles).filter(role =>
             !currentAssignment || role !== currentAssignment.role
           );
           if (otherRoles.length > 0) {
@@ -3606,12 +3606,12 @@ async function showAssignmentDetailsModal(assignment) {
             });
           }
         }
-        
+
         // Build song display
         if (songEl) {
           songEl.innerHTML = "";
           if (currentAssignment) {
-            const songTitle = currentAssignment.set_song?.song_id 
+            const songTitle = currentAssignment.set_song?.song_id
               ? (currentAssignment.set_song.song?.title || currentAssignment.set_song.title || "Unknown Song")
               : (currentAssignment.set_song?.title || "Unknown Section");
             const currentSong = document.createElement("div");
@@ -3619,15 +3619,15 @@ async function showAssignmentDetailsModal(assignment) {
             currentSong.textContent = songTitle;
             songEl.appendChild(currentSong);
           }
-          
+
           // Add other songs
           const otherSongs = otherAssignments.map(a => {
-            const songTitle = a.set_song?.song_id 
+            const songTitle = a.set_song?.song_id
               ? (a.set_song.song?.title || a.set_song.title || "Unknown Song")
               : (a.set_song?.title || "Unknown Section");
             return { title: songTitle, role: a.role };
           });
-          
+
           // Group by song title and show unique songs
           const uniqueSongs = [...new Map(otherSongs.map(s => [s.title, s])).values()];
           if (uniqueSongs.length > 0) {
@@ -3660,7 +3660,7 @@ async function showAssignmentDetailsModal(assignment) {
     }
     if (songLabel) songLabel.style.display = "none";
   }
-  
+
   // Show/hide song field based on assignment type (do this after populating)
   if (assignmentType === 'set') {
     if (songEl) songEl.style.display = "none";
@@ -3675,7 +3675,7 @@ async function showAssignmentDetailsModal(assignment) {
     statusEl.innerHTML = "";
     const statusBadge = document.createElement("span");
     statusBadge.className = "assignment-status-badge";
-    
+
     if (assignment.status === 'accepted') {
       statusBadge.className += " accepted";
       statusBadge.textContent = "Accepted";
@@ -3692,7 +3692,7 @@ async function showAssignmentDetailsModal(assignment) {
       statusBadge.className += " pending";
       statusBadge.textContent = "Pending";
     }
-    
+
     statusEl.appendChild(statusBadge);
   }
 
@@ -3708,9 +3708,9 @@ async function showAssignmentDetailsModal(assignment) {
   // Add action buttons (accept/decline) if assignment can be changed
   if (actionsEl) {
     actionsEl.innerHTML = "";
-    
+
     if (currentUserId && assignment.assignmentId) {
-      
+
       // Show accept button if pending or declined
       if (assignment.status === 'pending' || assignment.status === 'declined') {
         const acceptBtn = document.createElement("button");
@@ -3722,7 +3722,7 @@ async function showAssignmentDetailsModal(assignment) {
         };
         actionsEl.appendChild(acceptBtn);
       }
-      
+
       // Show decline button if pending or accepted
       if (assignment.status === 'pending' || assignment.status === 'accepted') {
         const declineBtn = document.createElement("button");
@@ -3760,7 +3760,7 @@ async function handleChangeAssignmentStatus(assignmentId, newStatus, assignmentT
 
   try {
     const tableName = assignmentType === 'song' ? 'song_assignments' : 'set_assignments';
-    
+
     const { error } = await supabase
       .from(tableName)
       .update({ status: newStatus })
@@ -3783,7 +3783,7 @@ async function handleChangeAssignmentStatus(assignmentId, newStatus, assignmentT
           set_id: assignment.set_song.set_id,
           person_id: currentUserId
         });
-        
+
         const { data: acceptanceData, error: acceptanceError } = await supabase
           .from("set_acceptances")
           .upsert({
@@ -3818,29 +3818,29 @@ async function handleChangeAssignmentStatus(assignmentId, newStatus, assignmentT
 
 function isUserAssignedToSet(set, userId) {
   if (!userId) return false;
-  
+
   const assignmentMode = getSetAssignmentMode(set);
-  
+
   if (assignmentMode === 'per_set') {
     // Check set-level assignments (any status - pending, accepted, declined)
-    return set.set_assignments?.some(assignment => 
+    return set.set_assignments?.some(assignment =>
       assignment.person_id === userId
     ) || false;
   } else {
     // Check song-level assignments (any status - pending, accepted, declined)
     if (!set.set_songs) return false;
-  return set.set_songs.some(setSong => 
-    setSong.song_assignments?.some(assignment => 
-      assignment.person_id === userId
-    )
-  );
+    return set.set_songs.some(setSong =>
+      setSong.song_assignments?.some(assignment =>
+        assignment.person_id === userId
+      )
+    );
   }
 }
 
 function calculateVisiblePills(card, pills, rolesWrapper) {
   // Temporarily hide to measure card width without pills
   rolesWrapper.style.visibility = "hidden";
-  
+
   // Use double requestAnimationFrame to ensure layout is complete
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -3863,7 +3863,7 @@ function calculateVisiblePills(card, pills, rolesWrapper) {
         const computedStyle = window.getComputedStyle(card);
         maxWidth = parseFloat(computedStyle.width) - 64;
       }
-      
+
       // Remove any existing "+X more" pill
       const allPills = rolesWrapper.querySelectorAll('.assignment-pill');
       allPills.forEach(pill => {
@@ -3871,29 +3871,29 @@ function calculateVisiblePills(card, pills, rolesWrapper) {
           pill.remove();
         }
       });
-      
+
       // Show all pills first
       pills.forEach(pill => {
         pill.style.display = "";
       });
-      
+
       // Now show the wrapper
       rolesWrapper.style.visibility = "visible";
-      
+
       let totalWidth = 0;
       let visibleCount = 0;
       const gap = 8; // Gap between pills
-      
+
       // Measure each pill to see how many fit
       for (let index = 0; index < pills.length; index++) {
         const pill = pills[index];
         const pillWidth = pill.offsetWidth;
         const neededWidth = totalWidth + (visibleCount > 0 ? gap : 0) + pillWidth;
-        
+
         // Reserve space for "+X more" if there are more pills after this one
         const remainingAfterThis = pills.length - index - 1;
         const spaceForMore = remainingAfterThis > 0 ? 100 : 0; // Approx width for "+X more"
-        
+
         if (neededWidth + spaceForMore <= maxWidth) {
           totalWidth = neededWidth;
           visibleCount++;
@@ -3903,11 +3903,11 @@ function calculateVisiblePills(card, pills, rolesWrapper) {
           const remaining = pills.length - visibleCount;
           if (remaining > 0) {
             // Remove any existing "+X more" pill first
-            const morePills = Array.from(rolesWrapper.querySelectorAll('.assignment-pill')).filter(p => 
+            const morePills = Array.from(rolesWrapper.querySelectorAll('.assignment-pill')).filter(p =>
               p.textContent.startsWith('+') && p.textContent.includes('more')
             );
             morePills.forEach(p => p.remove());
-            
+
             const morePill = document.createElement("span");
             morePill.className = "assignment-pill user-role-pill";
             morePill.textContent = `+${remaining} more`;
@@ -3926,7 +3926,7 @@ function calculateVisiblePills(card, pills, rolesWrapper) {
 
 function recalculateAllAssignmentPills() {
   if (!yourSetsList) return;
-  
+
   const cardsWithAssignments = yourSetsList.querySelectorAll('.set-card[data-has-assignments="true"]');
   cardsWithAssignments.forEach(card => {
     const pills = card._assignmentPills;
@@ -3940,7 +3940,7 @@ function recalculateAllAssignmentPills() {
 function renderSetCard(set, container) {
   const template = document.getElementById("set-card-template");
   const node = template.content.cloneNode(true);
-  
+
   node.querySelector(".set-title").textContent = set.title;
   const date = parseLocalDate(set.scheduled_date);
   node.querySelector(".set-date").textContent = date ? date.toLocaleDateString(undefined, {
@@ -3954,12 +3954,12 @@ function renderSetCard(set, container) {
   const card = node.querySelector(".set-card");
   const editBtn = node.querySelector(".edit-set-btn");
   const deleteBtn = node.querySelector(".delete-set-btn");
-  
+
   // Make card clickable to view details
   card.addEventListener("click", (e) => {
     // Don't trigger if clicking edit/delete buttons
-    if (e.target === editBtn || e.target === deleteBtn || 
-        editBtn.contains(e.target) || deleteBtn.contains(e.target)) {
+    if (e.target === editBtn || e.target === deleteBtn ||
+      editBtn.contains(e.target) || deleteBtn.contains(e.target)) {
       return;
     }
     showSetDetail(set);
@@ -3979,14 +3979,14 @@ function renderSetCard(set, container) {
   }
 
   container.appendChild(node);
-  
+
   // Display user roles if this is in "Your Sets" (after appending to DOM so we can measure)
   const userRolesContainer = card.querySelector(".user-roles-container");
   const currentUserId = state.profile?.id;
   if (container === yourSetsList && currentUserId) {
     const assignmentMode = getSetAssignmentMode(set);
     const userAssignments = [];
-    
+
     if (assignmentMode === 'per_set') {
       // Collect set-level assignments (all statuses)
       if (set.set_assignments) {
@@ -4005,38 +4005,38 @@ function renderSetCard(set, container) {
     } else {
       // Collect song-level assignments, sorted by setlist order (only accepted ones)
       if (set.set_songs) {
-    const sortedSetSongs = [...set.set_songs].sort((a, b) => {
-      const orderA = a.sequence_order ?? 0;
-      const orderB = b.sequence_order ?? 0;
-      return orderA - orderB;
-    });
-    
-    sortedSetSongs.forEach(setSong => {
-      if (setSong.song_assignments) {
-        setSong.song_assignments.forEach(assignment => {
-          if (assignment.person_id === currentUserId) {
-            // Include all statuses, not just accepted
-            // Get title: from song if it's a song, from title field if it's a section
-            const songTitle = setSong.song_id 
-              ? (setSong.song?.title || "Unknown Song")
-              : (setSong.title || "Unknown Section");
-            userAssignments.push({
-              setSongId: setSong.id,
-              songId: setSong.song_id || null,
-              song: setSong.song || null,
-              selectedKey: setSong.key || null,
-              songTitle,
-              role: assignment.role,
-              sequenceOrder: setSong.sequence_order ?? 0,
-              isSetLevel: false,
-              assignmentId: assignment.id,
-              assignmentStatus: assignment.status || 'pending',
-              personName: assignment.person?.full_name || assignment.person_name || "Unknown"
+        const sortedSetSongs = [...set.set_songs].sort((a, b) => {
+          const orderA = a.sequence_order ?? 0;
+          const orderB = b.sequence_order ?? 0;
+          return orderA - orderB;
+        });
+
+        sortedSetSongs.forEach(setSong => {
+          if (setSong.song_assignments) {
+            setSong.song_assignments.forEach(assignment => {
+              if (assignment.person_id === currentUserId) {
+                // Include all statuses, not just accepted
+                // Get title: from song if it's a song, from title field if it's a section
+                const songTitle = setSong.song_id
+                  ? (setSong.song?.title || "Unknown Song")
+                  : (setSong.title || "Unknown Section");
+                userAssignments.push({
+                  setSongId: setSong.id,
+                  songId: setSong.song_id || null,
+                  song: setSong.song || null,
+                  selectedKey: setSong.key || null,
+                  songTitle,
+                  role: assignment.role,
+                  sequenceOrder: setSong.sequence_order ?? 0,
+                  isSetLevel: false,
+                  assignmentId: assignment.id,
+                  assignmentStatus: assignment.status || 'pending',
+                  personName: assignment.person?.full_name || assignment.person_name || "Unknown"
+                });
+              }
             });
           }
         });
-      }
-    });
       }
     }
 
@@ -4044,7 +4044,7 @@ function renderSetCard(set, container) {
       const rolesWrapper = document.createElement("div");
       rolesWrapper.className = "user-roles-wrapper";
       userRolesContainer.appendChild(rolesWrapper);
-      
+
       // Create all pills and append them
       const pills = [];
       userAssignments.forEach((assignment) => {
@@ -4053,7 +4053,7 @@ function renderSetCard(set, container) {
         // For per-set: just show role. For per-song: show song - role
         if (assignment.isSetLevel) {
           pill.textContent = assignment.role;
-          
+
           // Add status styling for per-set assignments
           const assignmentStatus = assignment.assignmentStatus || 'pending';
           if (assignmentStatus === 'pending') {
@@ -4063,7 +4063,7 @@ function renderSetCard(set, container) {
           }
         } else {
           pill.textContent = `${assignment.songTitle} - ${assignment.role}`;
-          
+
           // Add pending styling for per-song assignments
           const assignmentStatus = assignment.assignmentStatus || 'pending';
           if (assignmentStatus === 'pending') {
@@ -4071,7 +4071,7 @@ function renderSetCard(set, container) {
           } else if (assignmentStatus === 'declined') {
             pill.classList.add("declined-status");
           }
-          
+
           // Clicking a "Your Sets" assignment pill should open the set and the song details
           pill.style.cursor = "pointer";
           if (assignment.setSongId) pill.dataset.setSongId = String(assignment.setSongId);
@@ -4092,12 +4092,12 @@ function renderSetCard(set, container) {
         rolesWrapper.appendChild(pill);
         pills.push(pill);
       });
-      
+
       // Store reference to pills and wrapper on the card for recalculation
       card.dataset.hasAssignments = "true";
       card._assignmentPills = pills;
       card._assignmentWrapper = rolesWrapper;
-      
+
       // Calculate initially
       calculateVisiblePills(card, pills, rolesWrapper);
     } else {
@@ -4113,7 +4113,7 @@ function renderSetCard(set, container) {
 function renderSets() {
   setsList.innerHTML = "";
   if (yourSetsList) yourSetsList.innerHTML = "";
-  
+
   if (!state.sets.length) {
     setsList.innerHTML = `<p class="muted">No sets scheduled yet.</p>`;
     if (yourSetsList) {
@@ -4153,7 +4153,7 @@ function renderSets() {
       });
     }
   }
-  
+
   // Recalculate assignment pills after rendering (with delay to ensure layout is complete)
   setTimeout(() => {
     recalculateAllAssignmentPills();
@@ -4163,7 +4163,7 @@ function renderSets() {
 function switchTab(tabName) {
   // Save the current tab to localStorage
   localStorage.setItem('cadence-active-tab', tabName);
-  
+
   // Update tab buttons
   document.querySelectorAll(".tab-btn").forEach(btn => {
     if (btn.dataset.tab === tabName) {
@@ -4172,12 +4172,12 @@ function switchTab(tabName) {
       btn.classList.remove("active");
     }
   });
-  
+
   // Show/hide tab content
   el("sets-tab").classList.toggle("hidden", tabName !== "sets");
   el("songs-tab").classList.toggle("hidden", tabName !== "songs");
   el("people-tab").classList.toggle("hidden", tabName !== "people");
-  
+
   // Load data if switching to tabs
   if (tabName === "songs") {
     renderSongCatalog();
@@ -4196,9 +4196,9 @@ function refreshActiveTab() {
   // Get the currently active tab
   const activeTabBtn = document.querySelector(".tab-btn.active");
   if (!activeTabBtn) return;
-  
+
   const activeTab = activeTabBtn.dataset.tab;
-  
+
   // Re-render the active tab content
   if (activeTab === "sets") {
     renderSets();
@@ -4207,7 +4207,7 @@ function refreshActiveTab() {
   } else if (activeTab === "people") {
     loadPeople();
   }
-  
+
   // If set detail view is open, refresh it too
   const setDetailView = el("set-detail");
   if (setDetailView && !setDetailView.classList.contains("hidden") && state.selectedSet) {
@@ -4218,7 +4218,7 @@ function refreshActiveTab() {
 async function loadPeople() {
   console.log('👥 loadPeople() called');
   console.log('  - state.currentTeamId:', state.currentTeamId);
-  
+
   if (!state.currentTeamId) {
     console.warn('⚠️ No currentTeamId, cannot load people');
     state.people = [];
@@ -4226,15 +4226,15 @@ async function loadPeople() {
     renderPeople();
     return;
   }
-  
+
   console.log('  - Loading people for team_id:', state.currentTeamId);
   console.log('  - Current user ID:', state.session?.user?.id);
   console.log('  - Current user is owner (from state):', isOwner());
-  
+
   // Query team_members WITHOUT profile join first to avoid RLS issues
   // Then fetch profiles separately and merge
   let teamMembers, teamMembersError, pendingInvites, pendingError;
-  
+
   try {
     const [
       teamMembersResult,
@@ -4264,7 +4264,7 @@ async function loadPeople() {
           .order("created_at", { ascending: true });
       }),
     ]);
-    
+
     teamMembers = teamMembersResult?.data;
     teamMembersError = teamMembersResult?.error;
     pendingInvites = pendingInvitesResult?.data;
@@ -4276,7 +4276,7 @@ async function loadPeople() {
     teamMembers = null;
     pendingInvites = null;
   }
-  
+
   // Now fetch profiles separately for all user_ids to avoid join RLS issues
   let profilesMap = {};
   if (teamMembers && teamMembers.length > 0) {
@@ -4289,7 +4289,7 @@ async function loadPeople() {
         .in("id", userIds);
     });
     const { data: profiles, error: profilesError } = profilesResult;
-    
+
     if (profilesError) {
       console.error('  - ❌ Error fetching profiles:', profilesError);
     } else {
@@ -4321,7 +4321,7 @@ async function loadPeople() {
       });
     });
   }
-  
+
   // Also do a direct query to verify database state
   console.log('  - Verifying database state with direct query...');
   console.log('  - Querying team_id:', state.currentTeamId);
@@ -4331,7 +4331,7 @@ async function loadPeople() {
     .eq("team_id", state.currentTeamId);
   console.log('  - Direct database check:', directCheck);
   console.log('  - Direct query error:', directError);
-  
+
   // Check teams.owner_id
   const { data: teamCheck, error: teamCheckError } = await supabase
     .from("teams")
@@ -4342,7 +4342,7 @@ async function loadPeople() {
   console.log('  - Team owner_id in database:', teamCheck?.owner_id);
   console.log('  - Team name:', teamCheck?.name);
   console.log('  - Team check error:', teamCheckError);
-  
+
   // Verify: if team owner_id doesn't match what we expect, log a warning
   if (teamCheck?.owner_id && directCheck) {
     const ownerInMembers = directCheck.find(m => m.user_id === teamCheck.owner_id);
@@ -4363,7 +4363,7 @@ async function loadPeople() {
   if (teamMembersError) {
     console.error("❌ Error loading team members:", teamMembersError);
     console.error("  - Error details:", JSON.stringify(teamMembersError, null, 2));
-    
+
     // Fallback to old method if team_members table doesn't exist or RLS fails
     console.log("  - ⚠️ Falling back to profiles query...");
     const { data: profiles, error: profilesError } = await supabase
@@ -4371,12 +4371,12 @@ async function loadPeople() {
       .select("*")
       .eq("team_id", state.currentTeamId)
       .order("full_name");
-    
+
     if (profilesError) {
       console.error("❌ Error loading people (fallback):", profilesError);
       return;
     }
-    
+
     // Filter out pending invites for users who already have accounts (profiles)
     const profileEmails = new Set(
       (profiles || []).map(p => (p.email || '').toLowerCase().trim()).filter(Boolean)
@@ -4385,7 +4385,7 @@ async function loadPeople() {
       const inviteEmail = (invite.email || '').toLowerCase().trim();
       return !profileEmails.has(inviteEmail);
     });
-    
+
     state.people = profiles || [];
     state.pendingInvites = filteredPendingInvites;
     renderPeople();
@@ -4406,7 +4406,7 @@ async function loadPeople() {
         console.warn(`  - ⚠️ No profile found for user_id: ${tm.user_id}`);
         return null;
       }
-      
+
       // CRITICAL: Ensure team_members data is the ONLY source for ownership/management
       // Profile data should ONLY provide name, email, etc. - NOT role/permissions
       const personData = {
@@ -4424,7 +4424,7 @@ async function loadPeople() {
         // Only include team_id from profile if it exists
         team_id: profile.team_id
       };
-      
+
       // Log for debugging ownership issues - especially for owners
       if (tm.is_owner) {
         console.log('  - ✅ Owner detected (from team_members):', {
@@ -4439,7 +4439,7 @@ async function loadPeople() {
           'final.role': personData.role
         });
       }
-      
+
       // Also log if current user is owner but this person is not marked as owner
       if (isOwner() && tm.user_id === state.session?.user?.id && !tm.is_owner) {
         console.error('  - 🚨 CRITICAL: Current user is owner but team_members says they are NOT owner!', {
@@ -4449,7 +4449,7 @@ async function loadPeople() {
           team_member_role: tm.role
         });
       }
-      
+
       return personData;
     })
     .filter(p => p !== null)
@@ -4459,7 +4459,7 @@ async function loadPeople() {
       const nameB = (b.full_name || "").toLowerCase();
       return nameA.localeCompare(nameB);
     });
-  
+
   console.log('  - Final people data (showing is_owner status):', profiles.map(p => ({
     id: p.id,
     name: p.full_name,
@@ -4468,7 +4468,7 @@ async function loadPeople() {
     can_manage: p.can_manage,
     role: p.role
   })));
-  
+
   // CRITICAL CHECK: Compare what we're about to render vs what's in the database
   if (teamCheck?.owner_id) {
     const renderedOwner = profiles.find(p => p.is_owner === true);
@@ -4512,7 +4512,7 @@ async function loadPeople() {
 function renderPeople() {
   const peopleList = el("people-list");
   if (!peopleList) return;
-  
+
   // Update team name display when rendering people (already handled in showApp, but keep for consistency)
   const teamNameDisplay = el("team-name-display");
   const teamNameHeader = el("team-name-header");
@@ -4525,7 +4525,7 @@ function renderPeople() {
   } else if (teamNameHeader) {
     teamNameHeader.classList.add("hidden");
   }
-  
+
   // Show/hide leave team button
   const leaveTeamBtn = el("btn-leave-team");
   if (leaveTeamBtn && currentTeam) {
@@ -4539,7 +4539,7 @@ function renderPeople() {
           .select("user_id")
           .eq("team_id", state.currentTeamId)
           .eq("is_owner", true);
-        
+
         if (owners && owners.length === 1) {
           // Only owner - hide leave button
           leaveTeamBtn.classList.add("hidden");
@@ -4555,14 +4555,14 @@ function renderPeople() {
   } else if (leaveTeamBtn) {
     leaveTeamBtn.classList.add("hidden");
   }
-  
+
   const searchInput = el("people-tab-search");
   const isManagerCheck = isManager();
   const searchTermRaw = searchInput ? searchInput.value.trim() : "";
   const searchTerm = searchTermRaw.toLowerCase();
-  
+
   peopleList.innerHTML = "";
-  
+
   // Add invite card for managers/owners (always show, not affected by search)
   // Check if user can manage the current team (owner or manager)
   const canManageCurrentTeam = currentTeam && (currentTeam.is_owner || currentTeam.can_manage);
@@ -4578,11 +4578,11 @@ function renderPeople() {
     inviteCard.addEventListener("click", () => openInviteModal());
     peopleList.appendChild(inviteCard);
   }
-  
+
   // Filter people and pending invites based on search
   let filteredPeople = state.people || [];
   let filteredPending = state.pendingInvites || [];
-  
+
   if (searchTerm) {
     // Filter people: prioritize name matches over email matches
     const allPeopleMatches = (state.people || []).filter((person) => {
@@ -4590,7 +4590,7 @@ function renderPeople() {
       const emailMatch = (person.email || "").toLowerCase().includes(searchTerm);
       return nameMatch || emailMatch;
     });
-    
+
     const nameMatches = allPeopleMatches.filter((person) =>
       (person.full_name || "").toLowerCase().includes(searchTerm)
     );
@@ -4598,14 +4598,14 @@ function renderPeople() {
       !(person.full_name || "").toLowerCase().includes(searchTerm)
     );
     filteredPeople = [...nameMatches, ...emailMatches];
-    
+
     // Filter pending invites: prioritize name matches over email matches
     const allPendingMatches = (state.pendingInvites || []).filter((invite) => {
       const nameMatch = (invite.full_name || "").toLowerCase().includes(searchTerm);
       const emailMatch = (invite.email || "").toLowerCase().includes(searchTerm);
       return nameMatch || emailMatch;
     });
-    
+
     const pendingNameMatches = allPendingMatches.filter((invite) =>
       (invite.full_name || "").toLowerCase().includes(searchTerm)
     );
@@ -4614,7 +4614,7 @@ function renderPeople() {
     );
     filteredPending = [...pendingNameMatches, ...pendingEmailMatches];
   }
-  
+
   // Sort people: managers first, then members, both alphabetically by name
   filteredPeople.sort((a, b) => {
     // First, sort by manager status (managers first)
@@ -4628,7 +4628,7 @@ function renderPeople() {
     const bName = (b.full_name || "").toLowerCase();
     return aName.localeCompare(bName);
   });
-  
+
   const hasMembers = filteredPeople.length > 0;
   const hasPending = filteredPending.length > 0;
   const totalEntries = filteredPeople.length + filteredPending.length;
@@ -4656,16 +4656,16 @@ function renderPeople() {
     filteredPeople.forEach((person) => {
       const div = document.createElement("div");
       div.className = "card person-card";
-      
+
       if (isManagerCheck) {
         // Manager view: show email, edit name, delete
         const highlightedName = searchTermRaw ? highlightMatch(person.full_name || "", searchTermRaw) : escapeHtml(person.full_name || "");
-        const highlightedEmail = person.email 
-          ? (searchTermRaw && person.email.toLowerCase().includes(searchTerm) 
-              ? highlightMatch(person.email, searchTermRaw)
-              : escapeHtml(person.email))
+        const highlightedEmail = person.email
+          ? (searchTermRaw && person.email.toLowerCase().includes(searchTerm)
+            ? highlightMatch(person.email, searchTermRaw)
+            : escapeHtml(person.email))
           : null;
-        
+
         div.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: start; width: 100%; gap: 0.5rem;">
             <div style="flex: 1; min-width: 0; overflow: hidden;">
@@ -4693,10 +4693,10 @@ function renderPeople() {
                   <button class="btn small ghost delete-person-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left; margin-top: 0.25rem;"><i class="fa-solid fa-trash" style="margin-right: 0.5rem;"></i> Remove</button>
                   ${isOwner() && !person.is_owner ? `
                     <div style="border-top: 1px solid var(--border-color); margin-top: 0.5rem; padding-top: 0.5rem;">
-                      ${person.can_manage 
-                        ? `<button class="btn small ghost demote-manager-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left;"><i class="fa-solid fa-user-minus" style="margin-right: 0.5rem;"></i> Remove Manager</button>`
-                        : `<button class="btn small ghost promote-manager-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left;"><i class="fa-solid fa-user-plus" style="margin-right: 0.5rem;"></i> Make Manager</button>`
-                      }
+                      ${person.can_manage
+              ? `<button class="btn small ghost demote-manager-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left;"><i class="fa-solid fa-user-minus" style="margin-right: 0.5rem;"></i> Remove Manager</button>`
+              : `<button class="btn small ghost promote-manager-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left;"><i class="fa-solid fa-user-plus" style="margin-right: 0.5rem;"></i> Make Manager</button>`
+            }
                       <button class="btn small ghost transfer-ownership-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left; margin-top: 0.25rem;"><i class="fa-solid fa-crown" style="margin-right: 0.5rem;"></i> Transfer Ownership</button>
                     </div>
                   ` : ''}
@@ -4705,7 +4705,7 @@ function renderPeople() {
             </div>
           </div>
         `;
-        
+
         // Person menu button and handlers
         const menuBtn = div.querySelector(".person-menu-btn");
         const menu = div.querySelector(".person-menu");
@@ -4719,7 +4719,7 @@ function renderPeople() {
             menu.classList.toggle("hidden");
           });
         }
-        
+
         const editBtn = div.querySelector(".edit-person-btn");
         if (editBtn) {
           editBtn.addEventListener("click", () => {
@@ -4727,7 +4727,7 @@ function renderPeople() {
             menu?.classList.add("hidden");
           });
         }
-        
+
         const deleteBtn = div.querySelector(".delete-person-btn");
         if (deleteBtn) {
           deleteBtn.addEventListener("click", () => {
@@ -4735,7 +4735,7 @@ function renderPeople() {
             menu?.classList.add("hidden");
           });
         }
-        
+
         const promoteBtn = div.querySelector(".promote-manager-btn");
         if (promoteBtn) {
           promoteBtn.addEventListener("click", () => {
@@ -4743,7 +4743,7 @@ function renderPeople() {
             menu?.classList.add("hidden");
           });
         }
-        
+
         const demoteBtn = div.querySelector(".demote-manager-btn");
         if (demoteBtn) {
           demoteBtn.addEventListener("click", () => {
@@ -4751,7 +4751,7 @@ function renderPeople() {
             menu?.classList.add("hidden");
           });
         }
-        
+
         const transferBtn = div.querySelector(".transfer-ownership-btn");
         if (transferBtn) {
           transferBtn.addEventListener("click", () => {
@@ -4767,7 +4767,7 @@ function renderPeople() {
           ${person.is_owner ? '<span class="person-role" style="background: var(--accent-color); color: var(--bg-primary);">Owner</span>' : person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
         `;
       }
-      
+
       peopleList.appendChild(div);
     });
   }
@@ -4777,15 +4777,15 @@ function renderPeople() {
       const div = document.createElement("div");
       div.className = "card person-card pending-person-card";
       const displayName = invite.full_name || invite.email;
-      
+
       // Highlight name and email
       const highlightedName = searchTermRaw ? highlightMatch(displayName || "", searchTermRaw) : escapeHtml(displayName || "");
-      const highlightedEmail = invite.email 
+      const highlightedEmail = invite.email
         ? (searchTermRaw && invite.email.toLowerCase().includes(searchTerm)
-            ? highlightMatch(invite.email, searchTermRaw)
-            : escapeHtml(invite.email))
+          ? highlightMatch(invite.email, searchTermRaw)
+          : escapeHtml(invite.email))
         : null;
-      
+
       if (isManagerCheck) {
         // Manager view: show cancel button
         div.innerHTML = `
@@ -4801,7 +4801,7 @@ function renderPeople() {
             <button class="btn small ghost cancel-invite-btn" data-invite-id="${invite.id}">Cancel Invite</button>
           </div>
         `;
-        
+
         const cancelBtn = div.querySelector(".cancel-invite-btn");
         if (cancelBtn) {
           cancelBtn.addEventListener("click", () => cancelPendingInvite(invite));
@@ -4819,7 +4819,7 @@ function renderPeople() {
           <p class="muted small-text" style="margin-top: 0.75rem;">Invite sent</p>
         `;
       }
-      
+
       peopleList.appendChild(div);
     });
   }
@@ -4839,7 +4839,7 @@ function renderTimes(serviceTimesContent, rehearsalTimesContent, set) {
   // Show/hide edit buttons for managers
   const editTimesBtn = el("btn-edit-times");
   const editTimesBtnMobile = el("btn-edit-times-mobile");
-  
+
   if (isManager()) {
     if (editTimesBtn) editTimesBtn.classList.remove("hidden");
     if (editTimesBtnMobile) editTimesBtnMobile.classList.remove("hidden");
@@ -4847,12 +4847,12 @@ function renderTimes(serviceTimesContent, rehearsalTimesContent, set) {
     if (editTimesBtn) editTimesBtn.classList.add("hidden");
     if (editTimesBtnMobile) editTimesBtnMobile.classList.add("hidden");
   }
-  
+
   // Render service times
   serviceTimesContent.innerHTML = "";
   if (set.service_times && set.service_times.length > 0) {
     // Sort service times
-    const sortedTimes = [...set.service_times].sort((a, b) => 
+    const sortedTimes = [...set.service_times].sort((a, b) =>
       a.service_time.localeCompare(b.service_time)
     );
     sortedTimes.forEach((st) => {
@@ -4866,7 +4866,7 @@ function renderTimes(serviceTimesContent, rehearsalTimesContent, set) {
   } else {
     serviceTimesContent.innerHTML = '<div class="no-times">No service times added</div>';
   }
-  
+
   // Render rehearsal times
   rehearsalTimesContent.innerHTML = "";
   if (set.rehearsal_times && set.rehearsal_times.length > 0) {
@@ -4902,24 +4902,24 @@ function getSetAssignmentMode(set) {
   if (set.assignment_mode_override) {
     return set.assignment_mode_override;
   }
-  
+
   // If no override, check what assignments the set actually has to determine mode
   // This preserves the mode for sets created before the override feature
   if (set.set_assignments && set.set_assignments.length > 0) {
     // Has set-level assignments, so it's per-set
     return 'per_set';
   }
-  
+
   // Check if any songs have assignments (per-song mode)
   if (set.set_songs && set.set_songs.length > 0) {
-    const hasSongAssignments = set.set_songs.some(setSong => 
+    const hasSongAssignments = set.set_songs.some(setSong =>
       setSong.song_assignments && setSong.song_assignments.length > 0
     );
     if (hasSongAssignments) {
       return 'per_song';
     }
   }
-  
+
   // If no assignments exist, use team default
   return state.teamAssignmentMode || 'per_set';
 }
@@ -4927,25 +4927,25 @@ function getSetAssignmentMode(set) {
 // Render per-set assignments
 function renderSetAssignments(set, container) {
   if (!container) return;
-  
+
   const assignmentMode = getSetAssignmentMode(set);
-  
+
   // Only show assignments card when in per-set mode
   const assignmentsCard = el("set-assignments-display");
   const assignmentsCardMobile = el("set-assignments-display-mobile");
-  
+
   if (assignmentMode === 'per_set') {
     if (assignmentsCard) assignmentsCard.classList.remove("hidden");
     if (assignmentsCardMobile) assignmentsCardMobile.classList.remove("hidden");
-    
+
     // Get set-level assignments
     const setAssignments = set.set_assignments || [];
-    
+
     if (setAssignments.length === 0) {
       container.innerHTML = '<div class="no-assignments">No assignments yet.</div>';
       return;
     }
-    
+
     // Group assignments by role
     const assignmentsByRole = {};
     setAssignments.forEach(assignment => {
@@ -4954,21 +4954,21 @@ function renderSetAssignments(set, container) {
       }
       assignmentsByRole[assignment.role].push(assignment);
     });
-    
+
     // Render grouped assignments
     container.innerHTML = "";
     Object.keys(assignmentsByRole).sort().forEach(role => {
       const roleItem = document.createElement("div");
       roleItem.className = "assignment-role-item";
-      
+
       const roleName = document.createElement("div");
       roleName.className = "assignment-role-name";
       roleName.textContent = role;
       roleItem.appendChild(roleName);
-      
+
       const peopleList = document.createElement("div");
       peopleList.className = "assignment-role-people";
-      
+
       assignmentsByRole[role].forEach(assignment => {
         const personEl = document.createElement("div");
         const isPendingInvite = Boolean(assignment.pending_invite_id);
@@ -4980,17 +4980,17 @@ function renderSetAssignments(set, container) {
           assignment.person_email ||
           assignment.pending_invite?.email ||
           "Unknown";
-        
+
         personEl.className = `assignment-role-person ${isPendingInvite ? 'pending' : ''} status-${assignmentStatus}`;
         personEl.textContent = personName;
-        
+
         // Make clickable to show assignment details modal
         personEl.style.cursor = "pointer";
         personEl.dataset.assignmentId = assignment.id;
         personEl.dataset.assignmentStatus = assignmentStatus;
         personEl.dataset.personName = personName;
         personEl.dataset.role = assignment.role;
-        
+
         personEl.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -5002,7 +5002,7 @@ function renderSetAssignments(set, container) {
             assignmentId: assignment.id
           });
         });
-        
+
         // Add status indicator
         if (assignmentStatus === 'pending') {
           const statusBadge = document.createElement("span");
@@ -5017,7 +5017,7 @@ function renderSetAssignments(set, container) {
           statusBadge.title = "Assignment declined";
           personEl.appendChild(statusBadge);
         }
-        
+
         if (isPendingInvite) {
           const inviteBadge = document.createElement("span");
           inviteBadge.className = "assignment-status-badge invite";
@@ -5025,10 +5025,10 @@ function renderSetAssignments(set, container) {
           inviteBadge.title = "Pending invite";
           personEl.appendChild(inviteBadge);
         }
-        
+
         peopleList.appendChild(personEl);
       });
-      
+
       roleItem.appendChild(peopleList);
       container.appendChild(roleItem);
     });
@@ -5045,7 +5045,7 @@ function switchSetDetailTab(tabName) {
   if (!tabsContainer || window.getComputedStyle(tabsContainer).display === "none") {
     return; // Don't switch if tabs aren't visible (desktop)
   }
-  
+
   // Update tab buttons
   document.querySelectorAll(".set-detail-tabs .tab-btn").forEach(btn => {
     if (btn.dataset.detailTab === tabName) {
@@ -5054,17 +5054,17 @@ function switchSetDetailTab(tabName) {
       btn.classList.remove("active");
     }
   });
-  
+
   // Update tab content
   const songsTab = el("set-detail-tab-songs");
   const assignmentsTab = el("set-detail-tab-assignments");
   const timesTab = el("set-detail-tab-times");
-  
+
   if (!songsTab || !timesTab) {
     console.error("Tab content elements not found", { songsTab, timesTab });
     return;
   }
-  
+
   if (tabName === "songs") {
     songsTab.classList.remove("hidden");
     if (assignmentsTab) assignmentsTab.classList.add("hidden");
@@ -5088,10 +5088,10 @@ function showSetDetail(set) {
   }
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
-  
+
   dashboard.classList.add("hidden");
   detailView.classList.remove("hidden");
-  
+
   // Populate detail view
   el("detail-set-title").textContent = set.title;
   const date = parseLocalDate(set.scheduled_date);
@@ -5103,14 +5103,14 @@ function showSetDetail(set) {
   }) : "";
   el("detail-set-description").textContent = set.description || "No description yet";
   updateServiceLengthDisplay(set);
-  
+
   // Show/hide edit/delete buttons for managers
   const editBtn = el("btn-edit-set-detail");
   const deleteBtn = el("btn-delete-set-detail");
   const viewAsMemberDetailBtn = el("btn-view-as-member-detail");
   const headerAddDropdown = el("header-add-dropdown-container");
   const mobileHeaderAddDropdown = el("mobile-header-add-dropdown-container");
-  
+
   if (isManager()) {
     editBtn.classList.remove("hidden");
     deleteBtn.classList.remove("hidden");
@@ -5130,7 +5130,7 @@ function showSetDetail(set) {
       mobileHeaderAddDropdown.classList.add("hidden");
     }
   }
-  
+
   // Show/hide "View as Member" button in set detail (only for managers, not when already in member view)
   if (state.profile?.can_manage) {
     if (viewAsMemberDetailBtn) {
@@ -5147,19 +5147,19 @@ function showSetDetail(set) {
   } else {
     if (viewAsMemberDetailBtn) viewAsMemberDetailBtn.classList.add("hidden");
   }
-  
+
   // Render service times (desktop sidebar)
   const serviceTimesContent = el("service-times-content");
   const rehearsalTimesContent = el("rehearsal-times-content");
   renderTimes(serviceTimesContent, rehearsalTimesContent, set);
-  
+
   // Render service times (mobile tab)
   const serviceTimesContentMobile = el("service-times-content-mobile");
   const rehearsalTimesContentMobile = el("rehearsal-times-content-mobile");
   if (serviceTimesContentMobile && rehearsalTimesContentMobile) {
     renderTimes(serviceTimesContentMobile, rehearsalTimesContentMobile, set);
   }
-  
+
   // Render assignments (desktop sidebar)
   const assignmentsContent = el("set-assignments-content");
   const editAssignmentsBtn = el("btn-edit-assignments");
@@ -5172,7 +5172,7 @@ function showSetDetail(set) {
       if (editAssignmentsBtn) editAssignmentsBtn.classList.add("hidden");
     }
   }
-  
+
   // Render assignments (mobile tab)
   const assignmentsContentMobile = el("set-assignments-content-mobile");
   const editAssignmentsBtnMobile = el("btn-edit-assignments-mobile");
@@ -5185,7 +5185,7 @@ function showSetDetail(set) {
       if (editAssignmentsBtnMobile) editAssignmentsBtnMobile.classList.add("hidden");
     }
   }
-  
+
   // Ensure songs tab is visible initially
   const songsTab = el("set-detail-tab-songs");
   const assignmentsTab = el("set-detail-tab-assignments");
@@ -5193,7 +5193,7 @@ function showSetDetail(set) {
   if (songsTab) songsTab.classList.remove("hidden");
   if (assignmentsTab) assignmentsTab.classList.add("hidden");
   if (timesTab) timesTab.classList.add("hidden");
-  
+
   // Show/hide assignments tab button on mobile based on assignment mode
   const assignmentMode = getSetAssignmentMode(set);
   const assignmentsTabButton = document.querySelector('.set-detail-tabs .tab-btn[data-detail-tab="assignments"]');
@@ -5208,13 +5208,13 @@ function showSetDetail(set) {
       }
     }
   }
-  
+
   // Reset to songs tab on mobile (only if tabs are visible)
   const tabsContainer = document.querySelector(".set-detail-tabs");
   if (tabsContainer && window.getComputedStyle(tabsContainer).display !== "none") {
     switchSetDetailTab("songs");
   }
-  
+
   // Render songs
   renderSetDetailSongs(set);
 }
@@ -5247,10 +5247,10 @@ function renderSetDetailSongs(set) {
       .join(" • ");
     el.innerHTML = html;
   };
-  
+
   // Render existing songs
   if (set.set_songs?.length) {
-      set.set_songs
+    set.set_songs
       .sort((a, b) => a.sequence_order - b.sequence_order)
       .forEach((setSong, index) => {
         const plannedDurationSeconds = getSetSongDurationSeconds(setSong);
@@ -5265,20 +5265,20 @@ function renderSetDetailSongs(set) {
           }
           return baseSongDurationSeconds ? formatDuration(baseSongDurationSeconds) : null;
         })();
-        
+
         // Check if this is a tag
         const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
         const isTagItem = !!tagInfo;
-        
+
         // Check if this is a section (no song_id) or a song
         const isSection = !setSong.song_id && !isTagItem;
-        
+
         // Check if this is a section header (section with no description, notes, or assignments)
-        const isSectionHeader = isSection && 
-          !setSong.description && 
-          !setSong.notes && 
+        const isSectionHeader = isSection &&
+          !setSong.description &&
+          !setSong.notes &&
           (!setSong.song_assignments || setSong.song_assignments.length === 0);
-        
+
         if (isSectionHeader) {
           // Render as section header (H1 title) - simple header with line underneath, no card styling
           const headerWrapper = document.createElement("div");
@@ -5287,7 +5287,7 @@ function renderSetDetailSongs(set) {
           headerWrapper.dataset.sequenceOrder = setSong.sequence_order;
           headerWrapper.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin: 2rem 0 1rem 0; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; position: relative;";
           headerWrapper.draggable = false; // Will be set to true when dragging from handle
-          
+
           // Add drag handle for managers (positioned on the left)
           const hasDragHandle = isManager();
           if (hasDragHandle) {
@@ -5296,16 +5296,16 @@ function renderSetDetailSongs(set) {
             dragHandle.style.cssText = "position: absolute; left: 0.5rem; top: 50%; transform: translateY(-50%); cursor: grab; color: var(--text-muted); font-size: 1.2rem; line-height: 1; padding: 0.5rem; display: flex; align-items: center; justify-content: center; transition: color 0.2s ease; flex-shrink: 0; z-index: 1;";
             dragHandle.textContent = "⋮⋮";
             dragHandle.title = "Drag to reorder";
-            dragHandle.addEventListener("mousedown", function(e) {
+            dragHandle.addEventListener("mousedown", function (e) {
               headerWrapper.draggable = true;
             });
-            dragHandle.addEventListener("selectstart", function(e) {
+            dragHandle.addEventListener("selectstart", function (e) {
               e.preventDefault();
             });
             dragHandle.style.userSelect = "none";
             headerWrapper.appendChild(dragHandle);
           }
-          
+
           const headerElement = document.createElement("h1");
           headerElement.className = "section-header-title";
           headerElement.textContent = setSong.title || "Untitled Header";
@@ -5316,20 +5316,20 @@ function renderSetDetailSongs(set) {
           } else {
             headerElement.style.cssText = "margin: 0; font-size: 1.75rem; font-weight: 700; color: var(--text-primary); flex: 1;";
           }
-          
+
           headerWrapper.appendChild(headerElement);
-          
+
           // Add edit/remove buttons for managers
           if (isManager()) {
             const actionsContainer = document.createElement("div");
             actionsContainer.style.cssText = "display: flex; gap: 0.5rem; align-items: center;";
-            
+
             const editBtn = document.createElement("button");
             editBtn.className = "btn small ghost";
             editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i> Edit';
             editBtn.dataset.setSongId = setSong.id;
             editBtn.addEventListener("click", () => openEditSetSongModal(setSong));
-            
+
             const removeBtn = document.createElement("button");
             removeBtn.className = "btn small ghost";
             removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Remove';
@@ -5344,23 +5344,23 @@ function renderSetDetailSongs(set) {
                 }
               );
             });
-            
+
             actionsContainer.appendChild(editBtn);
             actionsContainer.appendChild(removeBtn);
             headerWrapper.appendChild(actionsContainer);
           }
-          
+
           songsList.appendChild(headerWrapper);
           return; // Skip the normal card rendering
         }
-        
+
         const songNode = document
           .getElementById("song-item-template")
           .content.cloneNode(true);
         const card = songNode.querySelector(".set-song-card");
         card.dataset.setSongId = setSong.id;
         card.dataset.sequenceOrder = setSong.sequence_order;
-        
+
         // Only make draggable for managers
         const dragHandle = songNode.querySelector(".drag-handle");
         const songHeader = songNode.querySelector(".set-song-header");
@@ -5384,17 +5384,17 @@ function renderSetDetailSongs(set) {
             songHeader.style.paddingLeft = "0";
           }
         }
-        
+
         if (isTagItem) {
           // Render as tag
           const tagSongTitle = setSong.song?.title ?? "Untitled";
           const partName = setSong.title || "Untitled Part";
           songNode.querySelector(".song-title").textContent = `${tagSongTitle} - ${partName}`;
-          
+
           // Add tag indicator class
           card.classList.add("set-song-tag-card");
-          
-          const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0 
+
+          const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0
             ? setSong.song.song_keys.map(k => k.key).join(", ")
             : null);
           safeJoinMeta(songNode.querySelector(".song-meta"), [
@@ -5414,7 +5414,7 @@ function renderSetDetailSongs(set) {
           safeJoinMeta(songNode.querySelector(".song-meta"), sectionMetaParts);
           songNode.querySelector(".song-notes").textContent = setSong.notes || "";
           // View Details button will be set up later in the code
-          
+
           // Display section links if they exist
           const sectionLinks = setSong.song_links || [];
           if (sectionLinks.length > 0) {
@@ -5427,7 +5427,7 @@ function renderSetDetailSongs(set) {
               const bt = (b?.title || "").toLowerCase();
               return at.localeCompare(bt);
             });
-            
+
             // Create links container after notes
             const notesEl = songNode.querySelector(".song-notes");
             if (notesEl) {
@@ -5436,7 +5436,7 @@ function renderSetDetailSongs(set) {
               linksContainer.style.marginTop = "1rem";
               linksContainer.style.paddingTop = "1rem";
               linksContainer.style.borderTop = "1px solid var(--border-color)";
-              
+
               const linksTitle = document.createElement("h4");
               linksTitle.className = "section-subtitle";
               linksTitle.textContent = "Links & Resources";
@@ -5445,18 +5445,18 @@ function renderSetDetailSongs(set) {
               linksTitle.style.fontWeight = "600";
               linksTitle.style.color = "var(--text-primary)";
               linksContainer.appendChild(linksTitle);
-              
+
               const linksList = document.createElement("div");
               linksList.style.display = "flex";
               linksList.style.flexDirection = "column";
               linksList.style.gap = "0.5rem";
-              
+
               // Render links asynchronously to handle file URL generation
               (async () => {
                 for (const link of sortedLinks) {
                   const linkEl = document.createElement("a");
                   linkEl.className = "song-link-display";
-                  
+
                   if (link.is_file_upload && link.file_path) {
                     console.log('Rendering file upload in set detail:', {
                       title: link.title,
@@ -5464,13 +5464,13 @@ function renderSetDetailSongs(set) {
                       file_name: link.file_name,
                       is_file_upload: link.is_file_upload
                     });
-                    
+
                     // Check if it's an audio file
                     const isAudio = isAudioFile(link.file_type, link.file_name);
-                    
+
                     // File upload - get signed URL
                     const fileUrl = await getFileUrl(link.file_path);
-                    
+
                     if (isAudio && fileUrl) {
                       // Create audio player instead of download link
                       const audioContainer = document.createElement("div");
@@ -5482,21 +5482,21 @@ function renderSetDetailSongs(set) {
                       audioContainer.style.background = "var(--bg-secondary)";
                       audioContainer.style.borderRadius = "0.5rem";
                       audioContainer.style.border = "1px solid var(--border-color)";
-                      
+
                       // Audio icon
                       const audioIcon = document.createElement("div");
                       audioIcon.className = "song-link-favicon";
                       audioIcon.innerHTML = '<i class="fa-solid fa-music" style="font-size: 1.2rem; color: var(--accent-color);"></i>';
-                      
+
                       const content = document.createElement("div");
                       content.className = "song-link-content";
                       content.style.flex = "1";
                       content.style.minWidth = "0";
-                      
+
                       const title = document.createElement("div");
                       title.className = "song-link-title";
                       title.textContent = link.title;
-                      
+
                       // Audio player
                       const audio = document.createElement("audio");
                       audio.controls = true;
@@ -5504,17 +5504,17 @@ function renderSetDetailSongs(set) {
                       audio.style.width = "100%";
                       audio.style.marginTop = "0.5rem";
                       audio.preload = "metadata";
-                      
+
                       content.appendChild(title);
                       content.appendChild(audio);
-                      
+
                       audioContainer.appendChild(audioIcon);
                       audioContainer.appendChild(content);
-                      
+
                       linksList.appendChild(audioContainer);
                       continue; // Skip the link creation for audio files
                     }
-                    
+
                     // For non-audio files, create download link
                     if (fileUrl) {
                       linkEl.href = fileUrl;
@@ -5534,29 +5534,29 @@ function renderSetDetailSongs(set) {
                       linkEl.style.opacity = "0.6";
                       linkEl.title = "File unavailable";
                     }
-                    
+
                     // File icon
                     const fileIcon = document.createElement("div");
                     fileIcon.className = "song-link-favicon";
                     fileIcon.innerHTML = '<i class="fa-solid fa-file" style="font-size: 1.2rem; color: var(--text-secondary);"></i>';
-                    
+
                     const content = document.createElement("div");
                     content.className = "song-link-content";
-                    
+
                     const title = document.createElement("div");
                     title.className = "song-link-title";
                     title.textContent = link.title;
-                    
+
                     const fileInfo = document.createElement("div");
                     fileInfo.className = "song-link-url";
                     fileInfo.textContent = link.file_name || "File";
                     if (link.file_type) {
                       fileInfo.textContent += ` (${link.file_type})`;
                     }
-                    
+
                     content.appendChild(title);
                     content.appendChild(fileInfo);
-                    
+
                     linkEl.appendChild(fileIcon);
                     linkEl.appendChild(content);
                   } else {
@@ -5564,7 +5564,7 @@ function renderSetDetailSongs(set) {
                     linkEl.href = link.url;
                     linkEl.target = "_blank";
                     linkEl.rel = "noopener noreferrer";
-                    
+
                     const favicon = document.createElement("img");
                     favicon.className = "song-link-favicon";
                     favicon.src = getFaviconUrl(link.url);
@@ -5572,29 +5572,29 @@ function renderSetDetailSongs(set) {
                     favicon.onerror = () => {
                       favicon.style.display = "none";
                     };
-                    
+
                     const content = document.createElement("div");
                     content.className = "song-link-content";
-                    
+
                     const title = document.createElement("div");
                     title.className = "song-link-title";
                     title.textContent = link.title;
-                    
+
                     const url = document.createElement("div");
                     url.className = "song-link-url";
                     url.textContent = link.url;
-                    
+
                     content.appendChild(title);
                     content.appendChild(url);
-                    
+
                     linkEl.appendChild(favicon);
                     linkEl.appendChild(content);
                   }
-                  
+
                   linksList.appendChild(linkEl);
                 }
               })();
-              
+
               linksContainer.appendChild(linksList);
               notesEl.parentNode.insertBefore(linksContainer, notesEl.nextSibling);
             }
@@ -5603,7 +5603,7 @@ function renderSetDetailSongs(set) {
           // Render as song
           songNode.querySelector(".song-title").textContent =
             setSong.song?.title ?? "Untitled";
-          const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0 
+          const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0
             ? setSong.song.song_keys.map(k => k.key).join(", ")
             : null);
           safeJoinMeta(songNode.querySelector(".song-meta"), [
@@ -5624,98 +5624,98 @@ function renderSetDetailSongs(set) {
 
         const assignmentsWrap = songNode.querySelector(".assignments");
         const assignmentMode = getSetAssignmentMode(set);
-        
+
         // Hide assignments section completely when in per-set mode
         if (assignmentMode === 'per_set') {
           assignmentsWrap.style.display = 'none';
         } else {
           assignmentsWrap.style.display = '';
-        if (!setSong.song_assignments?.length) {
-          assignmentsWrap.innerHTML =
-            '<span class="muted">No assignments yet.</span>';
-        } else {
-          setSong.song_assignments.forEach((assignment) => {
-            const pill = document
-              .getElementById("assignment-pill-template")
-              .content.cloneNode(true);
-            pill.querySelector(".assignment-role").textContent =
-              assignment.role;
-            const personEl = pill.querySelector(".assignment-person");
-            const isPendingInvite = Boolean(assignment.pending_invite_id);
-            const assignmentStatus = assignment.status || 'pending';
-            const personName =
-              assignment.person?.full_name ||
-              assignment.pending_invite?.full_name ||
-              assignment.person_name ||
-              assignment.person_email ||
-              assignment.pending_invite?.email ||
-              "Unknown";
-            if (personEl) {
-              personEl.textContent = personName;
-              if (isPendingInvite) {
-                const inviteTag = document.createElement("span");
-                inviteTag.className = "pending-inline-tag";
-                inviteTag.textContent = " (Invite)";
-                personEl.appendChild(inviteTag);
+          if (!setSong.song_assignments?.length) {
+            assignmentsWrap.innerHTML =
+              '<span class="muted">No assignments yet.</span>';
+          } else {
+            setSong.song_assignments.forEach((assignment) => {
+              const pill = document
+                .getElementById("assignment-pill-template")
+                .content.cloneNode(true);
+              pill.querySelector(".assignment-role").textContent =
+                assignment.role;
+              const personEl = pill.querySelector(".assignment-person");
+              const isPendingInvite = Boolean(assignment.pending_invite_id);
+              const assignmentStatus = assignment.status || 'pending';
+              const personName =
+                assignment.person?.full_name ||
+                assignment.pending_invite?.full_name ||
+                assignment.person_name ||
+                assignment.person_email ||
+                assignment.pending_invite?.email ||
+                "Unknown";
+              if (personEl) {
+                personEl.textContent = personName;
+                if (isPendingInvite) {
+                  const inviteTag = document.createElement("span");
+                  inviteTag.className = "pending-inline-tag";
+                  inviteTag.textContent = " (Invite)";
+                  personEl.appendChild(inviteTag);
+                }
+                // Add status indicator
+                if (assignmentStatus === 'pending') {
+                  const statusBadge = document.createElement("span");
+                  statusBadge.className = "assignment-status-badge pending";
+                  statusBadge.textContent = "Pending";
+                  statusBadge.title = "Awaiting acceptance";
+                  statusBadge.style.marginLeft = "0.25rem";
+                  statusBadge.style.fontSize = "0.7rem";
+                  personEl.appendChild(statusBadge);
+                } else if (assignmentStatus === 'declined') {
+                  const statusBadge = document.createElement("span");
+                  statusBadge.className = "assignment-status-badge declined";
+                  statusBadge.textContent = "Declined";
+                  statusBadge.title = "Assignment declined";
+                  statusBadge.style.marginLeft = "0.25rem";
+                  statusBadge.style.fontSize = "0.7rem";
+                  personEl.appendChild(statusBadge);
+                }
               }
-              // Add status indicator
-              if (assignmentStatus === 'pending') {
-                const statusBadge = document.createElement("span");
-                statusBadge.className = "assignment-status-badge pending";
-                statusBadge.textContent = "Pending";
-                statusBadge.title = "Awaiting acceptance";
-                statusBadge.style.marginLeft = "0.25rem";
-                statusBadge.style.fontSize = "0.7rem";
-                personEl.appendChild(statusBadge);
-              } else if (assignmentStatus === 'declined') {
-                const statusBadge = document.createElement("span");
-                statusBadge.className = "assignment-status-badge declined";
-                statusBadge.textContent = "Declined";
-                statusBadge.title = "Assignment declined";
-                statusBadge.style.marginLeft = "0.25rem";
-                statusBadge.style.fontSize = "0.7rem";
-                personEl.appendChild(statusBadge);
+              const pillRoot = pill.querySelector(".assignment-pill");
+              if (isPendingInvite && pillRoot) {
+                pillRoot.classList.add("pending");
               }
-            }
-            const pillRoot = pill.querySelector(".assignment-pill");
-            if (isPendingInvite && pillRoot) {
-              pillRoot.classList.add("pending");
-            }
-            if (assignmentStatus === 'pending' && pillRoot) {
-              pillRoot.classList.add("status-pending");
-            }
-            if (assignmentStatus === 'declined' && pillRoot) {
-              pillRoot.classList.add("status-declined");
-            }
-            
-            // Make clickable to show assignment details modal (in set detail view)
-            if (pillRoot) {
-              pillRoot.style.cursor = "pointer";
-              pillRoot.dataset.assignmentId = assignment.id;
-              pillRoot.dataset.assignmentStatus = assignmentStatus;
-              pillRoot.dataset.personName = personName;
-              pillRoot.dataset.role = assignment.role;
-              pillRoot.dataset.songTitle = setSong.song_id 
-                ? (setSong.song?.title || setSong.title || "Unknown Song")
-                : (setSong.title || "Unknown Section");
-              
-              pillRoot.addEventListener("click", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showAssignmentDetailsModal({
-                  personName: personName,
-                  role: assignment.role,
-                  songTitle: setSong.song_id 
-                    ? (setSong.song?.title || setSong.title || "Unknown Song")
-                    : (setSong.title || "Unknown Section"),
-                  status: assignmentStatus,
-                  assignmentId: assignment.id
+              if (assignmentStatus === 'pending' && pillRoot) {
+                pillRoot.classList.add("status-pending");
+              }
+              if (assignmentStatus === 'declined' && pillRoot) {
+                pillRoot.classList.add("status-declined");
+              }
+
+              // Make clickable to show assignment details modal (in set detail view)
+              if (pillRoot) {
+                pillRoot.style.cursor = "pointer";
+                pillRoot.dataset.assignmentId = assignment.id;
+                pillRoot.dataset.assignmentStatus = assignmentStatus;
+                pillRoot.dataset.personName = personName;
+                pillRoot.dataset.role = assignment.role;
+                pillRoot.dataset.songTitle = setSong.song_id
+                  ? (setSong.song?.title || setSong.title || "Unknown Song")
+                  : (setSong.title || "Unknown Section");
+
+                pillRoot.addEventListener("click", (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  showAssignmentDetailsModal({
+                    personName: personName,
+                    role: assignment.role,
+                    songTitle: setSong.song_id
+                      ? (setSong.song?.title || setSong.title || "Unknown Song")
+                      : (setSong.title || "Unknown Section"),
+                    status: assignmentStatus,
+                    assignmentId: assignment.id
+                  });
                 });
-              });
-            }
-            
-            assignmentsWrap.appendChild(pill);
-          });
+              }
+
+              assignmentsWrap.appendChild(pill);
+            });
           }
         }
 
@@ -5746,7 +5746,7 @@ function renderSetDetailSongs(set) {
             });
           }
         }
-        
+
         // Add view details button (for songs, tags, and sections)
         const viewDetailsBtn = songNode.querySelector(".view-song-details-btn");
         if (viewDetailsBtn && setSong.song && !isSection) {
@@ -5766,13 +5766,13 @@ function renderSetDetailSongs(set) {
 
         songsList.appendChild(songNode);
       });
-    
+
     // Setup drag and drop for songs (managers only)
     if (isManager()) {
       setupSongDragAndDrop(songsList);
     }
   }
-  
+
   // Add "Add Song/Section" card at the end for managers
   if (isManager()) {
     const addCard = document.createElement("div");
@@ -5808,7 +5808,7 @@ function renderSetDetailSongs(set) {
   } else if (!set.set_songs?.length) {
     songsList.innerHTML = '<p class="muted">No songs or sections added to this set yet.</p>';
   }
-  
+
   updateServiceLengthDisplay(set);
 }
 
@@ -5816,7 +5816,7 @@ function hideSetDetail() {
   closeHeaderDropdown();
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
-  
+
   // Stop all audio players in the set detail view before hiding
   if (detailView) {
     const audioPlayers = detailView.querySelectorAll("audio");
@@ -5825,13 +5825,13 @@ function hideSetDetail() {
       audio.currentTime = 0; // Reset to beginning
     });
   }
-  
+
   dashboard.classList.remove("hidden");
   detailView.classList.add("hidden");
   state.selectedSet = null;
   // Clear saved set ID from localStorage
   localStorage.removeItem('cadence-selected-set-id');
-  
+
   // Recalculate assignment pills to show actual assignments instead of "+X more"
   // Use a small delay to ensure the dashboard is visible and layout is complete
   setTimeout(() => {
@@ -5847,39 +5847,39 @@ function setupSongDragAndDrop(container) {
     container.removeEventListener("dragover", container._songDragHandlers.containerDragOver);
     container.removeEventListener("drop", container._songDragHandlers.containerDrop);
   }
-  
+
   // Include song cards, section headers, and tag cards in drag and drop
   const items = container.querySelectorAll(".set-song-card.draggable-item, .section-header-wrapper.draggable-item");
-  
+
   // Define handlers as named functions
-  const handleDragStart = function(e) {
+  const handleDragStart = function (e) {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", this.dataset.setSongId);
     this.classList.add("dragging");
     this.style.opacity = "0.5";
   };
-  
-  const handleDragEnd = function(e) {
+
+  const handleDragEnd = function (e) {
     this.classList.remove("dragging");
     this.style.opacity = "";
     this.draggable = false;
     container.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
   };
-  
-  const handleDragOver = function(e) {
+
+  const handleDragOver = function (e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    
+
     const dragging = container.querySelector(".dragging");
     if (!dragging || dragging === this) return;
-    
+
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-    
+
     const afterElement = getDragAfterElement(container, e.clientY, dragging);
-    
+
     container.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
-    
+
     if (afterElement == null) {
       // Drop at the end
       const addCard = container.querySelector(".add-song-card");
@@ -5902,35 +5902,35 @@ function setupSongDragAndDrop(container) {
       container.insertBefore(indicator, afterElement);
     }
   };
-  
-  const handleDrop = async function(e) {
+
+  const handleDrop = async function (e) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Prevent double-processing
     if (container.dataset.processingDrop === "true") {
       return;
     }
     container.dataset.processingDrop = "true";
-    
+
     const draggedId = e.dataTransfer.getData("text/plain");
     const draggedItem = container.querySelector(`[data-set-song-id="${draggedId}"]`);
-    
+
     if (!draggedItem) {
       container.dataset.processingDrop = "false";
       return;
     }
-    
+
     // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-    
+
     // Get fresh bounding rects by forcing a reflow
     container.offsetHeight;
-    
+
     // Calculate where the item should be dropped based on current mouse position
     const afterElement = getDragAfterElement(container, e.clientY, draggedItem);
     const addCard = container.querySelector(".add-song-card");
-    
+
     // Move the dragged item to its final position
     if (afterElement == null) {
       // Drop at the end (after all items, before add card if it exists)
@@ -5943,12 +5943,12 @@ function setupSongDragAndDrop(container) {
       // Drop before the afterElement (which could be at the beginning or middle)
       container.insertBefore(draggedItem, afterElement);
     }
-    
+
     // Clean up dragging state
     draggedItem.classList.remove("dragging");
     draggedItem.style.opacity = "";
     draggedItem.draggable = false;
-    
+
     // Get the final DOM order (include both song cards and section headers)
     const allItems = Array.from(container.children);
     const items = allItems
@@ -5964,22 +5964,22 @@ function setupSongDragAndDrop(container) {
         };
       })
       .filter(item => item.id); // Filter out any items without IDs
-    
+
     if (items.length === 0) {
       console.warn("No items to update in handleDrop");
       return;
     }
-    
+
     // Optimistically update the state to match DOM order immediately
     if (state.selectedSet && state.selectedSet.set_songs) {
       const orderedSetSongs = items.map(item => {
         const setSong = state.selectedSet.set_songs.find(ss => String(ss.id) === String(item.id));
         return setSong ? { ...setSong, sequence_order: item.sequence_order } : null;
       }).filter(Boolean);
-      
+
       // Update state immediately to prevent re-render from reverting DOM
       state.selectedSet.set_songs = orderedSetSongs;
-      
+
       // Update data attributes to match new order
       allItems.forEach((el, index) => {
         if ((el.classList.contains("set-song-card") || el.classList.contains("section-header-wrapper")) && el.classList.contains("draggable-item")) {
@@ -5987,16 +5987,16 @@ function setupSongDragAndDrop(container) {
         }
       });
     }
-    
+
     console.log("handleDrop - items to update:", items);
-    
+
     // Check if the dragged item is a tag and update its parent if needed
     const draggedSetSong = state.selectedSet?.set_songs?.find(ss => String(ss.id) === String(draggedId));
     if (draggedSetSong && isTag(draggedSetSong)) {
       // Find the nearest song above the tag (not a section or another tag)
       const finalIndex = Array.from(container.children).indexOf(draggedItem);
       let parentSetSong = null;
-      
+
       // Look backwards from the tag's position to find the nearest song
       for (let i = finalIndex - 1; i >= 0; i--) {
         const prevItem = container.children[i];
@@ -6011,7 +6011,7 @@ function setupSongDragAndDrop(container) {
           }
         }
       }
-      
+
       if (parentSetSong) {
         // Update tag's parent reference
         const tagInfo = parseTagDescription(draggedSetSong);
@@ -6020,7 +6020,7 @@ function setupSongDragAndDrop(container) {
             parentSetSongId: parentSetSong.id,
             tagType: tagInfo.tagType,
           });
-          
+
           await supabase
             .from("set_songs")
             .update({ description: newDescription })
@@ -6028,45 +6028,45 @@ function setupSongDragAndDrop(container) {
         }
       }
     }
-    
+
     await updateSongOrder(items, false); // Pass false to skip re-render
-    
+
     // Clear processing flag
     container.dataset.processingDrop = "false";
   };
-  
+
   items.forEach((item) => {
     const dragHandle = item.querySelector(".drag-handle");
     if (dragHandle) {
-      dragHandle.addEventListener("mousedown", function(e) {
+      dragHandle.addEventListener("mousedown", function (e) {
         item.draggable = true;
       });
       // Prevent text selection on the drag handle
-      dragHandle.addEventListener("selectstart", function(e) {
+      dragHandle.addEventListener("selectstart", function (e) {
         e.preventDefault();
       });
       dragHandle.style.userSelect = "none";
     }
-    
+
     item.addEventListener("dragstart", handleDragStart);
     item.addEventListener("dragend", handleDragEnd);
     item.addEventListener("dragover", handleDragOver);
     item.addEventListener("drop", handleDrop);
   });
-  
+
   // Container-level handlers
-  const handleContainerDragOver = function(e) {
+  const handleContainerDragOver = function (e) {
     e.preventDefault();
     const dragging = container.querySelector(".dragging");
     if (!dragging) return;
-    
+
     const addCard = container.querySelector(".add-song-card");
     const draggableItems = container.querySelectorAll(".set-song-card.draggable-item:not(.dragging), .section-header-wrapper.draggable-item:not(.dragging)");
     const lastItem = draggableItems[draggableItems.length - 1];
-    
+
     if (lastItem && e.clientY > lastItem.getBoundingClientRect().bottom) {
       container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-      
+
       if (addCard && dragging.nextSibling !== addCard) {
         container.insertBefore(dragging, addCard);
         const indicator = document.createElement("div");
@@ -6080,46 +6080,46 @@ function setupSongDragAndDrop(container) {
       }
     }
   };
-  
-  const handleContainerDrop = async function(e) {
+
+  const handleContainerDrop = async function (e) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Prevent double-processing
     if (container.dataset.processingDrop === "true") {
       return;
     }
-    
+
     // Only handle if the drop didn't happen on a specific item
     // (items have their own drop handlers that should take precedence)
-    if (e.target.classList.contains("set-song-card") || 
-        e.target.classList.contains("section-header-wrapper") ||
-        e.target.closest(".set-song-card") || 
-        e.target.closest(".section-header-wrapper")) {
+    if (e.target.classList.contains("set-song-card") ||
+      e.target.classList.contains("section-header-wrapper") ||
+      e.target.closest(".set-song-card") ||
+      e.target.closest(".section-header-wrapper")) {
       // Let the item's drop handler deal with it
       return;
     }
-    
+
     container.dataset.processingDrop = "true";
-    
+
     const draggedId = e.dataTransfer.getData("text/plain");
     const draggedItem = container.querySelector(`[data-set-song-id="${draggedId}"]`);
-    
+
     if (!draggedItem) {
       container.dataset.processingDrop = "false";
       return;
     }
-    
+
     // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-    
+
     // Get fresh bounding rects by forcing a reflow
     container.offsetHeight;
-    
+
     // Use the same logic as handleDrop for consistency
     const afterElement = getDragAfterElement(container, e.clientY, draggedItem);
     const addCard = container.querySelector(".add-song-card");
-    
+
     // Move the dragged item to its final position
     if (afterElement == null) {
       // Drop at the end (after all items, before add card if it exists)
@@ -6132,12 +6132,12 @@ function setupSongDragAndDrop(container) {
       // Drop before the afterElement (which could be at the beginning or middle)
       container.insertBefore(draggedItem, afterElement);
     }
-    
+
     // Clean up dragging state
     draggedItem.classList.remove("dragging");
     draggedItem.style.opacity = "";
     draggedItem.draggable = false;
-    
+
     // Get the final DOM order (include both song cards and section headers)
     const allItems = Array.from(container.children);
     const items = allItems
@@ -6153,20 +6153,20 @@ function setupSongDragAndDrop(container) {
         };
       })
       .filter(item => item.id); // Filter out any items without IDs
-    
+
     if (items.length === 0) {
       console.warn("No items to update in handleContainerDrop");
       container.dataset.processingDrop = "false";
       return;
     }
-    
+
     // Check if the dragged item is a tag and update its parent if needed
     const draggedSetSong = state.selectedSet?.set_songs?.find(ss => String(ss.id) === String(draggedId));
     if (draggedSetSong && isTag(draggedSetSong)) {
       // Find the nearest song above the tag (not a section or another tag)
       const finalIndex = Array.from(container.children).indexOf(draggedItem);
       let parentSetSong = null;
-      
+
       // Look backwards from the tag's position to find the nearest song
       for (let i = finalIndex - 1; i >= 0; i--) {
         const prevItem = container.children[i];
@@ -6181,7 +6181,7 @@ function setupSongDragAndDrop(container) {
           }
         }
       }
-      
+
       if (parentSetSong) {
         // Update tag's parent reference
         const tagInfo = parseTagDescription(draggedSetSong);
@@ -6190,7 +6190,7 @@ function setupSongDragAndDrop(container) {
             parentSetSongId: parentSetSong.id,
             tagType: tagInfo.tagType,
           });
-          
+
           await supabase
             .from("set_songs")
             .update({ description: newDescription })
@@ -6198,17 +6198,17 @@ function setupSongDragAndDrop(container) {
         }
       }
     }
-    
+
     // Optimistically update the state to match DOM order immediately
     if (state.selectedSet && state.selectedSet.set_songs) {
       const orderedSetSongs = items.map(item => {
         const setSong = state.selectedSet.set_songs.find(ss => String(ss.id) === String(item.id));
         return setSong ? { ...setSong, sequence_order: item.sequence_order } : null;
       }).filter(Boolean);
-      
+
       // Update state immediately to prevent re-render from reverting DOM
       state.selectedSet.set_songs = orderedSetSongs;
-      
+
       // Update data attributes to match new order
       allItems.forEach((el, index) => {
         if ((el.classList.contains("set-song-card") || el.classList.contains("section-header-wrapper")) && el.classList.contains("draggable-item")) {
@@ -6216,20 +6216,20 @@ function setupSongDragAndDrop(container) {
         }
       });
     }
-    
+
     console.log("handleContainerDrop - items to update:", items);
     await updateSongOrder(items, false); // Pass false to skip re-render
-    
+
     // Clear processing flag
     container.dataset.processingDrop = "false";
   };
-  
+
   // Store handlers for cleanup
   container._songDragHandlers = {
     containerDragOver: handleContainerDragOver,
     containerDrop: handleContainerDrop
   };
-  
+
   container.addEventListener("dragover", handleContainerDragOver);
   container.addEventListener("drop", handleContainerDrop);
 }
@@ -6237,43 +6237,43 @@ function setupSongDragAndDrop(container) {
 function getDragAfterElement(container, y, dragging) {
   // Get all draggable elements, excluding the one being dragged
   const draggableElements = [...container.querySelectorAll(".set-song-card.draggable-item:not(.dragging), .section-header-wrapper.draggable-item:not(.dragging)")];
-  
+
   if (draggableElements.length === 0) {
     return null;
   }
-  
+
   // Get fresh bounding rects for all elements
   const elementsWithRects = draggableElements.map(el => ({
     element: el,
     rect: el.getBoundingClientRect()
   }));
-  
+
   // Check if dropping at the very beginning (above all elements)
   const first = elementsWithRects[0];
   if (y < first.rect.top) {
     // Dropping at the beginning - return first element so it gets inserted before it
     return first.element;
   }
-  
+
   // Check if dropping at the very end (below all elements)
   const last = elementsWithRects[elementsWithRects.length - 1];
   if (y > last.rect.bottom) {
     // Dropping at the end - return null to append
     return null;
   }
-  
+
   // Find the element to insert before by checking each element's position
   // We want to find the first element where the mouse Y is above its center
   for (let i = 0; i < elementsWithRects.length; i++) {
     const { element, rect } = elementsWithRects[i];
     const centerY = rect.top + rect.height / 2;
-    
+
     // If mouse is above the center of this element, insert before it
     if (y < centerY) {
       return element;
     }
   }
-  
+
   // If we get here, mouse is below all element centers, so append at end
   return null;
 }
@@ -6283,20 +6283,20 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
     console.warn("No selected set, cannot update song order");
     return;
   }
-  
+
   if (!isManager()) {
     console.warn("Only managers can reorder songs");
     toastError("Only managers can reorder songs.");
     return;
   }
-  
+
   console.log("Updating song order:", orderedItems);
   console.log("Selected set ID:", state.selectedSet.id);
-  
+
   // Verify all set_song IDs belong to the selected set
   const validSetSongIds = new Set((state.selectedSet.set_songs || []).map(ss => String(ss.id)));
   const invalidItems = orderedItems.filter(item => !validSetSongIds.has(String(item.id)));
-  
+
   if (invalidItems.length > 0) {
     console.error("Some items don't belong to the selected set:", invalidItems);
     toastError("Some songs don't belong to this set. Please refresh and try again.");
@@ -6311,28 +6311,28 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
     }
     return;
   }
-  
+
   // Update sequence orders using a two-phase approach to avoid unique constraint violations
   // Phase 1: Set all to temporary negative values to free up the target positions
   // Phase 2: Set all to their final values
-  
+
   const errors = [];
   const maxOrder = Math.max(...orderedItems.map(item => item.sequence_order), 0);
   const tempOffset = -(maxOrder + 1000); // Use negative values well below any possible sequence_order
-  
+
   console.log("Phase 1: Setting all songs to temporary negative values...");
   // Phase 1: Set all to temporary negative values (unique for each)
   for (let i = 0; i < orderedItems.length; i++) {
     const { id } = orderedItems[i];
     const songId = String(id);
     const tempValue = tempOffset - i; // Each gets a unique temporary value
-    
+
     const { error } = await supabase
       .from("set_songs")
       .update({ sequence_order: tempValue })
       .eq("id", songId)
       .eq("set_id", state.selectedSet.id);
-    
+
     if (error) {
       console.error(`Error setting temporary value for set_song ${songId}:`, error);
       errors.push({ id: songId, error, phase: "temporary" });
@@ -6340,7 +6340,7 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
       console.log(`Set temporary value ${tempValue} for set_song ${songId}`);
     }
   }
-  
+
   if (errors.length > 0) {
     console.error("Failed to set temporary values:", errors);
     const errorMessages = errors.map(e => `Song ${e.id}: ${e.error?.message || JSON.stringify(e.error)}`).join("\n");
@@ -6356,22 +6356,22 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
     }
     return;
   }
-  
+
   console.log("Phase 2: Setting all songs to their final sequence_order values...");
   // Phase 2: Set all to their final values - use Promise.all for parallel updates
   const updatePromises = orderedItems.map(async ({ id, sequence_order }) => {
     const songId = String(id);
     const orderValue = Number(sequence_order);
-    
+
     console.log(`Updating set_song ${songId} to sequence_order ${orderValue}...`);
-    
+
     const { data, error } = await supabase
       .from("set_songs")
       .update({ sequence_order: orderValue })
       .eq("id", songId)
       .eq("set_id", state.selectedSet.id)
       .select();
-    
+
     if (error) {
       console.error(`Error updating set_song ${songId} to sequence_order ${orderValue}:`, error);
       errors.push({ id: songId, sequence_order: orderValue, error, phase: "final" });
@@ -6385,9 +6385,9 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
       return { success: true, id: songId, data };
     }
   });
-  
+
   await Promise.all(updatePromises);
-  
+
   if (errors.length > 0) {
     console.error("Some updates failed:", errors);
     const errorMessages = errors.map(e => `Song ${e.id} (order ${e.sequence_order}): ${e.error?.message || JSON.stringify(e.error)}`).join("\n");
@@ -6404,9 +6404,9 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
     }
     return;
   }
-  
+
   console.log("All updates successful");
-  
+
   // Only reload and re-render if explicitly requested (for non-drag operations)
   if (shouldRerender) {
     await loadSets();
@@ -6451,14 +6451,14 @@ function setupLinkDragAndDrop(item, container) {
     });
     dragHandle.style.userSelect = "none";
   }
-  
+
   item.addEventListener("dragstart", (e) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", item.dataset.linkId);
     item.classList.add("dragging");
     item.style.opacity = "0.5";
   });
-  
+
   item.addEventListener("dragend", (e) => {
     item.classList.remove("dragging");
     item.style.opacity = "";
@@ -6466,19 +6466,19 @@ function setupLinkDragAndDrop(item, container) {
     // Remove all drop indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
   });
-  
+
   item.addEventListener("dragover", (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    
+
     const dragging = container.querySelector(".dragging");
     if (!dragging || dragging === item) return;
-    
+
     // Remove existing indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-    
+
     const afterElement = getDragAfterElementForLinks(container, e.clientY, dragging);
-    
+
     if (afterElement == null) {
       // Dropping at the end
       container.appendChild(dragging);
@@ -6494,7 +6494,7 @@ function setupLinkDragAndDrop(item, container) {
       container.insertBefore(indicator, afterElement);
     }
   });
-  
+
   item.addEventListener("drop", async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -6505,7 +6505,7 @@ function setupLinkDragAndDrop(item, container) {
     // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
   });
-  
+
   // Also handle dragover on container for end-of-list drops
   if (!container.dataset.linkDragSetup) {
     container.dataset.linkDragSetup = "true";
@@ -6513,15 +6513,15 @@ function setupLinkDragAndDrop(item, container) {
       e.preventDefault();
       const dragging = container.querySelector(".dragging");
       if (!dragging) return;
-      
+
       const items = container.querySelectorAll(".song-link-row.draggable-item:not(.dragging)");
       if (items.length === 0) return;
-      
+
       const lastItem = items[items.length - 1];
       if (lastItem && e.clientY > lastItem.getBoundingClientRect().bottom) {
         // Remove existing indicators
         container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-        
+
         if (dragging.nextSibling !== lastItem.nextSibling) {
           container.appendChild(dragging);
           // Add indicator at the end
@@ -6531,13 +6531,13 @@ function setupLinkDragAndDrop(item, container) {
         }
       }
     });
-    
+
     // Handle drop on container (for drops at the end of the list)
     container.addEventListener("drop", async (e) => {
       e.preventDefault();
       const dragging = container.querySelector(".dragging");
       if (!dragging) return;
-      
+
       // Update the order in the DOM (global across all link sections)
       updateAllLinkOrderInDom();
       // Save the order to the database immediately (like song/section reorder)
@@ -6550,11 +6550,11 @@ function setupLinkDragAndDrop(item, container) {
 
 function getDragAfterElementForLinks(container, y, dragging) {
   const draggableElements = [...container.querySelectorAll(".song-link-row.draggable-item:not(.dragging)")];
-  
+
   return draggableElements.reduce((closest, child) => {
     const box = child.getBoundingClientRect();
     const offset = y - box.top - box.height / 2;
-    
+
     if (offset < 0 && offset > closest.offset) {
       return { offset: offset, element: child };
     } else {
@@ -6609,11 +6609,11 @@ function getOrderedExistingSongLinksFromDom() {
 
 async function reorderSongLinks(orderedLinks, songId) {
   if (!songId || !Array.isArray(orderedLinks) || orderedLinks.length === 0) return;
-  
+
   // Two-phase update, matching the set song/section reorder strategy.
   // This avoids unique constraint collisions on (song_id, display_order).
   const errors = [];
-  
+
   // Phase 1: move everything to unique temporary values
   const tempBase = -1000000;
   const phase1 = orderedLinks.map(async ({ id }, idx) => {
@@ -6626,13 +6626,13 @@ async function reorderSongLinks(orderedLinks, songId) {
     if (error) errors.push({ phase: "temporary", id, error });
   });
   await Promise.all(phase1);
-  
+
   if (errors.length > 0) {
     console.error("Failed to set temporary display_order values for song_links:", errors);
     toastError("Failed to reorder links. Check console for details.");
     return;
   }
-  
+
   // Phase 2: set final display_order values
   const phase2 = orderedLinks.map(async ({ id, display_order }) => {
     const { error } = await supabase
@@ -6643,7 +6643,7 @@ async function reorderSongLinks(orderedLinks, songId) {
     if (error) errors.push({ phase: "final", id, display_order, error });
   });
   await Promise.all(phase2);
-  
+
   if (errors.length > 0) {
     console.error("Failed to set final display_order values for song_links:", errors);
     toastError("Some links could not be reordered. Check console for details.");
@@ -6653,13 +6653,13 @@ async function reorderSongLinks(orderedLinks, songId) {
 async function saveAllLinkOrder() {
   const form = el("song-edit-form");
   const songId = form?.dataset.songId;
-  
+
   // Only save if we're editing an existing song
   if (!songId) return;
-  
+
   const orderedLinks = getOrderedExistingSongLinksFromDom();
   if (orderedLinks.length === 0) return;
-  
+
   await reorderSongLinks(orderedLinks, songId);
 }
 
@@ -6672,27 +6672,27 @@ function openSetModal(set = null) {
   el("set-title").value = set?.title ?? "";
   el("set-date").value = set?.scheduled_date ?? "";
   el("set-description").value = set?.description ?? "";
-  
+
   // Show assignment mode section only for managers
   const assignmentModeSection = el("set-assignment-mode-section");
   if (assignmentModeSection) {
     assignmentModeSection.classList.remove("hidden");
   }
-  
+
   // Set assignment mode override checkbox
   const overrideCheckbox = el("set-override-assignment-mode");
   const overrideText = el("set-override-assignment-mode-text");
-  
+
   if (overrideCheckbox && overrideText) {
     const teamMode = state.teamAssignmentMode || 'per_set';
-    
+
     // Set the text based on current team mode
     if (teamMode === 'per_set') {
       overrideText.textContent = 'Use per-song assignments';
     } else {
       overrideText.textContent = 'Use per-set assignments';
     }
-    
+
     // For new sets, checkbox is always unchecked (no override yet)
     if (!set) {
       overrideCheckbox.checked = false;
@@ -6700,10 +6700,10 @@ function openSetModal(set = null) {
       // For existing sets, check if we're overriding the team mode
       const overrideMode = set.assignment_mode_override;
       const hasExplicitOverride = overrideMode !== null && overrideMode !== undefined;
-      
+
       // Get the effective mode (what the set is actually using)
       const effectiveMode = getSetAssignmentMode(set);
-      
+
       // Checkbox should be checked ONLY if we're actually overriding the team mode
       // 1) Explicit override exists and differs from team mode
       // 2) No explicit override but effective mode differs from team mode (legacy sets)
@@ -6719,18 +6719,18 @@ function closeSetModal() {
   setModal.classList.add("hidden");
   document.body.style.overflow = "";
   el("set-form").reset();
-  
+
   // Preserve state.selectedSet if we're in detail view mode
   // (i.e., if the detail view is currently visible)
   const detailView = el("set-detail");
   const isDetailViewVisible = detailView && !detailView.classList.contains("hidden");
-  
+
   if (!isDetailViewVisible) {
     // Only clear selectedSet if we're not in detail view
     state.selectedSet = null;
   }
   // If detail view is visible, keep state.selectedSet so the detail view stays open
-  
+
   state.currentSetSongs = [];
 }
 
@@ -6740,10 +6740,10 @@ async function openTimesModal() {
   const timesModal = el("times-modal");
   timesModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
-  
+
   // Prepare in-memory map of existing time alerts
   state.setTimeAlerts = { service: {}, rehearsal: {} };
-  
+
   // Load existing alerts BEFORE rendering rows so we can pre-select chips
   await safeSupabaseOperation(async () => {
     const { data: timeAlerts, error } = await supabase
@@ -6762,7 +6762,7 @@ async function openTimesModal() {
       bucket[a.time_id].add(a.offset_days);
     });
   });
-  
+
   // Clear and populate service times
   const serviceTimesList = el("service-times-list");
   serviceTimesList.innerHTML = "";
@@ -6772,7 +6772,7 @@ async function openTimesModal() {
       addServiceTimeRow(st.service_time, st.id, Array.from(existingOffsets));
     });
   }
-  
+
   // Clear and populate rehearsal times
   const rehearsalTimesList = el("rehearsal-times-list");
   rehearsalTimesList.innerHTML = "";
@@ -6799,7 +6799,7 @@ function openSetAssignmentsModal() {
   const modal = el("set-assignments-modal");
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
-  
+
   // Clear and populate set assignments
   const assignmentsList = el("set-assignments-list");
   assignmentsList.innerHTML = "";
@@ -6822,10 +6822,10 @@ function addSetAssignmentInput(existingAssignment = null) {
   const container = el("set-assignments-list");
   const div = document.createElement("div");
   div.className = "assignment-row";
-  
+
   // Build person dropdown options
   const personOptions = buildPersonOptions();
-  
+
   div.innerHTML = `
     <label>
       Role
@@ -6837,23 +6837,23 @@ function addSetAssignmentInput(existingAssignment = null) {
     </label>
     <button type="button" class="btn small ghost remove-assignment">Remove</button>
   `;
-  
+
   // Create searchable dropdown for person
   const personContainer = div.querySelector(".assignment-person-container");
   const selectedValue = existingAssignment?.person_id || existingAssignment?.pending_invite_id || null;
   const personDropdown = createSearchableDropdown(
-    personOptions, 
+    personOptions,
     "Select a person...",
     selectedValue,
     isManager() ? (name) => openInviteModal(name) : null
   );
   personContainer.appendChild(personDropdown);
-  
+
   // Store assignment ID if editing
   if (existingAssignment?.id) {
     div.dataset.assignmentId = existingAssignment.id;
   }
-  
+
   div.querySelector(".remove-assignment").addEventListener("click", () => {
     container.removeChild(div);
   });
@@ -6977,18 +6977,18 @@ async function notifyAssignmentEmails(setId, teamId, recipients, mode) {
 async function handleSetAssignmentsSubmit(event) {
   event.preventDefault();
   if (!isManager() || !state.selectedSet) return;
-  
+
   const set = state.selectedSet;
   const setId = set.id;
-  
+
   const assignments = collectSetAssignments();
-  
+
   // Get existing assignments
   const { data: existingAssignments, error: fetchError } = await supabase
     .from("set_assignments")
     .select("*")
     .eq("set_id", setId);
-  
+
   if (fetchError) {
     console.error("Error fetching existing assignments:", fetchError);
     toastError("Unable to load existing assignments. Check console.");
@@ -7027,29 +7027,29 @@ async function handleSetAssignmentsSubmit(event) {
       (r) => !existingKeys.has(r.key)
     );
   }
-  
+
   // Determine which to delete, update, and insert
   const existingIds = new Set(existingAssignments?.map(a => a.id) || []);
   const newAssignments = assignments.filter(a => !a.id);
   const updatedAssignments = assignments.filter(a => a.id && existingIds.has(a.id));
-  const deletedIds = Array.from(existingIds).filter(id => 
+  const deletedIds = Array.from(existingIds).filter(id =>
     !assignments.some(a => a.id === id)
   );
-  
+
   // Delete removed assignments
   if (deletedIds.length > 0) {
     const { error: deleteError } = await supabase
       .from("set_assignments")
       .delete()
       .in("id", deletedIds);
-    
+
     if (deleteError) {
       console.error("Error deleting assignments:", deleteError);
       toastError("Unable to delete some assignments. Check console.");
       return;
     }
   }
-  
+
   // Update existing assignments
   for (const assignment of updatedAssignments) {
     // Get existing assignment to preserve status
@@ -7058,20 +7058,20 @@ async function handleSetAssignmentsSubmit(event) {
       .select("status, person_id")
       .eq("id", assignment.id)
       .single();
-    
+
     if (fetchExistingError) {
       console.error("Error fetching existing assignment:", fetchExistingError);
       // Continue to next assignment rather than failing completely
       continue;
     }
-    
+
     // Determine status: preserve if person hasn't changed, otherwise set to pending
     let newStatus = 'pending'; // Default to pending
-    
+
     // Convert person_ids to strings for comparison (they might be UUIDs or strings)
     const existingPersonId = existingAssignment?.person_id?.toString();
     const newPersonId = assignment.person_id?.toString();
-    
+
     if (existingPersonId && newPersonId && existingPersonId === newPersonId) {
       // Person didn't change, preserve existing status
       if (existingAssignment?.status) {
@@ -7087,7 +7087,7 @@ async function handleSetAssignmentsSubmit(event) {
       newStatus = existingAssignment.status;
       console.log(`Preserving status '${newStatus}' for assignment ${assignment.id} (no person comparison)`);
     }
-    
+
     const { error: updateError } = await supabase
       .from("set_assignments")
       .update({
@@ -7100,14 +7100,14 @@ async function handleSetAssignmentsSubmit(event) {
         status: newStatus,
       })
       .eq("id", assignment.id);
-    
+
     if (updateError) {
       console.error("Error updating assignment:", updateError);
       toastError("Unable to update some assignments. Check console.");
       return;
     }
   }
-  
+
   // Insert new assignments
   if (newAssignments.length > 0) {
     const { error: insertError } = await supabase
@@ -7124,7 +7124,7 @@ async function handleSetAssignmentsSubmit(event) {
           status: 'pending',
         }))
       );
-    
+
     if (insertError) {
       console.error("Error inserting assignments:", insertError);
       toastError("Unable to save assignments. Check console.");
@@ -7140,7 +7140,7 @@ async function handleSetAssignmentsSubmit(event) {
   toastSuccess("Assignments saved successfully");
   closeSetAssignmentsModal();
   await loadSets();
-  
+
   // Refresh detail view if it's showing
   if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
@@ -7154,20 +7154,20 @@ async function handleSetAssignmentsSubmit(event) {
 function collectSetAssignments() {
   const container = el("set-assignments-list");
   if (!container) return [];
-  
+
   const rows = container.querySelectorAll(".assignment-row");
   const assignments = [];
-  
+
   rows.forEach((row) => {
     const roleInput = row.querySelector(".assignment-role-input");
     const personContainer = row.querySelector(".assignment-person-container");
     const personDropdown = personContainer?.querySelector(".searchable-dropdown");
-    
+
     if (!roleInput || !personDropdown) return;
-    
+
     const role = roleInput.value.trim();
     if (!role) return;
-    
+
     // Get value using the dropdown's getValue method if available
     let personValue = null;
     if (personDropdown.getValue) {
@@ -7176,32 +7176,32 @@ function collectSetAssignments() {
       // Fallback: get selected value from dropdown
       const dropdownInput = personDropdown.querySelector(".searchable-dropdown-input");
       if (!dropdownInput || dropdownInput.classList.contains("placeholder")) return;
-      
+
       // Find the selected option
       const selectedOption = Array.from(personDropdown.querySelectorAll(".searchable-dropdown-option"))
         .find(opt => opt.classList.contains("selected"));
-      
+
       if (!selectedOption) return;
       personValue = selectedOption.dataset.value;
     }
-    
+
     if (!personValue) return;
-    
+
     // Determine if it's a person or pending invite
     const personOptions = buildPersonOptions();
     const option = personOptions.find(opt => opt.value === personValue);
-    
+
     if (!option) return;
-    
+
     const assignment = {
       role,
     };
-    
+
     // Store assignment ID if editing
     if (row.dataset.assignmentId) {
       assignment.id = row.dataset.assignmentId;
     }
-    
+
     if (option.meta?.isPending) {
       assignment.pending_invite_id = personValue;
       assignment.person_name = option.label;
@@ -7209,20 +7209,20 @@ function collectSetAssignments() {
     } else {
       assignment.person_id = personValue;
     }
-    
+
     assignments.push(assignment);
   });
-  
+
   return assignments;
 }
 
 async function handleTimesSubmit(event) {
   event.preventDefault();
   if (!isManager() || !state.selectedSet) return;
-  
+
   const set = state.selectedSet;
   const setId = set.id;
-  
+
   // Handle service times
   const serviceTimeRows = el("service-times-list").querySelectorAll(".service-time-row");
   const serviceTimes = Array.from(serviceTimeRows)
@@ -7233,7 +7233,7 @@ async function handleTimesSubmit(event) {
       return time ? { time, offsets } : null;
     })
     .filter(st => st);
-  
+
   // Handle rehearsal times
   const rehearsalTimeRows = el("rehearsal-times-list").querySelectorAll(".rehearsal-time-row");
   const rehearsalTimes = Array.from(rehearsalTimeRows)
@@ -7316,7 +7316,7 @@ async function handleTimesSubmit(event) {
       return;
     }
   }
-  
+
   // Delete existing alerts for this set before recreating them
   await supabase.from("set_time_alerts").delete().eq("set_id", setId);
 
@@ -7368,10 +7368,10 @@ async function handleTimesSubmit(event) {
 
   toastSuccess("Times and alerts saved successfully");
   closeTimesModal();
-  
+
   // Reload sets to get updated times
   await loadSets();
-  
+
   // Refresh detail view if it's showing the edited set
   if (!el("set-detail").classList.contains("hidden")) {
     const updatedSet = state.sets.find(s => s.id === setId);
@@ -7461,7 +7461,7 @@ function addServiceTimeRow(time = "", id = null, alertOffsets = []) {
   removeBtn.className = "btn ghost small";
   removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
   removeBtn.addEventListener("click", () => row.remove());
-  
+
   row.appendChild(timeWrapper);
   row.appendChild(removeBtn);
   container.appendChild(row);
@@ -7532,7 +7532,7 @@ function addRehearsalTimeRow(date = "", time = "", id = null, alertOffsets = [])
   removeBtn.className = "btn ghost small";
   removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
   removeBtn.addEventListener("click", () => row.remove());
-  
+
   row.appendChild(timeWrapper);
   row.appendChild(removeBtn);
   container.appendChild(row);
@@ -7556,7 +7556,7 @@ async function handleSetSubmit(event) {
     description: el("set-description").value,
     team_id: state.currentTeamId,
   };
-  
+
   // Handle assignment mode override (only if columns exist)
   let newAssignmentMode = null;
   let oldAssignmentMode = null;
@@ -7567,7 +7567,7 @@ async function handleSetSubmit(event) {
       if (isEditing) {
         // Get old assignment mode
         oldAssignmentMode = getSetAssignmentMode(state.selectedSet);
-        
+
         // When editing: checkbox controls whether to override
         if (overrideCheckbox.checked) {
           // Checkbox is checked - set override to the opposite of team mode
@@ -7621,38 +7621,38 @@ async function handleSetSubmit(event) {
   }
 
   const finalSetId = response.data.id;
-  
+
   // If assignment mode changed, clear all assignments for this set
   if (isEditing && oldAssignmentMode && newAssignmentMode && oldAssignmentMode !== newAssignmentMode) {
     console.log(`Assignment mode changed from ${oldAssignmentMode} to ${newAssignmentMode}, clearing all assignments`);
-    
+
     // Delete all set_assignments for this set
     const { error: deleteSetAssignmentsError } = await supabase
       .from("set_assignments")
       .delete()
       .eq("set_id", finalSetId);
-    
+
     if (deleteSetAssignmentsError) {
       console.error("Error deleting set assignments:", deleteSetAssignmentsError);
       toastError("Set saved but failed to clear old assignments. Please clear them manually.");
     } else {
       console.log("Cleared all set_assignments for set:", finalSetId);
     }
-    
+
     // Delete all song_assignments for songs in this set
     // First get all set_song IDs for this set
     const { data: setSongs, error: fetchSetSongsError } = await supabase
       .from("set_songs")
       .select("id")
       .eq("set_id", finalSetId);
-    
+
     if (!fetchSetSongsError && setSongs && setSongs.length > 0) {
       const setSongIds = setSongs.map(ss => ss.id);
       const { error: deleteSongAssignmentsError } = await supabase
         .from("song_assignments")
         .delete()
         .in("set_song_id", setSongIds);
-      
+
       if (deleteSongAssignmentsError) {
         console.error("Error deleting song assignments:", deleteSongAssignmentsError);
         toastError("Set saved but failed to clear old assignments. Please clear them manually.");
@@ -7660,28 +7660,28 @@ async function handleSetSubmit(event) {
         console.log("Cleared all song_assignments for set:", finalSetId);
       }
     }
-    
+
     // Also delete set_acceptances for this set (for per-song mode)
     const { error: deleteAcceptancesError } = await supabase
       .from("set_acceptances")
       .delete()
       .eq("set_id", finalSetId);
-    
+
     if (deleteAcceptancesError) {
       console.warn("Error deleting set acceptances (non-critical):", deleteAcceptancesError);
     } else {
       console.log("Cleared all set_acceptances for set:", finalSetId);
     }
-    
+
     toastSuccess("Assignment mode changed. All assignments have been cleared.");
   }
 
   // Preserve selectedSet ID before closing modal (use the one we saved at the start)
   const editedSetId = editingSetId;
-  
+
   closeSetModal();
   await loadSets();
-  
+
   // Refresh detail view if it's showing the edited set
   if (editedSetId && !el("set-detail").classList.contains("hidden")) {
     const updatedSet = state.sets.find(s => s.id === editedSetId);
@@ -7718,13 +7718,13 @@ async function removeSongFromSet(setSongId, setId) {
     .from("set_songs")
     .delete()
     .eq("id", setSongId);
-  
+
   if (error) {
     console.error(error);
     toastError("Unable to remove song from set.");
     return;
   }
-  
+
   // Reload the set to refresh the detail view
   await loadSets();
   if (state.selectedSet && state.selectedSet.id === setId) {
@@ -7753,11 +7753,11 @@ function renderSetSongsEditor() {
         <div>
           <strong>${setSong.song?.title ?? "Untitled"}</strong>
           <p class="song-meta">${[
-            setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0 
-              ? setSong.song.song_keys.map(k => k.key).join(", ")
-              : null),
-            setSong.song?.time_signature,
-          ].filter(Boolean).join(" • ") || ""}</p>
+        setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0
+          ? setSong.song.song_keys.map(k => k.key).join(", ")
+          : null),
+        setSong.song?.time_signature,
+      ].filter(Boolean).join(" • ") || ""}</p>
         </div>
         <button class="btn small ghost" data-remove="${setSong.id}">Remove</button>
       </div>
@@ -7777,13 +7777,13 @@ async function openSongModal() {
   songModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   await populateSongOptions();
-  
+
   // Reset key input
   const keySelect = el("song-key-select");
   if (keySelect) {
     keySelect.value = "";
   }
-  
+
   // Hide assignments section if in per-set mode
   const assignmentSection = songModal.querySelector(".assignment-section");
   const assignmentMode = getSetAssignmentMode(state.selectedSet);
@@ -7792,8 +7792,8 @@ async function openSongModal() {
       assignmentSection.style.display = 'none';
     } else {
       assignmentSection.style.display = 'block';
-  populateImportAssignmentsDropdown("import-assignments-container", null);
-  el("assignments-list").innerHTML = "";
+      populateImportAssignmentsDropdown("import-assignments-container", null);
+      el("assignments-list").innerHTML = "";
     }
   }
 }
@@ -7851,7 +7851,7 @@ function populateTagSongOptions() {
   const container = el("tag-song-select-container");
   if (!container) return;
   container.innerHTML = "";
-  
+
   const options = state.songs.map(song => ({
     value: song.id,
     label: song.title,
@@ -7862,7 +7862,7 @@ function populateTagSongOptions() {
       duration: song.duration_seconds ? formatDuration(song.duration_seconds) : null,
     }
   }));
-  
+
   tagSongDropdown = createSearchableDropdown(options, "Select a song to tag...");
   container.appendChild(tagSongDropdown);
 }
@@ -7871,12 +7871,12 @@ function populateTagParentOptions() {
   const container = el("tag-parent-select-container");
   if (!container || !state.selectedSet) return;
   container.innerHTML = "";
-  
+
   // Only include actual songs (not sections or tags) from the current set
   const setSongs = (state.selectedSet.set_songs || [])
     .filter(ss => ss.song_id && !isTag(ss))
     .sort((a, b) => a.sequence_order - b.sequence_order);
-  
+
   if (!setSongs.length) {
     const noSongs = document.createElement("div");
     noSongs.className = "muted small-text";
@@ -7884,12 +7884,12 @@ function populateTagParentOptions() {
     container.appendChild(noSongs);
     return;
   }
-  
+
   const options = setSongs.map((setSong, idx) => ({
     value: String(setSong.id), // Ensure value is a string for consistency
     label: `${idx + 1}. ${setSong.song?.title || "Untitled Song"}`,
   }));
-  
+
   tagParentDropdown = createSimpleDropdown(options, "Select song to attach tag to...");
   container.appendChild(tagParentDropdown);
 }
@@ -7898,12 +7898,12 @@ function populateTagTypeOptions() {
   const container = el("tag-type-select-container");
   if (!container) return;
   container.innerHTML = "";
-  
+
   const options = TAG_PRESET_OPTIONS.map(opt => ({
     value: opt.value,
     label: opt.label,
   }));
-  
+
   tagTypeDropdown = createSimpleDropdown(options, "Select part...");
   tagTypeDropdown.addEventListener("change", handleTagTypeChange);
   container.appendChild(tagTypeDropdown);
@@ -7913,7 +7913,7 @@ async function openTagModal() {
   if (!isManager() || !state.selectedSet) return;
   const modal = el("tag-modal");
   if (!modal) return;
-  
+
   // Ensure we have fresh set and song data
   await loadSets();
   await loadSongs?.(); // safeguard if helper exists
@@ -7921,19 +7921,19 @@ async function openTagModal() {
   if (updatedSet) {
     state.selectedSet = updatedSet;
   }
-  
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
-  
+
   populateTagSongOptions();
   populateTagTypeOptions();
   populateTagParentOptions();
-  
+
   // Set default to "chorus"
   if (tagTypeDropdown) {
     tagTypeDropdown.setValue("chorus");
   }
-  
+
   const customInput = el("tag-custom-input");
   if (customInput) {
     customInput.value = "";
@@ -7946,7 +7946,7 @@ function closeTagModal() {
   if (!modal) return;
   modal.classList.add("hidden");
   document.body.style.overflow = "";
-  
+
   // Clear dropdowns
   const songContainer = el("tag-song-select-container");
   const typeContainer = el("tag-type-select-container");
@@ -7954,11 +7954,11 @@ function closeTagModal() {
   if (songContainer) songContainer.innerHTML = "";
   if (typeContainer) typeContainer.innerHTML = "";
   if (parentContainer) parentContainer.innerHTML = "";
-  
+
   tagSongDropdown = null;
   tagTypeDropdown = null;
   tagParentDropdown = null;
-  
+
   const form = el("tag-form");
   form?.reset();
   const customLabel = el("tag-custom-label");
@@ -7997,34 +7997,34 @@ function resolveTagPartName(tagType, customValue = "") {
 async function handleAddTagToSong(event) {
   event.preventDefault();
   if (!isManager() || !state.selectedSet) return;
-  
+
   const songId = tagSongDropdown?.getValue();           // uuid string
   const tagType = tagTypeDropdown?.getValue();
   const parentSetSongId = tagParentDropdown?.getValue(); // uuid string
   const customInput = el("tag-custom-input");
   const customValue = customInput?.value || "";
-  
+
   if (!songId) {
     toastError("Please select a song to tag.");
     return;
   }
-  
+
   if (!tagType) {
     toastError("Please select a part of the song.");
     return;
   }
-  
+
   if (!parentSetSongId) {
     toastError("Please select a song to attach the tag to.");
     return;
   }
-  
+
   const partName = resolveTagPartName(tagType, customValue);
   if (tagType === "custom" && !partName) {
     toastError("Enter a custom part name.");
     return;
   }
-  
+
   // Ensure we have fresh set data
   if (!state.selectedSet.set_songs || state.selectedSet.set_songs.length === 0) {
     await loadSets();
@@ -8033,27 +8033,27 @@ async function handleAddTagToSong(event) {
       state.selectedSet = updatedSet;
     }
   }
-  
+
   // Find parent song to get its sequence_order (match by UUID string)
   const parentSong = (state.selectedSet.set_songs || []).find(ss => {
     if (!ss) return false;
     return String(ss.id) === String(parentSetSongId);
   });
-  
+
   if (!parentSong) {
     console.error("Parent song not found.", {
       parentSetSongId,
-      availableSongs: (state.selectedSet.set_songs || []).map(ss => ({ 
-        id: ss.id, 
+      availableSongs: (state.selectedSet.set_songs || []).map(ss => ({
+        id: ss.id,
         idType: typeof ss.id,
         title: ss.song?.title || ss.title,
-        song_id: ss.song_id 
+        song_id: ss.song_id
       }))
     });
     toastError("Parent song not found. Please refresh and try again.");
     return;
   }
-  
+
   // Get the song being tagged
   let taggedSong = state.songs.find(s => String(s.id) === String(songId));
   if (!taggedSong) {
@@ -8069,26 +8069,26 @@ async function handleAddTagToSong(event) {
     toastError("Tagged song not found. Please refresh and try again.");
     return;
   }
-  
+
   // Calculate sequence_order (right after parent and any existing tags attached to parent)
   const parentOrder = parentSong.sequence_order || 0;
-  
+
   // Find all items that come after the parent (including tags attached to the parent)
   // Tags attached to the parent should stay grouped with the parent
   const itemsAfterParent = state.selectedSet.set_songs.filter(ss => {
     const ssOrder = ss.sequence_order || 0;
     if (ssOrder <= parentOrder) return false;
-    
+
     // If it's a tag, check if it's attached to this parent
     if (isTag(ss)) {
       const tagInfo = parseTagDescription(ss);
       return tagInfo && String(tagInfo.parentSetSongId) === String(parentSetSongId);
     }
-    
+
     // For non-tags, include if they come after the parent
     return true;
   });
-  
+
   // Find the maximum sequence_order among items that should stay grouped with parent
   // (parent itself + tags attached to parent)
   const parentGroupItems = state.selectedSet.set_songs.filter(ss => {
@@ -8099,43 +8099,43 @@ async function handleAddTagToSong(event) {
     }
     return false;
   });
-  
+
   const maxParentGroupOrder = parentGroupItems.length > 0
     ? Math.max(...parentGroupItems.map(ss => ss.sequence_order || 0))
     : parentOrder;
-  
+
   // New tag should go right after the last item in the parent group
   const newSequenceOrder = maxParentGroupOrder + 1;
-  
+
   // Shift all items that come after the parent group down by 1
-  const itemsToShift = state.selectedSet.set_songs.filter(ss => 
+  const itemsToShift = state.selectedSet.set_songs.filter(ss =>
     (ss.sequence_order || 0) >= newSequenceOrder
   );
-  
+
   // Update sequence orders for items that need to shift (in reverse order to avoid conflicts)
-  const sortedItemsToShift = [...itemsToShift].sort((a, b) => 
+  const sortedItemsToShift = [...itemsToShift].sort((a, b) =>
     (b.sequence_order || 0) - (a.sequence_order || 0)
   );
-  
+
   for (const item of sortedItemsToShift) {
     const { error: shiftError } = await supabase
       .from("set_songs")
       .update({ sequence_order: (item.sequence_order || 0) + 1 })
       .eq("id", item.id);
-    
+
     if (shiftError) {
       console.error("Error shifting item:", shiftError);
       toastError("Unable to reorder items. Please try again.");
       return;
     }
   }
-  
+
   // Refresh set data to ensure we have the latest sequence_order values
   await loadSets();
   const refreshedSet = state.sets.find(s => s.id === state.selectedSet.id);
   if (refreshedSet) {
     state.selectedSet = refreshedSet;
-    
+
     // Recalculate newSequenceOrder in case it changed after shifts
     const refreshedParentGroupItems = refreshedSet.set_songs.filter(ss => {
       if (String(ss.id) === String(parentSetSongId)) return true;
@@ -8145,19 +8145,19 @@ async function handleAddTagToSong(event) {
       }
       return false;
     });
-    
+
     const refreshedMaxOrder = refreshedParentGroupItems.length > 0
       ? Math.max(...refreshedParentGroupItems.map(ss => ss.sequence_order || 0))
       : (refreshedSet.set_songs.find(ss => String(ss.id) === String(parentSetSongId))?.sequence_order || 0);
-    
+
     const finalSequenceOrder = refreshedMaxOrder + 1;
-    
+
     // Create tag entry
     const tagDescription = JSON.stringify({
       parentSetSongId: String(parentSetSongId),
       tagType: tagType,
     });
-    
+
     const { data: newTag, error } = await supabase
       .from("set_songs")
       .insert({
@@ -8202,7 +8202,7 @@ async function openSectionModal() {
   if (!isManager() || !state.selectedSet) return;
   sectionModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
-  
+
   // Hide assignments section if in per-set mode
   const assignmentSection = sectionModal.querySelector(".assignment-section");
   const assignmentMode = getSetAssignmentMode(state.selectedSet);
@@ -8211,7 +8211,7 @@ async function openSectionModal() {
       assignmentSection.style.display = 'none';
     } else {
       assignmentSection.style.display = 'block';
-  el("section-assignments-list").innerHTML = "";
+      el("section-assignments-list").innerHTML = "";
     }
   }
 }
@@ -8269,12 +8269,12 @@ let tagParentDropdown = null;
 async function populateSongOptions() {
   const container = el("song-select-container");
   if (!container) return;
-  
+
   container.innerHTML = "";
-  
+
   // Get weeks offset to nearest scheduled performance (past or future) for each song
   const weeksSinceMap = await getWeeksSinceLastPerformance();
-  
+
   const options = state.songs.map(song => ({
     value: song.id,
     label: song.title,
@@ -8287,10 +8287,10 @@ async function populateSongOptions() {
       weeksSinceLastPerformed: weeksSinceMap.get(song.id) || null,
     }
   }));
-  
+
   songDropdown = createSearchableDropdown(options, "Select a song...");
   container.appendChild(songDropdown);
-  
+
   if (songDropdown) {
     songDropdown.addEventListener("change", (e) => {
       const durationInput = el("song-service-duration");
@@ -8307,13 +8307,13 @@ async function populateSongOptions() {
 
 async function getWeeksSinceLastPerformance() {
   const weeksMap = new Map();
-  
+
   if (!state.songs || state.songs.length === 0) {
     return weeksMap;
   }
-  
+
   const songIds = state.songs.map(s => s.id);
-  
+
   // Query to find all set dates for each song
   const { data, error } = await supabase
     .from("set_songs")
@@ -8324,33 +8324,33 @@ async function getWeeksSinceLastPerformance() {
       )
     `)
     .in("song_id", songIds);
-  
+
   if (error) {
     console.error("Error fetching song performance history:", error);
     return weeksMap;
   }
-  
+
   const now = new Date();
   now.setHours(0, 0, 0, 0); // Normalize to start of day
-  
+
   // Track nearest future date and most recent past date for each song
   const songScheduleMap = new Map();
-  
+
   if (data) {
     data.forEach(item => {
       const songId = item.song_id;
       // Handle both object and array responses from Supabase
       const setEntries = Array.isArray(item.set) ? item.set : [item.set].filter(Boolean);
-      
+
       setEntries.forEach(setData => {
         const scheduledDate = setData?.scheduled_date;
         if (!scheduledDate) return;
-        
+
         const dateValue = new Date(scheduledDate);
         dateValue.setHours(0, 0, 0, 0);
-        
+
         const entry = songScheduleMap.get(songId) || { next: null, last: null };
-        
+
         if (dateValue >= now) {
           if (!entry.next || dateValue < entry.next) {
             entry.next = dateValue;
@@ -8360,14 +8360,14 @@ async function getWeeksSinceLastPerformance() {
             entry.last = dateValue;
           }
         }
-        
+
         songScheduleMap.set(songId, entry);
       });
     });
   }
-  
+
   const weekMs = 1000 * 60 * 60 * 24 * 7;
-  
+
   // Prefer future schedule if present; otherwise show most recent past
   songScheduleMap.forEach((entry, songId) => {
     if (entry.next) {
@@ -8380,7 +8380,7 @@ async function getWeeksSinceLastPerformance() {
       weeksMap.set(songId, label);
     }
   });
-  
+
   return weeksMap;
 }
 
@@ -8432,11 +8432,11 @@ async function handleAddSongToSet(event) {
     // Check if assigned users have already accepted this set (for per-song mode)
     const set = state.selectedSet;
     const assignmentMode = getSetAssignmentMode(set);
-    
+
     // For per-song sets, check if each assigned person has already accepted this set
     const assignmentsToInsert = await Promise.all(assignments.map(async (assignment) => {
       let shouldAutoAccept = false;
-      
+
       if (assignmentMode === 'per_song' && assignment.person_id) {
         const { data: setAcceptance } = await supabase
           .from("set_acceptances")
@@ -8446,7 +8446,7 @@ async function handleAddSongToSet(event) {
           .maybeSingle();
         shouldAutoAccept = !!setAcceptance;
       }
-      
+
       return {
         role: assignment.role,
         person_id: assignment.person_id || null,
@@ -8500,11 +8500,11 @@ async function handleAddSongToSet(event) {
         );
       }
     }
-    
+
     const { error: assignmentError } = await supabase
       .from("song_assignments")
       .insert(assignmentsToInsert);
-      
+
     if (assignmentError) {
       console.error(assignmentError);
       toastError("Assignments partially failed.");
@@ -8515,7 +8515,7 @@ async function handleAddSongToSet(event) {
 
   closeSongModal();
   await loadSets();
-  
+
   // Refresh detail view if it's showing
   if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
@@ -8595,11 +8595,11 @@ async function handleAddSectionToSet(event) {
     // Check if assigned users have already accepted this set (for per-song mode)
     const set = state.selectedSet;
     const assignmentMode = getSetAssignmentMode(set);
-    
+
     // For per-song sets, check if each assigned person has already accepted this set
     const assignmentsToInsert = await Promise.all(assignments.map(async (assignment) => {
       let shouldAutoAccept = false;
-      
+
       if (assignmentMode === 'per_song' && assignment.person_id) {
         const { data: setAcceptance } = await supabase
           .from("set_acceptances")
@@ -8609,7 +8609,7 @@ async function handleAddSectionToSet(event) {
           .maybeSingle();
         shouldAutoAccept = !!setAcceptance;
       }
-      
+
       return {
         role: assignment.role,
         person_id: assignment.person_id || null,
@@ -8621,11 +8621,11 @@ async function handleAddSectionToSet(event) {
         status: shouldAutoAccept ? 'accepted' : 'pending',
       };
     }));
-    
+
     const { error: assignmentError } = await supabase
       .from("song_assignments")
       .insert(assignmentsToInsert);
-      
+
     if (assignmentError) {
       console.error(assignmentError);
       toastError("Assignments partially failed.");
@@ -8650,7 +8650,7 @@ async function handleAddSectionToSet(event) {
           team_id: state.currentTeamId,
         }))
       );
-    
+
     if (linksError) {
       console.error("Error saving section links:", linksError);
       toastError("Some links could not be saved. Please try again.");
@@ -8659,7 +8659,7 @@ async function handleAddSectionToSet(event) {
 
   closeSectionModal();
   await loadSets();
-  
+
   // Refresh detail view if it's showing
   if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
@@ -8723,7 +8723,7 @@ async function handleAddSectionHeaderToSet(event) {
 
   closeSectionHeaderModal();
   await loadSets();
-  
+
   // Refresh detail view if it's showing
   if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
@@ -8772,10 +8772,10 @@ function addAssignmentInput() {
   const container = el("assignments-list");
   const div = document.createElement("div");
   div.className = "assignment-row";
-  
+
   // Build person dropdown options
   const personOptions = buildPersonOptions();
-  
+
   div.innerHTML = `
     <label>
       Role
@@ -8787,17 +8787,17 @@ function addAssignmentInput() {
     </label>
     <button type="button" class="btn small ghost remove-assignment">Remove</button>
   `;
-  
+
   // Create searchable dropdown for person
   const personContainer = div.querySelector(".assignment-person-container");
   const personDropdown = createSearchableDropdown(
-    personOptions, 
+    personOptions,
     "Select a person...",
     null,
     isManager() ? (name) => openInviteModal(name) : null
   );
   personContainer.appendChild(personDropdown);
-  
+
   div.querySelector(".remove-assignment").addEventListener("click", () => {
     container.removeChild(div);
   });
@@ -8807,7 +8807,7 @@ function addAssignmentInput() {
 function collectAssignments(containerId = "assignments-list") {
   const container = el(containerId);
   if (!container) return [];
-  
+
   const roles = Array.from(container.querySelectorAll(".assignment-role-input"));
   const personContainers = Array.from(
     container.querySelectorAll(".assignment-person-container")
@@ -8844,7 +8844,7 @@ function collectAssignments(containerId = "assignments-list") {
 // Edit Set Song Functions
 async function openEditSetSongModal(setSong) {
   if (!isManager() || !setSong) return;
-  
+
   const modal = el("edit-set-song-modal");
   const form = el("edit-set-song-form");
   const notesInput = el("edit-set-song-notes");
@@ -8853,36 +8853,36 @@ async function openEditSetSongModal(setSong) {
   const durationLabel = el("edit-set-song-duration-label");
   const durationInput = el("edit-set-song-duration");
   const durationHint = el("edit-set-song-duration-hint");
-  
+
   // Check if this is a section header (section with no description, notes, or assignments)
-  const isSectionHeader = isSection && 
-    !setSong.description && 
-    !setSong.notes && 
+  const isSectionHeader = isSection &&
+    !setSong.description &&
+    !setSong.notes &&
     (!setSong.song_assignments || setSong.song_assignments.length === 0);
-  
+
   // Store the set song ID and song ID for saving/editing
   form.dataset.setSongId = setSong.id;
   form.dataset.songId = setSong.song_id || setSong.song?.id || null;
   form.dataset.isSection = isSection ? "true" : "false";
   form.dataset.isSectionHeader = isSectionHeader ? "true" : "false";
-  
+
   // Update modal title
   const titleEl = el("edit-set-item-title");
   if (titleEl) {
     if (isSectionHeader) {
       titleEl.textContent = "Edit Section Header";
     } else {
-    titleEl.textContent = isSection ? "Edit Section in Set" : "Edit Song in Set";
+      titleEl.textContent = isSection ? "Edit Section in Set" : "Edit Song in Set";
     }
   }
-  
+
   // Show/hide section fields and song edit button
   const sectionFields = el("edit-section-fields");
   const editSongBtn = el("btn-edit-song-from-set");
   const assignmentSection = el("edit-set-song-modal")?.querySelector(".assignment-section");
   const keyLabel = el("edit-set-song-key-label");
   const keyInput = el("edit-set-song-key");
-  
+
   // Show/hide key field based on whether it's a song or section
   if (keyLabel && keyInput) {
     if (isSection) {
@@ -8893,7 +8893,7 @@ async function openEditSetSongModal(setSong) {
       keyInput.value = setSong.key || "";
     }
   }
-  
+
   if (durationLabel && durationInput) {
     if (isSectionHeader) {
       durationLabel.classList.add("hidden");
@@ -8912,7 +8912,7 @@ async function openEditSetSongModal(setSong) {
       }
     }
   }
-  
+
   // Hide assignments section if in per-set mode
   const assignmentMode = getSetAssignmentMode(state.selectedSet);
   if (assignmentSection) {
@@ -8922,7 +8922,7 @@ async function openEditSetSongModal(setSong) {
       assignmentSection.style.display = 'block';
     }
   }
-  
+
   if (sectionFields) {
     if (isSection) {
       sectionFields.classList.remove("hidden");
@@ -8948,7 +8948,7 @@ async function openEditSetSongModal(setSong) {
   if (editSongBtn) {
     editSongBtn.classList.toggle("hidden", isSection);
   }
-  
+
   // Hide notes and assignments for section headers
   if (isSectionHeader) {
     if (notesInput) {
@@ -8960,23 +8960,23 @@ async function openEditSetSongModal(setSong) {
   } else {
     if (notesInput) {
       notesInput.closest("label")?.classList.remove("hidden");
-  notesInput.value = setSong.notes || "";
+      notesInput.value = setSong.notes || "";
     }
     if (assignmentSection) {
       assignmentSection.classList.remove("hidden");
     }
-  // Clear and populate assignments
-  assignmentsList.innerHTML = "";
-  if (setSong.song_assignments && setSong.song_assignments.length > 0) {
-    setSong.song_assignments.forEach((assignment) => {
-      addEditAssignmentInput(assignment);
-    });
+    // Clear and populate assignments
+    assignmentsList.innerHTML = "";
+    if (setSong.song_assignments && setSong.song_assignments.length > 0) {
+      setSong.song_assignments.forEach((assignment) => {
+        addEditAssignmentInput(assignment);
+      });
     }
   }
-  
+
   // Populate import dropdown, excluding current song/section
   populateImportAssignmentsDropdown("import-edit-assignments-container", setSong.id);
-  
+
   // Load section links if this is a section
   const editSectionLinksContainer = el("edit-section-links-container");
   const editSectionLinksList = el("edit-section-links-list");
@@ -8988,12 +8988,12 @@ async function openEditSetSongModal(setSong) {
       .select("*")
       .eq("set_song_id", setSong.id)
       .order("display_order", { ascending: true });
-    
+
     renderSectionLinks(sectionLinksData || [], "edit-section-links-list");
   } else if (editSectionLinksContainer) {
     editSectionLinksContainer.classList.add("hidden");
   }
-  
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
@@ -9030,10 +9030,10 @@ function addEditAssignmentInput(existingAssignment = null) {
   const container = el("edit-assignments-list");
   const div = document.createElement("div");
   div.className = "assignment-row";
-  
+
   // Build person dropdown options
   const personOptions = buildPersonOptions();
-  
+
   div.innerHTML = `
     <label>
       Role
@@ -9046,7 +9046,7 @@ function addEditAssignmentInput(existingAssignment = null) {
     ${existingAssignment?.id ? `<input type="hidden" class="edit-assignment-id" value="${existingAssignment.id}" />` : ''}
     <button type="button" class="btn small ghost remove-edit-assignment">Remove</button>
   `;
-  
+
   // Create searchable dropdown for person
   const personContainer = div.querySelector(".edit-assignment-person-container");
   const selectedValue =
@@ -9054,13 +9054,13 @@ function addEditAssignmentInput(existingAssignment = null) {
     existingAssignment?.person_id ||
     null;
   const personDropdown = createSearchableDropdown(
-    personOptions, 
+    personOptions,
     "Select a person...",
     selectedValue,
     state.profile?.can_manage ? (name) => openInviteModal(name) : null
   );
   personContainer.appendChild(personDropdown);
-  
+
   div.querySelector(".remove-edit-assignment").addEventListener("click", () => {
     container.removeChild(div);
   });
@@ -9079,14 +9079,14 @@ function populateImportAssignmentsDropdown(containerId, excludeSetSongId) {
     }
     return;
   }
-  
+
   container.innerHTML = "";
-  
+
   // Get songs from the current set, excluding the current song if editing
   const setSongs = (state.selectedSet.set_songs || [])
     .filter(setSong => setSong.id !== excludeSetSongId)
     .sort((a, b) => a.sequence_order - b.sequence_order);
-  
+
   if (setSongs.length === 0) {
     // Show message when no other songs to import from
     const message = document.createElement("span");
@@ -9096,7 +9096,7 @@ function populateImportAssignmentsDropdown(containerId, excludeSetSongId) {
     container.appendChild(message);
     return;
   }
-  
+
   // Add a compact label
   const labelText = document.createElement("span");
   labelText.className = "small-text";
@@ -9105,12 +9105,12 @@ function populateImportAssignmentsDropdown(containerId, excludeSetSongId) {
   labelText.style.whiteSpace = "nowrap";
   labelText.textContent = "or import from:";
   container.appendChild(labelText);
-  
+
   // Add dropdown
   const dropdownContainer = document.createElement("div");
   dropdownContainer.style.minWidth = "180px";
   dropdownContainer.style.flex = "0 1 auto";
-  
+
   // Only include songs (not sections) since you can't import assignments from sections
   const options = setSongs
     .filter(setSong => setSong.song_id !== null) // Only songs, not sections
@@ -9119,11 +9119,11 @@ function populateImportAssignmentsDropdown(containerId, excludeSetSongId) {
       label: setSong.song?.title || "Untitled",
       meta: { setSong }
     }));
-  
+
   const dropdown = createSearchableDropdown(options, "Select a song...");
   dropdownContainer.appendChild(dropdown);
   container.appendChild(dropdownContainer);
-  
+
   // Store reference based on which container
   if (containerId === "import-assignments-container") {
     importAssignmentsDropdown = dropdown;
@@ -9145,7 +9145,7 @@ function populateImportAssignmentsDropdown(containerId, excludeSetSongId) {
 
 function handleImportAssignments(selectedValue) {
   if (!selectedValue) return;
-  
+
   // Find the set song
   const setSong = state.selectedSet.set_songs?.find(ss => ss.id === selectedValue);
   if (!setSong || !setSong.song_assignments?.length) {
@@ -9156,15 +9156,15 @@ function handleImportAssignments(selectedValue) {
     }
     return;
   }
-  
+
   // Clear existing assignments
   el("assignments-list").innerHTML = "";
-  
+
   // Add assignments from selected song
   setSong.song_assignments.forEach((assignment) => {
     addAssignmentInputFromImport(assignment);
   });
-  
+
   // Reset dropdown
   if (importAssignmentsDropdown) {
     importAssignmentsDropdown.setValue("");
@@ -9173,7 +9173,7 @@ function handleImportAssignments(selectedValue) {
 
 function handleImportEditAssignments(selectedValue) {
   if (!selectedValue) return;
-  
+
   // Find the set song
   const setSong = state.selectedSet.set_songs?.find(ss => ss.id === selectedValue);
   if (!setSong || !setSong.song_assignments?.length) {
@@ -9184,15 +9184,15 @@ function handleImportEditAssignments(selectedValue) {
     }
     return;
   }
-  
+
   // Clear existing assignments
   el("edit-assignments-list").innerHTML = "";
-  
+
   // Add assignments from selected song
   setSong.song_assignments.forEach((assignment) => {
     addEditAssignmentInputFromImport(assignment);
   });
-  
+
   // Reset dropdown
   if (importEditAssignmentsDropdown) {
     importEditAssignmentsDropdown.setValue("");
@@ -9203,10 +9203,10 @@ function addAssignmentInputFromImport(assignment) {
   const container = el("assignments-list");
   const div = document.createElement("div");
   div.className = "assignment-row";
-  
+
   // Build person dropdown options
   const personOptions = buildPersonOptions();
-  
+
   // Find the person option that matches this assignment
   let selectedPersonValue = null;
   if (assignment.pending_invite_id) {
@@ -9214,7 +9214,7 @@ function addAssignmentInputFromImport(assignment) {
   } else if (assignment.person_id) {
     selectedPersonValue = assignment.person_id;
   }
-  
+
   div.innerHTML = `
     <label>
       Role
@@ -9226,17 +9226,17 @@ function addAssignmentInputFromImport(assignment) {
     </label>
     <button type="button" class="btn small ghost remove-assignment">Remove</button>
   `;
-  
+
   // Create searchable dropdown for person
   const personContainer = div.querySelector(".assignment-person-container");
   const personDropdown = createSearchableDropdown(
-    personOptions, 
+    personOptions,
     "Select a person...",
     selectedPersonValue,
     state.profile?.can_manage ? (name) => openInviteModal(name) : null
   );
   personContainer.appendChild(personDropdown);
-  
+
   div.querySelector(".remove-assignment").addEventListener("click", () => {
     container.removeChild(div);
   });
@@ -9247,10 +9247,10 @@ function addEditAssignmentInputFromImport(assignment) {
   const container = el("edit-assignments-list");
   const div = document.createElement("div");
   div.className = "assignment-row";
-  
+
   // Build person dropdown options
   const personOptions = buildPersonOptions();
-  
+
   // Find the person option that matches this assignment
   let selectedPersonValue = null;
   if (assignment.pending_invite_id) {
@@ -9258,7 +9258,7 @@ function addEditAssignmentInputFromImport(assignment) {
   } else if (assignment.person_id) {
     selectedPersonValue = assignment.person_id;
   }
-  
+
   div.innerHTML = `
     <label>
       Role
@@ -9270,17 +9270,17 @@ function addEditAssignmentInputFromImport(assignment) {
     </label>
     <button type="button" class="btn small ghost remove-edit-assignment">Remove</button>
   `;
-  
+
   // Create searchable dropdown for person
   const personContainer = div.querySelector(".edit-assignment-person-container");
   const personDropdown = createSearchableDropdown(
-    personOptions, 
+    personOptions,
     "Select a person...",
     selectedPersonValue,
     state.profile?.can_manage ? (name) => openInviteModal(name) : null
   );
   personContainer.appendChild(personDropdown);
-  
+
   div.querySelector(".remove-edit-assignment").addEventListener("click", () => {
     container.removeChild(div);
   });
@@ -9331,16 +9331,16 @@ async function handleEditSetSongSubmit(event) {
   const setSongId = form.dataset.setSongId;
   const isSection = form.dataset.isSection === "true";
   const isSectionHeader = form.dataset.isSectionHeader === "true";
-  
+
   if (!setSongId) {
     toastError("Missing set song ID.");
     return;
   }
-  
+
   // Build update object
   const updateData = {};
   let plannedDurationSeconds = null;
-  
+
   if (!isSectionHeader) {
     const durationValue = el("edit-set-song-duration")?.value.trim() || "";
     if (durationValue) {
@@ -9352,7 +9352,7 @@ async function handleEditSetSongSubmit(event) {
       plannedDurationSeconds = parsedDuration;
     }
   }
-  
+
   // If it's a section header, only update title
   if (isSectionHeader) {
     const title = el("edit-section-title").value.trim();
@@ -9385,7 +9385,7 @@ async function handleEditSetSongSubmit(event) {
     updateData.key = key;
     updateData.planned_duration_seconds = plannedDurationSeconds;
   }
-  
+
   // Update set_song
   const { data: updatedSetSong, error: updateError } = await supabase
     .from("set_songs")
@@ -9393,14 +9393,14 @@ async function handleEditSetSongSubmit(event) {
     .eq("id", setSongId)
     .select("id, set_id")
     .single();
-  
+
   if (updateError) {
     console.error(updateError);
     const itemType = isSectionHeader ? 'section header' : (isSection ? 'section' : 'song');
     toastError(`Unable to update ${itemType}.`);
     return;
   }
-  
+
   // Skip assignment handling for section headers
   if (!isSectionHeader) {
     const setId = updatedSetSong?.set_id || state.selectedSet?.id || null;
@@ -9452,61 +9452,61 @@ async function handleEditSetSongSubmit(event) {
         );
       }
     }
-  
-  // Get existing assignments
-  const { data: existingAssignments } = await supabase
-    .from("song_assignments")
-    .select("*")
-    .eq("set_song_id", setSongId);
-  
-  // Determine which to delete, update, and insert
-  const existingIds = new Set(existingAssignments?.map(a => a.id) || []);
-  const newAssignments = assignments.filter(a => !a.id);
-  const updatedAssignments = assignments.filter(a => a.id && existingIds.has(a.id));
-  const deletedIds = Array.from(existingIds).filter(id => 
-    !assignments.some(a => a.id === id)
-  );
-  
-  // Delete removed assignments
-  if (deletedIds.length > 0) {
-    await supabase
+
+    // Get existing assignments
+    const { data: existingAssignments } = await supabase
       .from("song_assignments")
-      .delete()
-      .in("id", deletedIds);
-  }
-  
-  // Update existing assignments
-  for (const assignment of updatedAssignments) {
-    await supabase
-      .from("song_assignments")
-      .update({
-        role: assignment.role,
-        person_id: assignment.person_id || null,
-        pending_invite_id: assignment.pending_invite_id || null,
-        person_name: assignment.person_name || null,
-        person_email: assignment.person_email || null,
-        // Preserve existing status when updating, or set to pending if person changed
-        status: assignment.status || 'pending',
-      })
-      .eq("id", assignment.id);
-  }
-  
-  // Insert new assignments
-  if (newAssignments.length > 0) {
-    await supabase
-      .from("song_assignments")
-      .insert(
-        newAssignments.map((assignment) => ({
+      .select("*")
+      .eq("set_song_id", setSongId);
+
+    // Determine which to delete, update, and insert
+    const existingIds = new Set(existingAssignments?.map(a => a.id) || []);
+    const newAssignments = assignments.filter(a => !a.id);
+    const updatedAssignments = assignments.filter(a => a.id && existingIds.has(a.id));
+    const deletedIds = Array.from(existingIds).filter(id =>
+      !assignments.some(a => a.id === id)
+    );
+
+    // Delete removed assignments
+    if (deletedIds.length > 0) {
+      await supabase
+        .from("song_assignments")
+        .delete()
+        .in("id", deletedIds);
+    }
+
+    // Update existing assignments
+    for (const assignment of updatedAssignments) {
+      await supabase
+        .from("song_assignments")
+        .update({
           role: assignment.role,
           person_id: assignment.person_id || null,
           pending_invite_id: assignment.pending_invite_id || null,
           person_name: assignment.person_name || null,
           person_email: assignment.person_email || null,
-          set_song_id: setSongId,
-          team_id: state.currentTeamId,
-          status: 'pending',
-        }))
-      );
+          // Preserve existing status when updating, or set to pending if person changed
+          status: assignment.status || 'pending',
+        })
+        .eq("id", assignment.id);
+    }
+
+    // Insert new assignments
+    if (newAssignments.length > 0) {
+      await supabase
+        .from("song_assignments")
+        .insert(
+          newAssignments.map((assignment) => ({
+            role: assignment.role,
+            person_id: assignment.person_id || null,
+            pending_invite_id: assignment.pending_invite_id || null,
+            person_name: assignment.person_name || null,
+            person_email: assignment.person_email || null,
+            set_song_id: setSongId,
+            team_id: state.currentTeamId,
+            status: 'pending',
+          }))
+        );
     }
 
     // Send notifications for newly assigned people in per-song mode
@@ -9514,25 +9514,25 @@ async function handleEditSetSongSubmit(event) {
       await notifyAssignmentEmails(setId, state.currentTeamId, newSongRecipients, "per_song");
     }
   }
-  
+
   // Handle section links if this is a section
   if (isSection && !isSectionHeader) {
     const links = collectSectionLinks("edit-section-links-list");
-    
+
     // Get existing links
     const { data: existingLinks } = await supabase
       .from("song_links")
       .select("*")
       .eq("set_song_id", setSongId);
-    
+
     // Determine which to delete, update, and insert
     const existingIds = new Set(existingLinks?.map(l => l.id) || []);
     const newLinks = links.filter(l => !l.id);
     const updatedLinks = links.filter(l => l.id && existingIds.has(l.id));
-    const deletedIds = Array.from(existingIds).filter(id => 
+    const deletedIds = Array.from(existingIds).filter(id =>
       !links.some(l => l.id === id)
     );
-    
+
     // Delete removed links and their files
     if (deletedIds.length > 0) {
       // Get file paths of links to be deleted
@@ -9542,27 +9542,27 @@ async function handleEditSetSongSubmit(event) {
           await deleteFileFromSupabase(linkToDelete.file_path);
         }
       }
-      
+
       await supabase
         .from("song_links")
         .delete()
         .in("id", deletedIds);
     }
-    
+
     // Update existing links
     for (const link of updatedLinks) {
       const existingLink = existingLinks?.find(l => l.id === link.id);
       let filePath = link.file_path;
       let fileName = link.file_name;
       let fileType = link.file_type;
-      
+
       // If it's a file upload with a new file, upload it
       if (link.is_file_upload && link.file) {
         // Delete old file if it exists
         if (existingLink?.is_file_upload && existingLink?.file_path) {
           await deleteFileFromSupabase(existingLink.file_path);
         }
-        
+
         // Upload new file
         const uploadResult = await uploadFileToSupabase(link.file, null, setSongId, state.currentTeamId);
         if (!uploadResult.success) {
@@ -9578,7 +9578,7 @@ async function handleEditSetSongSubmit(event) {
         fileName = existingLink.file_name || link.file_name;
         fileType = existingLink.file_type || link.file_type;
       }
-      
+
       await supabase
         .from("song_links")
         .update({
@@ -9593,16 +9593,16 @@ async function handleEditSetSongSubmit(event) {
         })
         .eq("id", link.id);
     }
-    
+
     // Insert new links
     if (newLinks.length > 0) {
       const linksToInsert = [];
-      
+
       for (const link of newLinks) {
         let filePath = link.file_path;
         let fileName = link.file_name;
         let fileType = link.file_type;
-        
+
         // If it's a file upload, upload the file first
         if (link.is_file_upload && link.file) {
           const uploadResult = await uploadFileToSupabase(link.file, null, setSongId, state.currentTeamId);
@@ -9614,7 +9614,7 @@ async function handleEditSetSongSubmit(event) {
           fileName = uploadResult.fileName;
           fileType = uploadResult.fileType;
         }
-        
+
         linksToInsert.push({
           set_song_id: setSongId,
           song_id: null,
@@ -9629,12 +9629,12 @@ async function handleEditSetSongSubmit(event) {
           team_id: state.currentTeamId,
         });
       }
-      
+
       if (linksToInsert.length > 0) {
         const { error: insertError } = await supabase
           .from("song_links")
           .insert(linksToInsert);
-        
+
         if (insertError) {
           console.error("Error inserting section links:", insertError);
           toastError("Some links could not be saved. Please check that the database migration has been run.");
@@ -9642,10 +9642,10 @@ async function handleEditSetSongSubmit(event) {
       }
     }
   }
-  
+
   closeEditSetSongModal();
   await loadSets();
-  
+
   // Refresh detail view if it's showing
   if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
@@ -9665,12 +9665,12 @@ function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
   const confirmBtn = el("confirm-delete");
   const cancelBtn = el("cancel-delete-confirm");
   const closeBtn = el("close-delete-confirm-modal");
-  
+
   if (!modal) return;
-  
+
   const modalTitle = options.title || "Confirm Deletion";
   const buttonText = options.buttonText || "Delete";
-  
+
   title.textContent = modalTitle;
   messageEl.textContent = message;
   nameEl.textContent = `'${name}'`;
@@ -9678,11 +9678,11 @@ function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
   input.placeholder = name;
   confirmBtn.textContent = buttonText;
   confirmBtn.disabled = true;
-  
+
   const checkMatch = () => {
     confirmBtn.disabled = input.value.trim() !== name.trim();
   };
-  
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !confirmBtn.disabled) {
       e.preventDefault();
@@ -9692,7 +9692,7 @@ function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
       cleanup();
     }
   };
-  
+
   const cleanup = () => {
     modal.classList.add("hidden");
     document.body.style.overflow = "";
@@ -9701,21 +9701,21 @@ function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
     input.value = "";
     confirmBtn.disabled = true;
   };
-  
+
   const handleConfirm = () => {
     if (input.value.trim() === name.trim()) {
       cleanup();
       onConfirm();
     }
   };
-  
+
   input.addEventListener("input", checkMatch);
   input.addEventListener("keydown", handleKeyDown);
-  
+
   confirmBtn.onclick = handleConfirm;
   cancelBtn.onclick = cleanup;
   closeBtn.onclick = cleanup;
-  
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   input.focus();
@@ -9723,7 +9723,7 @@ function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
 
 async function deleteSet(set) {
   if (!isManager()) return;
-  
+
   showDeleteConfirmModal(
     set.title,
     `Deleting "${set.title}" will remove all associated information and assignments.`,
@@ -9733,18 +9733,18 @@ async function deleteSet(set) {
         .delete()
         .eq("id", set.id)
         .eq("team_id", state.currentTeamId);
-      
+
       if (error) {
         console.error(error);
         toastError("Unable to delete set. Check console.");
         return;
       }
-      
+
       // Hide detail view if showing the deleted set
       if (state.selectedSet?.id === set.id) {
         hideSetDetail();
       }
-      
+
       await loadSets();
     }
   );
@@ -9752,10 +9752,10 @@ async function deleteSet(set) {
 
 async function deleteSong(songId) {
   if (!isManager()) return;
-  
+
   const song = state.songs.find(s => s.id === songId);
   const songTitle = song?.title || "this song";
-  
+
   showDeleteConfirmModal(
     songTitle,
     `Deleting "${songTitle}"? will remove it from all sets.`,
@@ -9765,25 +9765,25 @@ async function deleteSong(songId) {
         .delete()
         .eq("id", songId)
         .eq("team_id", state.currentTeamId);
-      
+
       if (error) {
         console.error(error);
         toastError("Unable to delete song. Check console.");
         return;
       }
-      
+
       // Close details modal if this song is open
       if (state.currentSongDetailsId === songId) {
         closeSongDetailsModal();
       }
-      
+
       await loadSongs();
-      
+
       // Update songs tab if it's currently visible
       if (!el("songs-tab")?.classList.contains("hidden")) {
         renderSongCatalog();
       }
-      
+
       // Refresh set detail view if it's showing
       if (state.selectedSet) {
         await loadSets();
@@ -9804,7 +9804,7 @@ function openInviteModal(prefilledName = null) {
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   el("invite-form").reset();
-  
+
   // Hide name field initially
   const nameLabel = el("invite-name-label");
   if (nameLabel) {
@@ -9814,12 +9814,12 @@ function openInviteModal(prefilledName = null) {
   if (nameInput) {
     nameInput.removeAttribute("required");
   }
-  
+
   if (prefilledName) {
     if (nameInput) nameInput.value = prefilledName;
   }
   el("invite-message").textContent = "";
-  
+
   // Set up email check listener on blur
   const emailInput = el("invite-email");
   if (emailInput) {
@@ -9832,13 +9832,13 @@ function openInviteModal(prefilledName = null) {
       emailInput.removeEventListener("blur", blurHandler);
     };
     emailInput.addEventListener("blur", blurHandler);
-    
+
     // Also check on input with debounce
     let emailCheckTimeout;
     const inputHandler = async (e) => {
       clearTimeout(emailCheckTimeout);
       const email = e.target.value.trim().toLowerCase();
-      
+
       if (!email || !email.includes("@")) {
         if (nameLabel) nameLabel.classList.add("hidden");
         if (nameInput) nameInput.removeAttribute("required");
@@ -9849,12 +9849,12 @@ function openInviteModal(prefilledName = null) {
         }
         return;
       }
-      
+
       emailCheckTimeout = setTimeout(async () => {
         await checkEmailForInvite(email);
       }, 500); // Debounce for 500ms
     };
-    
+
     // Store handler so we can remove it later if needed
     emailInput.dataset.inviteEmailHandler = "true";
     emailInput.addEventListener("input", inputHandler);
@@ -9867,7 +9867,7 @@ function closeInviteModal() {
   document.body.style.overflow = "";
   el("invite-form").reset();
   el("invite-message").textContent = "";
-  
+
   // Hide name field
   const nameLabel = el("invite-name-label");
   if (nameLabel) {
@@ -9881,24 +9881,24 @@ function closeInviteModal() {
 
 async function checkEmailForInvite(email) {
   if (!email || !email.includes("@")) return;
-  
+
   const normalizedEmail = email.toLowerCase();
   const nameLabel = el("invite-name-label");
   const nameInput = el("invite-name");
   const messageEl = el("invite-message");
-  
+
   // Check if user exists
   const { data: existingProfile, error: existingProfileError } = await supabase
     .from("profiles")
     .select("id, full_name")
     .eq("email", normalizedEmail)
     .maybeSingle();
-  
+
   if (existingProfileError && existingProfileError.code !== "PGRST116") {
     console.error("Error checking existing profile:", existingProfileError);
     return;
   }
-  
+
   if (existingProfile) {
     // User exists - hide name field
     if (nameLabel) nameLabel.classList.add("hidden");
@@ -9925,21 +9925,21 @@ async function checkEmailForInvite(email) {
 async function handleInviteSubmit(event) {
   event.preventDefault();
   if (!isManager()) return;
-  
+
   const email = el("invite-email").value.trim();
   const nameInput = el("invite-name");
   const name = nameInput ? nameInput.value.trim() : "";
   const messageEl = el("invite-message");
-  
+
   if (!email) {
     messageEl.textContent = "Please enter an email address.";
     messageEl.classList.add("error-text");
     messageEl.classList.remove("muted");
     return;
   }
-  
+
   const normalizedEmail = email.toLowerCase();
-  
+
   // Check if name is required (user doesn't have account)
   const nameLabel = el("invite-name-label");
   const nameIsVisible = nameLabel && !nameLabel.classList.contains("hidden");
@@ -9974,22 +9974,22 @@ async function handleInviteSubmit(event) {
       .eq("user_id", existingProfile.id)
       .eq("team_id", state.currentTeamId)
       .maybeSingle();
-    
+
     if (existingMember) {
       messageEl.textContent = `${email} is already a member of this team.`;
       messageEl.classList.add("error-text");
       messageEl.classList.remove("muted");
       return;
     }
-    
+
     // User exists but not in this team - automatically add them
     messageEl.textContent = "Adding user to team...";
     messageEl.classList.remove("error-text");
     messageEl.classList.add("muted");
-    
+
     // Create pending_invite record (for tracking) - no name needed for existing users
     await ensurePendingInviteRecord(normalizedEmail, null);
-    
+
     // Add user to team_members directly
     const { error: addError } = await supabase
       .rpc('add_team_member', {
@@ -9999,7 +9999,7 @@ async function handleInviteSubmit(event) {
         p_is_owner: false,
         p_can_manage: false
       });
-    
+
     if (addError && (addError.code === '42883' || addError.message?.includes('function'))) {
       // Function doesn't exist, try direct insert
       const { error: directError } = await supabase
@@ -10011,7 +10011,7 @@ async function handleInviteSubmit(event) {
           is_owner: false,
           can_manage: false
         });
-      
+
       if (directError) {
         console.error("Error adding user to team:", directError);
         messageEl.textContent = directError.message || "Unable to add user to team. Please try again.";
@@ -10026,7 +10026,7 @@ async function handleInviteSubmit(event) {
       messageEl.classList.remove("muted");
       return;
     }
-    
+
     // Success - user added to team
     await loadPeople();
     messageEl.textContent = `${email} has been added to the team! They'll see this team in their account.`;
@@ -10039,7 +10039,7 @@ async function handleInviteSubmit(event) {
   messageEl.textContent = "Sending invite...";
   messageEl.classList.remove("error-text");
   messageEl.classList.add("muted");
-  
+
   // Use signInWithOtp with shouldCreateUser to send invite
   const { error } = await supabase.auth.signInWithOtp({
     email: normalizedEmail,
@@ -10051,7 +10051,7 @@ async function handleInviteSubmit(event) {
       },
     },
   });
-  
+
   if (error) {
     console.error("Invite error:", error);
     messageEl.textContent = error.message || "Unable to send invite. Please try again.";
@@ -10059,15 +10059,15 @@ async function handleInviteSubmit(event) {
     messageEl.classList.remove("muted");
     return;
   }
-  
+
   await ensurePendingInviteRecord(normalizedEmail, name);
   await loadPeople();
-  
+
   messageEl.textContent = `Invite sent to ${email}! They'll receive an email to create their account and join the team.`;
   messageEl.classList.remove("error-text");
   messageEl.classList.add("muted");
   el("invite-form").reset();
-  
+
   // Optionally store the invite info for profile creation
   // We'll handle profile creation in fetchProfile when they first sign in
 }
@@ -10075,17 +10075,17 @@ async function handleInviteSubmit(event) {
 
 async function openLeaveTeamModal(teamId, teamName) {
   if (!teamId) return;
-  
+
   const modal = el("leave-team-modal");
   const messageEl = el("leave-team-message");
   const confirmBtn = el("confirm-leave-team");
-  
+
   if (!modal || !messageEl) return;
-  
+
   // Store team info for confirmation
   modal.dataset.teamId = teamId;
   modal.dataset.teamName = teamName;
-  
+
   // Check if user is the only owner
   const team = state.userTeams.find(t => t.id === teamId);
   if (team?.is_owner) {
@@ -10095,7 +10095,7 @@ async function openLeaveTeamModal(teamId, teamName) {
       .select("user_id")
       .eq("team_id", teamId)
       .eq("is_owner", true);
-    
+
     if (owners && owners.length === 1) {
       messageEl.textContent = `You cannot leave "${teamName}" because you are the only owner. Please transfer ownership or delete the team instead.`;
       if (confirmBtn) confirmBtn.disabled = true;
@@ -10107,7 +10107,7 @@ async function openLeaveTeamModal(teamId, teamName) {
     messageEl.textContent = `Leave "${teamName}"? You can be re-invited later.`;
     if (confirmBtn) confirmBtn.disabled = false;
   }
-  
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
@@ -10124,7 +10124,7 @@ function closeLeaveTeamModal() {
 
 async function leaveTeam(teamId, teamName) {
   if (!teamId) return;
-  
+
   // Check if user is the only owner
   const team = state.userTeams.find(t => t.id === teamId);
   if (team?.is_owner) {
@@ -10134,28 +10134,28 @@ async function leaveTeam(teamId, teamName) {
       .select("user_id")
       .eq("team_id", teamId)
       .eq("is_owner", true);
-    
+
     if (owners && owners.length === 1) {
       // This should have been caught by the modal, but just in case
       return;
     }
   }
-  
+
   const { error } = await supabase
     .from("team_members")
     .delete()
     .eq("team_id", teamId)
     .eq("user_id", state.session.user.id);
-  
+
   if (error) {
     console.error("Error leaving team:", error);
     toastError("Unable to leave team. Check console.");
     return;
   }
-  
+
   // Remove from local state immediately
   state.userTeams = state.userTeams.filter(t => t.id !== teamId);
-  
+
   // If this was the current team, switch to another or show empty state immediately
   if (teamId === state.currentTeamId) {
     if (state.userTeams.length > 0) {
@@ -10172,7 +10172,7 @@ async function leaveTeam(teamId, teamName) {
     // Just refresh the switcher
     updateTeamSwitcher();
   }
-  
+
   // Close modal
   closeLeaveTeamModal();
 }
@@ -10197,18 +10197,18 @@ async function ensurePendingInviteRecord(email, fullName) {
 // Edit Person Functions
 function openEditPersonModal(person) {
   if (!isManager() || !person) return;
-  
+
   const modal = el("edit-person-modal");
   const form = el("edit-person-form");
-  
+
   if (!modal || !form) return;
-  
+
   el("edit-person-name").value = person.full_name || "";
   el("edit-person-email").value = person.email || "";
   el("edit-person-email").disabled = true; // Email is read-only
-  
+
   form.dataset.personId = person.id;
-  
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
@@ -10228,80 +10228,80 @@ function closeEditPersonModal() {
 async function handleEditPersonSubmit(event) {
   event.preventDefault();
   if (!isManager()) return;
-  
+
   const form = el("edit-person-form");
   const personId = form.dataset.personId;
   const fullName = el("edit-person-name").value.trim();
-  
+
   if (!personId || !fullName) {
     toastError("Missing required information.");
     return;
   }
-  
+
   const { error } = await supabase
     .from("profiles")
     .update({ full_name: fullName })
     .eq("id", personId);
-  
+
   if (error) {
     console.error(error);
     toastError("Unable to update member. Check console.");
     return;
   }
-  
+
   closeEditPersonModal();
   await loadPeople();
 }
 
 async function deletePerson(person) {
   if (!isManager() || !person) return;
-  
+
   if (person.id === state.profile.id) {
     toastError("You cannot remove yourself from the band.");
     return;
   }
-  
+
   // Check if person is an owner - owners cannot be removed, they must transfer ownership first
   if (person.is_owner) {
     toastError("You cannot remove an owner from the team. The owner must transfer ownership first.");
     return;
   }
-  
+
   const personName = person.full_name || person.email || "this person";
-  
+
   showDeleteConfirmModal(
     personName,
     `Removing "${personName}" from the team will also remove all their assignments.`,
     async () => {
       console.log('🗑️ Removing person from team:', person.id, personName);
-      
+
       // Step 1: Delete all song_assignments and set_assignments that reference this person by person_id
       console.log('  - Step 1: Deleting song assignments by person_id...');
       const { error: songAssignmentsError } = await supabase
         .from("song_assignments")
         .delete()
         .eq("person_id", person.id);
-      
+
       if (songAssignmentsError) {
         console.error('❌ Error deleting song assignments by person_id:', songAssignmentsError);
         const errorMsg = songAssignmentsError.message || songAssignmentsError.code || 'Unknown error';
         toastError(`Unable to remove member song assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
-      
+
       console.log('  - Step 1b: Deleting set assignments by person_id...');
       const { error: setAssignmentsError } = await supabase
         .from("set_assignments")
         .delete()
         .eq("person_id", person.id);
-      
+
       if (setAssignmentsError) {
         console.error('❌ Error deleting set assignments by person_id:', setAssignmentsError);
         const errorMsg = setAssignmentsError.message || setAssignmentsError.code || 'Unknown error';
         toastError(`Unable to remove member set assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
-      
+
       // Step 2: Find and delete pending_invite if it exists for this team
       const personEmail = person.email?.toLowerCase();
       if (personEmail) {
@@ -10312,7 +10312,7 @@ async function deletePerson(person) {
           .eq("email", personEmail)
           .eq("team_id", state.currentTeamId)
           .maybeSingle();
-        
+
         if (pendingInvite) {
           console.log('  - Step 2a: Deleting song assignments by pending_invite_id...');
           // Delete song assignments that reference this pending_invite
@@ -10320,35 +10320,35 @@ async function deletePerson(person) {
             .from("song_assignments")
             .delete()
             .eq("pending_invite_id", pendingInvite.id);
-          
+
           if (pendingSongAssignmentsError) {
             console.error('❌ Error deleting song assignments by pending_invite_id:', pendingSongAssignmentsError);
             const errorMsg = pendingSongAssignmentsError.message || pendingSongAssignmentsError.code || 'Unknown error';
             toastError(`Unable to remove pending invite song assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
             return;
           }
-          
+
           console.log('  - Step 2a2: Deleting set assignments by pending_invite_id...');
           // Delete set assignments that reference this pending_invite
           const { error: pendingSetAssignmentsError } = await supabase
             .from("set_assignments")
             .delete()
             .eq("pending_invite_id", pendingInvite.id);
-          
+
           if (pendingSetAssignmentsError) {
             console.error('❌ Error deleting set assignments by pending_invite_id:', pendingSetAssignmentsError);
             const errorMsg = pendingSetAssignmentsError.message || pendingSetAssignmentsError.code || 'Unknown error';
             toastError(`Unable to remove pending invite set assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
             return;
           }
-          
+
           console.log('  - Step 2b: Deleting pending_invite...');
           // Delete the pending_invite
           const { error: pendingError } = await supabase
             .from("pending_invites")
             .delete()
             .eq("id", pendingInvite.id);
-          
+
           if (pendingError) {
             console.error('❌ Error deleting pending_invite:', pendingError);
             const errorMsg = pendingError.message || pendingError.code || 'Unknown error';
@@ -10357,7 +10357,7 @@ async function deletePerson(person) {
           }
         }
       }
-      
+
       // Step 3: Remove the person from the team by deleting their team_members entry
       // This is the correct approach - we're removing them from THIS team, not deleting their profile
       // They may be a member of other teams
@@ -10367,19 +10367,19 @@ async function deletePerson(person) {
         .delete()
         .eq("team_id", state.currentTeamId)
         .eq("user_id", person.id);
-      
+
       if (teamMemberError) {
         console.error('❌ Error removing from team_members:', teamMemberError);
         const errorMsg = teamMemberError.message || teamMemberError.code || 'Unknown error';
         toastError(`Unable to remove member from team.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
-      
+
       console.log('✅ Person removed from team successfully');
-      
+
       // Reload people and sets (to refresh assignments)
       await Promise.all([loadPeople(), loadSets()]);
-      
+
       // Refresh UI if on sets tab
       if (!el("sets-tab")?.classList.contains("hidden")) {
         renderSets();
@@ -10390,61 +10390,61 @@ async function deletePerson(person) {
 
 async function cancelPendingInvite(invite) {
   if (!isManager()) return;
-  
+
   const inviteName = invite.full_name || invite.email || "this invite";
-  
+
   showDeleteConfirmModal(
     inviteName,
     `Canceling the invite for "${inviteName}" will remove all their pending assignments.`,
     async () => {
       console.log('🚫 Canceling pending invite:', invite.id, inviteName);
-      
+
       // Step 1: Delete all song_assignments and set_assignments that reference this pending_invite
       console.log('  - Step 1: Deleting song assignments by pending_invite_id...');
       const { error: songAssignmentsError } = await supabase
         .from("song_assignments")
         .delete()
         .eq("pending_invite_id", invite.id);
-      
+
       if (songAssignmentsError) {
         console.error('❌ Error deleting song assignments by pending_invite_id:', songAssignmentsError);
         const errorMsg = songAssignmentsError.message || songAssignmentsError.code || 'Unknown error';
         toastError(`Unable to remove pending invite song assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
-      
+
       console.log('  - Step 1b: Deleting set assignments by pending_invite_id...');
       const { error: setAssignmentsError } = await supabase
         .from("set_assignments")
         .delete()
         .eq("pending_invite_id", invite.id);
-      
+
       if (setAssignmentsError) {
         console.error('❌ Error deleting set assignments by pending_invite_id:', setAssignmentsError);
         const errorMsg = setAssignmentsError.message || setAssignmentsError.code || 'Unknown error';
         toastError(`Unable to remove pending invite set assignments.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.`);
         return;
       }
-      
+
       // Step 2: Delete the pending_invite
       console.log('  - Step 2: Deleting pending_invite...');
       const { error: inviteError } = await supabase
         .from("pending_invites")
         .delete()
         .eq("id", invite.id);
-      
+
       if (inviteError) {
         console.error('❌ Error deleting pending_invite:', inviteError);
         const errorMsg = inviteError.message || inviteError.code || 'Unknown error';
         toastError(`Unable to cancel invite.\n\nError: ${errorMsg}\n\nCheck console for details. This might be an RLS policy issue.\n\nYou may need to add DELETE policies for:\n- pending_invites table (for users with can_manage = true)\n- song_assignments table (for users with can_manage = true)`);
         return;
       }
-      
+
       console.log('✅ Pending invite canceled successfully');
-      
+
       // Reload people and sets (to refresh assignments)
       await Promise.all([loadPeople(), loadSets()]);
-      
+
       // Refresh UI if on sets tab
       if (!el("sets-tab")?.classList.contains("hidden")) {
         renderSets();
@@ -10468,21 +10468,220 @@ function closeSongCatalogModal() {
   document.body.style.overflow = "";
 }
 
+// Async search for content within resources (PDFs)
+let activeResourceSearchTerm = null;
+let resourceSearchTimeout = null;
+
+async function searchSongResources(searchTerm, existingResults) {
+  const list = el("songs-catalog-list");
+  if (!list) return;
+
+  // Update active search term
+  activeResourceSearchTerm = searchTerm;
+  const currentSearchTerm = searchTerm;
+
+  // Create or reuse loading indicator
+  let loadingIndicator = el("resource-search-loading");
+  if (!loadingIndicator) {
+    loadingIndicator = document.createElement("div");
+    loadingIndicator.id = "resource-search-loading";
+    loadingIndicator.className = "resource-search-loading";
+    loadingIndicator.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Searching within files...';
+    list.appendChild(loadingIndicator);
+  } else {
+    // Move to bottom
+    list.appendChild(loadingIndicator);
+    loadingIndicator.classList.remove("hidden");
+  }
+
+  // Filter songs to check:
+  // 1. Not already in existingResults
+  // 2. Have any links (since we check titles or PDFs)
+  const existingIds = new Set(existingResults.map(s => s.id));
+  const candidateSongs = state.songs.filter(song => {
+    if (existingIds.has(song.id)) return false;
+    const links = song.song_links || [];
+    return links.length > 0;
+  });
+
+  console.log(`🔍 Deep search: Checking ${candidateSongs.length} candidate songs for "${searchTerm}"`);
+
+  // Process songs in chunks to avoid blocking UI too much
+  for (const song of candidateSongs) {
+    // Stop if search term changed
+    if (activeResourceSearchTerm !== currentSearchTerm) {
+      console.log('🛑 Deep search aborted: search term changed');
+      return;
+    }
+
+    let matchFound = false;
+    let matchContext = "";
+    let isLinkTitleMatch = false;
+
+    const links = song.song_links || [];
+
+    // 1. Check Link Titles
+    for (const link of links) {
+      if ((link.title || "").toLowerCase().includes(searchTerm)) {
+        matchFound = true;
+        isLinkTitleMatch = true;
+        matchContext = `Link: ${highlightMatch(link.title, searchTerm)}`;
+        break;
+      }
+    }
+
+    // 2. Check PDF Content (if no title match yet)
+    if (!matchFound) {
+      const pdfLinks = links.filter(link =>
+        (link.file_type === 'application/pdf' || link.url?.toLowerCase().endsWith('.pdf')) &&
+        link.url
+      );
+
+      for (const link of pdfLinks) {
+        if (matchFound) break;
+
+        try {
+          const text = await extractTextFromPdf(link.url);
+          if (text && text.toLowerCase().includes(searchTerm)) {
+            matchFound = true;
+            // Find a snippet for context
+            const index = text.toLowerCase().indexOf(searchTerm);
+            const start = Math.max(0, index - 20);
+            const end = Math.min(text.length, index + searchTerm.length + 20);
+            matchContext = "..." + highlightMatch(text.substring(start, end), searchTerm) + "...";
+          }
+        } catch (err) {
+          console.warn(`⚠️ Failed to parse PDF for song ${song.title}:`, err);
+        }
+      }
+    }
+
+    if (matchFound) {
+      // Check again if search term changed before appending
+      if (activeResourceSearchTerm !== currentSearchTerm) return;
+
+      // Remove "No songs match" message if it's the only thing there
+      if (list.children.length === 1 && list.firstElementChild.tagName === 'P') {
+        list.firstElementChild.remove();
+      }
+
+      // Append song card
+      const div = document.createElement("div");
+      div.className = "card set-song-card fade-in";
+
+      // Highlight search term in title (even though it didn't match title, we show it)
+      const highlightedTitle = escapeHtml(song.title || "");
+      const highlightedBpm = song.bpm ? `<span>BPM: ${song.bpm}</span>` : '';
+      const keysSet = new Set((song.song_keys || []).map(k => k.key).filter(Boolean));
+      const keys = Array.from(keysSet).join(", ");
+      const highlightedKey = keys ? `<span>Key: ${keys}</span>` : '';
+      const highlightedTime = song.time_signature ? `<span>Time: ${escapeHtml(song.time_signature)}</span>` : '';
+      const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
+      const highlightedDuration = durationStr ? `<span>Duration: ${durationStr}</span>` : '';
+
+      const badgeIcon = isLinkTitleMatch ? 'fa-link' : 'fa-file-pdf';
+      const badgeText = isLinkTitleMatch ? 'Link Match' : 'Content Match';
+
+      div.innerHTML = `
+        <div class="set-song-header song-card-header">
+          <div class="set-song-info">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <h4 class="song-title" style="margin: 0;">${highlightedTitle}</h4>
+              <span class="badge-resource-match"><i class="fa-solid ${badgeIcon}"></i> ${badgeText}</span>
+            </div>
+            <div class="song-meta-text">
+              ${highlightedBpm}
+              ${highlightedKey}
+              ${highlightedTime}
+              ${highlightedDuration}
+            </div>
+            <div class="song-match-context">
+              <small class="muted">${matchContext}</small>
+            </div>
+          </div>
+          <div class="set-song-actions song-card-actions">
+            <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
+            ${isManager() ? `
+            <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
+            <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      // Attach event listeners
+      const viewDetailsBtn = div.querySelector(".view-song-details-catalog-btn");
+      if (viewDetailsBtn) {
+        viewDetailsBtn.addEventListener("click", () => {
+          openSongDetailsModal(song);
+        });
+      }
+
+      const editBtn = div.querySelector(".edit-song-btn");
+      if (editBtn) {
+        editBtn.addEventListener("click", () => {
+          console.log('Edit button clicked for song:', song.id);
+          openSongEditModal(song.id);
+        });
+      }
+
+      const deleteBtn = div.querySelector(".delete-song-btn");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", () => {
+          deleteSong(song.id);
+        });
+      }
+
+      // Insert before loading indicator
+      list.insertBefore(div, loadingIndicator);
+    }
+  }
+
+  // Hide loading indicator when done
+  if (activeResourceSearchTerm === currentSearchTerm) {
+    if (loadingIndicator) loadingIndicator.classList.add("hidden");
+  }
+}
+
+// Helper to extract text from PDF URL
+async function extractTextFromPdf(url) {
+  try {
+    const loadingTask = pdfjsLib.getDocument(url);
+    const pdf = await loadingTask.promise;
+    let fullText = "";
+
+    // Limit pages to avoid performance issues (e.g., first 5 pages)
+    const maxPages = Math.min(pdf.numPages, 5);
+
+    for (let i = 1; i <= maxPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(" ");
+      fullText += pageText + " ";
+    }
+
+    return fullText;
+  } catch (error) {
+    console.error("Error extracting text from PDF:", error);
+    return "";
+  }
+}
+
 function renderSongCatalog() {
   const list = el("songs-catalog-list");
   if (!list) return;
-  
+
   const searchInput = el("songs-tab-search");
   const searchTermRaw = searchInput ? searchInput.value.trim() : "";
   const searchTerm = searchTermRaw.toLowerCase();
-  
+
   list.innerHTML = "";
-  
+
   if (!state.songs || state.songs.length === 0) {
     list.innerHTML = '<p class="muted">No songs yet. Create your first song!</p>';
     return;
   }
-  
+
   // Filter songs based on search term
   let filteredSongs = state.songs;
   if (searchTerm) {
@@ -10501,27 +10700,31 @@ function renderSongCatalog() {
       const durationMatch = song.duration_seconds ? formatDuration(song.duration_seconds).toLowerCase().includes(searchTerm) : false;
       return titleMatch || bpmMatch || keyMatch || timeMatch || durationMatch;
     });
-    
+
     // Prioritize: title matches first, then metadata matches
-    const titleMatches = allMatches.filter((song) => 
+    const titleMatches = allMatches.filter((song) =>
       (song.title || "").toLowerCase().includes(searchTerm)
     );
-    const metadataMatches = allMatches.filter((song) => 
+    const metadataMatches = allMatches.filter((song) =>
       !(song.title || "").toLowerCase().includes(searchTerm)
     );
-    
+
     filteredSongs = [...titleMatches, ...metadataMatches];
   }
-  
+
   if (filteredSongs.length === 0) {
     list.innerHTML = '<p class="muted">No songs match your search.</p>';
+    // Even if no metadata matches, we still want to search resources
+    if (searchTerm) {
+      searchSongResources(searchTerm, []);
+    }
     return;
   }
-  
+
   filteredSongs.forEach((song) => {
     const div = document.createElement("div");
     div.className = "card set-song-card";
-    
+
     // Highlight search term in title and metadata (use raw search term for highlighting)
     const highlightedTitle = searchTermRaw ? highlightMatch(song.title || "", searchTermRaw) : escapeHtml(song.title || "");
     const highlightedBpm = song.bpm ? (searchTerm && String(song.bpm).includes(searchTerm) ? `<span>BPM: ${highlightMatch(String(song.bpm), searchTermRaw)}</span>` : `<span>BPM: ${song.bpm}</span>`) : '';
@@ -10532,7 +10735,7 @@ function renderSongCatalog() {
     const highlightedTime = song.time_signature ? (searchTerm && song.time_signature.toLowerCase().includes(searchTerm) ? `<span>Time: ${highlightMatch(song.time_signature, searchTermRaw)}</span>` : `<span>Time: ${escapeHtml(song.time_signature)}</span>`) : '';
     const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
     const highlightedDuration = durationStr ? (searchTerm && durationStr.toLowerCase().includes(searchTerm) ? `<span>Duration: ${highlightMatch(durationStr, searchTermRaw)}</span>` : `<span>Duration: ${durationStr}</span>`) : '';
-    
+
     div.innerHTML = `
       <div class="set-song-header song-card-header">
         <div class="set-song-info">
@@ -10550,33 +10753,42 @@ function renderSongCatalog() {
           <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
           <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
           ` : ''}
-        </div>
-      </div>
-    `;
-  
+        </div >
+      </div >
+  `;
+
     const viewDetailsBtn = div.querySelector(".view-song-details-catalog-btn");
     if (viewDetailsBtn) {
       viewDetailsBtn.addEventListener("click", () => {
         openSongDetailsModal(song);
       });
     }
-    
+
     const editBtn = div.querySelector(".edit-song-btn");
     if (editBtn) {
       editBtn.addEventListener("click", () => {
         openSongEditModal(song.id);
       });
     }
-    
+
     const deleteBtn = div.querySelector(".delete-song-btn");
     if (deleteBtn) {
       deleteBtn.addEventListener("click", () => {
         deleteSong(song.id);
       });
     }
-    
+
     list.appendChild(div);
   });
+
+  // Trigger async search for content (debounced)
+  if (resourceSearchTimeout) clearTimeout(resourceSearchTimeout);
+
+  if (searchTerm) {
+    resourceSearchTimeout = setTimeout(() => {
+      searchSongResources(searchTerm, filteredSongs);
+    }, 600); // 600ms debounce to save memory
+  }
 }
 
 async function openSongEditModal(songId = null) {
@@ -10584,10 +10796,10 @@ async function openSongEditModal(songId = null) {
   const modal = el("song-edit-modal");
   const title = el("song-edit-modal-title");
   const form = el("song-edit-form");
-  
+
   // Check if song modal is already open (for stacking)
   const songModalOpen = !el("song-modal").classList.contains("hidden");
-  
+
   if (songId) {
     const song = state.songs.find(s => s.id === songId);
     if (song) {
@@ -10598,27 +10810,27 @@ async function openSongEditModal(songId = null) {
       el("song-edit-duration").value = song.duration_seconds ? formatDuration(song.duration_seconds) : "";
       el("song-edit-description").value = song.description || "";
       form.dataset.songId = songId;
-      
+
       // Load song keys and links
       const { data: songData } = await supabase
         .from("songs")
         .select(`
-          *,
-          song_keys (
-            id,
-            key
-          ),
-          song_links (
-            id,
-            title,
-            url,
-            key,
-            display_order
-          )
-        `)
+  *,
+  song_keys(
+    id,
+    key
+  ),
+  song_links(
+    id,
+    title,
+    url,
+    key,
+    display_order
+  )
+    `)
         .eq("id", songId)
         .single();
-      
+
       if (songData) {
         renderSongKeys(songData.song_keys || []);
         renderSongLinks(songData.song_links || []);
@@ -10634,7 +10846,7 @@ async function openSongEditModal(songId = null) {
     renderSongKeys([]);
     renderSongLinks([]);
   }
-  
+
   modal.classList.remove("hidden");
   // Only set body overflow if song modal isn't already open
   if (!songModalOpen) {
@@ -10645,20 +10857,20 @@ async function openSongEditModal(songId = null) {
 function closeSongEditModal() {
   const modal = el("song-edit-modal");
   modal.classList.add("hidden");
-  
+
   // Check if song modal is still open
   const songModalOpen = !el("song-modal").classList.contains("hidden");
-  
+
   // Only reset body overflow if no other modals are open
   if (!songModalOpen) {
     document.body.style.overflow = "";
   }
-  
+
   el("song-edit-form").reset();
   delete el("song-edit-form").dataset.songId;
   el("song-links-list").innerHTML = "";
   el("song-keys-list").innerHTML = "";
-  
+
   // Reset creatingSongFromModal if cancelled (not saved)
   // This will be set to false in handleSongEditSubmit if saved successfully
   if (state.creatingSongFromModal) {
@@ -10668,49 +10880,49 @@ function closeSongEditModal() {
 
 async function openSongDetailsModal(song, selectedKey = null) {
   if (!song) return;
-  
+
   const modal = el("song-details-modal");
   const content = el("song-details-content");
   const title = el("song-details-title");
-  
+
   if (!modal || !content) return;
-  
+
   // Track which song is open
   state.currentSongDetailsId = song.id;
-  
+
   title.textContent = song.title || "Song Details";
-  
+
   // Fetch song with keys and links
   let songWithLinks = song;
   if (!song.song_links || !song.song_keys) {
     const { data } = await supabase
       .from("songs")
       .select(`
-        *,
-        song_keys (
-          id,
-          key
-        ),
-        song_links (
-          id,
-          title,
-          url,
-          key,
-          display_order,
-          file_path,
-          file_name,
-          file_type,
-          is_file_upload
-        )
-      `)
+  *,
+  song_keys(
+    id,
+    key
+  ),
+  song_links(
+    id,
+    title,
+    url,
+    key,
+    display_order,
+    file_path,
+    file_name,
+    file_type,
+    is_file_upload
+  )
+    `)
       .eq("id", song.id)
       .single();
-    
+
     if (data) {
       songWithLinks = data;
     }
   }
-  
+
   // Ensure links are ordered by display_order for consistent rendering
   if (songWithLinks && Array.isArray(songWithLinks.song_links)) {
     songWithLinks.song_links = [...songWithLinks.song_links].sort((a, b) => {
@@ -10722,16 +10934,16 @@ async function openSongDetailsModal(song, selectedKey = null) {
       return at.localeCompare(bt);
     });
   }
-  
+
   // Organize links by key
   const generalLinks = (songWithLinks.song_links || []).filter(link => !link.key);
-  const selectedKeyLinks = selectedKey 
+  const selectedKeyLinks = selectedKey
     ? (songWithLinks.song_links || []).filter(link => link.key === selectedKey)
     : [];
   const otherKeysLinks = selectedKey
     ? (songWithLinks.song_links || []).filter(link => link.key && link.key !== selectedKey)
     : (songWithLinks.song_links || []).filter(link => link.key);
-  
+
   // Group other keys links by key
   const linksByKey = {};
   otherKeysLinks.forEach(link => {
@@ -10740,13 +10952,13 @@ async function openSongDetailsModal(song, selectedKey = null) {
     }
     linksByKey[link.key].push(link);
   });
-  
+
   const hasLinks = (songWithLinks.song_links || []).length > 0;
   const hasKeys = (songWithLinks.song_keys || []).length > 0;
-  
+
   // Render all song information in an expanded view
-    content.innerHTML = `
-      <div class="song-details-section">
+  content.innerHTML = `
+  <div class="song-details-section">
         <h2 class="song-details-title">${escapeHtml(songWithLinks.title || "Untitled")}</h2>
         
         <div class="song-details-meta">
@@ -10779,134 +10991,137 @@ async function openSongDetailsModal(song, selectedKey = null) {
             <p class="song-click-track-description">Set to ${songWithLinks.bpm} BPM</p>
           </div>
           <button class="btn primary click-track-btn" data-bpm="${songWithLinks.bpm}" title="Click Track">
-            ${state.metronome.isPlaying && state.metronome.bpm === songWithLinks.bpm 
-              ? `<i class="fa-solid fa-pause"></i> Stop` 
-              : `<i class="fa-solid fa-play"></i> Click`}
+            ${state.metronome.isPlaying && state.metronome.bpm === songWithLinks.bpm
+        ? `<i class="fa-solid fa-pause"></i> Stop`
+        : `<i class="fa-solid fa-play"></i> Click`}
           </button>
         </div>
-        ` : ''}
+        ` : ''
+    }
         
         ${songWithLinks.description ? `
         <div class="song-details-section">
           <h3 class="section-title">Description</h3>
           <p class="song-details-description">${escapeHtml(songWithLinks.description)}</p>
         </div>
-        ` : ''}
+        ` : ''
+    }
         
         ${hasLinks ? `
         <div class="song-details-section">
           <h3 class="section-title" style="margin-top:1.25rem;">Resources & Links</h3>
           <div class="song-details-links"></div>
         </div>
-        ` : ''}
-      </div>
-    `;
-  
+        ` : ''
+    }
+      </div >
+  `;
+
   // Render links organized by key
-    if (hasLinks) {
-      const linksContainer = content.querySelector(".song-details-links");
-      if (linksContainer) {
-        // Render general links
-        if (generalLinks.length > 0) {
-          const generalSection = document.createElement("div");
-          generalSection.style.marginBottom = "1.5rem";
-          const generalTitle = document.createElement("h4");
-          generalTitle.className = "section-subtitle";
-          generalTitle.textContent = "General";
-          generalTitle.style.marginBottom = "0.5rem";
-          generalSection.appendChild(generalTitle);
-          const generalLinksContainer = document.createElement("div");
-          renderSongLinksDisplay(generalLinks, generalLinksContainer);
-          generalSection.appendChild(generalLinksContainer);
-          linksContainer.appendChild(generalSection);
+  if (hasLinks) {
+    const linksContainer = content.querySelector(".song-details-links");
+    if (linksContainer) {
+      // Render general links
+      if (generalLinks.length > 0) {
+        const generalSection = document.createElement("div");
+        generalSection.style.marginBottom = "1.5rem";
+        const generalTitle = document.createElement("h4");
+        generalTitle.className = "section-subtitle";
+        generalTitle.textContent = "General";
+        generalTitle.style.marginBottom = "0.5rem";
+        generalSection.appendChild(generalTitle);
+        const generalLinksContainer = document.createElement("div");
+        renderSongLinksDisplay(generalLinks, generalLinksContainer);
+        generalSection.appendChild(generalLinksContainer);
+        linksContainer.appendChild(generalSection);
+      }
+
+      // Render selected key links
+      if (selectedKey && selectedKeyLinks.length > 0) {
+        const selectedSection = document.createElement("div");
+        selectedSection.style.marginBottom = "1.5rem";
+        const selectedTitle = document.createElement("h4");
+        selectedTitle.className = "section-subtitle";
+        selectedTitle.textContent = `Key: ${escapeHtml(selectedKey)} `;
+        selectedTitle.style.marginBottom = "0.5rem";
+        selectedSection.appendChild(selectedTitle);
+        const selectedLinksContainer = document.createElement("div");
+        renderSongLinksDisplay(selectedKeyLinks, selectedLinksContainer);
+        selectedSection.appendChild(selectedLinksContainer);
+        linksContainer.appendChild(selectedSection);
+      }
+
+      // Render other keys links
+      if (Object.keys(linksByKey).length > 0) {
+        const otherKeysSection = document.createElement("div");
+        const otherKeysHeader = document.createElement("div");
+        otherKeysHeader.style.display = "flex";
+        otherKeysHeader.style.alignItems = "center";
+        otherKeysHeader.style.gap = "0.5rem";
+        otherKeysHeader.style.cursor = "pointer";
+        otherKeysHeader.style.marginBottom = "0.5rem";
+
+        const otherKeysTitle = document.createElement("h4");
+        otherKeysTitle.className = "section-subtitle";
+        otherKeysTitle.textContent = "Other Keys";
+        otherKeysTitle.style.margin = "0";
+
+        const toggleIcon = document.createElement("i");
+        toggleIcon.className = "fa-solid fa-chevron-down";
+        toggleIcon.style.transition = "transform 0.2s";
+
+        otherKeysHeader.appendChild(otherKeysTitle);
+        otherKeysHeader.appendChild(toggleIcon);
+
+        const otherKeysContent = document.createElement("div");
+        otherKeysContent.style.display = selectedKey ? "none" : "block";
+        if (selectedKey) {
+          toggleIcon.style.transform = "rotate(-90deg)";
         }
-        
-        // Render selected key links
-        if (selectedKey && selectedKeyLinks.length > 0) {
-          const selectedSection = document.createElement("div");
-          selectedSection.style.marginBottom = "1.5rem";
-          const selectedTitle = document.createElement("h4");
-          selectedTitle.className = "section-subtitle";
-          selectedTitle.textContent = `Key: ${escapeHtml(selectedKey)}`;
-          selectedTitle.style.marginBottom = "0.5rem";
-          selectedSection.appendChild(selectedTitle);
-          const selectedLinksContainer = document.createElement("div");
-          renderSongLinksDisplay(selectedKeyLinks, selectedLinksContainer);
-          selectedSection.appendChild(selectedLinksContainer);
-          linksContainer.appendChild(selectedSection);
-        }
-        
-        // Render other keys links
-        if (Object.keys(linksByKey).length > 0) {
-          const otherKeysSection = document.createElement("div");
-          const otherKeysHeader = document.createElement("div");
-          otherKeysHeader.style.display = "flex";
-          otherKeysHeader.style.alignItems = "center";
-          otherKeysHeader.style.gap = "0.5rem";
-          otherKeysHeader.style.cursor = "pointer";
-          otherKeysHeader.style.marginBottom = "0.5rem";
-          
-          const otherKeysTitle = document.createElement("h4");
-          otherKeysTitle.className = "section-subtitle";
-          otherKeysTitle.textContent = "Other Keys";
-          otherKeysTitle.style.margin = "0";
-          
-          const toggleIcon = document.createElement("i");
-          toggleIcon.className = "fa-solid fa-chevron-down";
-          toggleIcon.style.transition = "transform 0.2s";
-          
-          otherKeysHeader.appendChild(otherKeysTitle);
-          otherKeysHeader.appendChild(toggleIcon);
-          
-          const otherKeysContent = document.createElement("div");
-          otherKeysContent.style.display = selectedKey ? "none" : "block";
-          if (selectedKey) {
-            toggleIcon.style.transform = "rotate(-90deg)";
-          }
-          
-          // Render links for each key
-          Object.keys(linksByKey).sort().forEach(key => {
-            const keySection = document.createElement("div");
-            keySection.style.marginBottom = "1rem";
-            const keyTitle = document.createElement("h5");
-            keyTitle.className = "section-subtitle";
-            keyTitle.textContent = `Key: ${escapeHtml(key)}`;
-            keyTitle.style.marginBottom = "0.5rem";
-            keyTitle.style.fontSize = "0.9rem";
-            keySection.appendChild(keyTitle);
-            const keyLinksContainer = document.createElement("div");
-            renderSongLinksDisplay(linksByKey[key], keyLinksContainer);
-            keySection.appendChild(keyLinksContainer);
-            otherKeysContent.appendChild(keySection);
-          });
-          
-          otherKeysHeader.addEventListener("click", () => {
-            const isHidden = otherKeysContent.style.display === "none";
-            otherKeysContent.style.display = isHidden ? "block" : "none";
-            toggleIcon.style.transform = isHidden ? "rotate(0deg)" : "rotate(-90deg)";
-          });
-          
-          otherKeysSection.appendChild(otherKeysHeader);
-          otherKeysSection.appendChild(otherKeysContent);
-          linksContainer.appendChild(otherKeysSection);
-        }
+
+        // Render links for each key
+        Object.keys(linksByKey).sort().forEach(key => {
+          const keySection = document.createElement("div");
+          keySection.style.marginBottom = "1rem";
+          const keyTitle = document.createElement("h5");
+          keyTitle.className = "section-subtitle";
+          keyTitle.textContent = `Key: ${escapeHtml(key)} `;
+          keyTitle.style.marginBottom = "0.5rem";
+          keyTitle.style.fontSize = "0.9rem";
+          keySection.appendChild(keyTitle);
+          const keyLinksContainer = document.createElement("div");
+          renderSongLinksDisplay(linksByKey[key], keyLinksContainer);
+          keySection.appendChild(keyLinksContainer);
+          otherKeysContent.appendChild(keySection);
+        });
+
+        otherKeysHeader.addEventListener("click", () => {
+          const isHidden = otherKeysContent.style.display === "none";
+          otherKeysContent.style.display = isHidden ? "block" : "none";
+          toggleIcon.style.transform = isHidden ? "rotate(0deg)" : "rotate(-90deg)";
+        });
+
+        otherKeysSection.appendChild(otherKeysHeader);
+        otherKeysSection.appendChild(otherKeysContent);
+        linksContainer.appendChild(otherKeysSection);
       }
     }
-    
-    const modalClickTrackBtn = content.querySelector(".song-click-track .click-track-btn");
-    if (modalClickTrackBtn) {
-      modalClickTrackBtn.addEventListener("click", () => {
-        const bpm = parseInt(modalClickTrackBtn.dataset.bpm, 10);
-        toggleMetronome(bpm);
-        updateClickTrackButtons();
-      });
-    }
-    
-    updateClickTrackButtons();
-  
+  }
+
+  const modalClickTrackBtn = content.querySelector(".song-click-track .click-track-btn");
+  if (modalClickTrackBtn) {
+    modalClickTrackBtn.addEventListener("click", () => {
+      const bpm = parseInt(modalClickTrackBtn.dataset.bpm, 10);
+      toggleMetronome(bpm);
+      updateClickTrackButtons();
+    });
+  }
+
+  updateClickTrackButtons();
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
-  
+
   // Close on outside click
   const handleOutsideClick = (e) => {
     if (e.target === modal) {
@@ -10915,7 +11130,7 @@ async function openSongDetailsModal(song, selectedKey = null) {
     }
   };
   modal.addEventListener("click", handleOutsideClick);
-  
+
   // Close on Escape key
   const handleEscape = (e) => {
     if (e.key === "Escape" && !modal.classList.contains("hidden")) {
@@ -10935,7 +11150,7 @@ function closeSongDetailsModal() {
       audio.pause();
       audio.currentTime = 0; // Reset to beginning
     });
-    
+
     modal.classList.add("hidden");
     document.body.style.overflow = "";
     state.currentSongDetailsId = null;
@@ -10944,60 +11159,60 @@ function closeSongDetailsModal() {
 
 async function openSectionDetailsModal(setSong) {
   if (!setSong) return;
-  
+
   const modal = el("song-details-modal");
   const content = el("song-details-content");
   const title = el("song-details-title");
-  
+
   if (!modal || !content) return;
-  
+
   title.textContent = setSong.title || "Section Details";
-  
+
   // Fetch section with links and assignments
   let sectionWithData = setSong;
   if (!setSong.song_links || !setSong.song_assignments) {
     const { data } = await supabase
       .from("set_songs")
       .select(`
-        *,
-        song_links (
-          id,
-          title,
-          url,
-          key,
-          display_order,
-          file_path,
-          file_name,
-          file_type,
-          is_file_upload
-        ),
-        song_assignments (
-          id,
-          person_id,
-          person_name,
-          person_email,
-          pending_invite_id,
-          role,
-          status,
-          person:person_id (
-            id,
-            full_name
-          ),
-          pending_invite:pending_invite_id (
-            id,
-            full_name,
-            email
-          )
-        )
-      `)
+  *,
+  song_links(
+    id,
+    title,
+    url,
+    key,
+    display_order,
+    file_path,
+    file_name,
+    file_type,
+    is_file_upload
+  ),
+  song_assignments(
+    id,
+    person_id,
+    person_name,
+    person_email,
+    pending_invite_id,
+    role,
+    status,
+    person: person_id(
+      id,
+      full_name
+    ),
+    pending_invite: pending_invite_id(
+      id,
+      full_name,
+      email
+    )
+  )
+    `)
       .eq("id", setSong.id)
       .single();
-    
+
     if (data) {
       sectionWithData = data;
     }
   }
-  
+
   // Ensure links are ordered by display_order
   if (sectionWithData && Array.isArray(sectionWithData.song_links)) {
     sectionWithData.song_links = [...sectionWithData.song_links].sort((a, b) => {
@@ -11009,17 +11224,17 @@ async function openSectionDetailsModal(setSong) {
       return at.localeCompare(bt);
     });
   }
-  
+
   const hasLinks = (sectionWithData.song_links || []).length > 0;
   const hasAssignments = (sectionWithData.song_assignments || []).length > 0;
   const plannedDurationSeconds = getSetSongDurationSeconds(sectionWithData);
   const durationLabel = plannedDurationSeconds !== undefined && plannedDurationSeconds !== null
     ? formatDuration(plannedDurationSeconds)
     : null;
-  
+
   // Render all section information
   content.innerHTML = `
-    <div class="song-details-section">
+  < div class="song-details-section" >
       <h2 class="song-details-title">${escapeHtml(sectionWithData.title || "Untitled Section")}</h2>
       
       <div class="song-details-meta">
@@ -11034,31 +11249,35 @@ async function openSectionDetailsModal(setSong) {
         <h3 class="section-title">Description</h3>
         <p class="song-details-description">${escapeHtml(sectionWithData.description)}</p>
       </div>
-      ` : ''}
+      ` : ''
+    }
       
       ${sectionWithData.notes ? `
       <div class="song-details-section">
         <h3 class="section-title">Notes</h3>
         <p class="song-details-description">${escapeHtml(sectionWithData.notes)}</p>
       </div>
-      ` : ''}
+      ` : ''
+    }
       
       ${hasAssignments ? `
       <div class="song-details-section">
         <h3 class="section-title">Assignments</h3>
         <div class="song-details-assignments"></div>
       </div>
-      ` : ''}
+      ` : ''
+    }
       
       ${hasLinks ? `
       <div class="song-details-section">
         <h3 class="section-title" style="margin-top:1.25rem;">Resources & Links</h3>
         <div class="song-details-links"></div>
       </div>
-      ` : ''}
-    </div>
+      ` : ''
+    }
+    </div >
   `;
-  
+
   // Render assignments
   if (hasAssignments) {
     const assignmentsContainer = content.querySelector(".song-details-assignments");
@@ -11069,12 +11288,12 @@ async function openSectionDetailsModal(setSong) {
         assignmentDiv.style.padding = "0.75rem";
         assignmentDiv.style.border = "1px solid var(--border-color)";
         assignmentDiv.style.borderRadius = "0.5rem";
-        
+
         const role = document.createElement("div");
         role.style.fontWeight = "600";
         role.style.marginBottom = "0.25rem";
         role.textContent = assignment.role || "Unassigned";
-        
+
         const person = document.createElement("div");
         person.style.color = "var(--text-secondary)";
         if (assignment.person) {
@@ -11086,14 +11305,14 @@ async function openSectionDetailsModal(setSong) {
         } else {
           person.textContent = "Unassigned";
         }
-        
+
         assignmentDiv.appendChild(role);
         assignmentDiv.appendChild(person);
         assignmentsContainer.appendChild(assignmentDiv);
       });
     }
   }
-  
+
   // Render links
   if (hasLinks) {
     const linksContainer = content.querySelector(".song-details-links");
@@ -11114,10 +11333,10 @@ async function openSectionDetailsModal(setSong) {
       }
     }
   }
-  
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
-  
+
   // Close on outside click
   const handleOutsideClick = (e) => {
     if (e.target === modal) {
@@ -11126,7 +11345,7 @@ async function openSectionDetailsModal(setSong) {
     }
   };
   modal.addEventListener("click", handleOutsideClick);
-  
+
   // Close on Escape key
   const handleEscape = (e) => {
     if (e.key === "Escape" && !modal.classList.contains("hidden")) {
@@ -11146,25 +11365,25 @@ function updateLinkSections() {
 function renderSongKeys(keys) {
   const container = el("song-keys-list");
   if (!container) return;
-  
+
   container.innerHTML = "";
-  
+
   keys.forEach((keyItem, index) => {
     const div = document.createElement("div");
     div.className = "song-key-row";
-    div.dataset.keyId = keyItem.id || `new-${index}`;
+    div.dataset.keyId = keyItem.id || `new- ${index} `;
     div.innerHTML = `
-      <input type="text" class="song-key-input" placeholder="C, Dm, G, etc" value="${escapeHtml(keyItem.key || '')}" required />
-      ${keyItem.id ? `<input type="hidden" class="song-key-id" value="${keyItem.id}" />` : ''}
-      <button type="button" class="btn small ghost remove-song-key">Remove</button>
-    `;
-    
+  < input type = "text" class="song-key-input" placeholder = "C, Dm, G, etc" value = "${escapeHtml(keyItem.key || '')}" required />
+    ${keyItem.id ? `<input type="hidden" class="song-key-id" value="${keyItem.id}" />` : ''}
+<button type="button" class="btn small ghost remove-song-key">Remove</button>
+`;
+
     const removeBtn = div.querySelector(".remove-song-key");
     removeBtn.addEventListener("click", () => {
       container.removeChild(div);
       updateLinkSections();
     });
-    
+
     const keyInput = div.querySelector(".song-key-input");
     // Use a debounced input handler to avoid too many re-renders
     let inputTimeout;
@@ -11174,37 +11393,37 @@ function renderSongKeys(keys) {
         updateLinkSections();
       }, 300);
     });
-    
+
     // Also update on blur (when user finishes typing)
     keyInput.addEventListener("blur", () => {
       clearTimeout(inputTimeout);
       updateLinkSections();
     });
-    
+
     container.appendChild(div);
   });
-  
+
   updateLinkSections();
 }
 
 function addSongKeyInput() {
   const container = el("song-keys-list");
   if (!container) return;
-  
+
   const div = document.createElement("div");
   div.className = "song-key-row";
-  div.dataset.keyId = `new-${Date.now()}`;
+  div.dataset.keyId = `new- ${Date.now()} `;
   div.innerHTML = `
-    <input type="text" class="song-key-input" placeholder="C, Dm, G, etc" required />
+  < input type = "text" class="song-key-input" placeholder = "C, Dm, G, etc" required />
     <button type="button" class="btn small ghost remove-song-key">Remove</button>
-  `;
-  
+`;
+
   const removeBtn = div.querySelector(".remove-song-key");
   removeBtn.addEventListener("click", () => {
     container.removeChild(div);
     updateLinkSections();
   });
-  
+
   const keyInput = div.querySelector(".song-key-input");
   // Use a debounced input handler to avoid too many re-renders
   let inputTimeout;
@@ -11214,13 +11433,13 @@ function addSongKeyInput() {
       updateLinkSections();
     }, 300);
   });
-  
+
   // Also update on blur (when user finishes typing)
   keyInput.addEventListener("blur", () => {
     clearTimeout(inputTimeout);
     updateLinkSections();
   });
-  
+
   container.appendChild(div);
   keyInput.focus();
   // Update immediately when adding a new key
@@ -11230,17 +11449,17 @@ function addSongKeyInput() {
 function collectSongKeys() {
   const container = el("song-keys-list");
   if (!container) return [];
-  
+
   const rows = Array.from(container.querySelectorAll(".song-key-row"));
   const keys = [];
-  
+
   rows.forEach((row) => {
     const keyInput = row.querySelector(".song-key-input");
     const idInput = row.querySelector(".song-key-id");
-    
+
     const key = keyInput?.value.trim();
     const id = idInput?.value;
-    
+
     if (key) {
       keys.push({
         id: id || null,
@@ -11248,7 +11467,7 @@ function collectSongKeys() {
       });
     }
   });
-  
+
   return keys;
 }
 
@@ -11272,7 +11491,7 @@ function validateFileSize(file) {
   if (file.size > MAX_FILE_SIZE) {
     return {
       valid: false,
-      error: `File size exceeds 20MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`
+      error: `File size exceeds 20MB limit.Current size: ${(file.size / 1024 / 1024).toFixed(2)} MB`
     };
   }
   return { valid: true };
@@ -11289,10 +11508,10 @@ function generateFilePath(teamId, songId, setSongId, fileName) {
   const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
   const timestamp = Date.now();
   const extension = fileName.split('.').pop();
-  const uniqueFileName = `${uuid}-${timestamp}.${extension}`;
-  
+  const uniqueFileName = `${uuid} -${timestamp}.${extension} `;
+
   if (songId) {
-    return `${teamId}/songs/${songId}/${uniqueFileName}`;
+    return `${teamId} /songs/${songId}/${uniqueFileName}`;
   } else if (setSongId) {
     return `${teamId}/sections/${setSongId}/${uniqueFileName}`;
   }
@@ -11307,10 +11526,10 @@ async function uploadFileToSupabase(file, songId, setSongId, teamId) {
     if (!validation.valid) {
       return { success: false, error: validation.error };
     }
-    
+
     // Generate file path
     const filePath = generateFilePath(teamId, songId, setSongId, file.name);
-    
+
     // Upload file
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
@@ -11318,12 +11537,12 @@ async function uploadFileToSupabase(file, songId, setSongId, teamId) {
         cacheControl: '3600',
         upsert: false
       });
-    
+
     if (error) {
       console.error('File upload error:', error);
       return { success: false, error: error.message };
     }
-    
+
     return {
       success: true,
       filePath: data.path,
@@ -11339,17 +11558,17 @@ async function uploadFileToSupabase(file, songId, setSongId, teamId) {
 // Delete file from Supabase Storage
 async function deleteFileFromSupabase(filePath) {
   if (!filePath) return { success: true };
-  
+
   try {
     const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .remove([filePath]);
-    
+
     if (error) {
       console.error('File deletion error:', error);
       return { success: false, error: error.message };
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error('File deletion exception:', error);
@@ -11363,24 +11582,24 @@ async function getFileUrl(filePath) {
     console.error('getFileUrl called with null/undefined filePath');
     return null;
   }
-  
+
   try {
     console.log('Generating signed URL for:', filePath);
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .createSignedUrl(filePath, 3600); // 1 hour expiry
-    
+
     if (error) {
       console.error('Error creating signed URL:', error);
       console.error('File path was:', filePath);
       return null;
     }
-    
+
     if (!data || !data.signedUrl) {
       console.error('No signed URL returned from Supabase');
       return null;
     }
-    
+
     console.log('Successfully generated signed URL');
     return data.signedUrl;
   } catch (error) {
@@ -11401,26 +11620,26 @@ function formatFileSize(bytes) {
 // Check if a file is an audio file
 function isAudioFile(fileType, fileName) {
   if (!fileType && !fileName) return false;
-  
+
   const audioMimeTypes = [
     'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/m4a',
     'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm', 'audio/aac',
     'audio/flac', 'audio/x-flac', 'audio/opus'
   ];
-  
+
   if (fileType) {
     const lowerType = fileType.toLowerCase();
     if (audioMimeTypes.some(type => lowerType.includes(type) || lowerType === type)) {
       return true;
     }
   }
-  
+
   if (fileName) {
     const ext = fileName.split('.').pop()?.toLowerCase();
     const audioExtensions = ['mp3', 'm4a', 'wav', 'ogg', 'webm', 'aac', 'flac', 'opus'];
     return audioExtensions.includes(ext);
   }
-  
+
   return false;
 }
 
@@ -11431,9 +11650,9 @@ function isAudioFile(fileType, fileName) {
 function renderSongLinks(links) {
   const container = el("song-links-list");
   if (!container) return;
-  
+
   container.innerHTML = "";
-  
+
   // Ensure stable ordering (DB fetch does not order by display_order)
   const sortedLinks = (Array.isArray(links) ? [...links] : []).sort((a, b) => {
     const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
@@ -11443,10 +11662,10 @@ function renderSongLinks(links) {
     const bt = (b?.title || "").toLowerCase();
     return at.localeCompare(bt);
   });
-  
+
   // Get available keys
   const keys = collectSongKeys();
-  
+
   // Group links by key
   const generalLinks = sortedLinks.filter(link => !link.key);
   const linksByKey = {};
@@ -11458,7 +11677,7 @@ function renderSongLinks(links) {
       linksByKey[link.key].push(link);
     }
   });
-  
+
   // Render General Links section
   const generalSection = document.createElement("div");
   generalSection.className = "song-links-section";
@@ -11482,12 +11701,12 @@ function renderSongLinks(links) {
   });
   generalSection.appendChild(generalLinksContainer);
   container.appendChild(generalSection);
-  
+
   // Render section for each key
   keys.forEach(keyItem => {
     const key = keyItem.key;
     const keyLinks = linksByKey[key] || [];
-    
+
     const keySection = document.createElement("div");
     keySection.className = "song-links-section";
     keySection.dataset.key = key;
@@ -11511,7 +11730,7 @@ function renderSongLinks(links) {
     keySection.appendChild(keyLinksContainer);
     container.appendChild(keySection);
   });
-  
+
   // Add event listeners for "Add Link" buttons
   container.querySelectorAll(".add-link-to-section").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -11519,7 +11738,7 @@ function renderSongLinks(links) {
       addSongLinkToSection(key);
     });
   });
-  
+
   // Add event listeners for "Upload" buttons
   container.querySelectorAll(".add-file-upload-to-section").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -11527,7 +11746,7 @@ function renderSongLinks(links) {
       addFileUploadToSection(key);
     });
   });
-  
+
   // Normalize data-display-order across all sections after render
   updateAllLinkOrderInDom();
 }
@@ -11541,9 +11760,9 @@ function createLinkRow(link, index, key) {
   div.dataset.displayOrder = link.display_order || index;
   div.dataset.key = key;
   div.dataset.isFileUpload = link.is_file_upload ? 'true' : 'false';
-  
+
   const isFileUpload = link.is_file_upload || false;
-  
+
   if (isFileUpload) {
     // File upload row
     div.innerHTML = `
@@ -11574,7 +11793,7 @@ function createLinkRow(link, index, key) {
       <input type="hidden" class="song-link-key" value="${escapeHtml(key)}" />
       <button type="button" class="btn small ghost remove-song-link">Remove</button>
     `;
-    
+
     // Add file input change handler if it's a new file upload
     const fileInput = div.querySelector(".song-link-file-input");
     if (fileInput) {
@@ -11584,7 +11803,7 @@ function createLinkRow(link, index, key) {
           const statusDiv = div.querySelector(".file-upload-status");
           statusDiv.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
           statusDiv.style.color = "var(--text-secondary)";
-          
+
           // Validate file size
           const validation = validateFileSize(file);
           if (!validation.valid) {
@@ -11593,7 +11812,7 @@ function createLinkRow(link, index, key) {
             e.target.value = "";
             return;
           }
-          
+
           // Update file name input
           const titleInput = div.querySelector(".song-link-title-input");
           if (titleInput && !titleInput.value) {
@@ -11620,7 +11839,7 @@ function createLinkRow(link, index, key) {
       <button type="button" class="btn small ghost remove-song-link">Remove</button>
     `;
   }
-  
+
   div.querySelector(".remove-song-link").addEventListener("click", async () => {
     // If it's a file upload, delete the file from storage
     if (isFileUpload) {
@@ -11636,7 +11855,7 @@ function createLinkRow(link, index, key) {
         }
       }
     }
-    
+
     const section = div.closest(".song-links-section");
     const sectionContent = section?.querySelector(".song-links-section-content");
     if (sectionContent) {
@@ -11644,7 +11863,7 @@ function createLinkRow(link, index, key) {
       updateAllLinkOrderInDom();
     }
   });
-  
+
   return div;
 }
 
@@ -11656,7 +11875,7 @@ function addSongLinkInput() {
 function addSongLinkToSection(key) {
   const container = el("song-links-list");
   if (!container) return;
-  
+
   // Find the section for this key
   let section = container.querySelector(`[data-key="${key}"]`);
   if (!section) {
@@ -11678,7 +11897,7 @@ function addSongLinkToSection(key) {
     const sectionContent = document.createElement("div");
     sectionContent.className = "song-links-section-content";
     section.appendChild(sectionContent);
-    
+
     // Insert after general section or at the end
     const generalSection = container.querySelector('[data-key=""]');
     if (generalSection && !key) {
@@ -11688,7 +11907,7 @@ function addSongLinkToSection(key) {
     } else {
       container.appendChild(section);
     }
-    
+
     // Add event listeners for the new buttons
     sectionHeader.querySelector(".add-link-to-section").addEventListener("click", () => {
       addSongLinkToSection(key);
@@ -11697,13 +11916,13 @@ function addSongLinkToSection(key) {
       addFileUploadToSection(key);
     });
   }
-  
+
   const sectionContent = section.querySelector(".song-links-section-content");
   if (!sectionContent) return;
-  
+
   const existingItems = sectionContent.querySelectorAll(".song-link-row");
   const nextOrder = existingItems.length;
-  
+
   const linkRow = createLinkRow({ id: null, title: "", url: "", key: key, display_order: nextOrder, is_file_upload: false }, nextOrder, key);
   sectionContent.appendChild(linkRow);
   updateLinkOrder(sectionContent);
@@ -11712,7 +11931,7 @@ function addSongLinkToSection(key) {
 function addFileUploadToSection(key) {
   const container = el("song-links-list");
   if (!container) return;
-  
+
   // Find the section for this key
   let section = container.querySelector(`[data-key="${key}"]`);
   if (!section) {
@@ -11734,7 +11953,7 @@ function addFileUploadToSection(key) {
     const sectionContent = document.createElement("div");
     sectionContent.className = "song-links-section-content";
     section.appendChild(sectionContent);
-    
+
     // Insert after general section or at the end
     const generalSection = container.querySelector('[data-key=""]');
     if (generalSection && !key) {
@@ -11744,7 +11963,7 @@ function addFileUploadToSection(key) {
     } else {
       container.appendChild(section);
     }
-    
+
     // Add event listeners for the new buttons
     sectionHeader.querySelector(".add-link-to-section").addEventListener("click", () => {
       addSongLinkToSection(key);
@@ -11753,23 +11972,23 @@ function addFileUploadToSection(key) {
       addFileUploadToSection(key);
     });
   }
-  
+
   const sectionContent = section.querySelector(".song-links-section-content");
   if (!sectionContent) return;
-  
+
   const existingItems = sectionContent.querySelectorAll(".song-link-row");
   const nextOrder = existingItems.length;
-  
-  const linkRow = createLinkRow({ 
-    id: null, 
-    title: "", 
-    url: null, 
+
+  const linkRow = createLinkRow({
+    id: null,
+    title: "",
+    url: null,
     file_path: null,
     file_name: null,
     file_type: null,
-    key: key, 
-    display_order: nextOrder, 
-    is_file_upload: true 
+    key: key,
+    display_order: nextOrder,
+    is_file_upload: true
   }, nextOrder, key);
   sectionContent.appendChild(linkRow);
   updateLinkOrder(sectionContent);
@@ -11778,16 +11997,16 @@ function addFileUploadToSection(key) {
 function collectSongLinks() {
   const container = el("song-links-list");
   if (!container) return [];
-  
+
   const links = [];
   let globalOrder = 0;
-  
+
   // Collect links from all sections, maintaining section order
   const sections = Array.from(container.querySelectorAll(".song-links-section"));
   sections.forEach(section => {
     const sectionContent = section.querySelector(".song-links-section-content");
     if (!sectionContent) return;
-    
+
     const rows = Array.from(sectionContent.querySelectorAll(".song-link-row"));
     rows.forEach((row) => {
       const titleInput = row.querySelector(".song-link-title-input");
@@ -11799,19 +12018,19 @@ function collectSongLinks() {
       const filePathInput = row.querySelector(".song-link-file-path");
       const fileNameInput = row.querySelector(".song-link-file-name");
       const fileTypeInput = row.querySelector(".song-link-file-type");
-      
+
       const title = titleInput?.value.trim();
       const key = keyInput?.value || null;
       const id = idInput?.value;
       const isFileUpload = isFileUploadInput?.value === 'true';
-      
+
       if (isFileUpload) {
         // File upload - check if file is selected or already uploaded
         const file = fileInput?.files[0];
         const existingFilePath = filePathInput?.value;
         const existingFileName = fileNameInput?.value;
         const existingFileType = fileTypeInput?.value;
-        
+
         console.log("Collecting file upload link:", {
           title,
           hasFile: !!file,
@@ -11820,7 +12039,7 @@ function collectSongLinks() {
           existingFileName,
           existingFileType
         });
-        
+
         // For file uploads, we need either:
         // 1. A title AND a file selected (new upload)
         // 2. A title AND an existing file path (existing upload)
@@ -11828,7 +12047,7 @@ function collectSongLinks() {
         if (file || existingFilePath) {
           // Use file name as title if title is empty
           const finalTitle = title || (file ? file.name : existingFileName) || 'Untitled';
-          
+
           links.push({
             id: id || null,
             title: finalTitle,
@@ -11867,7 +12086,7 @@ function collectSongLinks() {
       }
     });
   });
-  
+
   return links;
 }
 
@@ -11875,9 +12094,9 @@ function collectSongLinks() {
 function renderSectionLinks(links, containerId = "section-links-list") {
   const container = el(containerId);
   if (!container) return;
-  
+
   container.innerHTML = "";
-  
+
   // Ensure stable ordering
   const sortedLinks = (Array.isArray(links) ? [...links] : []).sort((a, b) => {
     const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
@@ -11887,7 +12106,7 @@ function renderSectionLinks(links, containerId = "section-links-list") {
     const bt = (b?.title || "").toLowerCase();
     return at.localeCompare(bt);
   });
-  
+
   // Render General Links section (sections don't have keys)
   const generalSection = document.createElement("div");
   generalSection.className = "song-links-section";
@@ -11911,7 +12130,7 @@ function renderSectionLinks(links, containerId = "section-links-list") {
   });
   generalSection.appendChild(generalLinksContainer);
   container.appendChild(generalSection);
-  
+
   // Add event listeners for buttons
   generalHeader.querySelector(".add-section-link-to-section").addEventListener("click", () => {
     addSectionLinkToSection("", containerId);
@@ -11919,7 +12138,7 @@ function renderSectionLinks(links, containerId = "section-links-list") {
   generalHeader.querySelector(".add-section-file-upload-to-section").addEventListener("click", () => {
     addSectionFileUploadToSection("", containerId);
   });
-  
+
   // Normalize data-display-order
   updateAllSectionLinkOrderInDom(containerId);
 }
@@ -11932,9 +12151,9 @@ function createSectionLinkRow(link, index, key) {
   div.dataset.displayOrder = link.display_order || index;
   div.dataset.key = key;
   div.dataset.isFileUpload = link.is_file_upload ? 'true' : 'false';
-  
+
   const isFileUpload = link.is_file_upload || false;
-  
+
   if (isFileUpload) {
     // File upload row
     div.innerHTML = `
@@ -11965,7 +12184,7 @@ function createSectionLinkRow(link, index, key) {
       <input type="hidden" class="section-link-key" value="${escapeHtml(key)}" />
       <button type="button" class="btn small ghost remove-section-link">Remove</button>
     `;
-    
+
     // Add file input change handler if it's a new file upload
     const fileInput = div.querySelector(".section-link-file-input");
     if (fileInput) {
@@ -11975,7 +12194,7 @@ function createSectionLinkRow(link, index, key) {
           const statusDiv = div.querySelector(".file-upload-status");
           statusDiv.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
           statusDiv.style.color = "var(--text-secondary)";
-          
+
           // Validate file size
           const validation = validateFileSize(file);
           if (!validation.valid) {
@@ -11984,7 +12203,7 @@ function createSectionLinkRow(link, index, key) {
             e.target.value = "";
             return;
           }
-          
+
           // Update file name input
           const titleInput = div.querySelector(".section-link-title-input");
           if (titleInput && !titleInput.value) {
@@ -12011,7 +12230,7 @@ function createSectionLinkRow(link, index, key) {
       <button type="button" class="btn small ghost remove-section-link">Remove</button>
     `;
   }
-  
+
   div.querySelector(".remove-section-link").addEventListener("click", async () => {
     // If it's a file upload, delete the file from storage
     if (isFileUpload) {
@@ -12027,7 +12246,7 @@ function createSectionLinkRow(link, index, key) {
         }
       }
     }
-    
+
     const section = div.closest(".song-links-section");
     const sectionContent = section?.querySelector(".song-links-section-content");
     if (sectionContent) {
@@ -12035,14 +12254,14 @@ function createSectionLinkRow(link, index, key) {
       updateAllSectionLinkOrderInDom(div.closest('[id*="links-list"]')?.id || "section-links-list");
     }
   });
-  
+
   return div;
 }
 
 function addSectionLinkToSection(key, containerId = "section-links-list") {
   const container = el(containerId);
   if (!container) return;
-  
+
   // Find the section for this key
   let section = container.querySelector(`[data-key="${key}"]`);
   if (!section) {
@@ -12064,7 +12283,7 @@ function addSectionLinkToSection(key, containerId = "section-links-list") {
     const sectionContent = document.createElement("div");
     sectionContent.className = "song-links-section-content";
     section.appendChild(sectionContent);
-    
+
     // Insert after general section or at the end
     const generalSection = container.querySelector('[data-key=""]');
     if (generalSection && !key) {
@@ -12074,7 +12293,7 @@ function addSectionLinkToSection(key, containerId = "section-links-list") {
     } else {
       container.appendChild(section);
     }
-    
+
     // Add event listeners for the new buttons
     sectionHeader.querySelector(".add-section-link-to-section").addEventListener("click", () => {
       addSectionLinkToSection(key, containerId);
@@ -12083,13 +12302,13 @@ function addSectionLinkToSection(key, containerId = "section-links-list") {
       addSectionFileUploadToSection(key, containerId);
     });
   }
-  
+
   const sectionContent = section.querySelector(".song-links-section-content");
   if (!sectionContent) return;
-  
+
   const existingItems = sectionContent.querySelectorAll(".song-link-row");
   const nextOrder = existingItems.length;
-  
+
   const linkRow = createSectionLinkRow({ id: null, title: "", url: "", key: key, display_order: nextOrder, is_file_upload: false }, nextOrder, key);
   sectionContent.appendChild(linkRow);
   updateSectionLinkOrder(sectionContent, containerId);
@@ -12098,7 +12317,7 @@ function addSectionLinkToSection(key, containerId = "section-links-list") {
 function addSectionFileUploadToSection(key, containerId = "section-links-list") {
   const container = el(containerId);
   if (!container) return;
-  
+
   // Find the section for this key
   let section = container.querySelector(`[data-key="${key}"]`);
   if (!section) {
@@ -12120,7 +12339,7 @@ function addSectionFileUploadToSection(key, containerId = "section-links-list") 
     const sectionContent = document.createElement("div");
     sectionContent.className = "song-links-section-content";
     section.appendChild(sectionContent);
-    
+
     // Insert after general section or at the end
     const generalSection = container.querySelector('[data-key=""]');
     if (generalSection && !key) {
@@ -12130,7 +12349,7 @@ function addSectionFileUploadToSection(key, containerId = "section-links-list") 
     } else {
       container.appendChild(section);
     }
-    
+
     // Add event listeners for the new buttons
     sectionHeader.querySelector(".add-section-link-to-section").addEventListener("click", () => {
       addSectionLinkToSection(key, containerId);
@@ -12139,23 +12358,23 @@ function addSectionFileUploadToSection(key, containerId = "section-links-list") 
       addSectionFileUploadToSection(key, containerId);
     });
   }
-  
+
   const sectionContent = section.querySelector(".song-links-section-content");
   if (!sectionContent) return;
-  
+
   const existingItems = sectionContent.querySelectorAll(".song-link-row");
   const nextOrder = existingItems.length;
-  
-  const linkRow = createSectionLinkRow({ 
-    id: null, 
-    title: "", 
-    url: null, 
+
+  const linkRow = createSectionLinkRow({
+    id: null,
+    title: "",
+    url: null,
     file_path: null,
     file_name: null,
     file_type: null,
-    key: key, 
-    display_order: nextOrder, 
-    is_file_upload: true 
+    key: key,
+    display_order: nextOrder,
+    is_file_upload: true
   }, nextOrder, key);
   sectionContent.appendChild(linkRow);
   updateSectionLinkOrder(sectionContent, containerId);
@@ -12267,19 +12486,19 @@ async function handleSongEditSubmit(event) {
   const timeSignature = el("song-edit-time-signature").value.trim() || null;
   const duration = parseDuration(el("song-edit-duration").value);
   const description = el("song-edit-description").value.trim() || null;
-  
+
   if (!title) {
     toastError("Title is required.");
     return;
   }
-  
+
   // Preserve set detail view state before any operations
   // If creating from song modal, we MUST preserve the set (song modal can only be opened from set detail)
   const wasSetDetailOpen = state.selectedSet && !el("set-detail").classList.contains("hidden");
   const preservedSelectedSetId = state.selectedSet?.id;
   const preservedSelectedSet = state.selectedSet ? { ...state.selectedSet } : null; // Deep copy to preserve full object
   const isCreatingFromModal = state.creatingSongFromModal && !songId;
-  
+
   const songData = {
     title,
     bpm,
@@ -12289,7 +12508,7 @@ async function handleSongEditSubmit(event) {
     created_by: state.session.user.id,
     team_id: state.currentTeamId,
   };
-  
+
   let response;
   if (songId) {
     // Update existing song
@@ -12307,35 +12526,35 @@ async function handleSongEditSubmit(event) {
       .select()
       .single();
   }
-  
+
   if (response.error) {
     console.error(response.error);
     toastError("Unable to save song. Check console.");
     return;
   }
-  
+
   const finalSongId = response.data.id;
   const keys = collectSongKeys();
   const links = collectSongLinks();
-  
+
   console.log("Collected links for save:", links);
   console.log("Final song ID:", finalSongId);
-  
+
   // Handle song keys
   // Get existing keys
   const { data: existingKeys } = await supabase
     .from("song_keys")
     .select("*")
     .eq("song_id", finalSongId);
-  
+
   // Determine which to delete, update, and insert
   const existingKeyIds = new Set(existingKeys?.map(k => k.id) || []);
   const newKeys = keys.filter(k => !k.id);
   const updatedKeys = keys.filter(k => k.id && existingKeyIds.has(k.id));
-  const deletedKeyIds = Array.from(existingKeyIds).filter(id => 
+  const deletedKeyIds = Array.from(existingKeyIds).filter(id =>
     !keys.some(k => k.id === id)
   );
-  
+
   // Delete removed keys
   if (deletedKeyIds.length > 0) {
     await supabase
@@ -12343,7 +12562,7 @@ async function handleSongEditSubmit(event) {
       .delete()
       .in("id", deletedKeyIds);
   }
-  
+
   // Update existing keys
   for (const keyItem of updatedKeys) {
     await supabase
@@ -12353,7 +12572,7 @@ async function handleSongEditSubmit(event) {
       })
       .eq("id", keyItem.id);
   }
-  
+
   // Insert new keys
   if (newKeys.length > 0) {
     await supabase
@@ -12366,22 +12585,22 @@ async function handleSongEditSubmit(event) {
         }))
       );
   }
-  
+
   // Handle song links
   // Get existing links
   const { data: existingLinks } = await supabase
     .from("song_links")
     .select("*")
     .eq("song_id", finalSongId);
-  
+
   // Determine which to delete, update, and insert
   const existingIds = new Set(existingLinks?.map(l => l.id) || []);
   const newLinks = links.filter(l => !l.id);
   const updatedLinks = links.filter(l => l.id && existingIds.has(l.id));
-  const deletedIds = Array.from(existingIds).filter(id => 
+  const deletedIds = Array.from(existingIds).filter(id =>
     !links.some(l => l.id === id)
   );
-  
+
   // Delete removed links and their files
   if (deletedIds.length > 0) {
     // Get file paths of links to be deleted
@@ -12391,27 +12610,27 @@ async function handleSongEditSubmit(event) {
         await deleteFileFromSupabase(linkToDelete.file_path);
       }
     }
-    
+
     await supabase
       .from("song_links")
       .delete()
       .in("id", deletedIds);
   }
-  
+
   // Update existing links
   for (const link of updatedLinks) {
     const existingLink = existingLinks?.find(l => l.id === link.id);
     let filePath = link.file_path;
     let fileName = link.file_name;
     let fileType = link.file_type;
-    
+
     // If it's a file upload with a new file, upload it
     if (link.is_file_upload && link.file) {
       // Delete old file if it exists
       if (existingLink?.is_file_upload && existingLink?.file_path) {
         await deleteFileFromSupabase(existingLink.file_path);
       }
-      
+
       // Upload new file
       const uploadResult = await uploadFileToSupabase(link.file, finalSongId, null, state.currentTeamId);
       if (!uploadResult.success) {
@@ -12427,7 +12646,7 @@ async function handleSongEditSubmit(event) {
       fileName = existingLink.file_name || link.file_name;
       fileType = existingLink.file_type || link.file_type;
     }
-    
+
     await supabase
       .from("song_links")
       .update({
@@ -12442,16 +12661,16 @@ async function handleSongEditSubmit(event) {
       })
       .eq("id", link.id);
   }
-  
+
   // Insert new links
   if (newLinks.length > 0) {
     const linksToInsert = [];
-    
+
     for (const link of newLinks) {
       let filePath = link.file_path;
       let fileName = link.file_name;
       let fileType = link.file_type;
-      
+
       // If it's a file upload, upload the file first
       if (link.is_file_upload && link.file) {
         console.log("Uploading file for new link:", link.file.name);
@@ -12469,7 +12688,7 @@ async function handleSongEditSubmit(event) {
         console.warn("File upload link has no file selected:", link);
         // Still allow saving if there's a title, the file might be uploaded separately
       }
-      
+
       linksToInsert.push({
         song_id: finalSongId,
         title: link.title,
@@ -12483,18 +12702,18 @@ async function handleSongEditSubmit(event) {
         team_id: state.currentTeamId,
       });
     }
-    
+
     if (linksToInsert.length > 0) {
       const { data: insertedLinks, error: insertError } = await supabase
         .from("song_links")
         .insert(linksToInsert)
         .select();
-      
+
       if (insertError) {
         console.error("Error inserting song links:", insertError);
         console.error("Links that failed to insert:", linksToInsert);
         toastError(`Failed to save some links: ${insertError.message}`);
-        
+
         // Clean up uploaded files if database insert failed
         for (const link of linksToInsert) {
           if (link.is_file_upload && link.file_path) {
@@ -12507,15 +12726,15 @@ async function handleSongEditSubmit(event) {
       }
     }
   }
-  
+
   // Reload songs and update catalog
   await loadSongs();
-  
+
   // Update songs tab if it's currently visible
   if (!el("songs-tab")?.classList.contains("hidden")) {
     renderSongCatalog();
   }
-  
+
   // If details modal is open for this song, refresh it
   // Only do this if we're NOT creating from the song modal (to avoid closing set details)
   if (state.currentSongDetailsId === finalSongId && !state.creatingSongFromModal) {
@@ -12538,20 +12757,20 @@ async function handleSongEditSubmit(event) {
         `)
         .eq("id", finalSongId)
         .single();
-      
+
       if (data) {
         await openSongDetailsModal(data);
       }
     }
   }
-  
+
   closeSongEditModal();
-  
+
   // If we were creating from the song modal, DO NOT call loadSets() 
   // Just refresh the song modal and keep the set detail view open
   if (isCreatingFromModal && preservedSelectedSetId) {
     state.creatingSongFromModal = false;
-    
+
     // CRITICAL: Restore state.selectedSet IMMEDIATELY and ensure view stays open
     if (preservedSelectedSet) {
       state.selectedSet = preservedSelectedSet;
@@ -12565,7 +12784,7 @@ async function handleSongEditSubmit(event) {
       // Refresh the songs list in the set detail view
       renderSetDetailSongs(preservedSelectedSet);
     }
-    
+
     // Refresh the song modal options and select the new song
     await populateSongOptions();
     if (songDropdown) {
@@ -12573,7 +12792,7 @@ async function handleSongEditSubmit(event) {
     }
   } else {
     state.creatingSongFromModal = false;
-    
+
     // Restore set detail view if it was open before
     if (wasSetDetailOpen && preservedSelectedSetId) {
       // Restore state immediately
@@ -12587,7 +12806,7 @@ async function handleSongEditSubmit(event) {
           detailView.classList.remove("hidden");
         }
       }
-      
+
       // Only load sets if we need fresh data, but preserve the view
       await loadSets();
       const updatedSet = state.sets.find(s => s.id === preservedSelectedSetId);
@@ -12608,7 +12827,7 @@ async function handleSongEditSubmit(event) {
         renderSetDetailSongs(updatedSet);
       }
     }
-    
+
     // If song select is open, refresh it
     if (!el("song-modal").classList.contains("hidden")) {
       await populateSongOptions();
@@ -12629,9 +12848,9 @@ function formatDuration(seconds) {
 
 function parseDuration(durationStr) {
   if (!durationStr || !durationStr.trim()) return null;
-  
+
   const trimmed = durationStr.trim();
-  
+
   // Handle MM:SS format
   const parts = trimmed.split(":");
   if (parts.length === 2) {
@@ -12641,7 +12860,7 @@ function parseDuration(durationStr) {
       return mins * 60 + secs;
     }
   }
-  
+
   // Handle just minutes (e.g., "3" or "3:")
   if (parts.length === 1 || (parts.length === 2 && parts[1] === "")) {
     const mins = parseInt(parts[0], 10);
@@ -12649,13 +12868,13 @@ function parseDuration(durationStr) {
       return mins * 60;
     }
   }
-  
+
   // Fallback: try to parse as just a number (seconds) for backwards compatibility
   const asNumber = parseInt(trimmed, 10);
   if (!isNaN(asNumber) && asNumber >= 0) {
     return asNumber;
   }
-  
+
   return null;
 }
 
@@ -12795,7 +13014,7 @@ function renderSetPrintPreview(set) {
     }
 
     const rowClass = isSectionHeader ? ' class="print-section-row"' : "";
-    
+
     // For sections, merge Key and BPM columns into Notes (colspan=3 covers Key+BPM+Notes)
     if (isSection) {
       return `
@@ -12815,7 +13034,7 @@ function renderSetPrintPreview(set) {
         ` : ""}
       `;
     }
-    
+
     // For songs/tags, show all columns
     return `
       <tr${rowClass}>
@@ -12909,17 +13128,17 @@ function escapeHtml(text) {
 
 function highlightMatch(text, searchTerm) {
   if (!searchTerm || !text) return escapeHtml(text);
-  
+
   const lowerText = text.toLowerCase();
   const lowerSearch = searchTerm.toLowerCase();
   const searchIndex = lowerText.indexOf(lowerSearch);
-  
+
   if (searchIndex === -1) return escapeHtml(text);
-  
+
   const beforeMatch = text.substring(0, searchIndex);
   const match = text.substring(searchIndex, searchIndex + searchTerm.length);
   const afterMatch = text.substring(searchIndex + searchTerm.length);
-  
+
   return `${escapeHtml(beforeMatch)}<span style="color: var(--accent-color);">${escapeHtml(match)}</span>${escapeHtml(afterMatch)}`;
 }
 
@@ -12954,13 +13173,13 @@ async function renderSongLinksDisplay(links, container) {
         file_name: link.file_name,
         is_file_upload: link.is_file_upload
       });
-      
+
       // Check if it's an audio file
       const isAudio = isAudioFile(link.file_type, link.file_name);
-      
+
       // File upload - get signed URL
       const fileUrl = await getFileUrl(link.file_path);
-      
+
       if (isAudio && fileUrl) {
         // Create audio player instead of download link
         const audioContainer = document.createElement("div");
@@ -12972,21 +13191,21 @@ async function renderSongLinksDisplay(links, container) {
         audioContainer.style.background = "var(--bg-secondary)";
         audioContainer.style.borderRadius = "0.5rem";
         audioContainer.style.border = "1px solid var(--border-color)";
-        
+
         // Audio icon
         const audioIcon = document.createElement("div");
         audioIcon.className = "song-link-favicon";
         audioIcon.innerHTML = '<i class="fa-solid fa-music" style="font-size: 1.2rem; color: var(--accent-color);"></i>';
-        
+
         const content = document.createElement("div");
         content.className = "song-link-content";
         content.style.flex = "1";
         content.style.minWidth = "0";
-        
+
         const title = document.createElement("div");
         title.className = "song-link-title";
         title.textContent = link.title;
-        
+
         // Audio player
         const audio = document.createElement("audio");
         audio.controls = true;
@@ -12994,17 +13213,17 @@ async function renderSongLinksDisplay(links, container) {
         audio.style.width = "100%";
         audio.style.marginTop = "0.5rem";
         audio.preload = "metadata";
-        
+
         content.appendChild(title);
         content.appendChild(audio);
-        
+
         audioContainer.appendChild(audioIcon);
         audioContainer.appendChild(content);
-        
+
         linksContainer.appendChild(audioContainer);
         continue; // Skip the link creation for audio files
       }
-      
+
       // For non-audio files, create download link
       if (fileUrl) {
         linkEl.href = fileUrl;
@@ -13024,29 +13243,29 @@ async function renderSongLinksDisplay(links, container) {
         linkEl.style.opacity = "0.6";
         linkEl.title = "File unavailable";
       }
-      
+
       // File icon
       const fileIcon = document.createElement("div");
       fileIcon.className = "song-link-favicon";
       fileIcon.innerHTML = '<i class="fa-solid fa-file" style="font-size: 1.2rem; color: var(--text-secondary);"></i>';
-      
+
       const content = document.createElement("div");
       content.className = "song-link-content";
-      
+
       const title = document.createElement("div");
       title.className = "song-link-title";
       title.textContent = link.title;
-      
+
       const fileInfo = document.createElement("div");
       fileInfo.className = "song-link-url";
       fileInfo.textContent = link.file_name || "File";
       if (link.file_type) {
         fileInfo.textContent += ` (${link.file_type})`;
       }
-      
+
       content.appendChild(title);
       content.appendChild(fileInfo);
-      
+
       linkEl.appendChild(fileIcon);
       linkEl.appendChild(content);
     } else {
@@ -13054,7 +13273,7 @@ async function renderSongLinksDisplay(links, container) {
       linkEl.href = link.url;
       linkEl.target = "_blank";
       linkEl.rel = "noopener noreferrer";
-      
+
       const favicon = document.createElement("img");
       favicon.className = "song-link-favicon";
       favicon.src = getFaviconUrl(link.url);
@@ -13062,21 +13281,21 @@ async function renderSongLinksDisplay(links, container) {
       favicon.onerror = () => {
         favicon.style.display = "none";
       };
-      
+
       const content = document.createElement("div");
       content.className = "song-link-content";
-      
+
       const title = document.createElement("div");
       title.className = "song-link-title";
       title.textContent = link.title;
-      
+
       const url = document.createElement("div");
       url.className = "song-link-url";
       url.textContent = link.url;
-      
+
       content.appendChild(title);
       content.appendChild(url);
-      
+
       linkEl.appendChild(favicon);
       linkEl.appendChild(content);
     }
@@ -13106,50 +13325,50 @@ function parseLocalDate(dateString) {
 function createClickSound(audioContext) {
   const now = audioContext.currentTime;
   const duration = 0.008; // Very short for sharp attack
-  
+
   // Create white noise for percussive character
   const bufferSize = audioContext.sampleRate * duration;
   const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
   const data = buffer.getChannelData(0);
-  
+
   // Fill with white noise
   for (let i = 0; i < bufferSize; i++) {
     data[i] = Math.random() * 2 - 1;
   }
-  
+
   // Use a bandpass filter to emphasize mid-range frequencies (snare-like)
   const filter = audioContext.createBiquadFilter();
   filter.type = 'bandpass';
   filter.frequency.setValueAtTime(2000, now); // Center around 2kHz for that "crack"
   filter.Q.setValueAtTime(2, now); // Narrower Q for more focused sound
-  
+
   // Create a very sharp envelope for percussive attack
   const gainNode = audioContext.createGain();
   gainNode.gain.setValueAtTime(0, now);
   gainNode.gain.linearRampToValueAtTime(0.6, now + 0.0005); // Very quick attack
   gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Quick decay
-  
+
   // Add a mid-range frequency component for body (like a drumstick click)
   const oscillator = audioContext.createOscillator();
   oscillator.type = 'sine';
   oscillator.frequency.setValueAtTime(1200, now); // Higher frequency for cut-through
   oscillator.frequency.exponentialRampToValueAtTime(400, now + 0.003); // Quick drop to body
-  
+
   const oscGain = audioContext.createGain();
   oscGain.gain.setValueAtTime(0, now);
   oscGain.gain.linearRampToValueAtTime(0.3, now + 0.0005); // Sharp attack
   oscGain.gain.exponentialRampToValueAtTime(0.01, now + duration);
-  
+
   oscillator.connect(oscGain);
   oscGain.connect(audioContext.destination);
-  
+
   // Play filtered white noise (the "snap" part)
   const source = audioContext.createBufferSource();
   source.buffer = buffer;
   source.connect(filter);
   filter.connect(gainNode);
   gainNode.connect(audioContext.destination);
-  
+
   oscillator.start(now);
   oscillator.stop(now + duration);
   source.start(now);
@@ -13161,30 +13380,30 @@ function startMetronome(bpm) {
     toastError("Song needs a BPM to play click track.");
     return;
   }
-  
+
   // Stop any existing metronome
   stopMetronome();
-  
+
   // Initialize audio context if needed
   if (!state.metronome.audioContext) {
     state.metronome.audioContext = new (window.AudioContext || window.webkitAudioContext)();
   }
-  
+
   const audioContext = state.metronome.audioContext;
-  
+
   // Calculate interval in milliseconds (60 seconds / BPM * 1000)
   const intervalMs = (60 / bpm) * 1000;
-  
+
   // Play first click immediately
   createClickSound(audioContext);
-  
+
   // Set up interval for subsequent clicks
   state.metronome.intervalId = setInterval(() => {
     if (state.metronome.isPlaying) {
       createClickSound(audioContext);
     }
   }, intervalMs);
-  
+
   state.metronome.isPlaying = true;
   state.metronome.bpm = bpm;
 }
@@ -13230,12 +13449,12 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
   const normalizedOptions = (options || []).map((option) => {
     // Build search text including metadata
     const searchParts = [option.label];
-    
+
     // Add email for users
     if (option.meta?.email) {
       searchParts.push(option.meta.email);
     }
-    
+
     // Add song metadata
     if (option.meta?.bpm) {
       searchParts.push(String(option.meta.bpm));
@@ -13249,7 +13468,7 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
     if (option.meta?.duration) {
       searchParts.push(option.meta.duration);
     }
-    
+
     return {
       ...option,
       searchText: searchParts.filter(Boolean).join(" ").toLowerCase(),
@@ -13321,12 +13540,12 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
       if (selectedOption?.value === option.value) {
         optionEl.classList.add("selected");
       }
-      
+
       const highlightedLabel = searchTerm ? highlightMatch(option.label, searchTerm) : escapeHtml(option.label);
-      
+
       // Build metadata display with highlighting
       let metadataHtml = "";
-      
+
       // For users: show email with highlighting
       if (option.meta?.email) {
         const highlightedEmail = searchTerm && option.meta.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -13334,7 +13553,7 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
           : escapeHtml(option.meta.email);
         metadataHtml = `<div class="searchable-option-subtext">${highlightedEmail}</div>`;
       }
-      
+
       // For songs: show metadata with highlighting
       if (option.meta?.bpm || option.meta?.key || option.meta?.timeSignature || option.meta?.duration) {
         const metaParts = [];
@@ -13367,13 +13586,13 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
           metadataHtml = `<div class="searchable-option-subtext">${metaParts.join(" • ")}</div>`;
         }
       }
-      
+
       // Add weeks since last performed indicator for songs
       let weeksIndicator = "";
       if (option.meta?.weeksSinceLastPerformed !== null && option.meta?.weeksSinceLastPerformed !== undefined) {
         weeksIndicator = `<span class="searchable-option-weeks" style="margin-left: auto; color: var(--text-muted); font-size: 0.85rem;">${option.meta.weeksSinceLastPerformed}w</span>`;
       }
-      
+
       optionEl.innerHTML = `
         <div class="searchable-option-row" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
           <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0;">
@@ -13416,18 +13635,18 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
       const allMatches = normalizedOptions.filter((opt) =>
         opt.searchText.includes(term)
       );
-      
+
       // Separate into priority groups
       const primaryMatches = allMatches.filter((opt) => {
         const labelLower = (opt.label || "").toLowerCase();
         return labelLower.includes(term);
       });
-      
+
       const secondaryMatches = allMatches.filter((opt) => {
         const labelLower = (opt.label || "").toLowerCase();
         return !labelLower.includes(term);
       });
-      
+
       // Combine: primary first, then secondary
       filteredOptions = [...primaryMatches, ...secondaryMatches];
     }
@@ -13594,7 +13813,7 @@ function createSimpleDropdown(options, placeholder = "Select...", selectedValue 
 
   function renderOptions() {
     optionsList.innerHTML = "";
-    
+
     if (normalizedOptions.length === 0) {
       const noResults = document.createElement("div");
       noResults.className = "searchable-dropdown-option no-results";
@@ -13609,7 +13828,7 @@ function createSimpleDropdown(options, placeholder = "Select...", selectedValue 
       if (selectedOption && option.value === selectedOption.value) {
         optionEl.classList.add("selected");
       }
-      
+
       optionEl.innerHTML = `
         <div class="searchable-option-row" style="display: flex; align-items: center; width: 100%;">
           <span class="searchable-option-label">${option.label}</span>
@@ -13630,7 +13849,7 @@ function createSimpleDropdown(options, placeholder = "Select...", selectedValue 
     input.value = option.label;
     input.classList.remove("placeholder");
     optionsList.classList.remove("open");
-    
+
     const event = new CustomEvent("change", {
       detail: { value: option.value, option },
     });
@@ -13679,12 +13898,12 @@ async function testTeamAccess() {
   console.log('🔍 Testing team access...');
   console.log('  - Current profile:', state.profile);
   console.log('  - team_id:', state.profile?.team_id);
-  
+
   if (!state.profile?.team_id) {
     console.error('❌ No team_id in profile!');
     return;
   }
-  
+
   // Test songs query
   console.log('  - Testing songs query...');
   const { data: songsData, error: songsError } = await supabase
@@ -13692,14 +13911,14 @@ async function testTeamAccess() {
     .select("id, title, team_id")
     .eq("team_id", state.currentTeamId)
     .limit(5);
-  
+
   console.log('  - Songs query result:');
   console.log('    - Error:', songsError?.code || 'none', songsError?.message || '');
   console.log('    - Count:', songsData?.length || 0);
   if (songsData && songsData.length > 0) {
     console.log('    - Sample:', songsData[0]);
   }
-  
+
   // Test sets query
   console.log('  - Testing sets query...');
   const { data: setsData, error: setsError } = await supabase
@@ -13707,14 +13926,14 @@ async function testTeamAccess() {
     .select("id, title, team_id")
     .eq("team_id", state.currentTeamId)
     .limit(5);
-  
+
   console.log('  - Sets query result:');
   console.log('    - Error:', setsError?.code || 'none', setsError?.message || '');
   console.log('    - Count:', setsData?.length || 0);
   if (setsData && setsData.length > 0) {
     console.log('    - Sample:', setsData[0]);
   }
-  
+
   // Test profile query
   console.log('  - Testing profile query...');
   const { data: profileData, error: profileError } = await supabase
@@ -13722,7 +13941,7 @@ async function testTeamAccess() {
     .select("id, full_name, team_id")
     .eq("id", state.session.user.id)
     .single();
-  
+
   console.log('  - Profile query result:');
   console.log('    - Error:', profileError?.code || 'none', profileError?.message || '');
   console.log('    - Profile:', profileData);
@@ -13736,13 +13955,13 @@ window.testTeamAccess = testTeamAccess;
 function openEditAccountModal() {
   const modal = el("edit-account-modal");
   const input = el("edit-account-name-input");
-  
+
   if (!modal || !input) return;
-  
+
   const currentName = state.profile?.full_name || "";
   input.value = currentName;
   input.select();
-  
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
@@ -13759,65 +13978,65 @@ function closeEditAccountModal() {
 
 async function handleEditAccountSubmit(e) {
   e.preventDefault();
-  
+
   const modal = el("edit-account-modal");
   const input = el("edit-account-name-input");
-  
+
   if (!input || !state.profile) return;
-  
+
   const currentName = state.profile.full_name || "";
   const newName = input.value.trim();
-  
+
   if (!newName) {
     toastError("Name cannot be empty.");
     return;
   }
-  
+
   if (newName === currentName) {
     // No change, just close modal
     closeEditAccountModal();
     return;
   }
-  
+
   const { error } = await supabase
     .from("profiles")
     .update({ full_name: newName })
     .eq("id", state.session.user.id);
-  
+
   if (error) {
     console.error("Error updating account name:", error);
     toastError("Unable to update account name. Check console.");
     return;
   }
-  
+
   // Update local state
   state.profile.full_name = newName;
-  
+
   // Update UI
   const userNameEl = el("user-name");
   if (userNameEl) {
     userNameEl.textContent = newName;
   }
-  
+
   // Refresh people list to show updated name
   await loadPeople();
-  
+
   // Close modal
   closeEditAccountModal();
-  
+
   // Close account menu
   el("account-menu")?.classList.add("hidden");
 }
 
 async function deleteAccount() {
   if (!state.profile || !state.session?.user) return;
-  
+
   // Close edit account modal first
   closeEditAccountModal();
-  
+
   const accountName = state.profile.full_name || state.profile.email || "your account";
   const message = `Are you sure? This will permanently delete your account, all your teams (if you're the only owner), and all associated data. This cannot be undone.`;
-  
+
   showDeleteConfirmModal(
     accountName,
     message,
@@ -13827,19 +14046,19 @@ async function deleteAccount() {
         .from("profiles")
         .delete()
         .eq("id", state.session.user.id);
-      
+
       if (profileError) {
         console.error("Error deleting profile:", profileError);
         toastError("Unable to delete account. Check console.");
         return;
       }
-      
+
       // Sign out the user
       await supabase.auth.signOut();
-      
+
       // Reset state
       resetState();
-      
+
       // Show auth gate
       showAuthGate();
     }
@@ -13850,20 +14069,20 @@ let teamAssignmentModeSelectedValue = null;
 
 function openTeamSettingsModal() {
   if (!isOwner()) return;
-  
+
   const modal = el("team-settings-modal");
   const nameInput = el("team-settings-name-input");
   const assignmentModeContainer = el("team-assignment-mode-container");
-  
+
   if (!modal || !nameInput || !assignmentModeContainer) return;
-  
+
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
   const currentTeamName = currentTeam?.name || "";
   nameInput.value = currentTeamName;
-  
+
   // Reset selected value
   teamAssignmentModeSelectedValue = state.teamAssignmentMode || 'per_set';
-  
+
   // Create simple non-searchable dropdown (looks like searchable but shows both options)
   assignmentModeContainer.innerHTML = "";
   const currentMode = state.teamAssignmentMode || 'per_set';
@@ -13872,14 +14091,14 @@ function openTeamSettingsModal() {
     { value: 'per_song', label: 'Per Song' }
   ];
   teamAssignmentModeDropdown = createSimpleDropdown(options, "Select assignment mode...", currentMode);
-  
+
   // Listen for changes
   teamAssignmentModeDropdown.addEventListener("change", (e) => {
     teamAssignmentModeSelectedValue = e.detail.value;
   });
-  
+
   assignmentModeContainer.appendChild(teamAssignmentModeDropdown);
-  
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
@@ -13894,56 +14113,56 @@ function closeTeamSettingsModal() {
 
 async function handleTeamSettingsSubmit(e) {
   e.preventDefault();
-  
+
   if (!isOwner()) return;
-  
+
   const modal = el("team-settings-modal");
   const nameInput = el("team-settings-name-input");
-  
+
   if (!nameInput || !teamAssignmentModeDropdown) return;
-  
+
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
   const currentTeamName = currentTeam?.name || "Team";
   const newName = nameInput.value.trim();
-  
+
   // Get value from dropdown
   const newAssignmentMode = teamAssignmentModeDropdown.getValue() || teamAssignmentModeSelectedValue || state.teamAssignmentMode || 'per_set';
-  
+
   if (!newName) {
     toastError("Team name cannot be empty.");
     return;
   }
-  
+
   const updates = {};
   let hasChanges = false;
-  
+
   if (newName !== currentTeamName) {
     updates.name = newName;
     hasChanges = true;
   }
-  
+
   if (newAssignmentMode !== state.teamAssignmentMode) {
     updates.assignment_mode = newAssignmentMode;
     hasChanges = true;
   }
-  
+
   if (!hasChanges) {
     // No changes, just close modal
     closeTeamSettingsModal();
     return;
   }
-  
+
   const { error } = await supabase
     .from("teams")
     .update(updates)
     .eq("id", state.currentTeamId);
-  
+
   if (error) {
     console.error("Error updating team settings:", error);
     toastError("Unable to save team settings. Check console.");
     return;
   }
-  
+
   // Update local state
   if (currentTeam) {
     if (updates.name) {
@@ -13953,29 +14172,29 @@ async function handleTeamSettingsSubmit(e) {
   if (state.profile?.team && updates.name) {
     state.profile.team.name = updates.name;
   }
-  
+
   if (updates.assignment_mode) {
     state.teamAssignmentMode = updates.assignment_mode;
   }
-  
+
   // Update team name displays
   const teamNameDisplay = el("team-name-display");
   if (teamNameDisplay && updates.name) {
     teamNameDisplay.textContent = updates.name;
   }
-  
+
   // Refresh team switcher to show updated name
   updateTeamSwitcher();
-  
+
   // Reload sets to reflect assignment mode changes
   await loadSets();
-  
+
   // Update checkbox in set modal if it's open
   const setModal = el("set-modal");
   if (setModal && !setModal.classList.contains("hidden") && state.selectedSet) {
     const overrideCheckbox = el("set-override-assignment-mode");
     const overrideText = el("set-override-assignment-mode-text");
-    
+
     if (overrideCheckbox && overrideText) {
       // Refresh selectedSet from latest loaded sets
       const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
@@ -13983,22 +14202,22 @@ async function handleTeamSettingsSubmit(e) {
         state.selectedSet = updatedSet;
       }
       const set = state.selectedSet;
-      
+
       // Get the effective mode (what the set is actually using)
       const effectiveMode = getSetAssignmentMode(set);
       const teamMode = state.teamAssignmentMode || 'per_set';
-      
+
       // Check if set has an explicit override
       const overrideMode = set?.assignment_mode_override;
       const hasExplicitOverride = overrideMode !== null && overrideMode !== undefined;
-      
+
       // Checkbox should be checked ONLY if we're actually overriding the team mode
       // 1) Explicit override exists and differs from team mode
       // 2) No explicit override but effective mode differs from team mode (legacy sets)
       overrideCheckbox.checked =
         (hasExplicitOverride && overrideMode !== teamMode) ||
         (!hasExplicitOverride && effectiveMode !== teamMode);
-      
+
       // Update the text based on new team mode
       if (teamMode === 'per_set') {
         overrideText.textContent = 'Use per-song assignments';
@@ -14007,7 +14226,7 @@ async function handleTeamSettingsSubmit(e) {
       }
     }
   }
-  
+
   // Refresh detail view if it's showing
   if (state.selectedSet && !el("set-detail").classList.contains("hidden")) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
@@ -14015,24 +14234,24 @@ async function handleTeamSettingsSubmit(e) {
       showSetDetail(updatedSet);
     }
   }
-  
+
   // Close modal
   closeTeamSettingsModal();
 }
 
 async function deleteTeam() {
   if (!isOwner()) return;
-  
+
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
   if (!currentTeam) {
     console.error("Current team not found in userTeams");
     toastError("Unable to find team. Please refresh the page.");
     return;
   }
-  
+
   const teamId = currentTeam.id;
   const teamName = currentTeam.name || "this team";
-  
+
   // CRITICAL SAFETY CHECK: Verify the user is actually the owner of this specific team
   const { data: teamData, error: verifyError } = await supabase
     .from("teams")
@@ -14040,22 +14259,22 @@ async function deleteTeam() {
     .eq("id", teamId)
     .eq("owner_id", state.session.user.id)
     .single();
-  
+
   if (verifyError || !teamData) {
     console.error("Error verifying team ownership:", verifyError);
     toastError("Unable to verify team ownership. You may not be the owner of this team.");
     return;
   }
-  
+
   // Double-check the team ID matches
   if (teamData.id !== teamId) {
     console.error("Team ID mismatch during verification");
     toastError("Team verification failed. Please refresh the page.");
     return;
   }
-  
+
   const message = `Are you sure? This will permanently delete all sets, songs, assignments, and team members for "${teamName}". It cannot be undone. Your account will not be deleted.`;
-  
+
   showDeleteConfirmModal(
     teamName,
     message,
@@ -14067,13 +14286,13 @@ async function deleteTeam() {
         .eq("id", teamId)
         .eq("owner_id", state.session.user.id)
         .single();
-      
+
       if (finalVerifyError || !finalVerify || finalVerify.id !== teamId) {
         console.error("Final verification failed before deletion:", finalVerifyError);
         toastError("Team ownership verification failed. Deletion cancelled for safety.");
         return;
       }
-      
+
       // Delete with explicit team ID and owner verification
       // First, verify the team still exists and we own it
       const { data: preDeleteCheck } = await supabase
@@ -14082,36 +14301,36 @@ async function deleteTeam() {
         .eq("id", teamId)
         .eq("owner_id", state.session.user.id)
         .single();
-      
+
       if (!preDeleteCheck) {
         toastError("Team ownership verification failed. Deletion cancelled for safety.");
         return;
       }
-      
+
       // CRITICAL: Verify teamId is valid and not empty
       if (!teamId || typeof teamId !== 'string' || teamId.trim() === '') {
         console.error("CRITICAL: Invalid teamId for deletion:", teamId);
         toastError("ERROR: Invalid team ID. Deletion cancelled for safety.");
         return;
       }
-      
+
       console.log(`🗑️ Attempting to delete team with ID: ${teamId}`);
-      
+
       // CRITICAL: Get count of teams BEFORE deletion to verify only one is deleted
       const { data: teamsBeforeDelete, error: countError } = await supabase
         .from("teams")
         .select("id, name")
         .eq("owner_id", state.session.user.id);
-      
+
       if (countError) {
         console.error("Error counting teams before deletion:", countError);
         toastError("Unable to verify team count. Deletion cancelled for safety.");
         return;
       }
-      
+
       const teamsCountBefore = teamsBeforeDelete?.length || 0;
       console.log(`🔍 Teams before deletion: ${teamsCountBefore}`, teamsBeforeDelete?.map(t => ({ id: t.id, name: t.name })));
-      
+
       // Verify the team we're about to delete is in the list
       const teamToDelete = teamsBeforeDelete?.find(t => t.id === teamId);
       if (!teamToDelete) {
@@ -14121,9 +14340,9 @@ async function deleteTeam() {
         toastError("ERROR: Team not found in your teams. Deletion cancelled for safety.");
         return;
       }
-      
+
       console.log(`✅ Verified team to delete: ${teamToDelete.name} (${teamId})`);
-      
+
       // CRITICAL: Double-check that we're only deleting ONE team by verifying the exact team exists
       const { data: exactTeamCheck, error: exactCheckError } = await supabase
         .from("teams")
@@ -14131,32 +14350,32 @@ async function deleteTeam() {
         .eq("id", teamId)
         .eq("owner_id", state.session.user.id)
         .single();
-      
+
       if (exactCheckError || !exactTeamCheck) {
         console.error("CRITICAL: Cannot verify exact team before deletion:", exactCheckError);
         toastError("ERROR: Cannot verify team before deletion. Operation cancelled for safety.");
         return;
       }
-      
+
       if (exactTeamCheck.id !== teamId) {
         console.error("CRITICAL: Team ID mismatch in final check!");
         toastError("ERROR: Team verification failed. Operation cancelled for safety.");
         return;
       }
-      
+
       console.log(`✅ Final verification passed. Deleting team: ${exactTeamCheck.name} (${teamId})`);
-      
+
       // Perform the deletion using RPC function - simple direct delete
       const { data: deleteResult, error } = await supabase
         .rpc('delete_team_direct', { p_team_id: teamId });
-      
+
       if (error) {
         console.error("Error deleting team:", error);
         console.error("Error details:", JSON.stringify(error, null, 2));
         toastError("Unable to delete team. Check console.");
         return;
       }
-      
+
       // Check if the RPC function succeeded
       if (!deleteResult || !deleteResult.success) {
         const errorMsg = deleteResult?.error || 'Unknown error';
@@ -14164,13 +14383,13 @@ async function deleteTeam() {
         toastError(`Unable to delete team: ${errorMsg}`);
         return;
       }
-      
+
       // Success - team was deleted
       console.log(`✅ Team deleted successfully:`, deleteResult.deleted_team);
-      
+
       // Refresh user teams (removes deleted team)
       await fetchUserTeams();
-      
+
       // If user has other teams, switch to the first one
       if (state.userTeams.length > 0) {
         await switchTeam(state.userTeams[0].id);
@@ -14192,20 +14411,20 @@ function openCreateTeamModal() {
   const input = el("create-team-input");
   const message = el("create-team-message");
   const submitBtn = modal?.querySelector('button[type="submit"]');
-  
+
   if (!modal || !input) return;
-  
+
   input.value = "";
   if (message) {
     message.textContent = "";
     message.classList.remove("error-text");
   }
-  
+
   // Reset submit button state
   if (submitBtn) {
     submitBtn.disabled = false;
   }
-  
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   input.focus();
@@ -14213,16 +14432,16 @@ function openCreateTeamModal() {
 
 async function handleCreateTeamSubmit(e) {
   e.preventDefault();
-  
+
   const modal = el("create-team-modal");
   const input = el("create-team-input");
   const message = el("create-team-message");
   const submitBtn = modal?.querySelector('button[type="submit"]');
-  
+
   if (!input) return;
-  
+
   const teamName = input.value.trim();
-  
+
   if (!teamName) {
     if (message) {
       message.textContent = "Team name cannot be empty.";
@@ -14230,26 +14449,26 @@ async function handleCreateTeamSubmit(e) {
     }
     return;
   }
-  
+
   // Disable submit button
   if (submitBtn) submitBtn.disabled = true;
   if (message) {
     message.textContent = "Creating team...";
     message.classList.remove("error-text");
   }
-  
+
   try {
     // Create the team (same logic as signup)
     let teamData;
     let teamError;
-    
+
     // Try using the function first (works even without session)
     const { data: teamId, error: teamFunctionError } = await supabase
       .rpc('create_team_for_user', {
         p_team_name: teamName,
         p_owner_id: state.session.user.id
       });
-    
+
     // If function doesn't exist or fails, fall back to direct insert
     if (teamFunctionError && (teamFunctionError.code === '42883' || teamFunctionError.message?.includes('function'))) {
       console.log('Function not available, trying direct insert...');
@@ -14261,7 +14480,7 @@ async function handleCreateTeamSubmit(e) {
         })
         .select()
         .single();
-      
+
       teamData = directTeamData;
       teamError = directTeamError;
     } else if (teamFunctionError) {
@@ -14277,7 +14496,7 @@ async function handleCreateTeamSubmit(e) {
     } else {
       teamError = new Error('Team creation function returned no ID');
     }
-    
+
     if (teamError) {
       console.error('Team creation error:', teamError);
       if (message) {
@@ -14287,7 +14506,7 @@ async function handleCreateTeamSubmit(e) {
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
-    
+
     if (!teamData || !teamData.id) {
       console.error('Team creation failed: No team data returned');
       if (message) {
@@ -14297,7 +14516,7 @@ async function handleCreateTeamSubmit(e) {
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
-    
+
     // Add user to team_members as owner (same pattern as signup)
     // Try using RPC function first, fallback to direct insert
     const { data: memberId, error: teamMemberFunctionError } = await supabase
@@ -14308,9 +14527,9 @@ async function handleCreateTeamSubmit(e) {
         p_is_owner: true,
         p_can_manage: true
       });
-    
+
     let teamMemberError = teamMemberFunctionError;
-    
+
     // If function doesn't exist, fall back to direct insert
     if (teamMemberFunctionError && (teamMemberFunctionError.code === '42883' || teamMemberFunctionError.message?.includes('function'))) {
       console.log('Add team member function not available, trying direct insert...');
@@ -14323,10 +14542,10 @@ async function handleCreateTeamSubmit(e) {
           is_owner: true,
           can_manage: true
         });
-      
+
       teamMemberError = directMemberError;
     }
-    
+
     if (teamMemberError) {
       console.error("Error adding user to team_members:", teamMemberError);
       // Clean up: delete the team
@@ -14338,7 +14557,7 @@ async function handleCreateTeamSubmit(e) {
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
-    
+
     // Update profile.team_id to the new team (as default)
     // Use RPC function like signup does
     const { error: updateProfileFunctionError } = await supabase
@@ -14346,49 +14565,49 @@ async function handleCreateTeamSubmit(e) {
         p_user_id: state.session.user.id,
         p_team_id: teamData.id
       });
-    
+
     let updateProfileError = updateProfileFunctionError;
-    
+
     // If function doesn't exist, fall back to direct update
     // IMPORTANT: Explicitly preserve full_name to prevent it from being reset to email
     if (updateProfileFunctionError && (updateProfileFunctionError.code === '42883' || updateProfileFunctionError.message?.includes('function'))) {
       console.log('Update function not available, trying direct update...');
       const updateData = { team_id: teamData.id };
-      
+
       // Preserve full_name if it exists (prevent reset to email)
       if (state.profile?.full_name) {
         updateData.full_name = state.profile.full_name;
       }
-      
+
       const { error: directUpdateError } = await supabase
         .from("profiles")
         .update(updateData)
         .eq("id", state.session.user.id);
-      
+
       updateProfileError = directUpdateError;
     }
-    
+
     if (updateProfileError) {
       console.error("Error updating profile team_id:", updateProfileError);
       // Not critical, continue anyway
     }
-    
+
     // Refresh user teams and switch to the new team
     await fetchUserTeams();
     await switchTeam(teamData.id);
-    
+
     // Re-enable submit button before closing modal
     if (submitBtn) submitBtn.disabled = false;
-    
+
     // Close modal
     modal?.classList.add("hidden");
     document.body.style.overflow = "";
     input.value = "";
-    
+
     if (message) {
       message.textContent = "";
     }
-    
+
   } catch (err) {
     console.error("Unexpected error creating team:", err);
     if (message) {
@@ -14401,79 +14620,79 @@ async function handleCreateTeamSubmit(e) {
 
 async function promoteToManager(personId) {
   if (!isOwner()) return;
-  
+
   if (personId === state.profile.id) {
     toastError("You are already the team owner.");
     return;
   }
-  
+
   // Update team_members table (multi-team support)
   const { error } = await supabase
     .from("team_members")
-    .update({ 
+    .update({
       can_manage: true,
       role: 'manager'
     })
     .eq("team_id", state.currentTeamId)
     .eq("user_id", personId);
-  
+
   if (error) {
     console.error("Error promoting to manager:", error);
     toastError("Unable to promote user. Check console.");
     return;
   }
-  
+
   // Also update profiles for backward compatibility (if team_id matches)
   await supabase
     .from("profiles")
     .update({ can_manage: true })
     .eq("id", personId)
     .eq("team_id", state.currentTeamId);
-  
+
   // Refresh all state to reflect changes
   await fetchUserTeams();
   await fetchProfile();
   await loadPeople();
-  
+
   toastSuccess("User promoted to manager.");
 }
 
 async function demoteFromManager(personId) {
   if (!isOwner()) return;
-  
+
   if (personId === state.profile.id) {
     toastError("You cannot demote yourself. Transfer ownership first.");
     return;
   }
-  
+
   // Update team_members table (multi-team support)
   const { error } = await supabase
     .from("team_members")
-    .update({ 
+    .update({
       can_manage: false,
       role: 'member'
     })
     .eq("team_id", state.currentTeamId)
     .eq("user_id", personId);
-  
+
   if (error) {
     console.error("Error demoting manager:", error);
     toastError("Unable to demote user. Check console.");
     return;
   }
-  
+
   // Also update profiles for backward compatibility (if team_id matches)
   await supabase
     .from("profiles")
     .update({ can_manage: false })
     .eq("id", personId)
     .eq("team_id", state.currentTeamId);
-  
+
   // Refresh all state to reflect changes
   await fetchUserTeams();
   await fetchProfile();
   await loadPeople();
-  
+
   toastSuccess("User demoted from manager.");
 }
 
@@ -14482,27 +14701,27 @@ async function transferOwnership(person) {
   console.log('  - Current owner ID:', state.profile.id);
   console.log('  - New owner ID:', person.id);
   console.log('  - Team ID:', state.currentTeamId);
-  
+
   if (!isOwner()) {
     console.log('  - ❌ User is not owner, aborting');
     return;
   }
-  
+
   if (person.id === state.profile.id) {
     toastError("You are already the team owner.");
     return;
   }
-  
+
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
   const teamName = currentTeam?.name || state.profile?.team?.name || "this team";
   const message = `Transfer ownership of "${teamName}" to ${person.full_name || person.email}? This will make them the team owner and you will become a manager.`;
-  
+
   showDeleteConfirmModal(
     teamName,
     message,
     async () => {
       console.log('✅ Transfer confirmed, starting ownership transfer...');
-      
+
       // First, check current state before transfer
       console.log('📊 Checking current state before transfer...');
       const { data: beforeState } = await supabase
@@ -14511,7 +14730,7 @@ async function transferOwnership(person) {
         .eq("team_id", state.currentTeamId)
         .in("user_id", [state.profile.id, person.id]);
       console.log('  - Before state:', beforeState);
-      
+
       const { data: teamBefore } = await supabase
         .from("teams")
         .select("id, owner_id")
@@ -14521,7 +14740,7 @@ async function transferOwnership(person) {
       console.log('  - Expected owner_id (state.profile.id):', state.profile.id);
       console.log('  - Actual owner_id in DB:', teamBefore?.owner_id);
       console.log('  - Match:', teamBefore?.owner_id === state.profile.id);
-      
+
       // Use RPC function to transfer ownership atomically
       // This avoids trigger conflicts and ensures the transfer happens in a single transaction
       console.log('🔧 Attempting RPC function transfer...');
@@ -14531,15 +14750,15 @@ async function transferOwnership(person) {
           p_current_owner_id: state.profile.id,
           p_new_owner_id: person.id
         });
-      
+
       console.log('  - RPC result:', result);
       console.log('  - RPC error:', rpcError);
-      
+
       // Check if RPC function doesn't exist or if it failed
-      const shouldUseManual = 
+      const shouldUseManual =
         (rpcError && (rpcError.code === '42883' || rpcError.message?.includes('function'))) ||
         (result && !result.success);
-      
+
       if (shouldUseManual) {
         if (result && !result.success) {
           console.log('⚠️ RPC function returned error:', result.error);
@@ -14547,12 +14766,12 @@ async function transferOwnership(person) {
         } else {
           console.log('⚠️ RPC function not available, using manual transfer...');
         }
-        
+
         // Manual transfer fallback
         // IMPORTANT: Promote new owner FIRST, then demote old owner
         // This ensures the old owner can still update team_members because they're still an owner
         // Then update teams.owner_id last
-        
+
         // Step 1: Promote new owner FIRST (old owner is still owner, so RLS allows this)
         console.log('📝 Step 1: Promoting new owner...');
         console.log('  - Checking if new owner exists in team_members...');
@@ -14563,13 +14782,13 @@ async function transferOwnership(person) {
           .eq("user_id", person.id)
           .single();
         console.log('  - New owner before update:', newOwnerBefore);
-        
+
         if (!newOwnerBefore) {
           console.error("❌ New owner not found in team_members!");
           toastError("New owner is not a member of this team. Transfer cancelled.");
           return;
         }
-        
+
         // Check if there are any other owners that might block the constraint
         console.log('  - Checking for other owners in team...');
         const { data: otherOwners } = await supabase
@@ -14578,11 +14797,11 @@ async function transferOwnership(person) {
           .eq("team_id", state.currentTeamId)
           .eq("is_owner", true);
         console.log('  - Other owners found:', otherOwners);
-        
+
         console.log('  - Attempting to update new owner to is_owner=true...');
         const { data: newOwnerUpdateData, error: newOwnerError } = await supabase
           .from("team_members")
-          .update({ 
+          .update({
             is_owner: true,
             can_manage: true,
             role: 'owner'
@@ -14590,11 +14809,11 @@ async function transferOwnership(person) {
           .eq("team_id", state.currentTeamId)
           .eq("user_id", person.id)
           .select();
-        
+
         console.log('  - New owner update result:', newOwnerUpdateData);
         console.log('  - New owner update error:', newOwnerError);
         console.log('  - Rows updated:', newOwnerUpdateData?.length || 0);
-        
+
         if (newOwnerError) {
           console.error("❌ Error updating new owner:", newOwnerError);
           console.error("  - Error code:", newOwnerError.code);
@@ -14604,7 +14823,7 @@ async function transferOwnership(person) {
           toastError(`Unable to transfer ownership: ${newOwnerError.message || 'Unknown error'}. Check console for details.`);
           return;
         }
-        
+
         if (!newOwnerUpdateData || newOwnerUpdateData.length === 0) {
           console.error("❌ Update returned 0 rows - no rows were updated!");
           console.error("  - This might be due to RLS policy blocking the update");
@@ -14615,7 +14834,7 @@ async function transferOwnership(person) {
             .select("user_id, is_owner, can_manage, role")
             .eq("team_id", state.currentTeamId);
           console.error("  - All team members:", allMembers);
-          
+
           // Check teams.owner_id vs team_members.is_owner
           const { data: teamCheck } = await supabase
             .from("teams")
@@ -14625,11 +14844,11 @@ async function transferOwnership(person) {
           console.error("  - teams.owner_id:", teamCheck?.owner_id);
           console.error("  - Current user ID:", state.profile.id);
           console.error("  - Match:", teamCheck?.owner_id === state.profile.id);
-          
+
           toastError("Failed to promote new owner. The RLS policy might be blocking the update. Check console for details.");
           return;
         }
-        
+
         // Verify new owner was promoted
         const { data: verifyNewOwner } = await supabase
           .from("team_members")
@@ -14638,7 +14857,7 @@ async function transferOwnership(person) {
           .eq("user_id", person.id)
           .single();
         console.log('  - New owner after promotion:', verifyNewOwner);
-        
+
         if (verifyNewOwner?.is_owner !== true) {
           console.error("❌ New owner was not properly promoted:", verifyNewOwner);
           console.error("  - Expected is_owner: true");
@@ -14646,12 +14865,12 @@ async function transferOwnership(person) {
           toastError("Failed to promote new owner. Transfer cancelled.");
           return;
         }
-        
+
         // Step 2: Demote old owner (new owner is now owner, so they can do it, OR old owner can still do it)
         console.log('📝 Step 2: Demoting old owner...');
         const { data: oldOwnerUpdateData, error: oldOwnerError } = await supabase
           .from("team_members")
-          .update({ 
+          .update({
             is_owner: false,
             can_manage: true,
             role: 'manager'
@@ -14659,10 +14878,10 @@ async function transferOwnership(person) {
           .eq("team_id", state.currentTeamId)
           .eq("user_id", state.profile.id)
           .select();
-        
+
         console.log('  - Old owner update result:', oldOwnerUpdateData);
         console.log('  - Old owner update error:', oldOwnerError);
-        
+
         if (oldOwnerError) {
           console.error("❌ Error updating old owner:", oldOwnerError);
           // Revert new owner promotion
@@ -14674,7 +14893,7 @@ async function transferOwnership(person) {
           toastError(`Unable to transfer ownership: ${oldOwnerError.message || 'Unknown error'}. Check console.`);
           return;
         }
-        
+
         // Verify old owner was demoted
         const { data: verifyOldOwner } = await supabase
           .from("team_members")
@@ -14683,7 +14902,7 @@ async function transferOwnership(person) {
           .eq("user_id", state.profile.id)
           .single();
         console.log('  - Old owner after demotion:', verifyOldOwner);
-        
+
         if (verifyOldOwner?.is_owner !== false) {
           console.error("❌ Old owner was not properly demoted:", verifyOldOwner);
           // Revert new owner promotion
@@ -14695,7 +14914,7 @@ async function transferOwnership(person) {
           toastError("Failed to demote old owner. Transfer cancelled.");
           return;
         }
-        
+
         // Step 3: Update profiles for backward compatibility
         // Note: profiles table might have team_id set to a different team or null
         // So we update without the team_id filter to ensure it works
@@ -14709,7 +14928,7 @@ async function transferOwnership(person) {
         console.log('  - Old profile update result:', profileOldData);
         console.log('  - Old profile update error:', profileOldError);
         console.log('  - Rows updated:', profileOldData?.length || 0);
-        
+
         // Also try with team_id filter in case it's set
         if (state.currentTeamId) {
           const { error: profileOldError2 } = await supabase
@@ -14721,7 +14940,7 @@ async function transferOwnership(person) {
             console.log('  - Also updated old profile with team_id filter');
           }
         }
-        
+
         console.log('  - Updating new owner profile (id:', person.id, ')');
         const { data: profileNewData, error: profileNewError } = await supabase
           .from("profiles")
@@ -14731,7 +14950,7 @@ async function transferOwnership(person) {
         console.log('  - New profile update result:', profileNewData);
         console.log('  - New profile update error:', profileNewError);
         console.log('  - Rows updated:', profileNewData?.length || 0);
-        
+
         // Also try with team_id filter in case it's set
         if (state.currentTeamId) {
           const { error: profileNewError2 } = await supabase
@@ -14743,14 +14962,14 @@ async function transferOwnership(person) {
             console.log('  - Also updated new profile with team_id filter');
           }
         }
-        
+
         // Step 4: Update team's owner_id LAST (after both team_members updates)
         // NOTE: The trigger sync_team_owner_id should automatically update teams.owner_id
         // when team_members.is_owner changes, but we update it explicitly to ensure it's correct
         // and to handle cases where the trigger might not fire
         console.log('📝 Step 4: Updating team owner_id...');
         console.log('  - Updating team', state.currentTeamId, 'to owner', person.id);
-        
+
         // CRITICAL: Verify that team_members was actually updated before updating teams.owner_id
         // This prevents the broken state where teams.owner_id is updated but team_members isn't
         const { data: finalCheck } = await supabase
@@ -14758,18 +14977,18 @@ async function transferOwnership(person) {
           .select("user_id, is_owner")
           .eq("team_id", state.currentTeamId)
           .in("user_id", [state.profile.id, person.id]);
-        
+
         console.log('  - Final check of team_members:', finalCheck);
-        
+
         const newOwnerInMembers = finalCheck?.find(m => m.user_id === person.id);
         const oldOwnerInMembers = finalCheck?.find(m => m.user_id === state.profile.id);
-        
+
         if (!newOwnerInMembers || newOwnerInMembers.is_owner !== true) {
           console.error("❌ CRITICAL: New owner is not marked as owner in team_members!");
           console.error("  - New owner data:", newOwnerInMembers);
           console.error("  - Cannot update teams.owner_id - team_members update failed");
           console.error("  - This would create a broken state where teams.owner_id doesn't match team_members");
-          
+
           // Try to revert old owner back to owner to prevent broken state
           console.log('  - Attempting to revert old owner to prevent broken state...');
           await supabase
@@ -14777,16 +14996,16 @@ async function transferOwnership(person) {
             .update({ is_owner: true, can_manage: true, role: 'owner' })
             .eq("team_id", state.currentTeamId)
             .eq("user_id", state.profile.id);
-          
+
           toastError("Failed to update team_members. The RLS policy might be blocking the update. Transfer cancelled. Check console.");
           return;
         }
-        
+
         if (oldOwnerInMembers && oldOwnerInMembers.is_owner !== false) {
           console.error("❌ CRITICAL: Old owner is still marked as owner in team_members!");
           console.error("  - Old owner data:", oldOwnerInMembers);
           console.error("  - Cannot update teams.owner_id - team_members update incomplete");
-          
+
           // Revert new owner promotion
           console.log('  - Reverting new owner promotion...');
           await supabase
@@ -14794,21 +15013,21 @@ async function transferOwnership(person) {
             .update({ is_owner: false, can_manage: person.can_manage || false, role: person.role || 'member' })
             .eq("team_id", state.currentTeamId)
             .eq("user_id", person.id);
-          
+
           toastError("Failed to demote old owner. Transfer cancelled. Check console.");
           return;
         }
-        
+
         const { data: teamUpdateData, error: teamError } = await supabase
           .from("teams")
           .update({ owner_id: person.id })
           .eq("id", state.currentTeamId)
           .select();
-        
+
         console.log('  - Team update result:', teamUpdateData);
         console.log('  - Team update error:', teamError);
         console.log('  - Rows updated:', teamUpdateData?.length || 0);
-        
+
         if (teamError) {
           console.error("❌ Error updating team owner_id:", teamError);
           // Try to revert team_members changes
@@ -14825,7 +15044,7 @@ async function transferOwnership(person) {
           toastError(`Unable to transfer ownership: ${teamError.message || 'Unknown error'}. Changes reverted. Check console.`);
           return;
         }
-        
+
         // Verify team was updated
         const { data: verifyTeam } = await supabase
           .from("teams")
@@ -14833,7 +15052,7 @@ async function transferOwnership(person) {
           .eq("id", state.currentTeamId)
           .single();
         console.log('  - Team after update:', verifyTeam);
-        
+
         // Final verification: ensure teams.owner_id matches team_members.is_owner
         if (verifyTeam?.owner_id !== person.id) {
           console.error("❌ CRITICAL: teams.owner_id does not match new owner!");
@@ -14857,7 +15076,7 @@ async function transferOwnership(person) {
         toastError('Unexpected error during ownership transfer. Check console.');
         return;
       }
-      
+
       // Verify final state after all operations
       console.log('📊 Checking final state after transfer...');
       const { data: afterState } = await supabase
@@ -14866,14 +15085,14 @@ async function transferOwnership(person) {
         .eq("team_id", state.currentTeamId)
         .in("user_id", [state.profile.id, person.id]);
       console.log('  - After state:', afterState);
-      
+
       const { data: teamAfter } = await supabase
         .from("teams")
         .select("id, owner_id")
         .eq("id", state.currentTeamId)
         .single();
       console.log('  - Team after:', teamAfter);
-      
+
       // Step 5: Refresh all state
       console.log('🔄 Refreshing state...');
       // Add a small delay to ensure database has fully updated
@@ -14885,19 +15104,19 @@ async function transferOwnership(person) {
       // Reload people again after a brief delay to ensure database consistency
       await new Promise(resolve => setTimeout(resolve, 200));
       await loadPeople();
-      
+
       // Check state after refresh
       console.log('📊 State after refresh:');
       console.log('  - Current user isOwner():', isOwner());
       console.log('  - Current user profile:', state.profile);
       const currentTeamAfter = state.userTeams.find(t => t.id === state.currentTeamId);
       console.log('  - Current team:', currentTeamAfter);
-      
+
       // Refresh UI - showApp() updates owner-only UI elements like delete team button
       updateTeamSwitcher();
       refreshActiveTab();
       showApp();
-      
+
       toastSuccess("Ownership transferred successfully. You are now a manager.");
     },
     {
