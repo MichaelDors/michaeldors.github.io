@@ -10477,7 +10477,6 @@ async function searchSongResources(searchTerm, existingResults) {
   if (!list) return;
 
   // Update active search term
-  activeResourceSearchTerm = searchTerm;
   const currentSearchTerm = searchTerm;
 
   // Create or reuse loading indicator
