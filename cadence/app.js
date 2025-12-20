@@ -2313,7 +2313,9 @@ async function fetchProfile() {
           team:team_id (
             id,
             name,
-            owner_id
+            owner_id,
+            daily_reminder_time,
+            timezone
           )
         `)
         .eq("id", state.session.user.id)
@@ -2566,10 +2568,42 @@ async function fetchUserTeams() {
       role: tm.role,
       is_owner: tm.is_owner,
       can_manage: tm.can_manage,
+      daily_reminder_time: tm.team?.daily_reminder_time,
+      timezone: tm.team?.timezone,
     }));
 
     console.log('  - ✅ Found', state.userTeams.length, 'teams');
-    console.log('  - Teams:', state.userTeams.map(t => t.name));
+    console.log('  - Teams Data:', JSON.stringify(state.userTeams, null, 2));
+
+    // Auto-detect and save timezone if missing for owned/managed teams
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timezoneUpdates = [];
+
+    for (const team of state.userTeams) {
+      if (!team.timezone && (team.is_owner || team.can_manage)) {
+        console.log(`  - 🌍 Auto-detecting timezone for team ${team.name}: ${detectedTimezone}`);
+
+        // Update local state immediately
+        team.timezone = detectedTimezone;
+
+        // Queue update to database
+        timezoneUpdates.push(
+          supabase
+            .from('teams')
+            .update({ timezone: detectedTimezone })
+            .eq('id', team.id)
+            .then(({ error }) => {
+              if (error) console.error(`  - ❌ Failed to auto-save timezone for team ${team.name}:`, error);
+              else console.log(`  - ✅ Auto-saved timezone for team ${team.name}`);
+            })
+        );
+      }
+    }
+
+    // Let updates run in background
+    if (timezoneUpdates.length > 0) {
+      Promise.all(timezoneUpdates);
+    }
 
     // Set current team: use profile.team_id if it exists and user is member, otherwise use first team
     if (state.profile?.team_id) {
@@ -14069,38 +14103,127 @@ async function deleteAccount() {
 }
 
 let teamAssignmentModeSelectedValue = null;
+let teamAlertTimeSelectedValue = null;
+let teamTimezoneSelectedValue = null;
+let teamAlertTimeDropdown = null;
+let teamTimezoneDropdown = null;
 
-function openTeamSettingsModal() {
+async function openTeamSettingsModal() {
   if (!isOwner()) return;
 
   const modal = el("team-settings-modal");
   const nameInput = el("team-settings-name-input");
   const assignmentModeContainer = el("team-assignment-mode-container");
+  const alertTimeContainer = el("team-alert-time-container");
+  const timezoneContainer = el("team-timezone-container");
 
   if (!modal || !nameInput || !assignmentModeContainer) return;
 
-  const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+  // Show loading state if needed, or just wait
+  // Fetch fresh team data
+  const { data: teamData, error } = await supabase
+    .from("teams")
+    .select("id, name, assignment_mode, daily_reminder_time, timezone")
+    .eq("id", state.currentTeamId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching team details:", error);
+    toastError("Failed to load team settings.");
+    return;
+  }
+
+  const currentTeam = teamData;
+  console.log('Opening Team Settings. Fresh Team Data:', currentTeam);
+
+  // Update local state to match fresh data
+  const stateTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+  if (stateTeam) {
+    stateTeam.name = currentTeam.name;
+    stateTeam.daily_reminder_time = currentTeam.daily_reminder_time;
+    stateTeam.timezone = currentTeam.timezone;
+  }
+
   const currentTeamName = currentTeam?.name || "";
   nameInput.value = currentTeamName;
 
-  // Reset selected value
-  teamAssignmentModeSelectedValue = state.teamAssignmentMode || 'per_set';
+  // --- Assignment Mode ---
+  // Use fetched assignment_mode if available, otherwise fallback to state
+  const currentMode = currentTeam.assignment_mode || state.teamAssignmentMode || 'per_set';
+  teamAssignmentModeSelectedValue = currentMode;
 
-  // Create simple non-searchable dropdown (looks like searchable but shows both options)
   assignmentModeContainer.innerHTML = "";
-  const currentMode = state.teamAssignmentMode || 'per_set';
-  const options = [
+  const modeOptions = [
     { value: 'per_set', label: 'Per Set' },
     { value: 'per_song', label: 'Per Song' }
   ];
-  teamAssignmentModeDropdown = createSimpleDropdown(options, "Select assignment mode...", currentMode);
-
-  // Listen for changes
+  teamAssignmentModeDropdown = createSimpleDropdown(modeOptions, "Select assignment mode...", currentMode);
   teamAssignmentModeDropdown.addEventListener("change", (e) => {
     teamAssignmentModeSelectedValue = e.detail.value;
   });
-
   assignmentModeContainer.appendChild(teamAssignmentModeDropdown);
+
+  // --- Alert Time ---
+  if (alertTimeContainer) {
+    alertTimeContainer.innerHTML = "";
+    const savedTime = currentTeam?.daily_reminder_time || "06:00:00";
+    // Strip seconds if present for matching
+    const [h, m] = savedTime.split(':');
+    const timeValue = `${h}:${m}:00`; // Ensure HH:MM:00 format
+
+    teamAlertTimeSelectedValue = timeValue;
+
+    // Generate hours 00:00 - 23:00 with 12-hour labels
+    const timeOptions = [];
+    for (let i = 0; i < 24; i++) {
+      const hour = i.toString().padStart(2, '0');
+      const date = new Date(`2000-01-01T${hour}:00:00`);
+      // Force 12-hour format
+      const label = date.toLocaleTimeString("en-US", { hour: 'numeric', minute: '2-digit', hour12: true });
+      timeOptions.push({ value: `${hour}:00:00`, label: label });
+    }
+
+    teamAlertTimeDropdown = createSimpleDropdown(timeOptions, "Select time...", timeValue);
+    teamAlertTimeDropdown.addEventListener("change", (e) => {
+      teamAlertTimeSelectedValue = e.detail.value;
+    });
+    alertTimeContainer.appendChild(teamAlertTimeDropdown);
+  }
+
+  // --- Timezone ---
+  if (timezoneContainer) {
+    timezoneContainer.innerHTML = "";
+    // Prioritize saved timezone, fallback to browser detection
+    const savedTimezone = currentTeam?.timezone;
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const defaultTimezone = savedTimezone || detectedTimezone;
+
+    teamTimezoneSelectedValue = defaultTimezone;
+
+    // Common Timezones List
+    const commonTimezones = [
+      "UTC",
+      "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "America/Phoenix", "America/Anchorage", "America/Honolulu",
+      "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Zurich", "Europe/Madrid", "Europe/Rome", "Europe/Moscow",
+      "Asia/Tokyo", "Asia/Seoul", "Asia/Shanghai", "Asia/Singapore", "Asia/Dubai", "Asia/Kolkata",
+      "Australia/Sydney", "Australia/Melbourne", "Australia/Perth",
+      "Pacific/Auckland"
+    ];
+
+    // Add detected/saved if not in list
+    if (!commonTimezones.includes(defaultTimezone)) {
+      commonTimezones.push(defaultTimezone);
+      commonTimezones.sort();
+    }
+
+    const timezoneOptions = commonTimezones.map(tz => ({ value: tz, label: tz }));
+
+    teamTimezoneDropdown = createSimpleDropdown(timezoneOptions, "Select timezone...", defaultTimezone);
+    teamTimezoneDropdown.addEventListener("change", (e) => {
+      teamTimezoneSelectedValue = e.detail.value;
+    });
+    timezoneContainer.appendChild(teamTimezoneDropdown);
+  }
 
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -14128,8 +14251,10 @@ async function handleTeamSettingsSubmit(e) {
   const currentTeamName = currentTeam?.name || "Team";
   const newName = nameInput.value.trim();
 
-  // Get value from dropdown
+  // Get values
   const newAssignmentMode = teamAssignmentModeDropdown.getValue() || teamAssignmentModeSelectedValue || state.teamAssignmentMode || 'per_set';
+  const newAlertTime = teamAlertTimeDropdown?.getValue() || teamAlertTimeSelectedValue;
+  const newTimezone = teamTimezoneDropdown?.getValue() || teamTimezoneSelectedValue;
 
   if (!newName) {
     toastError("Team name cannot be empty.");
@@ -14146,6 +14271,16 @@ async function handleTeamSettingsSubmit(e) {
 
   if (newAssignmentMode !== state.teamAssignmentMode) {
     updates.assignment_mode = newAssignmentMode;
+    hasChanges = true;
+  }
+
+  if (newAlertTime && newAlertTime !== currentTeam?.daily_reminder_time) {
+    updates.daily_reminder_time = newAlertTime;
+    hasChanges = true;
+  }
+
+  if (newTimezone && newTimezone !== currentTeam?.timezone) {
+    updates.timezone = newTimezone;
     hasChanges = true;
   }
 
@@ -14168,10 +14303,11 @@ async function handleTeamSettingsSubmit(e) {
 
   // Update local state
   if (currentTeam) {
-    if (updates.name) {
-      currentTeam.name = updates.name;
-    }
+    if (updates.name) currentTeam.name = updates.name;
+    if (updates.daily_reminder_time) currentTeam.daily_reminder_time = updates.daily_reminder_time;
+    if (updates.timezone) currentTeam.timezone = updates.timezone;
   }
+
   if (state.profile?.team && updates.name) {
     state.profile.team.name = updates.name;
   }
@@ -14237,6 +14373,8 @@ async function handleTeamSettingsSubmit(e) {
       showSetDetail(updatedSet);
     }
   }
+
+  toastSuccess("Team settings saved successfully.");
 
   // Close modal
   closeTeamSettingsModal();

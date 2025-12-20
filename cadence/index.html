@@ -1,1026 +1,1094 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cadence</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    </script>
 
-    <link rel="icon" type="image/x-icon" href="cadence.ico">
-    <meta name="theme-color" content="#ff7b51" />
-    <meta property="og:title" content="Cadence"/>
-    <meta property="og:type" content="website" />
-    <meta property="og:description" content="Schedule sets and manage your team"/>
-    <meta property="og:site_name" content="Michael Dors" />
-    <meta property="og:url" content="https://michaeldors.com/cadence"/>
-  </head>
-  <body>
-    <header class="app-header">
-      <div>
-        <h1><i class="fa-solid fa-ticket" style="color: var(--accent-color);"></i> Cadence</h1>
-      </div>
-      <div class="header-actions">
-        <button id="btn-view-as-member" style="margin-right: 1rem;" class="btn secondary hidden"><i class="fa-solid fa-user"></i> Member View</button>
-        <div id="user-info" class="user-info hidden">
-          <span id="user-name"></span>
-          <div id="account-switcher" style="margin-right: 0.5rem; position: relative;">
-            <button id="btn-account-menu" class="btn ghost small"><i class="fa-solid fa-user-circle"></i></button>
-            <div id="account-menu" class="hidden" style="position: absolute; top: 100%; right: 0; margin-top: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; min-width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 2000;">
-              <div id="account-menu-team-section" style="padding: 0.5rem;">
-                <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Current Team</div>
-                <div id="account-menu-team-name" style="font-weight: 500; margin-bottom: 0.75rem;"></div>
-                <div id="team-switcher-container" style="display: none;">
-                  <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Switch Team</div>
-                  <div id="team-switcher-list" style="display: flex; flex-direction: column; gap: 0.25rem; max-height: 200px; overflow-y: auto;">
-                    <!-- Teams will be populated here -->
-                  </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cadence</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Instrument+Serif:ital@0;1&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  </script>
+
+  <link rel="icon" type="image/x-icon" href="cadence.ico">
+  <meta name="theme-color" content="#ff7b51" />
+  <meta property="og:title" content="Cadence" />
+  <meta property="og:type" content="website" />
+  <meta property="og:description" content="Schedule sets and manage your team" />
+  <meta property="og:site_name" content="Michael Dors" />
+  <meta property="og:url" content="https://michaeldors.com/cadence" />
+</head>
+
+<body>
+  <header class="app-header">
+    <div>
+      <h1><i class="fa-solid fa-ticket" style="color: var(--accent-color);"></i> Cadence</h1>
+    </div>
+    <div class="header-actions">
+      <button id="btn-view-as-member" style="margin-right: 1rem;" class="btn secondary hidden"><i
+          class="fa-solid fa-user"></i> Member View</button>
+      <div id="user-info" class="user-info hidden">
+        <span id="user-name"></span>
+        <div id="account-switcher" style="margin-right: 0.5rem; position: relative;">
+          <button id="btn-account-menu" class="btn ghost small"><i class="fa-solid fa-user-circle"></i></button>
+          <div id="account-menu" class="hidden"
+            style="position: absolute; top: 100%; right: 0; margin-top: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; min-width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 2000;">
+            <div id="account-menu-team-section" style="padding: 0.5rem;">
+              <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Current Team</div>
+              <div id="account-menu-team-name" style="font-weight: 500; margin-bottom: 0.75rem;"></div>
+              <div id="team-switcher-container" style="display: none;">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Switch Team</div>
+                <div id="team-switcher-list"
+                  style="display: flex; flex-direction: column; gap: 0.25rem; max-height: 200px; overflow-y: auto;">
+                  <!-- Teams will be populated here -->
                 </div>
               </div>
-              <div id="account-menu-actions-section" style="padding: 0.5rem;">
-                <button id="btn-edit-account" class="btn small ghost" style="width: 100%; margin-bottom: 0.5rem;"><i class="fa-solid fa-user-pen"></i> Edit Account</button>
-                <button id="btn-create-team" class="btn small secondary" style="width: 100%; margin-bottom: 0.5rem;"><i class="fa-solid fa-plus"></i> Create Team</button>
-                <button id="btn-logout-menu" class="btn small ghost" style="width: 100%;"><i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out</button>
-              </div>
+            </div>
+            <div id="account-menu-actions-section" style="padding: 0.5rem;">
+              <button id="btn-edit-account" class="btn small ghost" style="width: 100%; margin-bottom: 0.5rem;"><i
+                  class="fa-solid fa-user-pen"></i> Edit Account</button>
+              <button id="btn-create-team" class="btn small secondary" style="width: 100%; margin-bottom: 0.5rem;"><i
+                  class="fa-solid fa-plus"></i> Create Team</button>
+              <button id="btn-logout-menu" class="btn small ghost" style="width: 100%;"><i
+                  class="fa-solid fa-arrow-right-from-bracket"></i> Log Out</button>
             </div>
           </div>
         </div>
-      </div>
-    </header>
-
-    <div id="member-view-banner" style="background: var(--accent-color) !important; color: var(--bg-primary) !important; padding: 0.75rem 2rem !important;" class="member-view-banner hidden">
-      <div class="member-view-banner-content" style="display: flex; align-items: center; justify-content: space-between;">
-        <span style="text-align: left;">You're in member view and cannot currently manage</span>
-        <button id="btn-exit-member-view" class="btn secondary small" style="margin-left: 2rem;">Exit</button>
       </div>
     </div>
+  </header>
 
-    <main>
-      <section id="auth-gate" class="card">
-        <div id="login-form-container">
-          <h2 id="auth-heading">Login</h2>
-          <p id="auth-description">Sign in with your email and password</p>
-          <form id="auth-form" class="auth-form">
-            <label>
-              Email
-              <input type="email" id="login-email" placeholder="email@example.com" required />
-            </label>
-            <label>
-              Password
-              <input type="password" id="login-password" placeholder="Enter your password" required />
-            </label>
-            <button type="submit" id="auth-submit-btn" class="btn primary">
-              Sign in
-            </button>
-          </form>
-          <p class="muted small-text" id="auth-message"></p>
-          <p class="muted small-text" style="margin-top: 2rem; text-align: center;">
-            <a href="#" id="forgot-password-link" style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">Forgot password?</a> | <a href="#" id="toggle-signup" style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">Team leader? Create a team</a>
-          </p>
-        </div>
-        
-        <div id="forgot-password-container" class="hidden">
-          <h2>Reset Password</h2>
-          <p>Enter your email address and we'll send you a link to reset your password.</p>
-          <form id="forgot-password-form" class="auth-form">
-            <label>
-              Email
-              <input type="email" id="forgot-password-email" placeholder="email@example.com" required />
-            </label>
-            <button type="submit" id="forgot-password-submit-btn" class="btn primary">
-              Send Reset Link
-            </button>
-          </form>
-          <p class="muted small-text" id="forgot-password-message"></p>
-          <p class="muted small-text" style="margin-top: 1rem; text-align: center;">
-            <a href="#" id="back-to-login-link" style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">← Back to login</a>
-          </p>
-        </div>
-      </section>
+  <div id="member-view-banner"
+    style="background: var(--accent-color) !important; color: var(--bg-primary) !important; padding: 0.75rem 2rem !important;"
+    class="member-view-banner hidden">
+    <div class="member-view-banner-content" style="display: flex; align-items: center; justify-content: space-between;">
+      <span style="text-align: left;">You're in member view and cannot currently manage</span>
+      <button id="btn-exit-member-view" class="btn secondary small" style="margin-left: 2rem;">Exit</button>
+    </div>
+  </div>
 
-      <section id="password-setup-gate" class="card hidden">
-        <h2>Set Up Your Account</h2>
-        <p>Please set a password to complete your account setup.</p>
-        <p class="muted small-text" style="margin-bottom: 1rem;">
-          Account: <span class="password-setup-email"></span>
-        </p>
-        <form id="password-setup-form" class="auth-form">
+  <main>
+    <section id="auth-gate" class="card">
+      <div id="login-form-container">
+        <h2 id="auth-heading">Login</h2>
+        <p id="auth-description">Sign in with your email and password</p>
+        <form id="auth-form" class="auth-form">
+          <label>
+            Email
+            <input type="email" id="login-email" placeholder="email@example.com" required />
+          </label>
           <label>
             Password
-            <input type="password" id="setup-password" placeholder="Enter a password (min 6 characters)" required minlength="6" />
+            <input type="password" id="login-password" placeholder="Enter your password" required />
           </label>
-          <label>
-            Confirm Password
-            <input type="password" id="setup-password-confirm" placeholder="Confirm your password" required minlength="6" />
-          </label>
-          <button type="submit" id="password-setup-submit-btn" class="btn primary">
-            Set Password
+          <button type="submit" id="auth-submit-btn" class="btn primary">
+            Sign in
           </button>
         </form>
-        <p class="muted small-text" id="password-setup-message"></p>
-      </section>
+        <p class="muted small-text" id="auth-message"></p>
+        <p class="muted small-text" style="margin-top: 2rem; text-align: center;">
+          <a href="#" id="forgot-password-link"
+            style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">Forgot password?</a> | <a
+            href="#" id="toggle-signup"
+            style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">Team leader? Create a
+            team</a>
+        </p>
+      </div>
 
-      <section id="empty-state" class="card hidden" style="max-width: 600px; margin: 2rem auto; text-align: center;">
-        <h2>No Teams</h2>
-        <p class="muted" style="margin-bottom: 2rem;">You're not a member of any teams yet.</p>
-        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-          <button id="btn-create-team-empty" class="btn primary"><i class="fa-solid fa-plus"></i> Create a Team</button>
-          <p class="muted" style="margin: 0; display: flex; align-items: center;">or ask someone to invite you</p>
-        </div>
-      </section>
+      <div id="forgot-password-container" class="hidden">
+        <h2>Reset Password</h2>
+        <p>Enter your email address and we'll send you a link to reset your password.</p>
+        <form id="forgot-password-form" class="auth-form">
+          <label>
+            Email
+            <input type="email" id="forgot-password-email" placeholder="email@example.com" required />
+          </label>
+          <button type="submit" id="forgot-password-submit-btn" class="btn primary">
+            Send Reset Link
+          </button>
+        </form>
+        <p class="muted small-text" id="forgot-password-message"></p>
+        <p class="muted small-text" style="margin-top: 1rem; text-align: center;">
+          <a href="#" id="back-to-login-link"
+            style="color: var(--accent-color); text-decoration: underline; cursor: pointer;">← Back to login</a>
+        </p>
+      </div>
+    </section>
 
-      <section id="dashboard" class="hidden">
-        <div id="team-name-header" class="team-name-header hidden">
-          <h1 id="team-name-display"></h1>
-          <button id="btn-team-settings" class="btn ghost small" type="button">
-            <i class="fa-solid fa-gear"></i> Settings
-              </button>
-        </div>
-        <div class="dashboard-tabs">
-          <button class="tab-btn active" data-tab="sets"><i class="fa-solid fa-rectangle-list"></i> Sets</button>
-          <button class="tab-btn" data-tab="songs"><i class="fa-solid fa-file-waveform"></i> Songs</button>
-          <button class="tab-btn" data-tab="people"><i class="fa-solid fa-users"></i> Team</button>
-        </div>
-        
-        <div id="sets-tab" class="tab-content">
-          <div id="pending-requests-section" class="pending-requests-section hidden">
-            <div class="section-header">
-              <div>
-                <h2><i class="fa-solid fa-bell"></i> Pending Assignment Requests <span id="pending-requests-badge" class="badge hidden"></span></h2>
-                <p class="muted">Review and respond to assignment requests</p>
-              </div>
+    <section id="password-setup-gate" class="card hidden">
+      <h2>Set Up Your Account</h2>
+      <p>Please set a password to complete your account setup.</p>
+      <p class="muted small-text" style="margin-bottom: 1rem;">
+        Account: <span class="password-setup-email"></span>
+      </p>
+      <form id="password-setup-form" class="auth-form">
+        <label>
+          Password
+          <input type="password" id="setup-password" placeholder="Enter a password (min 6 characters)" required
+            minlength="6" />
+        </label>
+        <label>
+          Confirm Password
+          <input type="password" id="setup-password-confirm" placeholder="Confirm your password" required
+            minlength="6" />
+        </label>
+        <button type="submit" id="password-setup-submit-btn" class="btn primary">
+          Set Password
+        </button>
+      </form>
+      <p class="muted small-text" id="password-setup-message"></p>
+    </section>
+
+    <section id="empty-state" class="card hidden" style="max-width: 600px; margin: 2rem auto; text-align: center;">
+      <h2>No Teams</h2>
+      <p class="muted" style="margin-bottom: 2rem;">You're not a member of any teams yet.</p>
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <button id="btn-create-team-empty" class="btn primary"><i class="fa-solid fa-plus"></i> Create a Team</button>
+        <p class="muted" style="margin: 0; display: flex; align-items: center;">or ask someone to invite you</p>
+      </div>
+    </section>
+
+    <section id="dashboard" class="hidden">
+      <div id="team-name-header" class="team-name-header hidden">
+        <h1 id="team-name-display"></h1>
+        <button id="btn-team-settings" class="btn ghost small" type="button">
+          <i class="fa-solid fa-gear"></i> Settings
+        </button>
+      </div>
+      <div class="dashboard-tabs">
+        <button class="tab-btn active" data-tab="sets"><i class="fa-solid fa-rectangle-list"></i> Sets</button>
+        <button class="tab-btn" data-tab="songs"><i class="fa-solid fa-file-waveform"></i> Songs</button>
+        <button class="tab-btn" data-tab="people"><i class="fa-solid fa-users"></i> Team</button>
+      </div>
+
+      <div id="sets-tab" class="tab-content">
+        <div id="pending-requests-section" class="pending-requests-section hidden">
+          <div class="section-header">
+            <div>
+              <h2><i class="fa-solid fa-bell"></i> Pending Assignment Requests <span id="pending-requests-badge"
+                  class="badge hidden"></span></h2>
+              <p class="muted">Review and respond to assignment requests</p>
             </div>
-            <div id="pending-requests-list"></div>
           </div>
-          <div id="your-sets-section" class="sets-section">
-            <div class="section-header">
-              <div>
-                <h2><i class="fa-solid fa-user-clock"></i> Your Sets</h2>
-                <p class="muted">Sets where you're assigned to a song</p>
-              </div>
-            </div>
-            <div id="your-sets-list" class="sets-grid"></div>
-          </div>
-          
-          <div id="all-sets-section" class="sets-section">
-            <div class="dashboard-header">
-              <div>
-                <h2><i class="fa-solid fa-calendar"></i> All Sets</h2>
-              </div>
-              <div class="header-actions">
-                <button id="btn-create-set" class="btn primary hidden"><i class="fa-solid fa-list-ul"></i> New Set</button>
-              </div>
-            </div>
-            <div id="sets-list" class="sets-grid"></div>
-          </div>
+          <div id="pending-requests-list"></div>
         </div>
-        
-        <div id="songs-tab" class="tab-content hidden">
+        <div id="your-sets-section" class="sets-section">
+          <div class="section-header">
+            <div>
+              <h2><i class="fa-solid fa-user-clock"></i> Your Sets</h2>
+              <p class="muted">Sets where you're assigned to a song</p>
+            </div>
+          </div>
+          <div id="your-sets-list" class="sets-grid"></div>
+        </div>
+
+        <div id="all-sets-section" class="sets-section">
           <div class="dashboard-header">
             <div>
-              <h2><i class="fa-solid fa-music"></i> Song Catalog</h2>
+              <h2><i class="fa-solid fa-calendar"></i> All Sets</h2>
             </div>
             <div class="header-actions">
-              <button id="btn-create-song" class="btn primary hidden"><i class="fa-solid fa-file-circle-plus"></i> New Song</button>
+              <button id="btn-create-set" class="btn primary hidden"><i class="fa-solid fa-list-ul"></i> New
+                Set</button>
             </div>
           </div>
-          <div style="margin-bottom: 1.5rem;">
-            <label>
-              <input type="text" id="songs-tab-search" placeholder="Search songs by title, BPM, key, time signature, or duration" style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; color: var(--text-primary); font-size: 1rem;" />
-            </label>
-          </div>
-          <div id="songs-catalog-list" class="song-list"></div>
+          <div id="sets-list" class="sets-grid"></div>
         </div>
-        
-        <div id="people-tab" class="tab-content hidden">
-          <div class="dashboard-header">
-            <div>
-              <h2><i class="fa-solid fa-address-book"></i> Team Members</h2>
-            </div>
-            <div class="header-actions">
-              <button id="btn-leave-team" class="btn ghost hidden" style="color: var(--error-color);"><i class="fa-solid fa-sign-out-alt"></i> Leave Team</button>
-            </div>
-          </div>
-          <div style="margin-bottom: 1.5rem;">
-            <label>
-              <input type="text" id="people-tab-search" placeholder="Search users" style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; color: var(--text-primary); font-size: 1rem;" />
-            </label>
-          </div>
-          <div id="people-list" class="people-grid"></div>
-        </div>
-      </section>
+      </div>
 
-      <section id="set-detail" class="hidden">
-        <div class="set-detail-container">
-          <div class="set-detail-sidebar desktop-only">
-            <div id="set-detail-times" class="set-detail-times">
-              <div id="service-times-display" class="times-section">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                  <h3 style="margin: 0;"><i class="fa-solid fa-church"></i> Service Times</h3>
-                </div>
-                <div id="service-times-content"></div>
-              </div>
-              <div id="rehearsal-times-display" class="times-section">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                  <h3 style="margin: 0;"><i class="fa-solid fa-guitar"></i> Rehearsal Times</h3>
-                </div>
-                <div id="rehearsal-times-content"></div>
-              </div>
-              <div style="margin-top: 1.5rem;">
-                <button id="btn-edit-times" class="btn secondary small hidden" style="width: 100%;"><i class="fa-solid fa-pencil"></i> Edit Times</button>
-              </div>
-            </div>
-            <div id="set-assignments-display" class="set-assignments-card desktop-only hidden">
+      <div id="songs-tab" class="tab-content hidden">
+        <div class="dashboard-header">
+          <div>
+            <h2><i class="fa-solid fa-music"></i> Song Catalog</h2>
+          </div>
+          <div class="header-actions">
+            <button id="btn-create-song" class="btn primary hidden"><i class="fa-solid fa-file-circle-plus"></i> New
+              Song</button>
+          </div>
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+          <label>
+            <input type="text" id="songs-tab-search"
+              placeholder="Search songs by title, BPM, key, time signature, or duration"
+              style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; color: var(--text-primary); font-size: 1rem;" />
+          </label>
+        </div>
+        <div id="songs-catalog-list" class="song-list"></div>
+      </div>
+
+      <div id="people-tab" class="tab-content hidden">
+        <div class="dashboard-header">
+          <div>
+            <h2><i class="fa-solid fa-address-book"></i> Team Members</h2>
+          </div>
+          <div class="header-actions">
+            <button id="btn-leave-team" class="btn ghost hidden" style="color: var(--error-color);"><i
+                class="fa-solid fa-sign-out-alt"></i> Leave Team</button>
+          </div>
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+          <label>
+            <input type="text" id="people-tab-search" placeholder="Search users"
+              style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; color: var(--text-primary); font-size: 1rem;" />
+          </label>
+        </div>
+        <div id="people-list" class="people-grid"></div>
+      </div>
+    </section>
+
+    <section id="set-detail" class="hidden">
+      <div class="set-detail-container">
+        <div class="set-detail-sidebar desktop-only">
+          <div id="set-detail-times" class="set-detail-times">
+            <div id="service-times-display" class="times-section">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                <h3 style="margin: 0;"><i class="fa-solid fa-users"></i> Assignments</h3>
+                <h3 style="margin: 0;"><i class="fa-solid fa-church"></i> Service Times</h3>
               </div>
-              <div id="set-assignments-content"></div>
-              <div style="margin-top: 1.5rem;">
-                <button id="btn-edit-assignments" class="btn secondary small hidden" style="width: 100%;"><i class="fa-solid fa-pencil"></i> Edit Assignments</button>
+              <div id="service-times-content"></div>
+            </div>
+            <div id="rehearsal-times-display" class="times-section">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <h3 style="margin: 0;"><i class="fa-solid fa-guitar"></i> Rehearsal Times</h3>
               </div>
+              <div id="rehearsal-times-content"></div>
+            </div>
+            <div style="margin-top: 1.5rem;">
+              <button id="btn-edit-times" class="btn secondary small hidden" style="width: 100%;"><i
+                  class="fa-solid fa-pencil"></i> Edit Times</button>
             </div>
           </div>
-          <div class="set-detail-main">
-            <div class="detail-header">
-              <div class="detail-title-section">
-                <h2><i id="btn-back" style="padding: 0px !important; cursor: pointer;" class="fa-solid fa-circle-chevron-left"></i><span id="detail-set-title"></span></h2>
-                <p id="detail-set-date" class="muted"></p>
-                <p id="detail-set-description" class="set-description"></p>
-              </div>
-              <div class="header-actions">
-                <button id="btn-export-set-print" class="btn secondary"><i class="fa-solid fa-print"></i> Print</button>
-                <button id="btn-view-as-member-detail" class="btn secondary hidden"><i class="fa-solid fa-user"></i> View as Member</button>
-                <button id="btn-edit-set-detail" class="btn secondary hidden"><i class="fa-solid fa-pencil"></i> Edit Set</button>
-                <button id="btn-delete-set-detail" class="btn ghost hidden">Delete</button>
-                <div class="header-dropdown-container hidden desktop-only" id="header-add-dropdown-container">
-                  <button id="btn-header-add-toggle" class="btn secondary" type="button">
-                    <i class="fa-solid fa-plus"></i> Add
-                    <i class="fa-solid fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.75rem;"></i>
-                  </button>
-                  <div class="header-dropdown-menu hidden" id="header-add-dropdown-menu">
-                    <button type="button" class="header-dropdown-item" id="btn-header-add-song">
-                      <i class="fa-solid fa-compact-disc"></i>
-                      <span>Add Song</span>
-                    </button>
-                    <button type="button" class="header-dropdown-item" id="btn-header-add-tag">
-                      <i class="fa-solid fa-tag"></i>
-                      <span>Add Tag</span>
-                    </button>
-                    <button type="button" class="header-dropdown-item" id="btn-header-add-section">
-                      <i class="fa-solid fa-microphone-lines"></i>
-                      <span>Add Section</span>
-                    </button>
-                    <button type="button" class="header-dropdown-item" id="btn-header-add-section-header">
-                      <i class="fa-solid fa-heading"></i>
-                      <span>Add Header</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
+          <div id="set-assignments-display" class="set-assignments-card desktop-only hidden">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+              <h3 style="margin: 0;"><i class="fa-solid fa-users"></i> Assignments</h3>
             </div>
-            <div class="set-detail-tabs mobile-only">
-              <button type="button" class="tab-btn active" data-detail-tab="songs"><i class="fa-solid fa-list-ul"></i> Order</button>
-              <button type="button" class="tab-btn" data-detail-tab="assignments"><i class="fa-solid fa-users"></i> Assignments</button>
-              <button type="button" class="tab-btn" data-detail-tab="times"><i class="fa-solid fa-clock"></i> Times</button>
+            <div id="set-assignments-content"></div>
+            <div style="margin-top: 1.5rem;">
+              <button id="btn-edit-assignments" class="btn secondary small hidden" style="width: 100%;"><i
+                  class="fa-solid fa-pencil"></i> Edit Assignments</button>
             </div>
-            <div id="set-detail-tab-songs" class="set-detail-tab-content">
-              <div class="header-dropdown-container hidden mobile-only" id="mobile-header-add-dropdown-container" style="margin-bottom: 1rem;">
-                <button id="btn-mobile-header-add-toggle" class="btn secondary" type="button" style="width: 100%;">
+          </div>
+        </div>
+        <div class="set-detail-main">
+          <div class="detail-header">
+            <div class="detail-title-section">
+              <h2><i id="btn-back" style="padding: 0px !important; cursor: pointer;"
+                  class="fa-solid fa-circle-chevron-left"></i><span id="detail-set-title"></span></h2>
+              <p id="detail-set-date" class="muted"></p>
+              <p id="detail-set-description" class="set-description"></p>
+            </div>
+            <div class="header-actions">
+              <button id="btn-export-set-print" class="btn secondary"><i class="fa-solid fa-print"></i> Print</button>
+              <button id="btn-view-as-member-detail" class="btn secondary hidden"><i class="fa-solid fa-user"></i> View
+                as Member</button>
+              <button id="btn-edit-set-detail" class="btn secondary hidden"><i class="fa-solid fa-pencil"></i> Edit
+                Set</button>
+              <button id="btn-delete-set-detail" class="btn ghost hidden">Delete</button>
+              <div class="header-dropdown-container hidden desktop-only" id="header-add-dropdown-container">
+                <button id="btn-header-add-toggle" class="btn secondary" type="button">
                   <i class="fa-solid fa-plus"></i> Add
                   <i class="fa-solid fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.75rem;"></i>
                 </button>
-                <div class="header-dropdown-menu hidden" id="mobile-header-add-dropdown-menu">
-                  <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-song">
+                <div class="header-dropdown-menu hidden" id="header-add-dropdown-menu">
+                  <button type="button" class="header-dropdown-item" id="btn-header-add-song">
                     <i class="fa-solid fa-compact-disc"></i>
                     <span>Add Song</span>
                   </button>
-                  <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-tag">
+                  <button type="button" class="header-dropdown-item" id="btn-header-add-tag">
                     <i class="fa-solid fa-tag"></i>
                     <span>Add Tag</span>
                   </button>
-                  <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-section">
+                  <button type="button" class="header-dropdown-item" id="btn-header-add-section">
                     <i class="fa-solid fa-microphone-lines"></i>
                     <span>Add Section</span>
                   </button>
-                  <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-section-header">
+                  <button type="button" class="header-dropdown-item" id="btn-header-add-section-header">
                     <i class="fa-solid fa-heading"></i>
                     <span>Add Header</span>
                   </button>
                 </div>
               </div>
-              <div id="detail-songs-list" class="song-list"></div>
-              <div id="service-length-footer" class="service-length-footer hidden">
-                <div class="service-length-row">
-                  <span class="service-length-label"><i class="fa-solid fa-clock"></i> Service Length</span>
-                  <span id="service-length-value" class="service-length-value"></span>
-                </div>
+            </div>
+          </div>
+          <div class="set-detail-tabs mobile-only">
+            <button type="button" class="tab-btn active" data-detail-tab="songs"><i class="fa-solid fa-list-ul"></i>
+              Order</button>
+            <button type="button" class="tab-btn" data-detail-tab="assignments"><i class="fa-solid fa-users"></i>
+              Assignments</button>
+            <button type="button" class="tab-btn" data-detail-tab="times"><i class="fa-solid fa-clock"></i>
+              Times</button>
+          </div>
+          <div id="set-detail-tab-songs" class="set-detail-tab-content">
+            <div class="header-dropdown-container hidden mobile-only" id="mobile-header-add-dropdown-container"
+              style="margin-bottom: 1rem;">
+              <button id="btn-mobile-header-add-toggle" class="btn secondary" type="button" style="width: 100%;">
+                <i class="fa-solid fa-plus"></i> Add
+                <i class="fa-solid fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.75rem;"></i>
+              </button>
+              <div class="header-dropdown-menu hidden" id="mobile-header-add-dropdown-menu">
+                <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-song">
+                  <i class="fa-solid fa-compact-disc"></i>
+                  <span>Add Song</span>
+                </button>
+                <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-tag">
+                  <i class="fa-solid fa-tag"></i>
+                  <span>Add Tag</span>
+                </button>
+                <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-section">
+                  <i class="fa-solid fa-microphone-lines"></i>
+                  <span>Add Section</span>
+                </button>
+                <button type="button" class="header-dropdown-item" id="btn-mobile-header-add-section-header">
+                  <i class="fa-solid fa-heading"></i>
+                  <span>Add Header</span>
+                </button>
               </div>
             </div>
-            <div id="set-detail-tab-assignments" class="set-detail-tab-content hidden">
-              <div id="set-assignments-display-mobile" class="set-assignments-card">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                  <h3 style="margin: 0;"><i class="fa-solid fa-users"></i> Assignments</h3>
-                </div>
-                <div id="set-assignments-content-mobile"></div>
-                <div style="margin-top: 1.5rem;">
-                  <button id="btn-edit-assignments-mobile" class="btn secondary small hidden" style="width: 100%;"><i class="fa-solid fa-pencil"></i> Edit Assignments</button>
-                </div>
-              </div>
-            </div>
-            <div id="set-detail-tab-times" class="set-detail-tab-content hidden">
-              <div id="set-detail-times-mobile" class="set-detail-times">
-                <div id="service-times-display-mobile" class="times-section">
-                  <h3><i class="fa-solid fa-church"></i> Service Times</h3>
-                  <div id="service-times-content-mobile"></div>
-                </div>
-                <div id="rehearsal-times-display-mobile" class="times-section">
-                  <h3><i class="fa-solid fa-guitar"></i> Rehearsal Times</h3>
-                  <div id="rehearsal-times-content-mobile"></div>
-                </div>
-                <div style="margin-top: 1.5rem;">
-                  <button id="btn-edit-times-mobile" class="btn secondary small hidden" style="width: 100%;"><i class="fa-solid fa-pencil"></i> Edit Times</button>
-                </div>
+            <div id="detail-songs-list" class="song-list"></div>
+            <div id="service-length-footer" class="service-length-footer hidden">
+              <div class="service-length-row">
+                <span class="service-length-label"><i class="fa-solid fa-clock"></i> Service Length</span>
+                <span id="service-length-value" class="service-length-value"></span>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-    </main>
-
-    <div id="print-set-container" class="print-set-container hidden" aria-hidden="true">
-      <div id="print-set-content" class="print-set-content"></div>
-    </div>
-
-    <div id="set-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3 id="set-modal-title">New Set</h3>
-          <button class="icon-btn" id="close-set-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="set-form">
-          <label>
-            Title
-            <input type="text" id="set-title" required />
-          </label>
-          <label>
-            Date
-            <input type="date" id="set-date" required />
-          </label>
-          <label>
-            Description
-            <textarea id="set-description" rows="3"></textarea>
-          </label>
-          
-          <div id="set-assignment-mode-section" class="hidden">
-            <label class="custom-checkbox-label">
-              <input type="checkbox" id="set-override-assignment-mode" class="custom-checkbox" />
-              <span id="set-override-assignment-mode-text"></span>
-            </label>
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-set">Cancel</button>
-            <button type="submit" class="btn primary">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div id="song-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Add Song to Set</h3>
-          <button class="icon-btn" id="close-song-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="song-form">
-          <label>
-            Song
-            <div id="song-select-container"></div>
-          </label>
-          <p class="muted small-text">
-            <a href="#" id="create-song-link" class="link">Create a new song</a>
-          </p>
-          <label>
-            Key (optional)
-            <input type="text" id="song-key-select" placeholder="C, Dm, G, etc (leave blank if not specified)" />
-            <p class="muted small-text">You can use any key here, even if it's not in the song's keys list</p>
-          </label>
-          <label>
-            Notes
-            <textarea id="song-notes" rows="2"></textarea>
-          </label>
-          <label>
-            Length in service (optional)
-            <input type="text" id="song-service-duration" placeholder="e.g., 3:45" />
-            <p class="muted small-text">Overrides the song length for this set only.</p>
-          </label>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-song">Cancel</button>
-            <button type="submit" class="btn primary">Add</button>
-          </div>
-        </form>
-        <div class="assignment-section">
-          <div class="section-header">
-            <h4>Assignments</h4>
-            <div style="display: flex; gap: 0.75rem; align-items: center;">
-              <button id="btn-add-assignment" type="button" class="btn secondary">
-                Add
-              </button>
-              <div id="import-assignments-container" style="display: flex; align-items: center; gap: 0.5rem;"></div>
+          <div id="set-detail-tab-assignments" class="set-detail-tab-content hidden">
+            <div id="set-assignments-display-mobile" class="set-assignments-card">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <h3 style="margin: 0;"><i class="fa-solid fa-users"></i> Assignments</h3>
+              </div>
+              <div id="set-assignments-content-mobile"></div>
+              <div style="margin-top: 1.5rem;">
+                <button id="btn-edit-assignments-mobile" class="btn secondary small hidden" style="width: 100%;"><i
+                    class="fa-solid fa-pencil"></i> Edit Assignments</button>
+              </div>
             </div>
           </div>
-          <div id="assignments-list"></div>
-        </div>
-      </div>
-    </div>
-
-    <div id="tag-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Add Tag</h3>
-          <button class="icon-btn" id="close-tag-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="tag-form">
-          <label>
-            Song to Tag
-            <div id="tag-song-select-container"></div>
-            <p class="muted small-text">Select the song you want to tag a part from (e.g., "Make Room")</p>
-          </label>
-          <label>
-            Part of Song
-            <div id="tag-type-select-container"></div>
-          </label>
-          <label id="tag-custom-label" class="hidden">
-            Custom Part Name
-            <input type="text" id="tag-custom-input" placeholder="e.g., Acoustic, Alt ending" />
-          </label>
-          <label>
-            Attach to Song
-            <div id="tag-parent-select-container"></div>
-            <p class="muted small-text">Select which song in this set to attach the tag to</p>
-          </label>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-tag">Cancel</button>
-            <button type="submit" class="btn primary">Add Tag</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div id="section-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Add Section to Set</h3>
-          <button class="icon-btn" id="close-section-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="section-form">
-          <label>
-            Title
-            <input type="text" id="section-title" required />
-          </label>
-          <label>
-            Description
-            <textarea id="section-description" rows="3"></textarea>
-          </label>
-          <label>
-            Notes
-            <textarea id="section-notes" rows="2"></textarea>
-          </label>
-          <label>
-            Length (optional)
-            <input type="text" id="section-duration" placeholder="e.g., 30:00" />
-            <p class="muted small-text">Use MM:SS or minutes.</p>
-          </label>
-          <div class="section-header">
-            <h4>Links & Resources</h4>
-          </div>
-          <div id="section-links-list"></div>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-section">Cancel</button>
-            <button type="submit" class="btn primary">Add</button>
-          </div>
-        </form>
-        <div class="assignment-section">
-          <div class="section-header">
-            <h4>Assignments</h4>
-            <div style="display: flex; gap: 0.75rem; align-items: center;">
-              <button id="btn-add-section-assignment" type="button" class="btn secondary">
-                Add
-              </button>
-              <div id="import-section-assignments-container" style="display: flex; align-items: center; gap: 0.5rem;"></div>
+          <div id="set-detail-tab-times" class="set-detail-tab-content hidden">
+            <div id="set-detail-times-mobile" class="set-detail-times">
+              <div id="service-times-display-mobile" class="times-section">
+                <h3><i class="fa-solid fa-church"></i> Service Times</h3>
+                <div id="service-times-content-mobile"></div>
+              </div>
+              <div id="rehearsal-times-display-mobile" class="times-section">
+                <h3><i class="fa-solid fa-guitar"></i> Rehearsal Times</h3>
+                <div id="rehearsal-times-content-mobile"></div>
+              </div>
+              <div style="margin-top: 1.5rem;">
+                <button id="btn-edit-times-mobile" class="btn secondary small hidden" style="width: 100%;"><i
+                    class="fa-solid fa-pencil"></i> Edit Times</button>
+              </div>
             </div>
           </div>
-          <div id="section-assignments-list"></div>
         </div>
       </div>
-    </div>
+    </section>
+  </main>
 
-    <div id="section-header-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Add Section Header</h3>
-          <button class="icon-btn" id="close-section-header-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="section-header-form">
-          <label>
-            Header Title
-            <input type="text" id="section-header-title" required placeholder="e.g., Opening, Worship, Message, Closing" />
-          </label>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-section-header">Cancel</button>
-            <button type="submit" class="btn primary">Add</button>
-          </div>
-        </form>
-      </div>
-    </div>
+  <div id="print-set-container" class="print-set-container hidden" aria-hidden="true">
+    <div id="print-set-content" class="print-set-content"></div>
+  </div>
 
-    <div id="edit-set-song-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3 id="edit-set-item-title">Edit Song in Set</h3>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button type="button" id="btn-edit-song-from-set" class="btn small secondary hidden">Edit Song Details</button>
-            <button class="icon-btn" id="close-edit-set-song-modal" aria-label="Close modal">
-              <i class="fa-solid fa-circle-xmark"></i>
-            </button>
-          </div>
-        </header>
-        <form id="edit-set-song-form">
-          <div id="edit-section-fields" class="hidden">
-            <label>
-              Title
-              <input type="text" id="edit-section-title" />
-            </label>
-            <label>
-              Description
-              <textarea id="edit-section-description" rows="3"></textarea>
-            </label>
-          </div>
-          <label id="edit-set-song-key-label" class="hidden">
-            Key (optional)
-            <input type="text" id="edit-set-song-key" placeholder="C, Dm, G, etc (leave blank if not specified)" />
+  <div id="set-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3 id="set-modal-title">New Set</h3>
+        <button class="icon-btn" id="close-set-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="set-form">
+        <label>
+          Title
+          <input type="text" id="set-title" required />
+        </label>
+        <label>
+          Date
+          <input type="date" id="set-date" required />
+        </label>
+        <label>
+          Description
+          <textarea id="set-description" rows="3"></textarea>
+        </label>
+
+        <div id="set-assignment-mode-section" class="hidden">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="set-override-assignment-mode" class="custom-checkbox" />
+            <span id="set-override-assignment-mode-text"></span>
           </label>
-          <label id="edit-set-song-duration-label">
-            Length in service (optional)
-            <input type="text" id="edit-set-song-duration" placeholder="e.g., 4:00" />
-            <p id="edit-set-song-duration-hint" class="muted small-text">Leave blank to use the song's default length.</p>
-          </label>
-          <label>
-            Notes
-            <textarea id="edit-set-song-notes" rows="2"></textarea>
-          </label>
-          <div id="edit-section-links-container" class="hidden">
-            <div class="section-header">
-              <h4>Links & Resources</h4>
-            </div>
-            <div id="edit-section-links-list"></div>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-edit-set-song">Cancel</button>
-            <button type="submit" class="btn primary">Save</button>
-          </div>
-        </form>
-        <div class="assignment-section">
-          <div class="section-header">
-            <h4>Assignments</h4>
-            <div style="display: flex; gap: 0.75rem; align-items: center;">
-              <button id="btn-add-edit-assignment" type="button" class="btn secondary">
-                Add
-              </button>
-              <div id="import-edit-assignments-container" style="display: flex; align-items: center; gap: 0.5rem;"></div>
-            </div>
-          </div>
-          <div id="edit-assignments-list"></div>
         </div>
-      </div>
-    </div>
 
-    <div id="song-catalog-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Song Catalog</h3>
-          <button class="icon-btn" id="close-song-catalog-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-set">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="song-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Add Song to Set</h3>
+        <button class="icon-btn" id="close-song-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="song-form">
+        <label>
+          Song
+          <div id="song-select-container"></div>
+        </label>
+        <p class="muted small-text">
+          <a href="#" id="create-song-link" class="link">Create a new song</a>
+        </p>
+        <label>
+          Key (optional)
+          <input type="text" id="song-key-select" placeholder="C, Dm, G, etc (leave blank if not specified)" />
+          <p class="muted small-text">You can use any key here, even if it's not in the song's keys list</p>
+        </label>
+        <label>
+          Notes
+          <textarea id="song-notes" rows="2"></textarea>
+        </label>
+        <label>
+          Length in service (optional)
+          <input type="text" id="song-service-duration" placeholder="e.g., 3:45" />
+          <p class="muted small-text">Overrides the song length for this set only.</p>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-song">Cancel</button>
+          <button type="submit" class="btn primary">Add</button>
+        </div>
+      </form>
+      <div class="assignment-section">
         <div class="section-header">
-          <h4>All Songs</h4>
-          <button id="btn-create-song" class="btn primary">New Song</button>
+          <h4>Assignments</h4>
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <button id="btn-add-assignment" type="button" class="btn secondary">
+              Add
+            </button>
+            <div id="import-assignments-container" style="display: flex; align-items: center; gap: 0.5rem;"></div>
+          </div>
         </div>
-        <div id="songs-catalog-list" class="song-list"></div>
+        <div id="assignments-list"></div>
       </div>
     </div>
+  </div>
 
-    <div id="song-details-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3 id="song-details-title">Song Details</h3>
-          <button class="icon-btn" id="close-song-details-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <div id="song-details-content" class="song-details-content"></div>
+  <div id="tag-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Add Tag</h3>
+        <button class="icon-btn" id="close-tag-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="tag-form">
+        <label>
+          Song to Tag
+          <div id="tag-song-select-container"></div>
+          <p class="muted small-text">Select the song you want to tag a part from (e.g., "Make Room")</p>
+        </label>
+        <label>
+          Part of Song
+          <div id="tag-type-select-container"></div>
+        </label>
+        <label id="tag-custom-label" class="hidden">
+          Custom Part Name
+          <input type="text" id="tag-custom-input" placeholder="e.g., Acoustic, Alt ending" />
+        </label>
+        <label>
+          Attach to Song
+          <div id="tag-parent-select-container"></div>
+          <p class="muted small-text">Select which song in this set to attach the tag to</p>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-tag">Cancel</button>
+          <button type="submit" class="btn primary">Add Tag</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="section-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Add Section to Set</h3>
+        <button class="icon-btn" id="close-section-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="section-form">
+        <label>
+          Title
+          <input type="text" id="section-title" required />
+        </label>
+        <label>
+          Description
+          <textarea id="section-description" rows="3"></textarea>
+        </label>
+        <label>
+          Notes
+          <textarea id="section-notes" rows="2"></textarea>
+        </label>
+        <label>
+          Length (optional)
+          <input type="text" id="section-duration" placeholder="e.g., 30:00" />
+          <p class="muted small-text">Use MM:SS or minutes.</p>
+        </label>
+        <div class="section-header">
+          <h4>Links & Resources</h4>
+        </div>
+        <div id="section-links-list"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-section">Cancel</button>
+          <button type="submit" class="btn primary">Add</button>
+        </div>
+      </form>
+      <div class="assignment-section">
+        <div class="section-header">
+          <h4>Assignments</h4>
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <button id="btn-add-section-assignment" type="button" class="btn secondary">
+              Add
+            </button>
+            <div id="import-section-assignments-container" style="display: flex; align-items: center; gap: 0.5rem;">
+            </div>
+          </div>
+        </div>
+        <div id="section-assignments-list"></div>
       </div>
     </div>
+  </div>
 
-    <div id="song-edit-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3 id="song-edit-modal-title">New Song</h3>
-          <button class="icon-btn" id="close-song-edit-modal" aria-label="Close modal">
+  <div id="section-header-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Add Section Header</h3>
+        <button class="icon-btn" id="close-section-header-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="section-header-form">
+        <label>
+          Header Title
+          <input type="text" id="section-header-title" required
+            placeholder="e.g., Opening, Worship, Message, Closing" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-section-header">Cancel</button>
+          <button type="submit" class="btn primary">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="edit-set-song-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3 id="edit-set-item-title">Edit Song in Set</h3>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button type="button" id="btn-edit-song-from-set" class="btn small secondary hidden">Edit Song
+            Details</button>
+          <button class="icon-btn" id="close-edit-set-song-modal" aria-label="Close modal">
             <i class="fa-solid fa-circle-xmark"></i>
           </button>
-        </header>
-        <form id="song-edit-form">
+        </div>
+      </header>
+      <form id="edit-set-song-form">
+        <div id="edit-section-fields" class="hidden">
           <label>
             Title
-            <input type="text" id="song-edit-title" required />
-          </label>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <label>
-              BPM
-              <input type="number" id="song-edit-bpm" min="0" />
-            </label>
-            <label>
-              Time Signature
-              <input type="text" id="song-edit-time-signature" placeholder="4/4, 6/8, etc" />
-            </label>
-          </div>
-          <label>
-            Duration (MM:SS)
-            <input type="text" id="song-edit-duration" placeholder="3:45" pattern="[0-9]+:[0-5][0-9]" />
+            <input type="text" id="edit-section-title" />
           </label>
           <label>
             Description
-            <textarea id="song-edit-description" rows="3"></textarea>
+            <textarea id="edit-section-description" rows="3"></textarea>
           </label>
-          <div class="section-header" style="margin-top: 1rem;">
-            <h4>Keys</h4>
-            <button type="button" id="btn-add-song-key" class="btn secondary">Add Key</button>
-          </div>
-          <div id="song-keys-list"></div>
+        </div>
+        <label id="edit-set-song-key-label" class="hidden">
+          Key (optional)
+          <input type="text" id="edit-set-song-key" placeholder="C, Dm, G, etc (leave blank if not specified)" />
+        </label>
+        <label id="edit-set-song-duration-label">
+          Length in service (optional)
+          <input type="text" id="edit-set-song-duration" placeholder="e.g., 4:00" />
+          <p id="edit-set-song-duration-hint" class="muted small-text">Leave blank to use the song's default length.</p>
+        </label>
+        <label>
+          Notes
+          <textarea id="edit-set-song-notes" rows="2"></textarea>
+        </label>
+        <div id="edit-section-links-container" class="hidden">
           <div class="section-header">
             <h4>Links & Resources</h4>
           </div>
-          <div id="song-links-list"></div>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-song-edit">Cancel</button>
-            <button type="submit" class="btn primary">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div id="edit-person-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Edit Member</h3>
-          <button class="icon-btn" id="close-edit-person-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="edit-person-form">
-          <label>
-            Full Name
-            <input type="text" id="edit-person-name" required />
-          </label>
-          <label>
-            Email
-            <input type="email" id="edit-person-email" />
-            <p class="muted small-text">Email is read-only and required for authentication</p>
-          </label>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-edit-person">Cancel</button>
-            <button type="submit" class="btn primary">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div id="invite-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Invite Band Member</h3>
-          <button class="icon-btn" id="close-invite-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="invite-form">
-          <label>
-            Email
-            <input type="email" id="invite-email" placeholder="email@example.com" required />
-          </label>
-          <label id="invite-name-label" class="hidden">
-            Full Name
-            <input type="text" id="invite-name" placeholder="John Doe" />
-            <p class="muted small-text">They'll receive an email invite to create their account and join the team.</p>
-          </label>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-invite">Cancel</button>
-            <button type="submit" class="btn primary">Send Invite</button>
-          </div>
-        </form>
-        <p class="muted small-text" id="invite-message"></p>
-      </div>
-    </div>
-
-    <div id="in-app-invite-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Invite Existing User</h3>
-          <button class="icon-btn" id="close-in-app-invite-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <div>
-          <p id="in-app-invite-message"></p>
-          <div class="modal-actions" style="margin-top: 1.5rem;">
-            <button type="button" class="btn ghost" id="cancel-in-app-invite">Cancel</button>
-            <button type="button" class="btn primary" id="confirm-in-app-invite">Send Invite</button>
+          <div id="edit-section-links-list"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-edit-set-song">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>
+      <div class="assignment-section">
+        <div class="section-header">
+          <h4>Assignments</h4>
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <button id="btn-add-edit-assignment" type="button" class="btn secondary">
+              Add
+            </button>
+            <div id="import-edit-assignments-container" style="display: flex; align-items: center; gap: 0.5rem;"></div>
           </div>
         </div>
-        <p class="muted small-text" id="in-app-invite-status"></p>
+        <div id="edit-assignments-list"></div>
       </div>
     </div>
+  </div>
 
-    <div id="delete-confirm-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3 id="delete-confirm-title">Confirm Deletion</h3>
-          <button class="icon-btn" id="close-delete-confirm-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <div>
-          <p id="delete-confirm-message"></p>
+  <div id="song-catalog-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Song Catalog</h3>
+        <button class="icon-btn" id="close-song-catalog-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <div class="section-header">
+        <h4>All Songs</h4>
+        <button id="btn-create-song" class="btn primary">New Song</button>
+      </div>
+      <div id="songs-catalog-list" class="song-list"></div>
+    </div>
+  </div>
+
+  <div id="song-details-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3 id="song-details-title">Song Details</h3>
+        <button class="icon-btn" id="close-song-details-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <div id="song-details-content" class="song-details-content"></div>
+    </div>
+  </div>
+
+  <div id="song-edit-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3 id="song-edit-modal-title">New Song</h3>
+        <button class="icon-btn" id="close-song-edit-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="song-edit-form">
+        <label>
+          Title
+          <input type="text" id="song-edit-title" required />
+        </label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
           <label>
-            <span style="white-space: nowrap; margin-bottom: 1rem;">Type <span style="color: var(--accent-color);" id="delete-confirm-name"></span> to confirm</span>
-            <input type="text" id="delete-confirm-input" placeholder="" autocomplete="off" style="margin-bottom: 1rem;" />
-          </label>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-delete-confirm">Cancel</button>
-            <button type="button" class="btn primary" id="confirm-delete" disabled>Delete</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="leave-team-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Leave Team</h3>
-          <button class="icon-btn" id="close-leave-team-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <div>
-          <p id="leave-team-message"></p>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-leave-team">Cancel</button>
-            <button type="button" class="btn primary" id="confirm-leave-team" style="color: var(--error-color);">Leave Team</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="team-settings-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Team Settings</h3>
-          <button class="icon-btn" id="close-team-settings-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="team-settings-form">
-          <label>
-            Team Name
-            <input type="text" id="team-settings-name-input" placeholder="Enter team name" required autocomplete="off" />
+            BPM
+            <input type="number" id="song-edit-bpm" min="0" />
           </label>
           <label>
-            Assignment Mode
-            <div id="team-assignment-mode-container"></div>
-            <p class="muted small-text">Assignments apply to the entire set or individual songs</p>
+            Time Signature
+            <input type="text" id="song-edit-time-signature" placeholder="4/4, 6/8, etc" />
           </label>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-team-settings">Cancel</button>
-            <button type="submit" class="btn primary">Save</button>
-          </div>
-        </form>
-        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
-          <button type="button" class="btn ghost" id="btn-delete-team-settings" style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Team</button>
+        </div>
+        <label>
+          Duration (MM:SS)
+          <input type="text" id="song-edit-duration" placeholder="3:45" pattern="[0-9]+:[0-5][0-9]" />
+        </label>
+        <label>
+          Description
+          <textarea id="song-edit-description" rows="3"></textarea>
+        </label>
+        <div class="section-header" style="margin-top: 1rem;">
+          <h4>Keys</h4>
+          <button type="button" id="btn-add-song-key" class="btn secondary">Add Key</button>
+        </div>
+        <div id="song-keys-list"></div>
+        <div class="section-header">
+          <h4>Links & Resources</h4>
+        </div>
+        <div id="song-links-list"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-song-edit">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="edit-person-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Edit Member</h3>
+        <button class="icon-btn" id="close-edit-person-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="edit-person-form">
+        <label>
+          Full Name
+          <input type="text" id="edit-person-name" required />
+        </label>
+        <label>
+          Email
+          <input type="email" id="edit-person-email" />
+          <p class="muted small-text">Email is read-only and required for authentication</p>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-edit-person">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="invite-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Invite Band Member</h3>
+        <button class="icon-btn" id="close-invite-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="invite-form">
+        <label>
+          Email
+          <input type="email" id="invite-email" placeholder="email@example.com" required />
+        </label>
+        <label id="invite-name-label" class="hidden">
+          Full Name
+          <input type="text" id="invite-name" placeholder="John Doe" />
+          <p class="muted small-text">They'll receive an email invite to create their account and join the team.</p>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-invite">Cancel</button>
+          <button type="submit" class="btn primary">Send Invite</button>
+        </div>
+      </form>
+      <p class="muted small-text" id="invite-message"></p>
+    </div>
+  </div>
+
+  <div id="in-app-invite-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Invite Existing User</h3>
+        <button class="icon-btn" id="close-in-app-invite-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <div>
+        <p id="in-app-invite-message"></p>
+        <div class="modal-actions" style="margin-top: 1.5rem;">
+          <button type="button" class="btn ghost" id="cancel-in-app-invite">Cancel</button>
+          <button type="button" class="btn primary" id="confirm-in-app-invite">Send Invite</button>
+        </div>
+      </div>
+      <p class="muted small-text" id="in-app-invite-status"></p>
+    </div>
+  </div>
+
+  <div id="delete-confirm-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3 id="delete-confirm-title">Confirm Deletion</h3>
+        <button class="icon-btn" id="close-delete-confirm-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <div>
+        <p id="delete-confirm-message"></p>
+        <label>
+          <span style="white-space: nowrap; margin-bottom: 1rem;">Type <span style="color: var(--accent-color);"
+              id="delete-confirm-name"></span> to confirm</span>
+          <input type="text" id="delete-confirm-input" placeholder="" autocomplete="off" style="margin-bottom: 1rem;" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-delete-confirm">Cancel</button>
+          <button type="button" class="btn primary" id="confirm-delete" disabled>Delete</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <div id="edit-account-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Edit Account</h3>
-          <button class="icon-btn" id="close-edit-account-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="edit-account-form">
-          <label>
-            Full Name
-            <input type="text" id="edit-account-name-input" placeholder="Enter your name" required autocomplete="off" />
-          </label>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-edit-account">Cancel</button>
-            <button type="submit" class="btn primary">Save</button>
-          </div>
-        </form>
-        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
-          <button type="button" class="btn ghost" id="btn-delete-account" style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Account</button>
+  <div id="leave-team-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Leave Team</h3>
+        <button class="icon-btn" id="close-leave-team-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <div>
+        <p id="leave-team-message"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-leave-team">Cancel</button>
+          <button type="button" class="btn primary" id="confirm-leave-team" style="color: var(--error-color);">Leave
+            Team</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <div id="create-team-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Create New Team</h3>
-          <button class="icon-btn" id="close-create-team-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="create-team-form">
-          <label>
-            Team Name
-            <input type="text" id="create-team-input" placeholder="Enter team name" required autocomplete="off" />
-          </label>
-          <p class="muted small-text">You'll be the owner of this team and can invite members.</p>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-create-team">Cancel</button>
-            <button type="submit" class="btn primary">Create Team</button>
-          </div>
-        </form>
-        <p class="muted small-text" id="create-team-message"></p>
-      </div>
-    </div>
-
-    <div id="set-assignments-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Edit Set Assignments</h3>
-          <button class="icon-btn" id="close-set-assignments-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="set-assignments-form">
-          <div class="section-header" style="margin-top: 0;">
-            <h4>Assignments</h4>
-            <button type="button" id="btn-add-set-assignment" class="btn secondary small">Add Assignment</button>
-          </div>
-          <div id="set-assignments-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
-          <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">Assignments apply to all songs in this set.</p>
-          
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-set-assignments">Cancel</button>
-            <button type="submit" class="btn primary">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div id="times-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Edit Times</h3>
-          <button class="icon-btn" id="close-times-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <form id="times-form">
-          <div class="section-header" style="margin-top: 0;">
-            <h4>Service Times</h4>
-            <button type="button" id="btn-add-service-time" class="btn secondary small">Add Service Time</button>
-          </div>
-          <div id="service-times-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
-          <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1.5rem;">Service times are optional and will be shown with the service date.</p>
-          
-          <div class="section-header">
-            <h4>Rehearsal Times</h4>
-            <button type="button" id="btn-add-rehearsal-time" class="btn secondary small">Add Rehearsal</button>
-          </div>
-          <div id="rehearsal-times-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
-          <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">Rehearsal times are optional and can be on different dates than the service.</p>
-          
-          <br>
-          <p class="muted small-text">You can set up to 3 alerts per set, and alerts are sent at 8am on the scheduled date.</p>
-          <br>
-          <div class="modal-actions">
-            <button type="button" class="btn ghost" id="cancel-times">Cancel</button>
-            <button type="submit" class="btn primary">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <template id="set-card-template">
-      <article class="card set-card" style="cursor: pointer;">
-        <div class="card-header">
-          <div style="flex: 1;">
-            <h3 class="set-title"></h3>
-            <p class="set-date"></p>
-          </div>
-          <div style="display: flex; gap: 0.5rem;">
-            <button class="btn small ghost edit-set-btn hidden">Edit</button>
-            <button class="btn small ghost delete-set-btn hidden">Delete</button>
-          </div>
+  <div id="team-settings-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Team Settings</h3>
+        <button class="icon-btn" id="close-team-settings-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="team-settings-form">
+        <label>
+          Team Name
+          <input type="text" id="team-settings-name-input" placeholder="Enter team name" required autocomplete="off" />
+        </label>
+        <label>
+          Assignment Mode
+          <div id="team-assignment-mode-container"></div>
+          <p class="muted small-text">Assignments apply to the entire set or individual songs</p>
+        </label>
+        <label>
+          Alert Time
+          <div id="team-alert-time-container"></div>
+          <p class="muted small-text">When to send reminder emails</p>
+        </label>
+        <label>
+          Timezone
+          <div id="team-timezone-container"></div>
+          <p class="muted small-text">Timezone for alerts and scheduling</p>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-team-settings">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
         </div>
-        <p class="set-description"></p>
-        <div class="user-roles-container"></div>
-      </article>
-    </template>
-
-      <template id="song-item-template">
-        <div class="set-song-card">
-          <div class="drag-handle" title="Drag to reorder" style="display: none;">⋮⋮</div>
-          <div class="set-song-header" style="padding-left: 2.5rem;">
-            <div class="set-song-info">
-              <h4 class="song-title"></h4>
-              <p class="song-meta"></p>
-            <div class="set-song-tags"></div>
-            </div>
-            <div class="set-song-actions">
-              <button class="btn small secondary view-song-details-btn" data-song-id="">View Details</button>
-              <button class="btn small ghost edit-set-song-btn hidden" data-set-song-id="">Edit</button>
-              <button class="btn small ghost remove-song-from-set-btn hidden" data-set-song-id="">Remove</button>
-            </div>
-          </div>
-          <p class="song-notes"></p>
-          <div class="assignments"></div>
-        </div>
-    </template>
-
-    <template id="assignment-pill-template">
-      <span class="assignment-pill">
-        <span class="assignment-role"></span>
-        <span class="assignment-person"></span>
-      </span>
-    </template>
-
-    <div id="assignment-details-modal" class="modal hidden">
-      <div class="modal-content">
-        <header>
-          <h3>Assignment Details</h3>
-          <button class="icon-btn" id="close-assignment-details-modal" aria-label="Close modal">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </header>
-        <div id="assignment-details-content" style="padding: 1.5rem 0;">
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Person</label>
-            <div id="assignment-details-person" style="font-size: 1.1rem; font-weight: 500;"></div>
-          </div>
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Role</label>
-            <div id="assignment-details-role" style="font-size: 1rem;"></div>
-          </div>
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Song</label>
-            <div id="assignment-details-song" style="font-size: 1rem;"></div>
-          </div>
-          <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Status</label>
-            <div id="assignment-details-status"></div>
-          </div>
-          <div id="assignment-details-actions" style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-color);"></div>
-        </div>
+      </form>
+      <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+        <button type="button" class="btn ghost" id="btn-delete-team-settings"
+          style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Team</button>
       </div>
     </div>
+  </div>
 
-    <div id="toast-container" class="toast-container"></div>
-
-    <div id="database-error-overlay" class="database-error-overlay hidden">
-      <div class="database-error-content">
-        <div class="database-error-icon">
-          <i class="fa-solid fa-database"></i>
+  <div id="edit-account-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Edit Account</h3>
+        <button class="icon-btn" id="close-edit-account-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="edit-account-form">
+        <label>
+          Full Name
+          <input type="text" id="edit-account-name-input" placeholder="Enter your name" required autocomplete="off" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-edit-account">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
         </div>
-        <h2>Database Unresponsive</h2>
-        <p>The database is currently unavailable or not responding. Please check your internet connection and try again.</p>
-        <button id="database-error-retry" class="btn primary">Retry Connection</button>
+      </form>
+      <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+        <button type="button" class="btn ghost" id="btn-delete-account"
+          style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Account</button>
       </div>
     </div>
+  </div>
 
-    <script type="module" src="app.js"></script>
-  </body>
+  <div id="create-team-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Create New Team</h3>
+        <button class="icon-btn" id="close-create-team-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="create-team-form">
+        <label>
+          Team Name
+          <input type="text" id="create-team-input" placeholder="Enter team name" required autocomplete="off" />
+        </label>
+        <p class="muted small-text">You'll be the owner of this team and can invite members.</p>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-create-team">Cancel</button>
+          <button type="submit" class="btn primary">Create Team</button>
+        </div>
+      </form>
+      <p class="muted small-text" id="create-team-message"></p>
+    </div>
+  </div>
+
+  <div id="set-assignments-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Edit Set Assignments</h3>
+        <button class="icon-btn" id="close-set-assignments-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="set-assignments-form">
+        <div class="section-header" style="margin-top: 0;">
+          <h4>Assignments</h4>
+          <button type="button" id="btn-add-set-assignment" class="btn secondary small">Add Assignment</button>
+        </div>
+        <div id="set-assignments-list"
+          style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
+        <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">Assignments apply to all songs in
+          this set.</p>
+
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-set-assignments">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="times-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Edit Times</h3>
+        <button class="icon-btn" id="close-times-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="times-form">
+        <div class="section-header" style="margin-top: 0;">
+          <h4>Service Times</h4>
+          <button type="button" id="btn-add-service-time" class="btn secondary small">Add Service Time</button>
+        </div>
+        <div id="service-times-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+        </div>
+        <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1.5rem;">Service times are optional and
+          will be shown with the service date.</p>
+
+        <div class="section-header">
+          <h4>Rehearsal Times</h4>
+          <button type="button" id="btn-add-rehearsal-time" class="btn secondary small">Add Rehearsal</button>
+        </div>
+        <div id="rehearsal-times-list"
+          style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;"></div>
+        <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">Rehearsal times are optional and
+          can be on different dates than the service.</p>
+
+        <br>
+        <p class="muted small-text">You can set up to 3 alerts per set, and alerts are sent at 8am on the scheduled
+          date.</p>
+        <br>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-times">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <template id="set-card-template">
+    <article class="card set-card" style="cursor: pointer;">
+      <div class="card-header">
+        <div style="flex: 1;">
+          <h3 class="set-title"></h3>
+          <p class="set-date"></p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn small ghost edit-set-btn hidden">Edit</button>
+          <button class="btn small ghost delete-set-btn hidden">Delete</button>
+        </div>
+      </div>
+      <p class="set-description"></p>
+      <div class="user-roles-container"></div>
+    </article>
+  </template>
+
+  <template id="song-item-template">
+    <div class="set-song-card">
+      <div class="drag-handle" title="Drag to reorder" style="display: none;">⋮⋮</div>
+      <div class="set-song-header" style="padding-left: 2.5rem;">
+        <div class="set-song-info">
+          <h4 class="song-title"></h4>
+          <p class="song-meta"></p>
+          <div class="set-song-tags"></div>
+        </div>
+        <div class="set-song-actions">
+          <button class="btn small secondary view-song-details-btn" data-song-id="">View Details</button>
+          <button class="btn small ghost edit-set-song-btn hidden" data-set-song-id="">Edit</button>
+          <button class="btn small ghost remove-song-from-set-btn hidden" data-set-song-id="">Remove</button>
+        </div>
+      </div>
+      <p class="song-notes"></p>
+      <div class="assignments"></div>
+    </div>
+  </template>
+
+  <template id="assignment-pill-template">
+    <span class="assignment-pill">
+      <span class="assignment-role"></span>
+      <span class="assignment-person"></span>
+    </span>
+  </template>
+
+  <div id="assignment-details-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Assignment Details</h3>
+        <button class="icon-btn" id="close-assignment-details-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <div id="assignment-details-content" style="padding: 1.5rem 0;">
+        <div style="margin-bottom: 1rem;">
+          <label
+            style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Person</label>
+          <div id="assignment-details-person" style="font-size: 1.1rem; font-weight: 500;"></div>
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label
+            style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Role</label>
+          <div id="assignment-details-role" style="font-size: 1rem;"></div>
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label
+            style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Song</label>
+          <div id="assignment-details-song" style="font-size: 1rem;"></div>
+        </div>
+        <div style="margin-bottom: 1.5rem;">
+          <label
+            style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Status</label>
+          <div id="assignment-details-status"></div>
+        </div>
+        <div id="assignment-details-actions"
+          style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-color);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <div id="database-error-overlay" class="database-error-overlay hidden">
+    <div class="database-error-content">
+      <div class="database-error-icon">
+        <i class="fa-solid fa-database"></i>
+      </div>
+      <h2>Database Unresponsive</h2>
+      <p>The database is currently unavailable or not responding. Please check your internet connection and try again.
+      </p>
+      <button id="database-error-retry" class="btn primary">Retry Connection</button>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+
 </html>
