@@ -10676,6 +10676,9 @@ function renderSongCatalog() {
   const searchTermRaw = searchInput ? searchInput.value.trim() : "";
   const searchTerm = searchTermRaw.toLowerCase();
 
+  // Cancel any active async search immediately
+  activeResourceSearchTerm = searchTerm;
+
   list.innerHTML = "";
 
   if (!state.songs || state.songs.length === 0) {
