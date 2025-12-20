@@ -10560,9 +10560,10 @@ async function searchSongResources(searchTerm, existingResults) {
       // Check again if search term changed before appending
       if (activeResourceSearchTerm !== currentSearchTerm) return;
 
-      // Remove "No songs match" message if it's the only thing there
-      if (list.children.length === 1 && list.firstElementChild.tagName === 'P') {
-        list.firstElementChild.remove();
+      // Remove "No songs match" message if it exists
+      const noSongsMsg = Array.from(list.children).find(child => child.tagName === 'P' && child.textContent.includes("No songs match"));
+      if (noSongsMsg) {
+        noSongsMsg.remove();
       }
 
       // Append song card
