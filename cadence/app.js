@@ -10979,7 +10979,12 @@ async function searchSongResources(searchTerm, existingResults) {
 // Helper to extract text from PDF URL
 async function extractTextFromPdf(url) {
   try {
-    const loadingTask = pdfjsLib.getDocument(url);
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    const loadingConfig = isMobile
+      ? { url: url, disableRange: true, disableStream: true }
+      : { url: url };
+
+    const loadingTask = pdfjsLib.getDocument(loadingConfig);
     const pdf = await loadingTask.promise;
     let fullText = "";
 
