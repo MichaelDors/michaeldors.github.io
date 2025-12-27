@@ -3235,3 +3235,12 @@ i {
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite;
 }
+
+/* Prevent zoom on focus for iOS devices by enforcing 16px font size */
+@media (max-width: 768px) {
+  input, 
+  textarea, 
+  select {
+    font-size: 16px !important;
+  }
+}

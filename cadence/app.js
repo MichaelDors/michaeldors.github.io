@@ -916,11 +916,8 @@ function bindEvents() {
   // Songs tab search
   let isSongSearchTransitioning = false;
   el("songs-tab-search")?.addEventListener("input", () => {
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-
-    // Only use View Transitions on non-mobile devices where they are performant
-    // and safe. On mobile, the keyboard input and transition overhead cause issues.
-    if (document.startViewTransition && !isMobile && !isSongSearchTransitioning) {
+    // Use View Transitions API if available, but safeguard against rapid invalid state errors
+    if (document.startViewTransition && !isSongSearchTransitioning) {
       isSongSearchTransitioning = true;
       try {
         const transition = document.startViewTransition(() => {
@@ -943,9 +940,7 @@ function bindEvents() {
   // People tab search
   let isPeopleSearchTransitioning = false;
   el("people-tab-search")?.addEventListener("input", () => {
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-
-    if (document.startViewTransition && !isMobile && !isPeopleSearchTransitioning) {
+    if (document.startViewTransition && !isPeopleSearchTransitioning) {
       isPeopleSearchTransitioning = true;
       try {
         const transition = document.startViewTransition(() => {
@@ -10854,7 +10849,7 @@ async function searchSongResources(searchTerm, existingResults) {
 
     // 1. Check Link Titles
     for (const link of links) {
-      if ((link.title || "").toLowerCase().includes(searchTerm)) {
+      if ((link.title || "").toLowerCase().includes(searchTerm.toLowerCase())) {
         matchFound = true;
         isLinkTitleMatch = true;
         matchContext = `Link: ${highlightMatch(link.title, searchTerm)}`;
@@ -10874,10 +10869,10 @@ async function searchSongResources(searchTerm, existingResults) {
 
         try {
           const text = await extractTextFromPdf(link.url);
-          if (text && text.toLowerCase().includes(searchTerm)) {
+          if (text && text.toLowerCase().includes(searchTerm.toLowerCase())) {
             matchFound = true;
             // Find a snippet for context
-            const index = text.toLowerCase().indexOf(searchTerm);
+            const index = text.toLowerCase().indexOf(searchTerm.toLowerCase());
             const start = Math.max(0, index - 20);
             const end = Math.min(text.length, index + searchTerm.length + 20);
             matchContext = "..." + highlightMatch(text.substring(start, end), searchTerm) + "...";
@@ -10979,12 +10974,7 @@ async function searchSongResources(searchTerm, existingResults) {
 // Helper to extract text from PDF URL
 async function extractTextFromPdf(url) {
   try {
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    const loadingConfig = isMobile
-      ? { url: url, disableRange: true, disableStream: true }
-      : { url: url };
-
-    const loadingTask = pdfjsLib.getDocument(loadingConfig);
+    const loadingTask = pdfjsLib.getDocument(url);
     const pdf = await loadingTask.promise;
     let fullText = "";
 
@@ -10997,8 +10987,6 @@ async function extractTextFromPdf(url) {
       const pageText = textContent.items.map(item => item.str).join(" ");
       fullText += pageText + " ";
     }
-
-
     return fullText;
   } catch (error) {
     console.error("Error extracting text from PDF:", error);
