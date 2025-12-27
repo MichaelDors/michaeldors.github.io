@@ -914,11 +914,16 @@ function bindEvents() {
   });
 
   // Songs tab search
+  let isSongSearchTransitioning = false;
   el("songs-tab-search")?.addEventListener("input", () => {
-    // Use View Transitions API if available to animate the filtering change
-    if (document.startViewTransition) {
-      document.startViewTransition(() => {
+    // Use View Transitions API if available, but safeguard against rapid invalid state errors
+    if (document.startViewTransition && !isSongSearchTransitioning) {
+      isSongSearchTransitioning = true;
+      const transition = document.startViewTransition(() => {
         renderSongCatalog(false);
+      });
+      transition.finished.finally(() => {
+        isSongSearchTransitioning = false;
       });
     } else {
       renderSongCatalog(false);
@@ -926,11 +931,15 @@ function bindEvents() {
   });
 
   // People tab search
+  let isPeopleSearchTransitioning = false;
   el("people-tab-search")?.addEventListener("input", () => {
-    // Use View Transitions API if available to animate the filtering change
-    if (document.startViewTransition) {
-      document.startViewTransition(() => {
+    if (document.startViewTransition && !isPeopleSearchTransitioning) {
+      isPeopleSearchTransitioning = true;
+      const transition = document.startViewTransition(() => {
         renderPeople(false);
+      });
+      transition.finished.finally(() => {
+        isPeopleSearchTransitioning = false;
       });
     } else {
       renderPeople(false);
