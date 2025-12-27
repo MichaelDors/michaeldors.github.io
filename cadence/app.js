@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.2";
+import { FastAverageColor } from "https://esm.sh/fast-average-color@9.4.0";
 
 const SUPABASE_URL = "https://pvqrxkbyjhgomwqwkedw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cXJ4a2J5amhnb213cXdrZWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1Mjg1NTQsImV4cCI6MjA3ODEwNDU1NH0.FWrCZOExwjhfihh7nSZFR2FkIhcJjVyDo0GdDaGKg1g";
@@ -25,6 +26,9 @@ const hasAccessToken = window.__hasAccessToken;
 const isRecovery = window.__isRecovery;
 const isInviteLink = window.__isInviteLink;
 
+// Initialize FastAverageColor
+const fac = new FastAverageColor();
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     detectSessionInUrl: true,
@@ -38,6 +42,10 @@ const state = {
   session: null,
   profile: null,
   sets: [],
+  isLoadingSets: true,
+  isLoadingSongs: true,
+  isLoadingPeople: true,
+  isLoadingProfile: true,
   songs: [],
   people: [],
   pendingInvites: [],
@@ -55,8 +63,19 @@ const state = {
   metronome: {
     isPlaying: false,
     bpm: null,
-    intervalId: null,
+    // intervalId: null, // No longer using setInterval for timing
+    schedulerId: null, // NEW: For requestAnimationFrame or setTimeout scheduler
     audioContext: null,
+
+    // NEW: Precise timing and accent support variables
+    nextNoteTime: 0.0,
+    currentBeat: 0,
+    scheduleAheadTime: 0.1, // Schedule 100ms ahead
+    lookahead: 25.0, // Check every 25ms
+    timeSignature: { // Default to 4/4
+      numerator: 4,
+      denominator: 4
+    }
   },
 };
 
@@ -631,18 +650,20 @@ async function init() {
     const profileTimeout = setTimeout(() => {
       console.log('  - ⚠️ Profile fetch timeout, keeping temporary profile');
       isProcessingSession = false;
+      state.isLoadingProfile = false;
     }, 2000); // 2 second timeout
 
     fetchProfile().then(() => {
       clearTimeout(profileTimeout);
+      state.isLoadingProfile = false;
       console.log('✅ Profile fetch complete, state.profile:', state.profile);
       console.log('  - team_id available:', state.profile?.team_id);
 
       // NOW load data after profile is loaded
       Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
         console.log('✅ Data loading complete');
-        // Refresh the active tab to show newly loaded data
-        refreshActiveTab();
+        // Refresh the active tab to show newly loaded data, but NO animation (data just replaced skeleton)
+        refreshActiveTab(false);
       }).catch(err => {
         console.error('❌ Error loading data:', err);
       });
@@ -654,6 +675,7 @@ async function init() {
     }).catch(err => {
       clearTimeout(profileTimeout);
       console.error('❌ Error fetching profile:', err);
+      state.isLoadingProfile = false;
       isProcessingSession = false;
     });
   } else if (!session) {
@@ -849,18 +871,7 @@ function bindEvents() {
   createSetBtn?.addEventListener("click", () => openSetModal());
   el("btn-invite-member")?.addEventListener("click", () => openInviteModal());
 
-  // Member view toggle (header button)
-  el("btn-view-as-member")?.addEventListener("click", () => {
-    state.isMemberView = true;
-    showApp();
-    // Refresh current view (could be dashboard or set detail)
-    const setDetailView = el("set-detail");
-    if (setDetailView && !setDetailView.classList.contains("hidden") && state.selectedSet) {
-      showSetDetail(state.selectedSet);
-    } else {
-      refreshActiveTab();
-    }
-  });
+
 
   // Member view toggle (set detail button)
   el("btn-view-as-member-detail")?.addEventListener("click", () => {
@@ -904,12 +915,26 @@ function bindEvents() {
 
   // Songs tab search
   el("songs-tab-search")?.addEventListener("input", () => {
-    renderSongCatalog();
+    // Use View Transitions API if available to animate the filtering change
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        renderSongCatalog(false);
+      });
+    } else {
+      renderSongCatalog(false);
+    }
   });
 
   // People tab search
   el("people-tab-search")?.addEventListener("input", () => {
-    renderPeople();
+    // Use View Transitions API if available to animate the filtering change
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        renderPeople(false);
+      });
+    } else {
+      renderPeople(false);
+    }
   });
 
   // Window resize handler for recalculating assignment pills
@@ -1323,10 +1348,24 @@ function showApp() {
     return;
   }
 
-  // Check if user has no teams - show empty state
-  if (!state.currentTeamId || state.userTeams.length === 0) {
+  // Check logic removed (was causing ReferenceError)
+
+  // Better check: If we have a session but empty teams list, render empty state.
+  // BUT we render showApp() immediately in init() with a temp profile before fetching teams.
+  // So we need to know if we've ostensibly *finished* fetching teams.
+  // Let's rely on state.userTeams being populated OR definitive failure.
+
+  // Simplified: Only show empty state if we have a profile AND we have explicitly confirmed 0 teams
+  // We can track a flag "areTeamsLoaded" or similar.
+  // For now, let's just avoid showing empty state if profile is temporary (can_manage=false default) and we are just starting.
+  // Actually, fetchProfile updates state.userTeams.
+
+  if (state.profile && state.userTeams.length === 0 && !state.isLoadingProfile) {
     showEmptyState();
     return;
+  } else if (!state.currentTeamId && state.userTeams.length > 0) {
+    // Has teams but none selected? Should auto-select instructions elsewhere?
+    // Usually fetchProfile or init handles selecting the first team.
   }
 
   // Force hide auth gate, password setup gate, and show dashboard
@@ -1363,36 +1402,25 @@ function showApp() {
   const teamNameDisplay = el("team-name-display");
   const teamNameHeader = el("team-name-header");
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+
+  // LOGIC CHANGE: Prioritize showing data if we have it, even if "loading" flag is true
   if (teamNameDisplay && currentTeam) {
     teamNameDisplay.textContent = currentTeam.name;
     if (teamNameHeader) {
       teamNameHeader.classList.remove("hidden");
     }
+  } else if (state.isLoadingProfile) {
+    if (teamNameHeader) teamNameHeader.classList.remove("hidden");
+    if (teamNameDisplay) teamNameDisplay.innerHTML = '<div class="skeleton-header-title"></div>';
   } else if (teamNameHeader) {
     teamNameHeader.classList.add("hidden");
   }
 
   // Show/hide manager buttons based on actual manager status (not member view)
-  const viewAsMemberBtn = el("btn-view-as-member");
+
   const memberViewBanner = el("member-view-banner");
 
-  if (state.profile?.can_manage) {
-    // Show "View as Member" button if user is a manager
-    if (viewAsMemberBtn) {
-      viewAsMemberBtn.classList.remove("hidden");
-      // Grey out the button when already in member view
-      if (state.isMemberView) {
-        viewAsMemberBtn.classList.add("disabled");
-        viewAsMemberBtn.disabled = true;
-      } else {
-        viewAsMemberBtn.classList.remove("disabled");
-        viewAsMemberBtn.disabled = false;
-      }
-    }
-  } else {
-    // Hide "View as Member" button if user is not a manager
-    if (viewAsMemberBtn) viewAsMemberBtn.classList.add("hidden");
-  }
+
 
   // Show/hide member view banner
   if (state.isMemberView) {
@@ -2832,11 +2860,16 @@ function updateTeamSwitcher() {
 
 async function loadSongs() {
   console.log('🎵 loadSongs() called');
+  state.isLoadingSongs = true;
+  renderSongCatalog();
+
   console.log('  - state.currentTeamId:', state.currentTeamId);
 
   if (!state.currentTeamId) {
     console.warn('⚠️ No currentTeamId, cannot load songs');
     state.songs = [];
+    state.isLoadingSongs = false;
+    renderSongCatalog();
     return;
   }
 
@@ -2877,6 +2910,8 @@ async function loadSongs() {
     console.error('  - Error details:', JSON.stringify(error, null, 2));
     console.error('  - Query was for team_id:', state.profile?.team_id);
     state.songs = [];
+    state.isLoadingSongs = false;
+    renderSongCatalog();
     return;
   }
 
@@ -2890,15 +2925,21 @@ async function loadSongs() {
     console.warn('    3. team_id mismatch');
   }
   state.songs = data || [];
+  state.isLoadingSongs = false;
+  renderSongCatalog(false);
 }
 
 async function loadSets() {
   console.log('📋 loadSets() called');
+  state.isLoadingSets = true;
+  renderSets();
+
   console.log('  - state.currentTeamId:', state.currentTeamId);
 
   if (!state.currentTeamId) {
     console.warn('⚠️ No currentTeamId, cannot load sets');
     state.sets = [];
+    state.isLoadingSets = false;
     renderSets();
     return;
   }
@@ -3151,7 +3192,8 @@ async function loadSets() {
     console.warn('    3. team_id mismatch');
   }
   state.sets = data ?? [];
-  renderSets();
+  state.isLoadingSets = false;
+  renderSets(false);
 
   // Load and render pending requests
   await loadPendingRequests();
@@ -3553,10 +3595,15 @@ async function handleDeclineRequest(request) {
 async function showAssignmentDetailsModal(assignment) {
   const modal = el("assignment-details-modal");
   const personEl = el("assignment-details-person");
+  // New elements
+  const avatarEl = el("assignment-details-avatar");
+  const emailEl = el("assignment-details-email");
+  const stampContainer = el("assignment-details-status-stamp");
+
   const roleEl = el("assignment-details-role");
   const songEl = el("assignment-details-song");
-  const songLabel = songEl?.parentElement?.querySelector("label");
-  const statusEl = el("assignment-details-status");
+  const songContainer = el("assignment-details-song-container");
+
   const actionsEl = el("assignment-details-actions");
   const closeBtn = el("close-assignment-details-modal");
 
@@ -3567,8 +3614,25 @@ async function showAssignmentDetailsModal(assignment) {
   const currentUserId = state.profile?.id;
   const currentSet = state.selectedSet;
 
-  // Populate modal content
-  if (personEl) personEl.textContent = assignment.personName || "Unknown";
+  // Populate person info
+  const fullName = assignment.personName || "Unknown";
+  if (personEl) personEl.textContent = fullName;
+
+  if (emailEl) {
+    emailEl.textContent = assignment.personEmail || "";
+    emailEl.style.display = assignment.personEmail ? "block" : "none";
+  }
+
+  // Populate avatar with initials
+  if (avatarEl) {
+    const initials = (fullName || "?")
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+    avatarEl.textContent = initials;
+  }
 
   // For per-song assignments, fetch all assignments for this person in this set
   if (assignmentType === 'song' && currentSet && assignment.assignmentId && currentUserId) {
@@ -3690,54 +3754,37 @@ async function showAssignmentDetailsModal(assignment) {
     if (roleEl) roleEl.textContent = assignment.role || "Unknown";
     if (songEl) {
       songEl.innerHTML = "";
-      songEl.style.display = "none";
     }
-    if (songLabel) songLabel.style.display = "none";
+    if (songContainer) songContainer.style.display = "none";
   }
 
   // Show/hide song field based on assignment type (do this after populating)
   if (assignmentType === 'set') {
-    if (songEl) songEl.style.display = "none";
-    if (songLabel) songLabel.style.display = "none";
+    if (songContainer) songContainer.style.display = "none";
   } else {
-    if (songEl && songEl.style.display === "none") songEl.style.display = "";
-    if (songLabel && songLabel.style.display === "none") songLabel.style.display = "";
+    if (songContainer) songContainer.style.display = "";
   }
 
-  // Create status badge
-  if (statusEl) {
-    statusEl.innerHTML = "";
-    const statusBadge = document.createElement("span");
-    statusBadge.className = "assignment-status-badge";
+  // Create status stamp with random variation
+  if (stampContainer) {
+    stampContainer.innerHTML = "";
+    const stamp = document.createElement("div");
+    const status = assignment.status || 'pending';
+    stamp.className = `passport-stamp ${status}`;
+    stamp.textContent = status;
 
-    if (assignment.status === 'accepted') {
-      statusBadge.className += " accepted";
-      statusBadge.textContent = "Accepted";
-      statusBadge.style.background = "rgba(40, 167, 69, 0.2)";
-      statusBadge.style.color = "#28a745";
-      statusBadge.style.border = "1px solid rgba(40, 167, 69, 0.3)";
-    } else if (assignment.status === 'declined') {
-      statusBadge.className += " declined";
-      statusBadge.textContent = "Declined";
-      statusBadge.style.background = "rgba(220, 53, 69, 0.2)";
-      statusBadge.style.color = "#dc3545";
-      statusBadge.style.border = "1px solid rgba(220, 53, 69, 0.3)";
-    } else {
-      statusBadge.className += " pending";
-      statusBadge.textContent = "Pending";
-    }
+    // Add random variation to look like a real stamp
+    const randomRotate = Math.floor(Math.random() * 25) - 20; // -20 to 5 deg
+    const randomScale = 0.95 + Math.random() * 0.1; // 0.95 to 1.05
+    const randomX = Math.floor(Math.random() * 10) - 5; // -5 to 5px
+    const randomY = Math.floor(Math.random() * 6) - 3; // -3 to 3px
 
-    statusEl.appendChild(statusBadge);
+    stamp.style.transform = `rotate(${randomRotate}deg) scale(${randomScale}) translate(${randomX}px, ${randomY}px)`;
+
+    stampContainer.appendChild(stamp);
   }
 
-  // Show/hide song field based on assignment type
-  if (assignmentType === 'set') {
-    if (songEl) songEl.style.display = "none";
-    if (songLabel) songLabel.style.display = "none";
-  } else {
-    if (songEl) songEl.style.display = "";
-    if (songLabel) songLabel.style.display = "";
-  }
+
 
   // Add action buttons (accept/decline) if assignment can be changed
   if (actionsEl) {
@@ -3971,7 +4018,7 @@ function recalculateAllAssignmentPills() {
   });
 }
 
-function renderSetCard(set, container) {
+function renderSetCard(set, container, index = 0, animate = true) {
   const template = document.getElementById("set-card-template");
   const node = template.content.cloneNode(true);
 
@@ -3986,6 +4033,10 @@ function renderSetCard(set, container) {
     set.description || "No description yet";
 
   const card = node.querySelector(".set-card");
+  if (animate) {
+    card.classList.add("ripple-item");
+    card.style.animationDelay = `${index * 0.05}s`;
+  }
   const editBtn = node.querySelector(".edit-set-btn");
   const deleteBtn = node.querySelector(".delete-set-btn");
 
@@ -4144,9 +4195,53 @@ function renderSetCard(set, container) {
   }
 }
 
-function renderSets() {
+/* Skeleton Loading Helpers */
+function getSkeletonLoader(count = 3, type = 'card') {
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    if (type === 'card') {
+      html += `
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text-short"></div>
+        </div>
+      `;
+    } else if (type === 'row') {
+      html += `
+        <div class="card set-song-card" style="pointer-events: none;">
+          <div class="set-song-header song-card-header">
+            <div class="set-song-info" style="width: 100%;">
+              <div class="skeleton skeleton-title" style="margin-bottom: 0.5rem; height: 1.25rem;"></div>
+              <div class="skeleton skeleton-text" style="width: 40%;"></div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (type === 'person') {
+      html += `
+        <div class="card person-card" style="pointer-events: none;">
+          <div style="width: 100%;">
+            <div class="skeleton skeleton-title" style="margin-bottom: 0.5rem; height: 1.5rem; width: 50%;"></div>
+            <div class="skeleton skeleton-text" style="width: 70%; margin-bottom: 0.75rem;"></div>
+            <div class="skeleton skeleton-text-short text-small" style="width: 25%; height: 1.25rem; border-radius: 999px;"></div>
+          </div>
+        </div>
+      `;
+    }
+  }
+  return html;
+}
+
+function renderSets(animate = true) {
   setsList.innerHTML = "";
   if (yourSetsList) yourSetsList.innerHTML = "";
+
+  if (state.isLoadingSets && state.sets.length === 0) {
+    setsList.innerHTML = getSkeletonLoader(3, 'card');
+    if (yourSetsList) yourSetsList.innerHTML = getSkeletonLoader(1, 'card');
+    return;
+  }
 
   if (!state.sets.length) {
     setsList.innerHTML = `<p class="muted">No sets scheduled yet.</p>`;
@@ -4172,8 +4267,8 @@ function renderSets() {
   if (allSets.length === 0) {
     setsList.innerHTML = `<p class="muted">No sets scheduled yet.</p>`;
   } else {
-    allSets.forEach((set) => {
-      renderSetCard(set, setsList);
+    allSets.forEach((set, index) => {
+      renderSetCard(set, setsList, index, animate);
     });
   }
 
@@ -4182,8 +4277,8 @@ function renderSets() {
     if (yourSets.length === 0) {
       yourSetsList.innerHTML = `<p class="muted">You're not assigned to any sets yet.</p>`;
     } else {
-      yourSets.forEach((set) => {
-        renderSetCard(set, yourSetsList);
+      yourSets.forEach((set, index) => {
+        renderSetCard(set, yourSetsList, index, animate);
       });
     }
   }
@@ -4207,6 +4302,27 @@ function switchTab(tabName) {
     }
   });
 
+  // Handle specific tab logic BEFORE showing/hiding content
+  if (tabName === "people") {
+    // If we have cached people, render them immediately to avoid "flash" of empty content
+    // and provide instant feedback. loadPeople will still run to update data if needed.
+    if (state.people && state.people.length > 0) {
+      // Data exists, so we don't clear. Just re-render to trigger animation if desired,
+      // or we could opt NOT to re-render if we don't want to re-animate staled data.
+      // But user wants animation. So let's re-render.
+      // To ensure animation plays, we might need to reset it?
+      // Actually previous issue was DOUBLE animation.
+      // If we render immediately here, subsequent `loadPeople` might trigger another render.
+
+      // Let's TRY rendering here.
+      renderPeople();
+    } else {
+      // No data, clear to be safe
+      const peopleList = el("people-list");
+      if (peopleList) peopleList.innerHTML = "";
+    }
+  }
+
   // Show/hide tab content
   el("sets-tab").classList.toggle("hidden", tabName !== "sets");
   el("songs-tab").classList.toggle("hidden", tabName !== "songs");
@@ -4216,7 +4332,18 @@ function switchTab(tabName) {
   if (tabName === "songs") {
     renderSongCatalog();
   } else if (tabName === "people") {
-    loadPeople();
+    // Only fetch if we don't have data, OR if we want to background refresh.
+    // To prevent double animation/jank, maybe we only fetch if we don't have data?
+    // Or we fetch silently?
+    // Current loadPeople calls renderPeople at the end.
+    // If we already rendered above, this will render AGAIN.
+    // Let's modify loadPeople behavior or just call it if we need it.
+
+    // For now, let's just NOT call loadPeople if we have data, assuming data is fresh enough for this session.
+    // This matches Sets/Songs behavior (they don't auto-refresh on tab switch usually).
+    if (!state.people || state.people.length === 0) {
+      loadPeople();
+    }
   } else if (tabName === "sets") {
     // Recalculate assignment pills when switching to sets tab
     // Use a small delay to ensure the tab is visible and layout is complete
@@ -4226,7 +4353,7 @@ function switchTab(tabName) {
   }
 }
 
-function refreshActiveTab() {
+function refreshActiveTab(animate = true) {
   // Get the currently active tab
   const activeTabBtn = document.querySelector(".tab-btn.active");
   if (!activeTabBtn) return;
@@ -4235,11 +4362,14 @@ function refreshActiveTab() {
 
   // Re-render the active tab content
   if (activeTab === "sets") {
-    renderSets();
+    renderSets(animate);
   } else if (activeTab === "songs") {
-    renderSongCatalog();
+    renderSongCatalog(animate);
   } else if (activeTab === "people") {
-    loadPeople();
+    // Just render from state - don't force a reload, which causes double animation
+    // if a load is already in progress or just completed.
+    // If we need to force reload, we should call loadPeople() explicitly elsewhere.
+    renderPeople(animate);
   }
 
   // If set detail view is open, refresh it too
@@ -4251,12 +4381,15 @@ function refreshActiveTab() {
 
 async function loadPeople() {
   console.log('👥 loadPeople() called');
+  state.isLoadingPeople = true;
+  renderPeople();
   console.log('  - state.currentTeamId:', state.currentTeamId);
 
   if (!state.currentTeamId) {
     console.warn('⚠️ No currentTeamId, cannot load people');
     state.people = [];
     state.pendingInvites = [];
+    state.isLoadingPeople = false;
     renderPeople();
     return;
   }
@@ -4539,11 +4672,12 @@ async function loadPeople() {
 
   console.log('  - ✅ People loaded:', profiles?.length || 0, 'profiles,', filteredPendingInvites?.length || 0, 'pending invites (filtered from', pendingInvites?.length || 0, 'total)');
   state.people = profiles || [];
+  state.isLoadingPeople = false;
   state.pendingInvites = filteredPendingInvites;
-  renderPeople();
+  renderPeople(false);
 }
 
-function renderPeople() {
+function renderPeople(animate = true) {
   const peopleList = el("people-list");
   if (!peopleList) return;
 
@@ -4596,6 +4730,11 @@ function renderPeople() {
   const searchTerm = searchTermRaw.toLowerCase();
 
   peopleList.innerHTML = "";
+
+  if (state.isLoadingPeople && state.people.length === 0) {
+    peopleList.innerHTML = getSkeletonLoader(6, 'person');
+    return;
+  }
 
   // Add invite card for managers/owners (always show, not affected by search)
   // Check if user can manage the current team (owner or manager)
@@ -4687,9 +4826,14 @@ function renderPeople() {
   }
 
   if (hasMembers) {
-    filteredPeople.forEach((person) => {
+    filteredPeople.forEach((person, index) => {
       const div = document.createElement("div");
       div.className = "card person-card";
+
+      if (animate) {
+        div.classList.add("ripple-item");
+        div.style.animationDelay = `${index * 0.05}s`;
+      }
 
       if (isManagerCheck) {
         // Manager view: show email, edit name, delete
@@ -4722,7 +4866,7 @@ function renderPeople() {
                 <button class="btn small ghost person-menu-btn" data-person-id="${person.id}" style="padding: 0.5rem;">
                   <i class="fa-solid fa-ellipsis-vertical"></i>
                 </button>
-                <div class="person-menu hidden" data-person-id="${person.id}" style="position: absolute; top: 100%; right: 0; margin-top: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; min-width: 180px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;">
+                <div class="person-menu hidden" data-person-id="${person.id}" style="position: absolute; top: 100%; right: 0; margin-top: 0.5rem; padding: 0.5rem; min-width: 180px; z-index: 1000;">
                   <button class="btn small ghost edit-person-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left;"><i class="fa-solid fa-pencil" style="margin-right: 0.5rem;"></i> Edit</button>
                   <button class="btn small ghost delete-person-btn" data-person-id="${person.id}" style="width: 100%; justify-content: flex-start; text-align: left; margin-top: 0.25rem;"><i class="fa-solid fa-trash" style="margin-right: 0.5rem;"></i> Remove</button>
                   ${isOwner() && !person.is_owner ? `
@@ -4807,9 +4951,15 @@ function renderPeople() {
   }
 
   if (hasPending) {
-    filteredPending.forEach((invite) => {
+    filteredPending.forEach((invite, i) => {
+      const index = filteredPeople.length + i;
       const div = document.createElement("div");
       div.className = "card person-card pending-person-card";
+
+      if (animate) {
+        div.classList.add("ripple-item");
+        div.style.animationDelay = `${index * 0.05}s`;
+      }
       const displayName = invite.full_name || invite.email;
 
       // Highlight name and email
@@ -5030,6 +5180,7 @@ function renderSetAssignments(set, container) {
           e.stopPropagation();
           showAssignmentDetailsModal({
             personName: personName,
+            personEmail: assignment.person?.email || assignment.pending_invite?.email || assignment.person_email || "",
             role: assignment.role,
             songTitle: null, // No song for set-level
             status: assignmentStatus,
@@ -5114,6 +5265,81 @@ function switchSetDetailTab(tabName) {
   }
 }
 
+const BADGE_SHAPES = [
+  `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M 50.0 0.0 L 50.9 0.4 L 51.7 1.4 L 52.5 2.8 L 53.2 4.5 L 53.8 6.2 L 54.5 7.5 L 55.1 8.2 L 55.9 8.3 L 56.7 7.8 L 57.6 6.7 L 58.7 5.3 L 59.8 3.8 L 60.9 2.6 L 62.0 1.8 L 62.9 1.7 L 63.7 2.3 L 64.2 3.5 L 64.6 5.1 L 64.8 6.9 L 65.0 8.7 L 65.3 10.1 L 65.8 11.0 L 66.4 11.3 L 67.4 10.9 L 68.6 10.1 L 70.0 9.0 L 71.4 7.9 L 72.9 7.0 L 74.1 6.6 L 75.0 6.7 L 75.6 7.4 L 75.8 8.7 L 75.7 10.4 L 75.5 12.2 L 75.2 14.0 L 75.1 15.4 L 75.3 16.4 L 75.9 16.8 L 76.9 16.8 L 78.3 16.3 L 79.9 15.6 L 81.6 14.9 L 83.2 14.4 L 84.5 14.3 L 85.4 14.6 L 85.7 15.5 L 85.6 16.8 L 85.1 18.4 L 84.4 20.1 L 83.7 21.7 L 83.2 23.1 L 83.2 24.1 L 83.6 24.7 L 84.6 24.9 L 86.0 24.8 L 87.8 24.5 L 89.6 24.3 L 91.3 24.2 L 92.6 24.4 L 93.3 25.0 L 93.4 25.9 L 93.0 27.1 L 92.1 28.6 L 91.0 30.0 L 89.9 31.4 L 89.1 32.6 L 88.7 33.6 L 89.0 34.2 L 89.9 34.7 L 91.3 35.0 L 93.1 35.2 L 94.9 35.4 L 96.5 35.8 L 97.7 36.3 L 98.3 37.1 L 98.2 38.0 L 97.4 39.1 L 96.2 40.2 L 94.7 41.3 L 93.3 42.4 L 92.2 43.3 L 91.7 44.1 L 91.8 44.9 L 92.5 45.5 L 93.8 46.2 L 95.5 46.8 L 97.2 47.5 L 98.6 48.3 L 99.6 49.1 L 100.0 50.0 L 99.6 50.9 L 98.6 51.7 L 97.2 52.5 L 95.5 53.2 L 93.8 53.8 L 92.5 54.5 L 91.8 55.1 L 91.7 55.9 L 92.2 56.7 L 93.3 57.6 L 94.7 58.7 L 96.2 59.8 L 97.4 60.9 L 98.2 62.0 L 98.3 62.9 L 97.7 63.7 L 96.5 64.2 L 94.9 64.6 L 93.1 64.8 L 91.3 65.0 L 89.9 65.3 L 89.0 65.8 L 88.7 66.4 L 89.1 67.4 L 89.9 68.6 L 91.0 70.0 L 92.1 71.4 L 93.0 72.9 L 93.4 74.1 L 93.3 75.0 L 92.6 75.6 L 91.3 75.8 L 89.6 75.7 L 87.8 75.5 L 86.0 75.2 L 84.6 75.1 L 83.6 75.3 L 83.2 75.9 L 83.2 76.9 L 83.7 78.3 L 84.4 79.9 L 85.1 81.6 L 85.6 83.2 L 85.7 84.5 L 85.4 85.4 L 84.5 85.7 L 83.2 85.6 L 81.6 85.1 L 79.9 84.4 L 78.3 83.7 L 76.9 83.2 L 75.9 83.2 L 75.3 83.6 L 75.1 84.6 L 75.2 86.0 L 75.5 87.8 L 75.7 89.6 L 75.8 91.3 L 75.6 92.6 L 75.0 93.3 L 74.1 93.4 L 72.9 93.0 L 71.4 92.1 L 70.0 91.0 L 68.6 89.9 L 67.4 89.1 L 66.4 88.7 L 65.8 89.0 L 65.3 89.9 L 65.0 91.3 L 64.8 93.1 L 64.6 94.9 L 64.2 96.5 L 63.7 97.7 L 62.9 98.3 L 62.0 98.2 L 60.9 97.4 L 59.8 96.2 L 58.7 94.7 L 57.6 93.3 L 56.7 92.2 L 55.9 91.7 L 55.1 91.8 L 54.5 92.5 L 53.8 93.8 L 53.2 95.5 L 52.5 97.2 L 51.7 98.6 L 50.9 99.6 L 50.0 100.0 L 49.1 99.6 L 48.3 98.6 L 47.5 97.2 L 46.8 95.5 L 46.2 93.8 L 45.5 92.5 L 44.9 91.8 L 44.1 91.7 L 43.3 92.2 L 42.4 93.3 L 41.3 94.7 L 40.2 96.2 L 39.1 97.4 L 38.0 98.2 L 37.1 98.3 L 36.3 97.7 L 35.8 96.5 L 35.4 94.9 L 35.2 93.1 L 35.0 91.3 L 34.7 89.9 L 34.2 89.0 L 33.6 88.7 L 32.6 89.1 L 31.4 89.9 L 30.0 91.0 L 28.6 92.1 L 27.1 93.0 L 25.9 93.4 L 25.0 93.3 L 24.4 92.6 L 24.2 91.3 L 24.3 89.6 L 24.5 87.8 L 24.8 86.0 L 24.9 84.6 L 24.7 83.6 L 24.1 83.2 L 23.1 83.2 L 21.7 83.7 L 20.1 84.4 L 18.4 85.1 L 16.8 85.6 L 15.5 85.7 L 14.6 85.4 L 14.3 84.5 L 14.4 83.2 L 14.9 81.6 L 15.6 79.9 L 16.3 78.3 L 16.8 76.9 L 16.8 75.9 L 16.4 75.3 L 15.4 75.1 L 14.0 75.2 L 12.2 75.5 L 10.4 75.7 L 8.7 75.8 L 7.4 75.6 L 6.7 75.0 L 6.6 74.1 L 7.0 72.9 L 7.9 71.4 L 9.0 70.0 L 10.1 68.6 L 10.9 67.4 L 11.3 66.4 L 11.0 65.8 L 10.1 65.3 L 8.7 65.0 L 6.9 64.8 L 5.1 64.6 L 3.5 64.2 L 2.3 63.7 L 1.7 62.9 L 1.8 62.0 L 2.6 60.9 L 3.8 59.8 L 5.3 58.7 L 6.7 57.6 L 7.8 56.7 L 8.3 55.9 L 8.2 55.1 L 7.5 54.5 L 6.2 53.8 L 4.5 53.2 L 2.8 52.5 L 1.4 51.7 L 0.4 50.9 L 0.0 50.0 L 0.4 49.1 L 1.4 48.3 L 2.8 47.5 L 4.5 46.8 L 6.2 46.2 L 7.5 45.5 L 8.2 44.9 L 8.3 44.1 L 7.8 43.3 L 6.7 42.4 L 5.3 41.3 L 3.8 40.2 L 2.6 39.1 L 1.8 38.0 L 1.7 37.1 L 2.3 36.3 L 3.5 35.8 L 5.1 35.4 L 6.9 35.2 L 8.7 35.0 L 10.1 34.7 L 11.0 34.2 L 11.3 33.6 L 10.9 32.6 L 10.1 31.4 L 9.0 30.0 L 7.9 28.6 L 7.0 27.1 L 6.6 25.9 L 6.7 25.0 L 7.4 24.4 L 8.7 24.2 L 10.4 24.3 L 12.2 24.5 L 14.0 24.8 L 15.4 24.9 L 16.4 24.7 L 16.8 24.1 L 16.8 23.1 L 16.3 21.7 L 15.6 20.1 L 14.9 18.4 L 14.4 16.8 L 14.3 15.5 L 14.6 14.6 L 15.5 14.3 L 16.8 14.4 L 18.4 14.9 L 20.1 15.6 L 21.7 16.3 L 23.1 16.8 L 24.1 16.8 L 24.7 16.4 L 24.9 15.4 L 24.8 14.0 L 24.5 12.2 L 24.3 10.4 L 24.2 8.7 L 24.4 7.4 L 25.0 6.7 L 25.9 6.6 L 27.1 7.0 L 28.6 7.9 L 30.0 9.0 L 31.4 10.1 L 32.6 10.9 L 33.6 11.3 L 34.2 11.0 L 34.7 10.1 L 35.0 8.7 L 35.2 6.9 L 35.4 5.1 L 35.8 3.5 L 36.3 2.3 L 37.1 1.7 L 38.0 1.8 L 39.1 2.6 L 40.2 3.8 L 41.3 5.3 L 42.4 6.7 L 43.3 7.8 L 44.1 8.3 L 44.9 8.2 L 45.5 7.5 L 46.2 6.2 L 46.8 4.5 L 47.5 2.8 L 48.3 1.4 L 49.1 0.4 L 50.0 0.0 Z" /></svg>`,
+  `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M 50.0 0.0 L 50.9 0.2 L 51.7 1.0 L 52.5 2.1 L 53.3 3.4 L 53.9 4.9 L 54.6 6.2 L 55.2 7.4 L 55.9 8.2 L 56.6 8.5 L 57.3 8.4 L 58.2 7.9 L 59.1 7.0 L 60.2 5.9 L 61.3 4.7 L 62.4 3.6 L 63.5 2.8 L 64.5 2.4 L 65.5 2.4 L 66.2 3.0 L 66.8 3.9 L 67.2 5.2 L 67.5 6.7 L 67.7 8.3 L 67.9 9.8 L 68.1 11.1 L 68.5 12.0 L 69.1 12.6 L 69.8 12.7 L 70.8 12.4 L 72.0 11.9 L 73.3 11.2 L 74.7 10.4 L 76.1 9.7 L 77.4 9.3 L 78.5 9.2 L 79.4 9.5 L 79.9 10.3 L 80.2 11.3 L 80.2 12.7 L 80.0 14.2 L 79.7 15.8 L 79.4 17.3 L 79.3 18.6 L 79.3 19.6 L 79.7 20.3 L 80.4 20.7 L 81.4 20.7 L 82.7 20.6 L 84.2 20.3 L 85.8 20.0 L 87.3 19.8 L 88.7 19.8 L 89.7 20.1 L 90.5 20.6 L 90.8 21.5 L 90.7 22.6 L 90.3 23.9 L 89.6 25.3 L 88.8 26.7 L 88.1 28.0 L 87.6 29.2 L 87.3 30.2 L 87.4 30.9 L 88.0 31.5 L 88.9 31.9 L 90.2 32.1 L 91.7 32.3 L 93.3 32.5 L 94.8 32.8 L 96.1 33.2 L 97.0 33.8 L 97.6 34.5 L 97.6 35.5 L 97.2 36.5 L 96.4 37.6 L 95.3 38.7 L 94.1 39.8 L 93.0 40.9 L 92.1 41.8 L 91.6 42.7 L 91.5 43.4 L 91.8 44.1 L 92.6 44.8 L 93.8 45.4 L 95.1 46.1 L 96.6 46.7 L 97.9 47.5 L 99.0 48.3 L 99.8 49.1 L 100.0 50.0 L 99.8 50.9 L 99.0 51.7 L 97.9 52.5 L 96.6 53.3 L 95.1 53.9 L 93.8 54.6 L 92.6 55.2 L 91.8 55.9 L 91.5 56.6 L 91.6 57.3 L 92.1 58.2 L 93.0 59.1 L 94.1 60.2 L 95.3 61.3 L 96.4 62.4 L 97.2 63.5 L 97.6 64.5 L 97.6 65.5 L 97.0 66.2 L 96.1 66.8 L 94.8 67.2 L 93.3 67.5 L 91.7 67.7 L 90.2 67.9 L 88.9 68.1 L 88.0 68.5 L 87.4 69.1 L 87.3 69.8 L 87.6 70.8 L 88.1 72.0 L 88.8 73.3 L 89.6 74.7 L 90.3 76.1 L 90.7 77.4 L 90.8 78.5 L 90.5 79.4 L 89.7 79.9 L 88.7 80.2 L 87.3 80.2 L 85.8 80.0 L 84.2 79.7 L 82.7 79.4 L 81.4 79.3 L 80.4 79.3 L 79.7 79.7 L 79.3 80.4 L 79.3 81.4 L 79.4 82.7 L 79.7 84.2 L 80.0 85.8 L 80.2 87.3 L 80.2 88.7 L 79.9 89.7 L 79.4 90.5 L 78.5 90.8 L 77.4 90.7 L 76.1 90.3 L 74.7 89.6 L 73.3 88.8 L 72.0 88.1 L 70.8 87.6 L 69.8 87.3 L 69.1 87.4 L 68.5 88.0 L 68.1 88.9 L 67.9 90.2 L 67.7 91.7 L 67.5 93.3 L 67.2 94.8 L 66.8 96.1 L 66.2 97.0 L 65.5 97.6 L 64.5 97.6 L 63.5 97.2 L 62.4 96.4 L 61.3 95.3 L 60.2 94.1 L 59.1 93.0 L 58.2 92.1 L 57.3 91.6 L 56.6 91.5 L 55.9 91.8 L 55.2 92.6 L 54.6 93.8 L 53.9 95.1 L 53.3 96.6 L 52.5 97.9 L 51.7 99.0 L 50.9 99.8 L 50.0 100.0 L 49.1 99.8 L 48.3 99.0 L 47.5 97.9 L 46.7 96.6 L 46.1 95.1 L 45.4 93.8 L 44.8 92.6 L 44.1 91.8 L 43.4 91.5 L 42.7 91.6 L 41.8 92.1 L 40.9 93.0 L 39.8 94.1 L 38.7 95.3 L 37.6 96.4 L 36.5 97.2 L 35.5 97.6 L 34.5 97.6 L 33.8 97.0 L 33.2 96.1 L 32.8 94.8 L 32.5 93.3 L 32.3 91.7 L 32.1 90.2 L 31.9 88.9 L 31.5 88.0 L 30.9 87.4 L 30.2 87.3 L 29.2 87.6 L 28.0 88.1 L 26.7 88.8 L 25.3 89.6 L 23.9 90.3 L 22.6 90.7 L 21.5 90.8 L 20.6 90.5 L 20.1 89.7 L 19.8 88.7 L 19.8 87.3 L 20.0 85.8 L 20.3 84.2 L 20.6 82.7 L 20.7 81.4 L 20.7 80.4 L 20.3 79.7 L 19.6 79.3 L 18.6 79.3 L 17.3 79.4 L 15.8 79.7 L 14.2 80.0 L 12.7 80.2 L 11.3 80.2 L 10.3 79.9 L 9.5 79.4 L 9.2 78.5 L 9.3 77.4 L 9.7 76.1 L 10.4 74.7 L 11.2 73.3 L 11.9 72.0 L 12.4 70.8 L 12.7 69.8 L 12.6 69.1 L 12.0 68.5 L 11.1 68.1 L 9.8 67.9 L 8.3 67.7 L 6.7 67.5 L 5.2 67.2 L 3.9 66.8 L 3.0 66.2 L 2.4 65.5 L 2.4 64.5 L 2.8 63.5 L 3.6 62.4 L 4.7 61.3 L 5.9 60.2 L 7.0 59.1 L 7.9 58.2 L 8.4 57.3 L 8.5 56.6 L 8.2 55.9 L 7.4 55.2 L 6.2 54.6 L 4.9 53.9 L 3.4 53.3 L 2.1 52.5 L 1.0 51.7 L 0.2 50.9 L 0.0 50.0 L 0.2 49.1 L 1.0 48.3 L 2.1 47.5 L 3.4 46.7 L 4.9 46.1 L 6.2 45.4 L 7.4 44.8 L 8.2 44.1 L 8.5 43.4 L 8.4 42.7 L 7.9 41.8 L 7.0 40.9 L 5.9 39.8 L 4.7 38.7 L 3.6 37.6 L 2.8 36.5 L 2.4 35.5 L 2.4 34.5 L 3.0 33.8 L 3.9 33.2 L 5.2 32.8 L 6.7 32.5 L 8.3 32.3 L 9.8 32.1 L 11.1 31.9 L 12.0 31.5 L 12.6 30.9 L 12.7 30.2 L 12.4 29.2 L 11.9 28.0 L 11.2 26.7 L 10.4 25.3 L 9.7 23.9 L 9.3 22.6 L 9.2 21.5 L 9.5 20.6 L 10.3 20.1 L 11.3 19.8 L 12.7 19.8 L 14.2 20.0 L 15.8 20.3 L 17.3 20.6 L 18.6 20.7 L 19.6 20.7 L 20.3 20.3 L 20.7 19.6 L 20.7 18.6 L 20.6 17.3 L 20.3 15.8 L 20.0 14.2 L 19.8 12.7 L 19.8 11.3 L 20.1 10.3 L 20.6 9.5 L 21.5 9.2 L 22.6 9.3 L 23.9 9.7 L 25.3 10.4 L 26.7 11.2 L 28.0 11.9 L 29.2 12.4 L 30.2 12.7 L 30.9 12.6 L 31.5 12.0 L 31.9 11.1 L 32.1 9.8 L 32.3 8.3 L 32.5 6.7 L 32.8 5.2 L 33.2 3.9 L 33.8 3.0 L 34.5 2.4 L 35.5 2.4 L 36.5 2.8 L 37.6 3.6 L 38.7 4.7 L 39.8 5.9 L 40.9 7.0 L 41.8 7.9 L 42.7 8.4 L 43.4 8.5 L 44.1 8.2 L 44.8 7.4 L 45.4 6.2 L 46.1 4.9 L 46.7 3.4 L 47.5 2.1 L 48.3 1.0 L 49.1 0.2 L 50.0 0.0 Z" /></svg>`,
+  `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M 50.0 0.0 L 50.9 0.2 L 51.7 0.6 L 52.5 1.4 L 53.3 2.4 L 54.1 3.5 L 54.8 4.7 L 55.4 5.8 L 56.1 6.9 L 56.7 7.8 L 57.3 8.4 L 58.0 8.8 L 58.8 8.8 L 59.6 8.6 L 60.4 8.2 L 61.4 7.5 L 62.4 6.7 L 63.5 5.9 L 64.6 5.1 L 65.7 4.4 L 66.8 3.9 L 67.8 3.6 L 68.7 3.7 L 69.5 4.0 L 70.2 4.6 L 70.7 5.5 L 71.1 6.6 L 71.4 7.9 L 71.7 9.3 L 71.8 10.6 L 72.0 11.9 L 72.2 13.0 L 72.5 14.0 L 72.9 14.7 L 73.5 15.2 L 74.2 15.4 L 75.1 15.4 L 76.2 15.2 L 77.4 14.9 L 78.7 14.6 L 80.0 14.2 L 81.3 14.0 L 82.6 13.8 L 83.7 13.9 L 84.6 14.1 L 85.4 14.6 L 85.9 15.4 L 86.1 16.3 L 86.2 17.4 L 86.0 18.7 L 85.8 20.0 L 85.4 21.3 L 85.1 22.6 L 84.8 23.8 L 84.6 24.9 L 84.6 25.8 L 84.8 26.5 L 85.3 27.1 L 86.0 27.5 L 87.0 27.8 L 88.1 28.0 L 89.4 28.2 L 90.7 28.3 L 92.1 28.6 L 93.4 28.9 L 94.5 29.3 L 95.4 29.8 L 96.0 30.5 L 96.3 31.3 L 96.4 32.2 L 96.1 33.2 L 95.6 34.3 L 94.9 35.4 L 94.1 36.5 L 93.3 37.6 L 92.5 38.6 L 91.8 39.6 L 91.4 40.4 L 91.2 41.2 L 91.2 42.0 L 91.6 42.7 L 92.2 43.3 L 93.1 43.9 L 94.2 44.6 L 95.3 45.2 L 96.5 45.9 L 97.6 46.7 L 98.6 47.5 L 99.4 48.3 L 99.8 49.1 L 100.0 50.0 L 99.8 50.9 L 99.4 51.7 L 98.6 52.5 L 97.6 53.3 L 96.5 54.1 L 95.3 54.8 L 94.2 55.4 L 93.1 56.1 L 92.2 56.7 L 91.6 57.3 L 91.2 58.0 L 91.2 58.8 L 91.4 59.6 L 91.8 60.4 L 92.5 61.4 L 93.3 62.4 L 94.1 63.5 L 94.9 64.6 L 95.6 65.7 L 96.1 66.8 L 96.4 67.8 L 96.3 68.7 L 96.0 69.5 L 95.4 70.2 L 94.5 70.7 L 93.4 71.1 L 92.1 71.4 L 90.7 71.7 L 89.4 71.8 L 88.1 72.0 L 87.0 72.2 L 86.0 72.5 L 85.3 72.9 L 84.8 73.5 L 84.6 74.2 L 84.6 75.1 L 84.8 76.2 L 85.1 77.4 L 85.4 78.7 L 85.8 80.0 L 86.0 81.3 L 86.2 82.6 L 86.1 83.7 L 85.9 84.6 L 85.4 85.4 L 84.6 85.9 L 83.7 86.1 L 82.6 86.2 L 81.3 86.0 L 80.0 85.8 L 78.7 85.4 L 77.4 85.1 L 76.2 84.8 L 75.1 84.6 L 74.2 84.6 L 73.5 84.8 L 72.9 85.3 L 72.5 86.0 L 72.2 87.0 L 72.0 88.1 L 71.8 89.4 L 71.7 90.7 L 71.4 92.1 L 71.1 93.4 L 70.7 94.5 L 70.2 95.4 L 69.5 96.0 L 68.7 96.3 L 67.8 96.4 L 66.8 96.1 L 65.7 95.6 L 64.6 94.9 L 63.5 94.1 L 62.4 93.3 L 61.4 92.5 L 60.4 91.8 L 59.6 91.4 L 58.8 91.2 L 58.0 91.2 L 57.3 91.6 L 56.7 92.2 L 56.1 93.1 L 55.4 94.2 L 54.8 95.3 L 54.1 96.5 L 53.3 97.6 L 52.5 98.6 L 51.7 99.4 L 50.9 99.8 L 50.0 100.0 L 49.1 99.8 L 48.3 99.4 L 47.5 98.6 L 46.7 97.6 L 45.9 96.5 L 45.2 95.3 L 44.6 94.2 L 43.9 93.1 L 43.3 92.2 L 42.7 91.6 L 42.0 91.2 L 41.2 91.2 L 40.4 91.4 L 39.6 91.8 L 38.6 92.5 L 37.6 93.3 L 36.5 94.1 L 35.4 94.9 L 34.3 95.6 L 33.2 96.1 L 32.2 96.4 L 31.3 96.3 L 30.5 96.0 L 29.8 95.4 L 29.3 94.5 L 28.9 93.4 L 28.6 92.1 L 28.3 90.7 L 28.2 89.4 L 28.0 88.1 L 27.8 87.0 L 27.5 86.0 L 27.1 85.3 L 26.5 84.8 L 25.8 84.6 L 24.9 84.6 L 23.8 84.8 L 22.6 85.1 L 21.3 85.4 L 20.0 85.8 L 18.7 86.0 L 17.4 86.2 L 16.3 86.1 L 15.4 85.9 L 14.6 85.4 L 14.1 84.6 L 13.9 83.7 L 13.8 82.6 L 14.0 81.3 L 14.2 80.0 L 14.6 78.7 L 14.9 77.4 L 15.2 76.2 L 15.4 75.1 L 15.4 74.2 L 15.2 73.5 L 14.7 72.9 L 14.0 72.5 L 13.0 72.2 L 11.9 72.0 L 10.6 71.8 L 9.3 71.7 L 7.9 71.4 L 6.6 71.1 L 5.5 70.7 L 4.6 70.2 L 4.0 69.5 L 3.7 68.7 L 3.6 67.8 L 3.9 66.8 L 4.4 65.7 L 5.1 64.6 L 5.9 63.5 L 6.7 62.4 L 7.5 61.4 L 8.2 60.4 L 8.6 59.6 L 8.8 58.8 L 8.8 58.0 L 8.4 57.3 L 7.8 56.7 L 6.9 56.1 L 5.8 55.4 L 4.7 54.8 L 3.5 54.1 L 2.4 53.3 L 1.4 52.5 L 0.6 51.7 L 0.2 50.9 L 0.0 50.0 L 0.2 49.1 L 0.6 48.3 L 1.4 47.5 L 2.4 46.7 L 3.5 45.9 L 4.7 45.2 L 5.8 44.6 L 6.9 43.9 L 7.8 43.3 L 8.4 42.7 L 8.8 42.0 L 8.8 41.2 L 8.6 40.4 L 8.2 39.6 L 7.5 38.6 L 6.7 37.6 L 5.9 36.5 L 5.1 35.4 L 4.4 34.3 L 3.9 33.2 L 3.6 32.2 L 3.7 31.3 L 4.0 30.5 L 4.6 29.8 L 5.5 29.3 L 6.6 28.9 L 7.9 28.6 L 9.3 28.3 L 10.6 28.2 L 11.9 28.0 L 13.0 27.8 L 14.0 27.5 L 14.7 27.1 L 15.2 26.5 L 15.4 25.8 L 15.4 24.9 L 15.2 23.8 L 14.9 22.6 L 14.6 21.3 L 14.2 20.0 L 14.0 18.7 L 13.8 17.4 L 13.9 16.3 L 14.1 15.4 L 14.6 14.6 L 15.4 14.1 L 16.3 13.9 L 17.4 13.8 L 18.7 14.0 L 20.0 14.2 L 21.3 14.6 L 22.6 14.9 L 23.8 15.2 L 24.9 15.4 L 25.8 15.4 L 26.5 15.2 L 27.1 14.7 L 27.5 14.0 L 27.8 13.0 L 28.0 11.9 L 28.2 10.6 L 28.3 9.3 L 28.6 7.9 L 28.9 6.6 L 29.3 5.5 L 29.8 4.6 L 30.5 4.0 L 31.3 3.7 L 32.2 3.6 L 33.2 3.9 L 34.3 4.4 L 35.4 5.1 L 36.5 5.9 L 37.6 6.7 L 38.6 7.5 L 39.6 8.2 L 40.4 8.6 L 41.2 8.8 L 42.0 8.8 L 42.7 8.4 L 43.3 7.8 L 43.9 6.9 L 44.6 5.8 L 45.2 4.7 L 45.9 3.5 L 46.7 2.4 L 47.5 1.4 L 48.3 0.6 L 49.1 0.2 L 50.0 0.0 Z" /></svg>`,
+  `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M 50.0 0.0 L 50.9 0.0 L 51.7 0.2 L 52.6 0.4 L 53.4 0.7 L 54.3 1.1 L 55.1 1.6 L 55.9 2.1 L 56.6 2.7 L 57.4 3.3 L 58.1 4.0 L 58.8 4.7 L 59.5 5.4 L 60.1 6.1 L 60.8 6.8 L 61.4 7.5 L 62.0 8.1 L 62.6 8.8 L 63.2 9.3 L 63.8 9.8 L 64.4 10.3 L 65.1 10.7 L 65.7 11.0 L 66.4 11.3 L 67.1 11.6 L 67.9 11.7 L 68.6 11.8 L 69.4 11.9 L 70.2 11.9 L 71.1 11.9 L 72.0 11.9 L 72.9 11.9 L 73.9 11.8 L 74.8 11.8 L 75.8 11.7 L 76.8 11.8 L 77.8 11.8 L 78.7 11.9 L 79.7 12.0 L 80.6 12.2 L 81.5 12.4 L 82.4 12.7 L 83.2 13.1 L 84.0 13.5 L 84.7 14.1 L 85.4 14.6 L 85.9 15.3 L 86.5 16.0 L 86.9 16.8 L 87.3 17.6 L 87.6 18.5 L 87.8 19.4 L 88.0 20.3 L 88.1 21.3 L 88.2 22.2 L 88.2 23.2 L 88.3 24.2 L 88.2 25.2 L 88.2 26.1 L 88.1 27.1 L 88.1 28.0 L 88.1 28.9 L 88.1 29.8 L 88.1 30.6 L 88.2 31.4 L 88.3 32.1 L 88.4 32.9 L 88.7 33.6 L 89.0 34.3 L 89.3 34.9 L 89.7 35.6 L 90.2 36.2 L 90.7 36.8 L 91.2 37.4 L 91.9 38.0 L 92.5 38.6 L 93.2 39.2 L 93.9 39.9 L 94.6 40.5 L 95.3 41.2 L 96.0 41.9 L 96.7 42.6 L 97.3 43.4 L 97.9 44.1 L 98.4 44.9 L 98.9 45.7 L 99.3 46.6 L 99.6 47.4 L 99.8 48.3 L 100.0 49.1 L 100.0 50.0 L 100.0 50.9 L 99.8 51.7 L 99.6 52.6 L 99.3 53.4 L 98.9 54.3 L 98.4 55.1 L 97.9 55.9 L 97.3 56.6 L 96.7 57.4 L 96.0 58.1 L 95.3 58.8 L 94.6 59.5 L 93.9 60.1 L 93.2 60.8 L 92.5 61.4 L 91.9 62.0 L 91.2 62.6 L 90.7 63.2 L 90.2 63.8 L 89.7 64.4 L 89.3 65.1 L 89.0 65.7 L 88.7 66.4 L 88.4 67.1 L 88.3 67.9 L 88.2 68.6 L 88.1 69.4 L 88.1 70.2 L 88.1 71.1 L 88.1 72.0 L 88.1 72.9 L 88.2 73.9 L 88.2 74.8 L 88.3 75.8 L 88.2 76.8 L 88.2 77.8 L 88.1 78.7 L 88.0 79.7 L 87.8 80.6 L 87.6 81.5 L 87.3 82.4 L 86.9 83.2 L 86.5 84.0 L 85.9 84.7 L 85.4 85.4 L 84.7 85.9 L 84.0 86.5 L 83.2 86.9 L 82.4 87.3 L 81.5 87.6 L 80.6 87.8 L 79.7 88.0 L 78.7 88.1 L 77.8 88.2 L 76.8 88.2 L 75.8 88.3 L 74.8 88.2 L 73.9 88.2 L 72.9 88.1 L 72.0 88.1 L 71.1 88.1 L 70.2 88.1 L 69.4 88.1 L 68.6 88.2 L 67.9 88.3 L 67.1 88.4 L 66.4 88.7 L 65.7 89.0 L 65.1 89.3 L 64.4 89.7 L 63.8 90.2 L 63.2 90.7 L 62.6 91.2 L 62.0 91.9 L 61.4 92.5 L 60.8 93.2 L 60.1 93.9 L 59.5 94.6 L 58.8 95.3 L 58.1 96.0 L 57.4 96.7 L 56.6 97.3 L 55.9 97.9 L 55.1 98.4 L 54.3 98.9 L 53.4 99.3 L 52.6 99.6 L 51.7 99.8 L 50.9 100.0 L 50.0 100.0 L 49.1 100.0 L 48.3 99.8 L 47.4 99.6 L 46.6 99.3 L 45.7 98.9 L 44.9 98.4 L 44.1 97.9 L 43.4 97.3 L 42.6 96.7 L 41.9 96.0 L 41.2 95.3 L 40.5 94.6 L 39.9 93.9 L 39.2 93.2 L 38.6 92.5 L 38.0 91.9 L 37.4 91.2 L 36.8 90.7 L 36.2 90.2 L 35.6 89.7 L 34.9 89.3 L 34.3 89.0 L 33.6 88.7 L 32.9 88.4 L 32.1 88.3 L 31.4 88.2 L 30.6 88.1 L 29.8 88.1 L 28.9 88.1 L 28.0 88.1 L 27.1 88.1 L 26.1 88.2 L 25.2 88.2 L 24.2 88.3 L 23.2 88.2 L 22.2 88.2 L 21.3 88.1 L 20.3 88.0 L 19.4 87.8 L 18.5 87.6 L 17.6 87.3 L 16.8 86.9 L 16.0 86.5 L 15.3 85.9 L 14.6 85.4 L 14.1 84.7 L 13.5 84.0 L 13.1 83.2 L 12.7 82.4 L 12.4 81.5 L 12.2 80.6 L 12.0 79.7 L 11.9 78.7 L 11.8 77.8 L 11.8 76.8 L 11.7 75.8 L 11.8 74.8 L 11.8 73.9 L 11.9 72.9 L 11.9 72.0 L 11.9 71.1 L 11.9 70.2 L 11.9 69.4 L 11.8 68.6 L 11.7 67.9 L 11.6 67.1 L 11.3 66.4 L 11.0 65.7 L 10.7 65.1 L 10.3 64.4 L 9.8 63.8 L 9.3 63.2 L 8.8 62.6 L 8.1 62.0 L 7.5 61.4 L 6.8 60.8 L 6.1 60.1 L 5.4 59.5 L 4.7 58.8 L 4.0 58.1 L 3.3 57.4 L 2.7 56.6 L 2.1 55.9 L 1.6 55.1 L 1.1 54.3 L 0.7 53.4 L 0.4 52.6 L 0.2 51.7 L 0.0 50.9 L 0.0 50.0 L 0.0 49.1 L 0.2 48.3 L 0.4 47.4 L 0.7 46.6 L 1.1 45.7 L 1.6 44.9 L 2.1 44.1 L 2.7 43.4 L 3.3 42.6 L 4.0 41.9 L 4.7 41.2 L 5.4 40.5 L 6.1 39.9 L 6.8 39.2 L 7.5 38.6 L 8.1 38.0 L 8.8 37.4 L 9.3 36.8 L 9.8 36.2 L 10.3 35.6 L 10.7 34.9 L 11.0 34.3 L 11.3 33.6 L 11.6 32.9 L 11.7 32.1 L 11.8 31.4 L 11.9 30.6 L 11.9 29.8 L 11.9 28.9 L 11.9 28.0 L 11.9 27.1 L 11.8 26.1 L 11.8 25.2 L 11.7 24.2 L 11.8 23.2 L 11.8 22.2 L 11.9 21.3 L 12.0 20.3 L 12.2 19.4 L 12.4 18.5 L 12.7 17.6 L 13.1 16.8 L 13.5 16.0 L 14.1 15.3 L 14.6 14.6 L 15.3 14.1 L 16.0 13.5 L 16.8 13.1 L 17.6 12.7 L 18.5 12.4 L 19.4 12.2 L 20.3 12.0 L 21.3 11.9 L 22.2 11.8 L 23.2 11.8 L 24.2 11.7 L 25.2 11.8 L 26.1 11.8 L 27.1 11.9 L 28.0 11.9 L 28.9 11.9 L 29.8 11.9 L 30.6 11.9 L 31.4 11.8 L 32.1 11.7 L 32.9 11.6 L 33.6 11.3 L 34.3 11.0 L 34.9 10.7 L 35.6 10.3 L 36.2 9.8 L 36.8 9.3 L 37.4 8.8 L 38.0 8.1 L 38.6 7.5 L 39.2 6.8 L 39.9 6.1 L 40.5 5.4 L 41.2 4.7 L 41.9 4.0 L 42.6 3.3 L 43.4 2.7 L 44.1 2.1 L 44.9 1.6 L 45.7 1.1 L 46.6 0.7 L 47.4 0.4 L 48.3 0.2 L 49.1 0.0 L 50.0 0.0 Z" /></svg>`,
+  `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M 50.0 0.0 L 50.9 0.0 L 51.7 0.1 L 52.6 0.3 L 53.5 0.5 L 54.3 0.7 L 55.1 1.0 L 56.0 1.4 L 56.8 1.8 L 57.6 2.2 L 58.3 2.7 L 59.1 3.2 L 59.8 3.8 L 60.5 4.4 L 61.2 5.0 L 61.9 5.6 L 62.6 6.2 L 63.2 6.8 L 63.8 7.4 L 64.4 8.0 L 65.0 8.7 L 65.6 9.3 L 66.2 9.8 L 66.8 10.4 L 67.4 10.9 L 68.0 11.4 L 68.6 11.9 L 69.2 12.4 L 69.8 12.8 L 70.4 13.2 L 71.0 13.6 L 71.6 14.0 L 72.3 14.3 L 73.0 14.6 L 73.7 14.9 L 74.4 15.2 L 75.1 15.4 L 75.9 15.6 L 76.7 15.9 L 77.5 16.1 L 78.3 16.3 L 79.1 16.5 L 80.0 16.7 L 80.8 17.0 L 81.7 17.2 L 82.5 17.5 L 83.4 17.8 L 84.3 18.1 L 85.1 18.4 L 85.9 18.8 L 86.8 19.1 L 87.6 19.6 L 88.4 20.0 L 89.1 20.5 L 89.8 21.1 L 90.5 21.6 L 91.2 22.2 L 91.8 22.9 L 92.3 23.6 L 92.8 24.3 L 93.3 25.0 L 93.7 25.8 L 94.1 26.6 L 94.4 27.4 L 94.6 28.2 L 94.8 29.1 L 95.0 30.0 L 95.1 30.9 L 95.1 31.8 L 95.1 32.7 L 95.1 33.6 L 95.0 34.5 L 94.9 35.4 L 94.8 36.3 L 94.6 37.2 L 94.4 38.1 L 94.2 39.0 L 94.0 39.8 L 93.8 40.7 L 93.6 41.5 L 93.3 42.4 L 93.1 43.2 L 92.9 44.0 L 92.7 44.8 L 92.5 45.5 L 92.4 46.3 L 92.2 47.0 L 92.1 47.8 L 92.1 48.5 L 92.0 49.3 L 92.0 50.0 L 92.0 50.7 L 92.1 51.5 L 92.1 52.2 L 92.2 53.0 L 92.4 53.7 L 92.5 54.5 L 92.7 55.2 L 92.9 56.0 L 93.1 56.8 L 93.3 57.6 L 93.6 58.5 L 93.8 59.3 L 94.0 60.2 L 94.2 61.0 L 94.4 61.9 L 94.6 62.8 L 94.8 63.7 L 94.9 64.6 L 95.0 65.5 L 95.1 66.4 L 95.1 67.3 L 95.1 68.2 L 95.1 69.1 L 95.0 70.0 L 94.8 70.9 L 94.6 71.8 L 94.4 72.6 L 94.1 73.4 L 93.7 74.2 L 93.3 75.0 L 92.8 75.7 L 92.3 76.4 L 91.8 77.1 L 91.2 77.8 L 90.5 78.4 L 89.8 78.9 L 89.1 79.5 L 88.4 80.0 L 87.6 80.4 L 86.8 80.9 L 85.9 81.2 L 85.1 81.6 L 84.3 81.9 L 83.4 82.2 L 82.5 82.5 L 81.7 82.8 L 80.8 83.0 L 80.0 83.3 L 79.1 83.5 L 78.3 83.7 L 77.5 83.9 L 76.7 84.1 L 75.9 84.4 L 75.1 84.6 L 74.4 84.8 L 73.7 85.1 L 73.0 85.4 L 72.3 85.7 L 71.6 86.0 L 71.0 86.4 L 70.4 86.8 L 69.8 87.2 L 69.2 87.6 L 68.6 88.1 L 68.0 88.6 L 67.4 89.1 L 66.8 89.6 L 66.2 90.2 L 65.6 90.7 L 65.0 91.3 L 64.4 92.0 L 63.8 92.6 L 63.2 93.2 L 62.6 93.8 L 61.9 94.4 L 61.2 95.0 L 60.5 95.6 L 59.8 96.2 L 59.1 96.8 L 58.3 97.3 L 57.6 97.8 L 56.8 98.2 L 56.0 98.6 L 55.1 99.0 L 54.3 99.3 L 53.5 99.5 L 52.6 99.7 L 51.7 99.9 L 50.9 100.0 L 50.0 100.0 L 49.1 100.0 L 48.3 99.9 L 47.4 99.7 L 46.5 99.5 L 45.7 99.3 L 44.9 99.0 L 44.0 98.6 L 43.2 98.2 L 42.4 97.8 L 41.7 97.3 L 40.9 96.8 L 40.2 96.2 L 39.5 95.6 L 38.8 95.0 L 38.1 94.4 L 37.4 93.8 L 36.8 93.2 L 36.2 92.6 L 35.6 92.0 L 35.0 91.3 L 34.4 90.7 L 33.8 90.2 L 33.2 89.6 L 32.6 89.1 L 32.0 88.6 L 31.4 88.1 L 30.8 87.6 L 30.2 87.2 L 29.6 86.8 L 29.0 86.4 L 28.4 86.0 L 27.7 85.7 L 27.0 85.4 L 26.3 85.1 L 25.6 84.8 L 24.9 84.6 L 24.1 84.4 L 23.3 84.1 L 22.5 83.9 L 21.7 83.7 L 20.9 83.5 L 20.0 83.3 L 19.2 83.0 L 18.3 82.8 L 17.5 82.5 L 16.6 82.2 L 15.7 81.9 L 14.9 81.6 L 14.1 81.2 L 13.2 80.9 L 12.4 80.4 L 11.6 80.0 L 10.9 79.5 L 10.2 78.9 L 9.5 78.4 L 8.8 77.8 L 8.2 77.1 L 7.7 76.4 L 7.2 75.7 L 6.7 75.0 L 6.3 74.2 L 5.9 73.4 L 5.6 72.6 L 5.4 71.8 L 5.2 70.9 L 5.0 70.0 L 4.9 69.1 L 4.9 68.2 L 4.9 67.3 L 4.9 66.4 L 5.0 65.5 L 5.1 64.6 L 5.2 63.7 L 5.4 62.8 L 5.6 61.9 L 5.8 61.0 L 6.0 60.2 L 6.2 59.3 L 6.4 58.5 L 6.7 57.6 L 6.9 56.8 L 7.1 56.0 L 7.3 55.2 L 7.5 54.5 L 7.6 53.7 L 7.8 53.0 L 7.9 52.2 L 7.9 51.5 L 8.0 50.7 L 8.0 50.0 L 8.0 49.3 L 7.9 48.5 L 7.9 47.8 L 7.8 47.0 L 7.6 46.3 L 7.5 45.5 L 7.3 44.8 L 7.1 44.0 L 6.9 43.2 L 6.7 42.4 L 6.4 41.5 L 6.2 40.7 L 6.0 39.8 L 5.8 39.0 L 5.6 38.1 L 5.4 37.2 L 5.2 36.3 L 5.1 35.4 L 5.0 34.5 L 4.9 33.6 L 4.9 32.7 L 4.9 31.8 L 4.9 30.9 L 5.0 30.0 L 5.2 29.1 L 5.4 28.2 L 5.6 27.4 L 5.9 26.6 L 6.3 25.8 L 6.7 25.0 L 7.2 24.3 L 7.7 23.6 L 8.2 22.9 L 8.8 22.2 L 9.5 21.6 L 10.2 21.1 L 10.9 20.5 L 11.6 20.0 L 12.4 19.6 L 13.2 19.1 L 14.1 18.8 L 14.9 18.4 L 15.7 18.1 L 16.6 17.8 L 17.5 17.5 L 18.3 17.2 L 19.2 17.0 L 20.0 16.7 L 20.9 16.5 L 21.7 16.3 L 22.5 16.1 L 23.3 15.9 L 24.1 15.6 L 24.9 15.4 L 25.6 15.2 L 26.3 14.9 L 27.0 14.6 L 27.7 14.3 L 28.4 14.0 L 29.0 13.6 L 29.6 13.2 L 30.2 12.8 L 30.8 12.4 L 31.4 11.9 L 32.0 11.4 L 32.6 10.9 L 33.2 10.4 L 33.8 9.8 L 34.4 9.3 L 35.0 8.7 L 35.6 8.0 L 36.2 7.4 L 36.8 6.8 L 37.4 6.2 L 38.1 5.6 L 38.8 5.0 L 39.5 4.4 L 40.2 3.8 L 40.9 3.2 L 41.7 2.7 L 42.4 2.2 L 43.2 1.8 L 44.0 1.4 L 44.9 1.0 L 45.7 0.7 L 46.5 0.5 L 47.4 0.3 L 48.3 0.1 L 49.1 0.0 L 50.0 0.0 Z" /></svg>`
+];
+// Helpers for playful badge randomization
+const BADGE_COLORS = [
+  '#ff7b51', // Original Orange
+  '#00b8b8ff', // Teal/Green
+  '#c574e5ff', // Purple
+  '#409b6dff', // Yellow/Gold
+  '#f73d66ff', // Pink
+  '#6495daff'  // Blue
+];
+
+function stringToHash(str) {
+  let hash = 0;
+  if (str.length === 0) return hash;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash;
+}
+
+function getBadgeRotation() {
+  // True random angle between -22 and 22 for every view
+  let deg = Math.floor(Math.random() * 45) - 22;
+
+  // Ensure it's not too close to 0 (perceived as "default" rather than random)
+  // If result is between -5 and 5, push it out further
+  if (Math.abs(deg) < 5) {
+    deg += (deg >= 0 ? 10 : -10);
+  }
+
+  return deg;
+}
+
+
+function getBadgeColor(seedStr) {
+  const hash = stringToHash(seedStr);
+  const index = Math.abs(hash) % BADGE_COLORS.length;
+  return BADGE_COLORS[index];
+}
+
+function getBadgeShape(seedStr) {
+  const hash = stringToHash(seedStr);
+  const index = Math.abs(hash) % BADGE_SHAPES.length;
+  return BADGE_SHAPES[index];
+}
+
+function retriggerAnimation(element, animationClass) {
+  element.classList.remove(animationClass);
+  void element.offsetWidth; // Trigger reflow
+  element.classList.add(animationClass);
+}
+
+function getDaysUntil(dateString) {
+  if (!dateString) return -1;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const parts = dateString.split('-');
+  const target = new Date(parts[0], parts[1] - 1, parts[2]);
+
+  if (isNaN(target.getTime())) return -1;
+
+  const diffTime = target - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
 function showSetDetail(set) {
   state.selectedSet = set;
   // Save selected set ID to localStorage so it persists across page reloads
@@ -5138,6 +5364,57 @@ function showSetDetail(set) {
   el("detail-set-description").textContent = set.description || "No description yet";
   updateServiceLengthDisplay(set);
 
+  // Update countdown badge
+  const countdownBadge = el("set-countdown-badge");
+  if (countdownBadge) {
+    const daysUntil = getDaysUntil(set.scheduled_date);
+    if (daysUntil >= 0) {
+      countdownBadge.classList.remove("hidden");
+
+      // Calculate playful random values
+      const seed = String(set.id || "0") + String(set.scheduled_date || "");
+      let rotation = getBadgeRotation();
+      const color = getBadgeColor(seed);
+      const shape = getBadgeShape(seed + "shape");
+
+      // Apply styles
+      countdownBadge.style.setProperty("--current-rotation", `${rotation}deg`);
+      // Override the accent color for this specific element
+      countdownBadge.style.setProperty("--accent-color", color);
+
+
+
+
+      // Re-create node to reset animations and listeners cleanly
+      const newBadge = countdownBadge.cloneNode(false);
+      countdownBadge.parentNode.replaceChild(newBadge, countdownBadge);
+
+      // Use the new reference
+      const finalBadge = newBadge;
+
+      const label = daysUntil === 0 ? "TODAY" : daysUntil === 1 ? "DAY" : "DAYS";
+      finalBadge.innerHTML = `
+        ${shape}
+        <div class="countdown-content">
+          ${daysUntil > 0 ? `<div class="countdown-number">${daysUntil}</div>` : ''}
+          <div class="countdown-label" style="${daysUntil === 0 ? 'font-size: 1.1rem; font-weight: 800;' : ''}">${label}</div>
+        </div>
+      `;
+
+      finalBadge.onclick = () => {
+        retriggerAnimation(finalBadge, "animate-pop-in");
+      };
+
+      // Initial animation
+      finalBadge.classList.add("animate-pop-in");
+
+    } else {
+      countdownBadge.classList.add("hidden");
+    }
+  }
+
+
+
   // Show/hide edit/delete buttons for managers
   const editBtn = el("btn-edit-set-detail");
   const deleteBtn = el("btn-delete-set-detail");
@@ -5145,25 +5422,15 @@ function showSetDetail(set) {
   const headerAddDropdown = el("header-add-dropdown-container");
   const mobileHeaderAddDropdown = el("mobile-header-add-dropdown-container");
 
-  if (isManager()) {
-    editBtn.classList.remove("hidden");
-    deleteBtn.classList.remove("hidden");
-    if (headerAddDropdown) {
-      headerAddDropdown.classList.remove("hidden");
-    }
-    if (mobileHeaderAddDropdown) {
-      mobileHeaderAddDropdown.classList.remove("hidden");
-    }
-  } else {
-    editBtn.classList.add("hidden");
-    deleteBtn.classList.add("hidden");
-    if (headerAddDropdown) {
-      headerAddDropdown.classList.add("hidden");
-    }
-    if (mobileHeaderAddDropdown) {
-      mobileHeaderAddDropdown.classList.add("hidden");
-    }
-  }
+  // Show/hide management buttons based on isManager()
+  const isMgr = isManager();
+
+  if (editBtn) editBtn.classList.toggle("hidden", !isMgr);
+  if (deleteBtn) deleteBtn.classList.toggle("hidden", !isMgr);
+
+  // Always toggle both desktop and mobile add containers together
+  if (headerAddDropdown) headerAddDropdown.classList.toggle("hidden", !isMgr);
+  if (mobileHeaderAddDropdown) mobileHeaderAddDropdown.classList.toggle("hidden", !isMgr);
 
   // Show/hide "View as Member" button in set detail (only for managers, not when already in member view)
   if (state.profile?.can_manage) {
@@ -5320,6 +5587,8 @@ function renderSetDetailSongs(set) {
           headerWrapper.dataset.setSongId = setSong.id;
           headerWrapper.dataset.sequenceOrder = setSong.sequence_order;
           headerWrapper.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin: 2rem 0 1rem 0; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; position: relative;";
+          headerWrapper.classList.add("ripple-item");
+          headerWrapper.style.animationDelay = `${index * 0.03}s`;
           headerWrapper.draggable = false; // Will be set to true when dragging from handle
 
           // Add drag handle for managers (positioned on the left)
@@ -5394,6 +5663,8 @@ function renderSetDetailSongs(set) {
         const card = songNode.querySelector(".set-song-card");
         card.dataset.setSongId = setSong.id;
         card.dataset.sequenceOrder = setSong.sequence_order;
+        card.classList.add("ripple-item");
+        card.style.animationDelay = `${index * 0.03}s`;
 
         // Only make draggable for managers
         const dragHandle = songNode.querySelector(".drag-handle");
@@ -5738,6 +6009,7 @@ function renderSetDetailSongs(set) {
                   e.stopPropagation();
                   showAssignmentDetailsModal({
                     personName: personName,
+                    personEmail: assignment.person?.email || assignment.pending_invite?.email || assignment.person_email || "",
                     role: assignment.role,
                     songTitle: setSong.song_id
                       ? (setSong.song?.title || setSong.title || "Unknown Song")
@@ -5786,7 +6058,7 @@ function renderSetDetailSongs(set) {
         if (viewDetailsBtn && setSong.song && !isSection) {
           viewDetailsBtn.dataset.songId = setSong.song.id;
           viewDetailsBtn.addEventListener("click", () => {
-            openSongDetailsModal(setSong.song, setSong.key || null);
+            openSongDetailsModal(setSong.song, setSong.key || null, setSong);
           });
         } else if (viewDetailsBtn && isSection) {
           // Set up section details button
@@ -7492,8 +7764,8 @@ function addServiceTimeRow(time = "", id = null, alertOffsets = []) {
 
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
-  removeBtn.className = "btn ghost small";
-  removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+  removeBtn.className = "btn ghost small solo-icon-btn";
+  removeBtn.innerHTML = '<i class="fa-solid fa-trash solo-icon-btn"></i>';
   removeBtn.addEventListener("click", () => row.remove());
 
   row.appendChild(timeWrapper);
@@ -7563,8 +7835,8 @@ function addRehearsalTimeRow(date = "", time = "", id = null, alertOffsets = [])
 
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
-  removeBtn.className = "btn ghost small";
-  removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+  removeBtn.className = "btn ghost small solo-icon-btn";
+  removeBtn.innerHTML = '<i class="fa-solid fa-trash solo-icon-btn"></i>';
   removeBtn.addEventListener("click", () => row.remove());
 
   row.appendChild(timeWrapper);
@@ -10694,6 +10966,7 @@ async function extractTextFromPdf(url) {
       fullText += pageText + " ";
     }
 
+
     return fullText;
   } catch (error) {
     console.error("Error extracting text from PDF:", error);
@@ -10701,77 +10974,183 @@ async function extractTextFromPdf(url) {
   }
 }
 
-function renderSongCatalog() {
+// Advanced Search Parsing and Filtering
+function parseSearchQuery(query) {
+  const filters = {};
+
+  // Regex for extracting key:value pairs
+  // Matches: word: followed by non-space characters or quoted string
+  const regex = /(\w+):(?:"([^"]+)"|'([^']+)'|([^\s]+))/g;
+
+  let match;
+  while ((match = regex.exec(query)) !== null) {
+    const key = match[1].toLowerCase();
+    const value = (match[2] || match[3] || match[4] || "").toLowerCase();
+
+    // Map keys to standard filter names
+    switch (key) {
+      case 'key':
+        filters.key = value;
+        break;
+      case 'time':
+      case 'ts':
+      case 'signature':
+      case 'timesignature':
+        filters.time_signature = value;
+        break;
+      case 'bpm':
+        filters.bpm = value;
+        break;
+      case 'duration':
+      case 'length':
+        filters.duration = value;
+        break;
+
+    }
+  }
+
+  // Remove the matches from the text to get residual search terms
+  const text = query.replace(regex, "").replace(/\s+/g, " ").trim();
+
+  return { filters, text };
+}
+
+function filterSongs(songs, queryRaw) {
+  if (!queryRaw) return songs;
+
+  const { filters, text } = parseSearchQuery(queryRaw);
+  const textLower = text.toLowerCase();
+
+  return songs.filter(song => {
+    // 1. Check Filters
+    if (filters.key) {
+      // Collect all keys for the song (main key + song_keys array)
+      const songKeys = new Set();
+      if (song.song_key) songKeys.add(song.song_key.toLowerCase());
+      if (song.song_keys && Array.isArray(song.song_keys)) {
+        song.song_keys.forEach(k => {
+          if (k.key) songKeys.add(k.key.toLowerCase());
+        });
+      }
+
+      // Check if any of the song's keys match the filter
+      if (!songKeys.has(filters.key)) return false;
+    }
+
+    if (filters.time_signature) {
+      if (!song.time_signature || song.time_signature.toLowerCase() !== filters.time_signature) return false;
+    }
+
+    if (filters.bpm) {
+      // String comparison for BPM
+      if (!song.bpm || String(song.bpm) !== filters.bpm) return false;
+    }
+
+    if (filters.duration) {
+      // Fuzzy match on formatted string
+      const dStr = song.duration_seconds ? formatDuration(song.duration_seconds) : "";
+      if (!dStr.includes(filters.duration)) return false;
+    }
+
+
+
+    // 2. Check Text (if any residual text)
+    if (textLower) {
+      const titleMatch = (song.title || "").toLowerCase().includes(textLower);
+
+      // Also match metadata if no specific filter forced it out, 
+      // BUT typical behavior for "key:C text" is "key IS C AND text matches title/meta"
+      // So we continue to check other fields for the text portion
+
+      const bpmMatch = song.bpm ? String(song.bpm).includes(textLower) : false;
+      const keyList = [
+        song.song_key || "",
+        ...(song.song_keys || []).map(k => k.key || "")
+      ].filter(Boolean).join(" ").toLowerCase();
+      const keyMatch = keyList.includes(textLower);
+
+      const timeMatch = (song.time_signature || "").toLowerCase().includes(textLower);
+      const durationMatch = song.duration_seconds ? formatDuration(song.duration_seconds).toLowerCase().includes(textLower) : false;
+
+      return titleMatch || bpmMatch || keyMatch || timeMatch || durationMatch;
+    }
+
+    return true;
+  });
+}
+
+function renderSongCatalog(animate = true) {
   const list = el("songs-catalog-list");
   if (!list) return;
 
   const searchInput = el("songs-tab-search");
   const searchTermRaw = searchInput ? searchInput.value.trim() : "";
-  const searchTerm = searchTermRaw.toLowerCase();
+
+  // Parse for highlighting purposes (we only highlight the residual text, OR the specific fielded values if we wanted to get fancy)
+  // For now, let's keep highlighting simple: highlight the residual text matches.
+  // OR, we can continue to highlight everything if it matches the raw string, but that might be confusing with filters.
+  // Let's parse it to get the 'text' part for general highlighting.
+  const { text: searchTerm } = parseSearchQuery(searchTermRaw);
+  const searchTermLower = searchTerm.toLowerCase();
 
   // Cancel any active async search immediately
-  activeResourceSearchTerm = searchTerm;
+  activeResourceSearchTerm = searchTerm; // Use parsed text for resource search? Or whole query? 
+  // If user types "key:C love", we probably only want to async search for "love".
+  // If user only types "key:C", search term is empty, we shouldn't async search for empty string.
 
   list.innerHTML = "";
+
+  if (state.isLoadingSongs && state.songs.length === 0) {
+    list.innerHTML = getSkeletonLoader(4, 'row');
+    return;
+  }
 
   if (!state.songs || state.songs.length === 0) {
     list.innerHTML = '<p class="muted">No songs yet. Create your first song!</p>';
     return;
   }
 
-  // Filter songs based on search term
-  let filteredSongs = state.songs;
-  if (searchTerm) {
-    const allMatches = state.songs.filter((song) => {
-      const titleMatch = (song.title || "").toLowerCase().includes(searchTerm);
-      const bpmMatch = song.bpm ? String(song.bpm).includes(searchTerm) : false;
-      const keyList = [
-        song.song_key || "",
-        ...(song.song_keys || []).map(k => k.key || "")
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      const keyMatch = keyList.includes(searchTerm);
-      const timeMatch = (song.time_signature || "").toLowerCase().includes(searchTerm);
-      const durationMatch = song.duration_seconds ? formatDuration(song.duration_seconds).toLowerCase().includes(searchTerm) : false;
-      return titleMatch || bpmMatch || keyMatch || timeMatch || durationMatch;
-    });
-
-    // Prioritize: title matches first, then metadata matches
-    const titleMatches = allMatches.filter((song) =>
-      (song.title || "").toLowerCase().includes(searchTerm)
-    );
-    const metadataMatches = allMatches.filter((song) =>
-      !(song.title || "").toLowerCase().includes(searchTerm)
-    );
-
-    filteredSongs = [...titleMatches, ...metadataMatches];
-  }
+  // Filter songs using new Logic
+  const filteredSongs = filterSongs(state.songs, searchTermRaw);
 
   if (filteredSongs.length === 0) {
     list.innerHTML = '<p class="muted">No songs match your search.</p>';
-    // Even if no metadata matches, we still want to search resources
+    // Only search resources if there is an actual text term remaining
     if (searchTerm) {
       searchSongResources(searchTerm, []);
     }
     return;
   }
 
-  filteredSongs.forEach((song) => {
+  filteredSongs.forEach((song, index) => {
     const div = document.createElement("div");
     div.className = "card set-song-card";
 
-    // Highlight search term in title and metadata (use raw search term for highlighting)
-    const highlightedTitle = searchTermRaw ? highlightMatch(song.title || "", searchTermRaw) : escapeHtml(song.title || "");
-    const highlightedBpm = song.bpm ? (searchTerm && String(song.bpm).includes(searchTerm) ? `<span>BPM: ${highlightMatch(String(song.bpm), searchTermRaw)}</span>` : `<span>BPM: ${song.bpm}</span>`) : '';
+    if (animate) {
+      div.classList.add("ripple-item");
+      div.style.animationDelay = `${index * 0.03}s`;
+    }
+
+    // Highlight search term in title and metadata (use residual search term for highlighting)
+    const highlightedTitle = searchTerm ? highlightMatch(song.title || "", searchTerm) : escapeHtml(song.title || "");
+
+    // For specific fields, only highlight if the residual text matches them (standard behavior)
+    // We COULD highlight them if the filter matched them (e.g. key:C highlights C), but that requires more complex logic.
+    // Sticking to standard highlighting of the residual text.
+
+    const bpmStr = String(song.bpm || "");
+    const highlightedBpm = song.bpm ? (searchTerm && bpmStr.includes(searchTerm) ? `<span>BPM: ${highlightMatch(bpmStr, searchTerm)}</span>` : `<span>BPM: ${bpmStr}</span>`) : '';
+
     // Only use keys from the song itself (song_keys relationship), remove duplicates
     const keysSet = new Set((song.song_keys || []).map(k => k.key).filter(Boolean));
     const keys = Array.from(keysSet).join(", ");
-    const highlightedKey = keys ? (searchTerm && keys.toLowerCase().includes(searchTerm.toLowerCase()) ? `<span>Key: ${highlightMatch(keys, searchTermRaw)}</span>` : `<span>Key: ${keys}</span>`) : '';
-    const highlightedTime = song.time_signature ? (searchTerm && song.time_signature.toLowerCase().includes(searchTerm) ? `<span>Time: ${highlightMatch(song.time_signature, searchTermRaw)}</span>` : `<span>Time: ${escapeHtml(song.time_signature)}</span>`) : '';
+    const highlightedKey = keys ? (searchTerm && keys.toLowerCase().includes(searchTermLower) ? `<span>Key: ${highlightMatch(keys, searchTerm)}</span>` : `<span>Key: ${keys}</span>`) : '';
+
+    const timeStr = song.time_signature || "";
+    const highlightedTime = timeStr ? (searchTerm && timeStr.toLowerCase().includes(searchTermLower) ? `<span>Time: ${highlightMatch(timeStr, searchTerm)}</span>` : `<span>Time: ${escapeHtml(timeStr)}</span>`) : '';
+
     const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
-    const highlightedDuration = durationStr ? (searchTerm && durationStr.toLowerCase().includes(searchTerm) ? `<span>Duration: ${highlightMatch(durationStr, searchTermRaw)}</span>` : `<span>Duration: ${durationStr}</span>`) : '';
+    const highlightedDuration = durationStr ? (searchTerm && durationStr.toLowerCase().includes(searchTermLower) ? `<span>Duration: ${highlightMatch(durationStr, searchTerm)}</span>` : `<span>Duration: ${durationStr}</span>`) : '';
 
     div.innerHTML = `
       <div class="set-song-header song-card-header">
@@ -10837,41 +11216,75 @@ async function openSongEditModal(songId = null) {
   // Check if song modal is already open (for stacking)
   const songModalOpen = !el("song-modal").classList.contains("hidden");
 
+  // Show modal immediately to ensure responsiveness
+  modal.classList.remove("hidden");
+  // Only set body overflow if song modal isn't already open
+  if (!songModalOpen) {
+    document.body.style.overflow = "hidden";
+  }
+
   if (songId) {
-    const song = state.songs.find(s => s.id === songId);
+    title.textContent = "Edit Song";
+    form.dataset.songId = songId;
+
+    // Try to pre-populate from state if available
+    const song = state.songs ? state.songs.find(s => s.id === songId) : null;
     if (song) {
-      title.textContent = "Edit Song";
       el("song-edit-title").value = song.title || "";
       el("song-edit-bpm").value = song.bpm || "";
       el("song-edit-time-signature").value = song.time_signature || "";
       el("song-edit-duration").value = song.duration_seconds ? formatDuration(song.duration_seconds) : "";
       el("song-edit-description").value = song.description || "";
-      form.dataset.songId = songId;
+    } else {
+      // Reset fields if waiting for data to avoid confusion
+      form.reset();
+    }
 
-      // Load song keys and links
+    // Always load fresh song data (keys and links)
+    try {
       const { data: songData } = await supabase
         .from("songs")
         .select(`
-  *,
-  song_keys(
-    id,
-    key
-  ),
-  song_links(
-    id,
-    title,
-    url,
-    key,
-    display_order
-  )
-    `)
+    *,
+    song_keys(
+      id,
+      key
+    ),
+    song_links(
+      id,
+      title,
+      url,
+      key,
+      display_order,
+      file_path,
+      file_name,
+      file_type,
+      is_file_upload
+    )
+      `)
         .eq("id", songId)
         .single();
 
       if (songData) {
+        // Update form with fresh data
+        el("song-edit-title").value = songData.title || "";
+        el("song-edit-bpm").value = songData.bpm || "";
+        el("song-edit-time-signature").value = songData.time_signature || "";
+        el("song-edit-duration").value = songData.duration_seconds ? formatDuration(songData.duration_seconds) : "";
+        el("song-edit-description").value = songData.description || "";
+
         renderSongKeys(songData.song_keys || []);
         renderSongLinks(songData.song_links || []);
       } else {
+        if (!song) {
+          renderSongKeys([]);
+          renderSongLinks([]);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching song details for edit:", err);
+      // Fallback: if we had local state, we're good. If not, user sees empty/partial form.
+      if (!song) {
         renderSongKeys([]);
         renderSongLinks([]);
       }
@@ -10882,12 +11295,6 @@ async function openSongEditModal(songId = null) {
     delete form.dataset.songId;
     renderSongKeys([]);
     renderSongLinks([]);
-  }
-
-  modal.classList.remove("hidden");
-  // Only set body overflow if song modal isn't already open
-  if (!songModalOpen) {
-    document.body.style.overflow = "hidden";
   }
 }
 
@@ -10915,7 +11322,7 @@ function closeSongEditModal() {
   }
 }
 
-async function openSongDetailsModal(song, selectedKey = null) {
+async function openSongDetailsModal(song, selectedKey = null, setSongContext = null) {
   if (!song) return;
 
   const modal = el("song-details-modal");
@@ -10996,7 +11403,30 @@ async function openSongDetailsModal(song, selectedKey = null) {
   // Render all song information in an expanded view
   content.innerHTML = `
   <div class="song-details-section">
-        <h2 class="song-details-title">${escapeHtml(songWithLinks.title || "Untitled")}</h2>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem;">
+          <h2 class="song-details-title" style="margin: 0;">${escapeHtml(songWithLinks.title || "Untitled")}</h2>
+          
+           ${isManager() ? `
+          <div class="header-dropdown-container" id="song-details-edit-dropdown">
+            <button class="btn small secondary" type="button" id="btn-song-details-edit-toggle">
+              <i class="fa-solid fa-pencil"></i> Edit <i class="fa-solid fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.75rem;"></i>
+            </button>
+            <div class="header-dropdown-menu hidden" style="right: 0; left: auto;">
+              <button type="button" class="header-dropdown-item" id="btn-song-details-edit-global">
+                <i class="fa-solid fa-music"></i>
+                <span>Edit Song Details</span>
+              </button>
+              ${setSongContext ? `
+              <button type="button" class="header-dropdown-item" id="btn-song-details-edit-set">
+                <i class="fa-solid fa-list-ul"></i>
+                <span>Edit Song in Set</span>
+              </button>
+              ` : ''}
+            </div>
+          </div>
+          ` : ''}
+
+        </div>
         
         <div class="song-details-meta">
           ${songWithLinks.bpm ? `<div class="detail-item">
@@ -11045,9 +11475,28 @@ async function openSongDetailsModal(song, selectedKey = null) {
     }
         
         ${hasLinks ? `
-        <div class="song-details-section">
-          <h3 class="section-title" style="margin-top:1.25rem;">Resources & Links</h3>
-          <div class="song-details-links"></div>
+        <div class="resources-section-wrapper">
+          <div class="resources-wave-divider">
+            <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+              <defs>
+                <clipPath id="clip-solid">
+                  <rect x="0" y="0" width="900" height="120" />
+                </clipPath>
+                <clipPath id="clip-dashed">
+                  <rect x="900" y="0" width="300" height="120" />
+                </clipPath>
+              </defs>
+              <path d="M0,60 Q50,20 100,60 T200,60 T300,60 T400,60 T500,60 T600,60 T700,60 T800,60 T900,60 T1000,60 T1100,60 T1200,60 V120 H0 Z" class="shape-fill"></path>
+              <path d="M0,60 Q50,20 100,60 T200,60 T300,60 T400,60 T500,60 T600,60 T700,60 T800,60 T900,60 T1000,60 T1100,60 T1200,60" class="wave-border-solid" fill="none" vector-effect="non-scaling-stroke" clip-path="url(#clip-solid)"></path>
+              <path d="M0,60 Q50,20 100,60 T200,60 T300,60 T400,60 T500,60 T600,60 T700,60 T800,60 T900,60 T1000,60 T1100,60 T1200,60" class="wave-border-dashed" fill="none" vector-effect="non-scaling-stroke" clip-path="url(#clip-dashed)"></path>
+            </svg>
+          </div>
+          <div class="resources-content-area">
+            <div class="song-details-section">
+              <h1 class="section-title" style="margin-top:0.5rem; font-size:2rem;">Resources & Links</h1>
+              <div class="song-details-links"></div>
+            </div>
+          </div>
         </div>
         ` : ''
     }
@@ -11155,6 +11604,44 @@ async function openSongDetailsModal(song, selectedKey = null) {
   }
 
   updateClickTrackButtons();
+
+  // Logic for Edit Dropdown
+  const dropdownContainer = content.querySelector("#song-details-edit-dropdown");
+  if (dropdownContainer) {
+    const toggleBtn = dropdownContainer.querySelector("#btn-song-details-edit-toggle");
+    const menu = dropdownContainer.querySelector(".header-dropdown-menu");
+    const globalEditBtn = menu.querySelector("#btn-song-details-edit-global");
+    const setEditBtn = menu.querySelector("#btn-song-details-edit-set");
+
+    // Toggle Menu
+    toggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menu.classList.toggle("hidden");
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!dropdownContainer.contains(e.target)) {
+        menu.classList.add("hidden");
+      }
+    });
+
+    // Global Edit Action
+    if (globalEditBtn) {
+      globalEditBtn.addEventListener("click", () => {
+        closeSongDetailsModal();
+        openSongEditModal(song.id);
+      });
+    }
+
+    // Set Edit Action
+    if (setEditBtn && setSongContext) {
+      setEditBtn.addEventListener("click", () => {
+        closeSongDetailsModal();
+        openEditSetSongModal(setSongContext);
+      });
+    }
+  }
 
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -11410,7 +11897,7 @@ function renderSongKeys(keys) {
     div.className = "song-key-row";
     div.dataset.keyId = keyItem.id || `new- ${index} `;
     div.innerHTML = `
-  < input type = "text" class="song-key-input" placeholder = "C, Dm, G, etc" value = "${escapeHtml(keyItem.key || '')}" required />
+      <input type="text" class="song-key-input" placeholder="C, Dm, G, etc" value="${escapeHtml(keyItem.key || '')}" required />
     ${keyItem.id ? `<input type="hidden" class="song-key-id" value="${keyItem.id}" />` : ''}
 <button type="button" class="btn small ghost remove-song-key">Remove</button>
 `;
@@ -11451,7 +11938,7 @@ function addSongKeyInput() {
   div.className = "song-key-row";
   div.dataset.keyId = `new- ${Date.now()} `;
   div.innerHTML = `
-  < input type = "text" class="song-key-input" placeholder = "C, Dm, G, etc" required />
+      <input type="text" class="song-key-input" placeholder="C, Dm, G, etc" required />
     <button type="button" class="btn small ghost remove-song-key">Remove</button>
 `;
 
@@ -11700,9 +12187,6 @@ function renderSongLinks(links) {
     return at.localeCompare(bt);
   });
 
-  // Get available keys
-  const keys = collectSongKeys();
-
   // Group links by key
   const generalLinks = sortedLinks.filter(link => !link.key);
   const linksByKey = {};
@@ -11712,6 +12196,18 @@ function renderSongLinks(links) {
         linksByKey[link.key] = [];
       }
       linksByKey[link.key].push(link);
+    }
+  });
+
+  // Get available keys
+  const keys = collectSongKeys();
+
+  // Add any keys that have links but aren't in the song's keys list (orphaned links)
+  // This ensures links are visible even if their key was deleted or renamed
+  const existingKeyNames = new Set(keys.map(k => k.key));
+  Object.keys(linksByKey).forEach(linkKey => {
+    if (!existingKeyNames.has(linkKey)) {
+      keys.push({ id: null, key: linkKey });
     }
   });
 
@@ -11962,6 +12458,7 @@ function addSongLinkToSection(key) {
 
   const linkRow = createLinkRow({ id: null, title: "", url: "", key: key, display_order: nextOrder, is_file_upload: false }, nextOrder, key);
   sectionContent.appendChild(linkRow);
+  if (isManager()) setupLinkDragAndDrop(linkRow, sectionContent);
   updateLinkOrder(sectionContent);
 }
 
@@ -12028,6 +12525,7 @@ function addFileUploadToSection(key) {
     is_file_upload: true
   }, nextOrder, key);
   sectionContent.appendChild(linkRow);
+  if (isManager()) setupLinkDragAndDrop(linkRow, sectionContent);
   updateLinkOrder(sectionContent);
 }
 
@@ -12348,6 +12846,7 @@ function addSectionLinkToSection(key, containerId = "section-links-list") {
 
   const linkRow = createSectionLinkRow({ id: null, title: "", url: "", key: key, display_order: nextOrder, is_file_upload: false }, nextOrder, key);
   sectionContent.appendChild(linkRow);
+  if (isManager()) setupLinkDragAndDrop(linkRow, sectionContent);
   updateSectionLinkOrder(sectionContent, containerId);
 }
 
@@ -12414,6 +12913,7 @@ function addSectionFileUploadToSection(key, containerId = "section-links-list") 
     is_file_upload: true
   }, nextOrder, key);
   sectionContent.appendChild(linkRow);
+  if (isManager()) setupLinkDragAndDrop(linkRow, sectionContent);
   updateSectionLinkOrder(sectionContent, containerId);
 }
 
@@ -13223,11 +13723,6 @@ async function renderSongLinksDisplay(links, container) {
         audioContainer.className = "song-link-display audio-player-container";
         audioContainer.style.display = "flex";
         audioContainer.style.alignItems = "center";
-        audioContainer.style.gap = "0.75rem";
-        audioContainer.style.padding = "0.75rem";
-        audioContainer.style.background = "var(--bg-secondary)";
-        audioContainer.style.borderRadius = "0.5rem";
-        audioContainer.style.border = "1px solid var(--border-color)";
 
         // Audio icon
         const audioIcon = document.createElement("div");
@@ -13313,12 +13808,62 @@ async function renderSongLinksDisplay(links, container) {
 
       const favicon = document.createElement("img");
       favicon.className = "song-link-favicon";
-      favicon.src = getFaviconUrl(link.url);
       favicon.alt = "";
+
       favicon.onerror = () => {
         favicon.style.display = "none";
       };
 
+      // Set src for the visible icon (no crossOrigin, ensures it loads)
+      // Google's service is great for display but blocks CORS (can't extract color)
+      const faviconUrl = getFaviconUrl(link.url);
+      favicon.src = faviconUrl;
+
+      // Hardcoded brand colors for common domains to bypass CORS issues
+      const getBrandColor = (urlStr) => {
+        try {
+          const hostname = new URL(urlStr).hostname.toLowerCase();
+          if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return '#ff0000';
+          if (hostname.includes('spotify.com')) return '#1db954';
+          if (hostname.includes('planningcenteronline.com')) return '#314457';
+          if (hostname.includes('multitracks.com')) return '#51c5ffff';
+          if (hostname.includes('praisecharts.com')) return '#ff0000ff';
+          if (hostname.includes('songselect.ccli.com')) return '#00547f';
+          if (hostname.includes('loopcommunity.com')) return '#2a2a2a';
+          if (hostname.includes('dropbox.com')) return '#0061fe';
+          if (hostname.includes('drive.google.com')) return '#F4B400';
+          if (hostname.includes('docs.google.com')) return '#4285f4';
+          return null;
+        } catch (e) { return null; }
+      };
+
+      const brandColor = getBrandColor(link.url);
+
+      const applyColor = (hex) => {
+        // Clear solid colors to allow default theme (light/dark) to show
+        linkEl.style.backgroundColor = '';
+        linkEl.style.color = '';
+
+        // Apply subtle gradient blob
+        // Using color-mix to ensure opacity works regardless of input format (hex6, hex8, etc)
+        const gradientColor = `color-mix(in srgb, ${hex}, transparent 85%)`;
+        linkEl.style.backgroundImage = `radial-gradient(circle at 70% 120%, ${gradientColor} 0%, transparent 70%)`;
+
+        // Subtle border tint
+
+        // Reset text colors to defaults
+        const title = linkEl.querySelector('.song-link-title');
+        if (title) title.style.color = '';
+        const urlDiv = linkEl.querySelector('.song-link-url');
+        if (urlDiv) {
+          urlDiv.style.color = '';
+          urlDiv.style.opacity = '';
+        }
+        // Remove shadow as it clashes with the subtle blob look
+        linkEl.style.boxShadow = '';
+      };
+
+      // Construct DOM elements first
       const content = document.createElement("div");
       content.className = "song-link-content";
 
@@ -13335,6 +13880,29 @@ async function renderSongLinksDisplay(links, container) {
 
       linkEl.appendChild(favicon);
       linkEl.appendChild(content);
+
+      if (brandColor) {
+        applyColor(brandColor);
+      } else {
+        // Fallback: Try color extraction (best effort)
+        const colorImg = new Image();
+        colorImg.crossOrigin = "Anonymous";
+        try {
+          // Try Google V2 as fallback source
+          colorImg.src = `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(link.url)}&size=64`;
+        } catch (e) {
+          colorImg.src = faviconUrl;
+        }
+
+        colorImg.onload = () => {
+          try {
+            const color = fac.getColor(colorImg);
+            applyColor(color.hex);
+          } catch (e) {
+            // Silent fail
+          }
+        };
+      }
     }
 
     linksContainer.appendChild(linkEl);
@@ -13359,111 +13927,204 @@ function parseLocalDate(dateString) {
 }
 
 // Metronome/Click Track Functions
-function createClickSound(audioContext) {
-  const now = audioContext.currentTime;
-  const duration = 0.008; // Very short for sharp attack
 
-  // Create white noise for percussive character
-  const bufferSize = audioContext.sampleRate * duration;
+// Precise scheduling engine
+function scheduler() {
+  const metronome = state.metronome;
+
+  // while there are notes that will need to play before the next interval,
+  // schedule them and advance the pointer.
+  while (metronome.nextNoteTime < metronome.audioContext.currentTime + metronome.scheduleAheadTime) {
+    scheduleNote(metronome.currentBeat, metronome.nextNoteTime);
+    nextNote();
+  }
+
+  if (metronome.isPlaying) {
+    metronome.schedulerId = window.setTimeout(scheduler, metronome.lookahead);
+  }
+}
+
+function nextNote() {
+  const metronome = state.metronome;
+  const secondsPerBeat = 60.0 / metronome.bpm;
+
+  metronome.nextNoteTime += secondsPerBeat; // Add beat length to last beat time
+
+  // Advance the beat number, wrapping to zero
+  metronome.currentBeat++;
+  if (metronome.currentBeat >= metronome.timeSignature.numerator) {
+    metronome.currentBeat = 0;
+  }
+}
+
+function scheduleNote(beatNumber, time) {
+  const metronome = state.metronome;
+  // push the note on the queue, even if we're not playing.
+  createClickSound(metronome.audioContext, time, beatNumber);
+}
+
+
+function createClickSound(audioContext, time, beatNumber) {
+  // Determine if this is the first beat of the bar (beat 0)
+  const isAccent = beatNumber === 0;
+
+  // 1. WHITE NOISE (The "Click" attack)
+  // -----------------------------------
+  const clickDuration = 0.01;
+  const bufferSize = audioContext.sampleRate * clickDuration;
   const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
   const data = buffer.getChannelData(0);
 
-  // Fill with white noise
+  // Fill buffer with white noise
   for (let i = 0; i < bufferSize; i++) {
     data[i] = Math.random() * 2 - 1;
   }
 
-  // Use a bandpass filter to emphasize mid-range frequencies (snare-like)
-  const filter = audioContext.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.setValueAtTime(2000, now); // Center around 2kHz for that "crack"
-  filter.Q.setValueAtTime(2, now); // Narrower Q for more focused sound
+  // Filter noise to sound like a sharp tick
+  const noiseFilter = audioContext.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.setValueAtTime(isAccent ? 3000 : 2000, time); // Higher snap for accent
+  noiseFilter.Q.setValueAtTime(2, time);
 
-  // Create a very sharp envelope for percussive attack
-  const gainNode = audioContext.createGain();
-  gainNode.gain.setValueAtTime(0, now);
-  gainNode.gain.linearRampToValueAtTime(0.6, now + 0.0005); // Very quick attack
-  gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration); // Quick decay
+  // Envelope for noise
+  const noiseGain = audioContext.createGain();
+  noiseGain.gain.setValueAtTime(0, time);
+  noiseGain.gain.linearRampToValueAtTime(0.8, time + 0.001); // Sharp attack
+  noiseGain.gain.exponentialRampToValueAtTime(0.01, time + clickDuration);
 
-  // Add a mid-range frequency component for body (like a drumstick click)
-  const oscillator = audioContext.createOscillator();
-  oscillator.type = 'sine';
-  oscillator.frequency.setValueAtTime(1200, now); // Higher frequency for cut-through
-  oscillator.frequency.exponentialRampToValueAtTime(400, now + 0.003); // Quick drop to body
+  const noiseSource = audioContext.createBufferSource();
+  noiseSource.buffer = buffer;
+  noiseSource.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseGain.connect(audioContext.destination);
 
+  noiseSource.start(time);
+  noiseSource.stop(time + clickDuration + 0.05);
+
+  // 2. OSCILLATOR (The "Tone" pitch)
+  // --------------------------------
+  // Higher pitch for accent (beat 1), standard pitch for others
+  const tonePitch = isAccent ? 1600 : 1000;
+  const toneDuration = 0.05; // Short beep
+
+  const osc = audioContext.createOscillator();
   const oscGain = audioContext.createGain();
-  oscGain.gain.setValueAtTime(0, now);
-  oscGain.gain.linearRampToValueAtTime(0.3, now + 0.0005); // Sharp attack
-  oscGain.gain.exponentialRampToValueAtTime(0.01, now + duration);
 
-  oscillator.connect(oscGain);
+  osc.type = isAccent ? 'sine' : 'sine';
+  osc.frequency.setValueAtTime(tonePitch, time);
+
+  // Envelope for tone
+  oscGain.gain.setValueAtTime(0, time);
+  oscGain.gain.linearRampToValueAtTime(isAccent ? 0.8 : 0.5, time + 0.002);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, time + toneDuration);
+
+  osc.connect(oscGain);
   oscGain.connect(audioContext.destination);
 
-  // Play filtered white noise (the "snap" part)
-  const source = audioContext.createBufferSource();
-  source.buffer = buffer;
-  source.connect(filter);
-  filter.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-
-  oscillator.start(now);
-  oscillator.stop(now + duration);
-  source.start(now);
-  source.stop(now + duration);
+  osc.start(time);
+  osc.stop(time + toneDuration + 0.05);
 }
 
-function startMetronome(bpm) {
+async function startMetronome(bpm, timeSignatureStr = '4/4') {
   if (!bpm || bpm <= 0) {
     toastError("Song needs a BPM to play click track.");
     return;
   }
 
+  // Parse time signature (e.g., "4/4", "6/8", "3/4")
+  let numerator = 4;
+  let denominator = 4;
+
+  if (timeSignatureStr) {
+    const parts = timeSignatureStr.split('/').map(Number);
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      numerator = parts[0];
+      denominator = parts[1];
+    }
+  }
+
   // Stop any existing metronome
   stopMetronome();
 
-  // Initialize audio context if needed
-  if (!state.metronome.audioContext) {
-    state.metronome.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  }
-
-  const audioContext = state.metronome.audioContext;
-
-  // Calculate interval in milliseconds (60 seconds / BPM * 1000)
-  const intervalMs = (60 / bpm) * 1000;
-
-  // Play first click immediately
-  createClickSound(audioContext);
-
-  // Set up interval for subsequent clicks
-  state.metronome.intervalId = setInterval(() => {
-    if (state.metronome.isPlaying) {
-      createClickSound(audioContext);
+  try {
+    // Initialize audio context if needed
+    if (!state.metronome.audioContext) {
+      state.metronome.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
-  }, intervalMs);
 
-  state.metronome.isPlaying = true;
-  state.metronome.bpm = bpm;
+    // Resume context if suspended (browser autoplay policy)
+    if (state.metronome.audioContext.state === 'suspended') {
+      await state.metronome.audioContext.resume();
+    }
+
+    // Reset scheduling state
+    state.metronome.currentBeat = 0;
+    state.metronome.nextNoteTime = state.metronome.audioContext.currentTime + 0.1; // Start slightly in future
+    state.metronome.bpm = bpm;
+    state.metronome.timeSignature = { numerator, denominator };
+    state.metronome.isPlaying = true;
+
+    // Start the scheduler loop
+    scheduler();
+
+    updateClickTrackButtons();
+
+  } catch (error) {
+    console.error('❌ Error starting metronome:', error);
+    toastError("Could not start metronome. See console.");
+  }
 }
 
 function stopMetronome() {
-  if (state.metronome.intervalId) {
-    clearInterval(state.metronome.intervalId);
-    state.metronome.intervalId = null;
-  }
   state.metronome.isPlaying = false;
-  state.metronome.bpm = null;
+  state.metronome.bpm = null; // Clear active BPM to reset buttons
+  if (state.metronome.schedulerId) {
+    window.clearTimeout(state.metronome.schedulerId);
+    state.metronome.schedulerId = null;
+  }
   updateClickTrackButtons();
 }
 
 function toggleMetronome(bpm) {
+  // If we are already playing this BPM, stop it.
   if (state.metronome.isPlaying && state.metronome.bpm === bpm) {
     stopMetronome();
     return false;
   } else {
-    startMetronome(bpm);
+    // We need to find the time signature for the current song or default to 4/4
+    // Since we don't have the song object passed directly, we look it up from the currentSongDetailsId
+    // or try to guess from the context if possible. 
+    // However, the button creating this call might be in a song list or details view.
+    // Ideally updateClickTrackButtons logic relies on state.metronome.bpm which is set in startMetronome.
+
+    // Let's see if we can find the song this BPM belongs to.
+    // If this is called from the song details modal, we use that song.
+    let timeSignature = '4/4';
+
+    if (state.currentSongDetailsId) {
+      const song = state.songs.find(s => s.id === state.currentSongDetailsId);
+      if (song && song.time_signature) {
+        timeSignature = song.time_signature;
+      }
+    }
+
+    // If current details view isn't open, we might be clicking it from a list row.
+    // For now, defaulting to 4/4 if not in details view is a safe fallback, 
+    // or we could assume the song that has this BPM. But multiple songs can have same BPM.
+    // The previous implementation didn't handle this at all.
+    // Improvement: We can try to look up a song with this BPM in the current view? 
+    // No, that's ambiguous. 
+    // Best effort: Use 4/4 default if not in details modal.
+
+    startMetronome(bpm, timeSignature);
     return true;
   }
 }
+
+// Expose to window for HTML onclick handlers
+window.toggleMetronome = toggleMetronome;
+window.startMetronome = startMetronome;
+window.stopMetronome = stopMetronome;
 
 function updateClickTrackButtons() {
   document.querySelectorAll(".click-track-btn").forEach(btn => {

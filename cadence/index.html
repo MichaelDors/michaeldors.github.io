@@ -32,14 +32,12 @@
       <h1><i class="fa-solid fa-ticket" style="color: var(--accent-color);"></i> Cadence</h1>
     </div>
     <div class="header-actions">
-      <button id="btn-view-as-member" style="margin-right: 1rem;" class="btn secondary hidden"><i
-          class="fa-solid fa-user"></i> Member View</button>
+
       <div id="user-info" class="user-info hidden">
         <span id="user-name"></span>
         <div id="account-switcher" style="margin-right: 0.5rem; position: relative;">
           <button id="btn-account-menu" class="btn ghost small"><i class="fa-solid fa-user-circle"></i></button>
-          <div id="account-menu" class="hidden"
-            style="position: absolute; top: 100%; right: 0; margin-top: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.5rem; min-width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 2000;">
+          <div id="account-menu" class="hidden account-menu">
             <div id="account-menu-team-section" style="padding: 0.5rem;">
               <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Current Team</div>
               <div id="account-menu-team-name" style="font-weight: 500; margin-bottom: 0.75rem;"></div>
@@ -195,7 +193,7 @@
               <h2><i class="fa-solid fa-calendar"></i> All Sets</h2>
             </div>
             <div class="header-actions">
-              <button id="btn-create-set" class="btn primary hidden"><i class="fa-solid fa-list-ul"></i> New
+              <button id="btn-create-set" class="btn primary hidden ripple-btn"><i class="fa-solid fa-list-ul"></i> New
                 Set</button>
             </div>
           </div>
@@ -209,7 +207,8 @@
             <h2><i class="fa-solid fa-music"></i> Song Catalog</h2>
           </div>
           <div class="header-actions">
-            <button id="btn-create-song" class="btn primary hidden"><i class="fa-solid fa-file-circle-plus"></i> New
+            <button id="btn-create-song" class="btn primary hidden ripple-btn"><i
+                class="fa-solid fa-file-circle-plus"></i> New
               Song</button>
           </div>
         </div>
@@ -217,7 +216,7 @@
           <label>
             <input type="text" id="songs-tab-search"
               placeholder="Search songs by title, BPM, key, time signature, or duration"
-              style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; color: var(--text-primary); font-size: 1rem;" />
+              style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 3rem; color: var(--text-primary); font-size: 1rem;" />
           </label>
         </div>
         <div id="songs-catalog-list" class="song-list"></div>
@@ -236,7 +235,7 @@
         <div style="margin-bottom: 1.5rem;">
           <label>
             <input type="text" id="people-tab-search" placeholder="Search users"
-              style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; color: var(--text-primary); font-size: 1rem;" />
+              style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 3rem; color: var(--text-primary); font-size: 1rem;" />
           </label>
         </div>
         <div id="people-list" class="people-grid"></div>
@@ -277,21 +276,32 @@
         </div>
         <div class="set-detail-main">
           <div class="detail-header">
+
             <div class="detail-title-section">
               <h2><i id="btn-back" style="padding: 0px !important; cursor: pointer;"
                   class="fa-solid fa-circle-chevron-left"></i><span id="detail-set-title"></span></h2>
               <p id="detail-set-date" class="muted"></p>
               <p id="detail-set-description" class="set-description"></p>
             </div>
+
+            <div id="set-countdown-badge" class="countdown-badge hidden">
+              <!-- SVG and content will be injected by JS -->
+            </div>
+
             <div class="header-actions">
-              <button id="btn-export-set-print" class="btn secondary"><i class="fa-solid fa-print"></i> Print</button>
-              <button id="btn-view-as-member-detail" class="btn secondary hidden"><i class="fa-solid fa-user"></i> View
-                as Member</button>
-              <button id="btn-edit-set-detail" class="btn secondary hidden"><i class="fa-solid fa-pencil"></i> Edit
+
+              <button id="btn-export-set-print" class="btn secondary ripple-btn" type="button"><i
+                  class="fa-solid fa-print"></i>
+                Print</button>
+              <button id="btn-view-as-member-detail" class="btn secondary hidden ripple-btn" type="button"><i
+                  class="fa-solid fa-user"></i>
+                Preview</button>
+              <button id="btn-edit-set-detail" class="btn secondary hidden ripple-btn" type="button"><i
+                  class="fa-solid fa-pencil"></i> Edit
                 Set</button>
-              <button id="btn-delete-set-detail" class="btn ghost hidden">Delete</button>
-              <div class="header-dropdown-container hidden desktop-only" id="header-add-dropdown-container">
-                <button id="btn-header-add-toggle" class="btn secondary" type="button">
+              <button id="btn-delete-set-detail" class="btn ghost hidden ripple-btn" type="button">Delete</button>
+              <div class="header-dropdown-container hidden desktop-only ripple-btn" id="header-add-dropdown-container">
+                <button id="btn-header-add-toggle" class="btn primary" type="button">
                   <i class="fa-solid fa-plus"></i> Add
                   <i class="fa-solid fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.75rem;"></i>
                 </button>
@@ -1040,37 +1050,38 @@
   </template>
 
   <div id="assignment-details-modal" class="modal hidden">
-    <div class="modal-content">
-      <header>
-        <h3>Assignment Details</h3>
-        <button class="icon-btn" id="close-assignment-details-modal" aria-label="Close modal">
-          <i class="fa-solid fa-circle-xmark"></i>
-        </button>
-      </header>
-      <div id="assignment-details-content" style="padding: 1.5rem 0;">
-        <div style="margin-bottom: 1rem;">
-          <label
-            style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Person</label>
-          <div id="assignment-details-person" style="font-size: 1.1rem; font-weight: 500;"></div>
+    <div class="modal-content assignment-modal-content">
+      <button class="icon-btn close-modal-absolute" id="close-assignment-details-modal" aria-label="Close modal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="assignment-modal-header">
+        <div id="assignment-details-avatar" class="assignment-avatar-large"></div>
+        <div class="assignment-user-info">
+          <h2 id="assignment-details-person"></h2>
+          <p id="assignment-details-email" class="muted"></p>
         </div>
-        <div style="margin-bottom: 1rem;">
-          <label
-            style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Role</label>
-          <div id="assignment-details-role" style="font-size: 1rem;"></div>
-        </div>
-        <div style="margin-bottom: 1rem;">
-          <label
-            style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Song</label>
-          <div id="assignment-details-song" style="font-size: 1rem;"></div>
-        </div>
-        <div style="margin-bottom: 1.5rem;">
-          <label
-            style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Status</label>
-          <div id="assignment-details-status"></div>
-        </div>
-        <div id="assignment-details-actions"
-          style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-color);"></div>
       </div>
+
+      <div class="assignment-modal-body">
+        <div class="assignment-info-grid">
+          <div class="assignment-info-group">
+            <label>Role</label>
+            <div id="assignment-details-role" class="assignment-role-display"></div>
+          </div>
+
+          <div class="assignment-info-group" id="assignment-details-song-container">
+            <label>Song</label>
+            <div id="assignment-details-song" class="assignment-song-display"></div>
+          </div>
+        </div>
+
+        <div id="assignment-details-status-stamp" class="assignment-status-stamp-container">
+          <!-- Stamp will be injected here -->
+        </div>
+      </div>
+
+      <div id="assignment-details-actions" class="assignment-modal-actions"></div>
     </div>
   </div>
 
