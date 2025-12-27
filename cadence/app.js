@@ -916,15 +916,25 @@ function bindEvents() {
   // Songs tab search
   let isSongSearchTransitioning = false;
   el("songs-tab-search")?.addEventListener("input", () => {
-    // Use View Transitions API if available, but safeguard against rapid invalid state errors
-    if (document.startViewTransition && !isSongSearchTransitioning) {
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
+    // Only use View Transitions on non-mobile devices where they are performant
+    // and safe. On mobile, the keyboard input and transition overhead cause issues.
+    if (document.startViewTransition && !isMobile && !isSongSearchTransitioning) {
       isSongSearchTransitioning = true;
-      const transition = document.startViewTransition(() => {
-        renderSongCatalog(false);
-      });
-      transition.finished.finally(() => {
+      try {
+        const transition = document.startViewTransition(() => {
+          renderSongCatalog(false);
+        });
+        transition.finished.finally(() => {
+          isSongSearchTransitioning = false;
+        });
+      } catch (e) {
+        // Fallback if transition fails start
+        console.warn("View transition failed:", e);
         isSongSearchTransitioning = false;
-      });
+        renderSongCatalog(false);
+      }
     } else {
       renderSongCatalog(false);
     }
@@ -933,14 +943,22 @@ function bindEvents() {
   // People tab search
   let isPeopleSearchTransitioning = false;
   el("people-tab-search")?.addEventListener("input", () => {
-    if (document.startViewTransition && !isPeopleSearchTransitioning) {
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
+    if (document.startViewTransition && !isMobile && !isPeopleSearchTransitioning) {
       isPeopleSearchTransitioning = true;
-      const transition = document.startViewTransition(() => {
-        renderPeople(false);
-      });
-      transition.finished.finally(() => {
+      try {
+        const transition = document.startViewTransition(() => {
+          renderPeople(false);
+        });
+        transition.finished.finally(() => {
+          isPeopleSearchTransitioning = false;
+        });
+      } catch (e) {
+        console.warn("View transition failed:", e);
         isPeopleSearchTransitioning = false;
-      });
+        renderPeople(false);
+      }
     } else {
       renderPeople(false);
     }
