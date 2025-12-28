@@ -2191,8 +2191,36 @@ async function createProfileAndMigrateInvites(user) {
     console.log('👤 Profile already exists, updating with pending invite info...');
 
     // Update profile with team_id from pending invite if it exists
+    // IMPORTANT: Do NOT overwrite full_name if it's already set to something custom
+    // Only update full_name if:
+    // 1. The current profile name is just the email (user hasn't set a name yet)
+    // 2. The current profile name is missing/null
+    // 3. We have a better name from a pending invite
+
+    // Check if current name looks like a custom name (not an email)
+    const currentNameIsEmail = existingProfile.full_name && existingProfile.full_name.includes('@');
+    const hasCustomName = existingProfile.full_name && !currentNameIsEmail;
+
+    // Determine the name to use
+    let nameToUse = existingProfile.full_name;
+
+    if (!hasCustomName) {
+      // If no custom name, we can try to improve it
+      if (fullName && !fullName.includes('@')) {
+        // We have a real name from invite or metadata
+        nameToUse = fullName;
+      } else if (existingProfile.full_name) {
+        // Keep existing (even if email) if we don't have better
+        nameToUse = existingProfile.full_name;
+      } else {
+        // Fallback
+        nameToUse = fullName;
+      }
+    }
+
     const updateData = {
-      full_name: fullName,
+      // Only update name if we decided to change it
+      full_name: nameToUse,
       email: userEmail,
     };
 
@@ -14725,6 +14753,16 @@ async function handleEditAccountSubmit(e) {
     console.error("Error updating account name:", error);
     toastError("Unable to update account name. Check console.");
     return;
+  }
+
+  // Also update auth metadata to keep it in sync
+  try {
+    await supabase.auth.updateUser({
+      data: { full_name: newName }
+    });
+  } catch (metadataError) {
+    console.warn("Failed to update auth metadata:", metadataError);
+    // Non-critical, continue
   }
 
   // Update local state
