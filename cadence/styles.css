@@ -3244,4 +3244,40 @@ i {
   select {
     font-size: 16px !important;
   }
-}
+
+  /* Mobile UI Improvements */
+  .song-edit-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  /* Ensure inputs inside the grid don't overflow */
+  .song-edit-grid input,
+  .song-edit-grid label {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .assignments-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  @media (max-width: 768px) {
+    .assignments-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+
+    .assignments-actions button {
+      width: 100%;
+    }
+
+    .assignments-actions #import-assignments-container,
+    .assignments-actions #import-edit-assignments-container {
+      width: 100%;
+    }
+  }

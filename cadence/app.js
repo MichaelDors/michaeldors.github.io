@@ -11520,7 +11520,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         </div>
         ` : ''
     }
-      </div >
+      </div>
   `;
 
   // Render links organized by key
@@ -11778,7 +11778,7 @@ async function openSectionDetailsModal(setSong) {
 
   // Render all section information
   content.innerHTML = `
-  < div class="song-details-section" >
+  <div class="song-details-section">
       <h2 class="song-details-title">${escapeHtml(sectionWithData.title || "Untitled Section")}</h2>
       
       <div class="song-details-meta">
@@ -11819,7 +11819,7 @@ async function openSectionDetailsModal(setSong) {
       </div>
       ` : ''
     }
-    </div >
+    </div>
   `;
 
   // Render assignments
