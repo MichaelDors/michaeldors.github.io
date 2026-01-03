@@ -16,7 +16,7 @@
   --text-muted: #a0a0a0;
   --border-color: rgba(255, 255, 255, 0.08);
   --border-light: rgba(255, 255, 255, 0.12);
-  --border-accent: rgba(199, 83, 37, 0.5);
+  --border-accent: color-mix(in srgb, color-mix(in srgb, var(--accent-color), black 20%) 50%, transparent);
 
   --songlink-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063);
   --secondary-btn-bg: var(--bg-tertiary);
@@ -27,13 +27,24 @@
   /* Allow native controls to adapt */
   color-scheme: dark light;
 
-  .btn.secondary::after {
-    opacity: 0.15;
-  }
+  /* Glass Effect Defaults (Dark Mode) */
+  --glass-bg: rgba(30, 30, 30, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --glass-backdrop: blur(12px);
+}
 
-  .btn.secondary::before {
-    opacity: 0.15;
-  }
+@media (max-width: 768px) {
+  /* Mobile specific overrides if any */
+}
+
+/* Global Secondary Button Highlights (Restoring previous behavior) */
+.btn.secondary::after {
+  opacity: 0.15;
+}
+
+.btn.secondary::before {
+  opacity: 0.15;
 }
 
 /* Light mode palette driven by system preference */
@@ -50,7 +61,7 @@
     --text-muted: #4b5563;
     --border-color: rgba(0, 0, 0, 0.15);
     --border-light: rgba(0, 0, 0, 0.2);
-    --border-accent: rgba(255, 102, 41, 0.3);
+    --border-accent: color-mix(in srgb, var(--accent-color) 30%, transparent);
 
     --songlink-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.54), inset 0 0 18px rgba(255, 255, 255, 0.591);
     --secondary-btn-bg: var(--bg-tertiary);
@@ -58,10 +69,16 @@
 
     --starburst-accent-color: #f3f0e5;
 
-    /* Better contrast accent color for light mode */
-    --accent-color: #ff7b51;
+    /* Better contrast accent color for light mode 
+    --accent-color: #ff7b51;*/
     --accent-light: color-mix(in srgb, var(--accent-color) 20%, black);
     --accent-lighter: color-mix(in srgb, var(--accent-color) 10%, black);
+
+    /* Glass Effect Overrides (Light Mode) */
+    --glass-bg: rgba(255, 255, 255, 0.31);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    --glass-backdrop: blur(5.1px);
   }
 
 
@@ -170,17 +187,16 @@ body {
 .header-dropdown-container {
   position: relative;
   margin-left: auto;
+  z-index: 900;
 }
 
 .header-dropdown-menu {
   position: absolute;
   top: calc(100% + 0.25rem);
   right: 0;
-  /* background/border removed for glass effect */
   max-width: 200px;
   width: fit-content;
-  z-index: 1000;
-  overflow: hidden;
+  z-index: 10000;
   text-wrap: nowrap;
 }
 
@@ -225,10 +241,37 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  position: relative;
+  z-index: 10001;
+  /* Ensure higher than header-text */
+}
+
+#hidden-color-picker {
+  display: grid !important;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0;
+  justify-items: center;
 }
 
 .hidden {
   display: none !important;
+}
+
+.color-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 0 0 1px var(--border-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.color-circle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px var(--text-primary);
 }
 
 main {
@@ -1055,9 +1098,9 @@ main {
 }
 
 .assignment-pill {
-  background: rgba(255, 122, 81, 0.053);
+  background: color-mix(in srgb, var(--accent-color) 5%, transparent);
   color: var(--accent-color);
-  border: 1px solid rgba(255, 123, 81, 0.3);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent);
   padding: 0.4rem 0.85rem;
   border-radius: 999px;
   font-size: 0.875rem;
@@ -1069,8 +1112,8 @@ main {
 }
 
 .assignment-pill:hover {
-  background: rgba(255, 154, 81, 0.11);
-  border-color: rgba(255, 142, 81, 0.5);
+  background: color-mix(in srgb, var(--accent-color) 11%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
 }
 
 .assignment-pill.pending {
@@ -1170,23 +1213,29 @@ main {
   flex-wrap: wrap;
   gap: 0.25rem;
   margin-top: 0.35rem;
+  align-items: baseline;
 }
 
 .time-alert-chip {
   border-radius: 999px;
-  padding: 0.15rem 0.55rem;
-  font-size: 0.7rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8rem;
   border: 1px solid var(--border-color);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 
 .time-alert-chip.selected {
   border-color: var(--accent-color);
   background: var(--accent-color);
   color: var(--bg-primary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.1);
 }
 
 .btn.primary:active {
@@ -2786,7 +2835,8 @@ i {
   margin-top: 0.5rem;
   padding: 0.5rem;
   min-width: 250px;
-  z-index: 1000;
+  z-index: 11000;
+  /* Proper layering above other elements */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2797,28 +2847,18 @@ i {
 .account-menu,
 .header-dropdown-menu,
 .searchable-dropdown-options {
-  /* Dark Mode Default - Darker glass for better contrast */
-  background: rgba(30, 30, 30, 0.1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
+  border: 1px solid var(--glass-border);
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--glass-shadow);
+  /* Fix for Safari/Chrome backdrop-filter stacking context issues */
+  transform: translate3d(0, 0, 0);
 }
 
 @media (prefers-color-scheme: light) {
-
-  .person-menu,
-  .account-menu,
-  .header-dropdown-menu,
-  .searchable-dropdown-options {
-    /* Light Mode - User requested glass effect, but adapted border for visibility on white */
-    background: rgba(255, 255, 255, 0.31);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(5.1px);
-    -webkit-backdrop-filter: blur(5.1px);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-  }
+  /* Previous manual overrides removed in favor of variables defined in :root */
 
   .header-dropdown-item:hover,
   .searchable-dropdown-option:hover,
@@ -2842,6 +2882,16 @@ i {
     font-size: 0.9rem;
     transition: background 0.15s ease;
   }
+}
+
+.header-dropdown-menu .header-dropdown-item:first-child {
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+.header-dropdown-menu .header-dropdown-item:last-child {
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
 }
 
 /* Styling for Resources & Links Redesign */
@@ -2936,14 +2986,16 @@ i {
 
   100% {
     opacity: 1;
-    transform: translateX(0) scale(1);
-    filter: blur(0);
+    transform: none;
+    filter: none;
   }
 }
 
 .ripple-btn {
-  animation: ripple-in-horiz 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  opacity: 0;
+  /* Use backwards fill mode so it's hidden during delay (per 0% keyframe) but clean after end */
+  animation: ripple-in-horiz 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  /* Default state is visible so it stays visible after animation ends */
+  opacity: 1;
 }
 
 /* Stagger delays for buttons in header actions */
@@ -3265,19 +3317,19 @@ i {
     align-items: center;
   }
 
-  @media (max-width: 768px) {
-    .assignments-actions {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.5rem;
-    }
 
-    .assignments-actions button {
-      width: 100%;
-    }
-
-    .assignments-actions #import-assignments-container,
-    .assignments-actions #import-edit-assignments-container {
-      width: 100%;
-    }
+  .assignments-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
   }
+
+  .assignments-actions button {
+    width: 100%;
+  }
+
+  .assignments-actions #import-assignments-container,
+  .assignments-actions #import-edit-assignments-container {
+    width: 100%;
+  }
+}

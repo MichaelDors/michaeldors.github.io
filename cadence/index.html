@@ -52,6 +52,52 @@
             <div id="account-menu-actions-section" style="padding: 0.5rem;">
               <button id="btn-edit-account" class="btn small ghost" style="width: 100%; margin-bottom: 0.5rem;"><i
                   class="fa-solid fa-user-pen"></i> Edit Account</button>
+
+              <div id="hidden-color-picker" class="hidden">
+                <!-- Row 1: Simple Colors (6 items) -->
+                <div class="color-circle" onclick="setTheme('cadencedefault')"
+                  style="background: conic-gradient(from 180deg at 50% 50%, #FF7B51 0deg, #FFB499 360deg);"
+                  title="Default"></div>
+                <div class="color-circle" onclick="setTheme('green')"
+                  style="background: conic-gradient(from 180deg at 50% 50%, #00996d 0deg, #51e1b8 360deg);"
+                  title="Green">
+                </div>
+                <div class="color-circle" onclick="setTheme('blue')"
+                  style="background: conic-gradient(from 180deg at 50% 50%, #009db1ff 0deg, rgb(52, 217, 239) 360deg);"
+                  title="Blue">
+                </div>
+                <div class="color-circle" onclick="setTheme('red')"
+                  style="background: conic-gradient(from 180deg at 50% 50%, #e8003eff 0deg, rgb(247, 80, 125) 360deg);"
+                  title="Red">
+                </div>
+                <div class="color-circle" onclick="setTheme('yellow')"
+                  style="background: conic-gradient(from 180deg at 50% 50%, #ffc800ff 0deg, rgb(255, 221, 96) 360deg);"
+                  title="Yellow">
+                </div>
+                <div class="color-circle" onclick="setTheme('purple')"
+                  style="background: conic-gradient(from 180deg at 50% 50%, #be54ffff 0deg, rgb(212, 142, 255) 360deg);"
+                  title="Purple">
+                </div>
+
+                <!-- Row 2: Complex Themes -->
+                <div class="color-circle" onclick="setTheme('ocean')"
+                  style="background: linear-gradient(135deg, #0f172a 0%, #00e5ff 100%);" title="Ocean">
+                </div>
+                <div class="color-circle" onclick="setTheme('sunset')"
+                  style="background: linear-gradient(135deg, #2e1065 0%, #fb923c 100%);" title="Sunset">
+                </div>
+                <div class="color-circle" onclick="setTheme('forest')"
+                  style="background: linear-gradient(135deg, #052e16 0%, #4ade80 100%);" title="Forest">
+                </div>
+                <div class="color-circle" onclick="setTheme('midnight')"
+                  style="background: linear-gradient(135deg, #020617 0%, #818cf8 100%);" title="Midnight">
+                </div>
+                <div class="color-circle" onclick="setTheme('crazy')"
+                  style="background: conic-gradient(from 0deg at 50% 50%, #ff00ff 0deg, #00ff00 120deg, #0000ff 240deg, #ff00ff 360deg);"
+                  title="Crazy">
+                </div>
+              </div>
+
               <button id="btn-create-team" class="btn small secondary" style="width: 100%; margin-bottom: 0.5rem;"><i
                   class="fa-solid fa-plus"></i> Create Team</button>
               <button id="btn-logout-menu" class="btn small ghost" style="width: 100%;"><i
@@ -895,7 +941,7 @@
   <div id="edit-account-modal" class="modal hidden">
     <div class="modal-content">
       <header>
-        <h3>Edit Account</h3>
+        <h3 id="edit-account-title" style="cursor: pointer; user-select: none;">Edit Account</h3>
         <button class="icon-btn" id="close-edit-account-modal" aria-label="Close modal">
           <i class="fa-solid fa-circle-xmark"></i>
         </button>
@@ -994,8 +1040,8 @@
           can be on different dates than the service.</p>
 
         <br>
-        <p class="muted small-text">You can set up to 3 alerts per set, and alerts are sent at 8am on the scheduled
-          date.</p>
+        <p id="times-modal-alert-info" class="muted small-text">You can set up to 3 alerts per set, and alerts are sent
+          at 6am on the scheduled date.</p>
         <br>
         <div class="modal-actions">
           <button type="button" class="btn ghost" id="cancel-times">Cancel</button>

@@ -14,6 +14,36 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   window.__isRecovery = hashParams.get('type') === 'recovery';
   window.__isInviteLink = window.__hasAccessToken && !window.__isRecovery;
 
+  // Initialize theme early (basic accent color support only for pre-init)
+  // Full robust application happens in initTheme() later
+  const ACCENT_COLORS_INIT = {
+    green: "#00996d",
+    blue: "#009db1ff",
+    red: "#e8003eff",
+    yellow: "#ffc800ff",
+    purple: "#be54ffff",
+    cadencedefault: "#ff7b51"
+  };
+
+  let match = document.cookie.match(new RegExp('(^| )theme_preference=([^;]+)'));
+  let colorName = match ? match[2] : null;
+
+  if (!colorName) {
+    // Fallback to old cookie
+    match = document.cookie.match(new RegExp('(^| )theme_accent=([^;]+)'));
+    colorName = match ? match[2] : null;
+  }
+
+  if (colorName) {
+    const hex = ACCENT_COLORS_INIT[colorName];
+    if (hex) {
+      document.documentElement.style.setProperty("--accent-color", hex);
+    }
+  }
+
+  // We can't easily modify DOM here because it might not be ready, 
+  // but initAccentColor will handle the visibility toggle later.
+
   console.log('🔍 Pre-init check - Full URL:', window.location.href);
   console.log('🔍 Pre-init check - URL hash:', urlHash);
   console.log('🔍 Pre-init check - hashParams keys:', Array.from(hashParams.keys()));
@@ -387,6 +417,9 @@ function isOwner() {
 }
 
 async function init() {
+  // Initialize color picker visibility logic
+  initTheme();
+
   console.log('🚀 init() called');
   console.log('🔍 State.isPasswordSetup:', state.isPasswordSetup);
   console.log('🔍 Current URL hash:', window.location.hash);
@@ -760,6 +793,36 @@ function bindEvents() {
 
   // Account management
   el("btn-edit-account")?.addEventListener("click", () => openEditAccountModal());
+
+  // Secret Trigger management (Account Menu Button)
+  let accountEditClickCount = 0;
+  let accountEditClickTimer = null;
+
+  el("btn-account-menu")?.addEventListener("click", (e) => {
+    // Don't prevent default, we want the menu to open normally
+    // e.preventDefault(); 
+
+    accountEditClickCount++;
+
+    if (accountEditClickTimer) clearTimeout(accountEditClickTimer);
+
+    if (accountEditClickCount >= 5) {
+      // Trigger secret menu
+      accountEditClickCount = 0;
+      const picker = el("hidden-color-picker");
+      if (picker) {
+        picker.classList.remove("hidden");
+        // Save unlocked state
+        document.cookie = "theme_picker_enabled=true; path=/; max-age=31536000"; // 1 year
+      }
+      return;
+    }
+
+    // Reset counter if too slow
+    accountEditClickTimer = setTimeout(() => {
+      accountEditClickCount = 0;
+    }, 400); // 400ms window
+  });
 
   // Team settings button (owners only)
   el("btn-team-settings")?.addEventListener("click", () => {
@@ -7100,6 +7163,41 @@ async function openTimesModal() {
   // Prepare in-memory map of existing time alerts
   state.setTimeAlerts = { service: {}, rehearsal: {} };
 
+  // Update alert info text with dynamic time from team settings
+  const alertInfoEl = el("times-modal-alert-info");
+  if (alertInfoEl) {
+    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+    let timeDisplay = "8am"; // Default
+
+    if (currentTeam && currentTeam.daily_reminder_time) {
+      try {
+        const [hours, minutes] = currentTeam.daily_reminder_time.split(':');
+        const h = parseInt(hours, 10);
+        const m = parseInt(minutes, 10);
+        const ampm = h >= 12 ? 'pm' : 'am';
+        const h12 = h % 12 || 12;
+        const mStr = m > 0 ? `:${m.toString().padStart(2, '0')}` : '';
+        timeDisplay = `${h12}${mStr}${ampm}`;
+      } catch (e) {
+        console.error("Error formatting time", e);
+      }
+    }
+
+    alertInfoEl.innerHTML = `You can set up to 3 alerts per set, and alerts are sent at <strong>${timeDisplay}</strong> on the scheduled date. <a href="#" id="link-change-alert-time" style="color: var(--accent-color); text-decoration: underline;">Change time</a>`;
+
+    // Add click listener purely for this modal session
+    // Using setTimeout to ensure the innerHTML render is complete? No, distinct element creation is safer but innerHTML is easier for text mix.
+    // We'll attach the listener comfortably.
+    const link = alertInfoEl.querySelector("#link-change-alert-time");
+    if (link) {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        closeTimesModal();
+        openTeamSettingsModal();
+      });
+    }
+  }
+
   // Load existing alerts BEFORE rendering rows so we can pre-select chips
   await safeSupabaseOperation(async () => {
     const { data: timeAlerts, error } = await supabase
@@ -7767,15 +7865,15 @@ function addServiceTimeRow(time = "", id = null, alertOffsets = []) {
   const container = el("service-times-list");
   const row = document.createElement("div");
   row.className = "service-time-row";
-  row.style.display = "flex";
+  row.style.flexDirection = "column";
   row.style.gap = "0.75rem";
-  row.style.alignItems = "flex-end";
+  row.style.alignItems = "stretch";
   row.dataset.tempId = id || `temp-${Date.now()}-${Math.random()}`;
 
-  const timeWrapper = document.createElement("div");
-  timeWrapper.style.display = "flex";
-  timeWrapper.style.flexDirection = "column";
-  timeWrapper.style.flex = "1";
+  const topRow = document.createElement("div");
+  topRow.style.display = "flex";
+  topRow.style.gap = "0.75rem";
+  topRow.style.alignItems = "center";
 
   const timeInput = document.createElement("input");
   timeInput.type = "time";
@@ -7809,17 +7907,17 @@ function addServiceTimeRow(time = "", id = null, alertOffsets = []) {
     alertsRow.appendChild(chip);
   });
 
-  timeWrapper.appendChild(timeInput);
-  timeWrapper.appendChild(alertsRow);
-
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "btn ghost small solo-icon-btn";
   removeBtn.innerHTML = '<i class="fa-solid fa-trash solo-icon-btn"></i>';
   removeBtn.addEventListener("click", () => row.remove());
 
-  row.appendChild(timeWrapper);
-  row.appendChild(removeBtn);
+  topRow.appendChild(timeInput);
+  topRow.appendChild(removeBtn);
+
+  row.appendChild(topRow);
+  row.appendChild(alertsRow);
   container.appendChild(row);
 
   if (alertOffsets && alertOffsets.length > 0) {
@@ -7831,15 +7929,15 @@ function addRehearsalTimeRow(date = "", time = "", id = null, alertOffsets = [])
   const container = el("rehearsal-times-list");
   const row = document.createElement("div");
   row.className = "rehearsal-time-row";
-  row.style.display = "flex";
+  row.style.flexDirection = "column";
   row.style.gap = "0.75rem";
-  row.style.alignItems = "flex-end";
+  row.style.alignItems = "stretch";
   row.dataset.tempId = id || `temp-${Date.now()}-${Math.random()}`;
 
-  const timeWrapper = document.createElement("div");
-  timeWrapper.style.display = "flex";
-  timeWrapper.style.flexDirection = "column";
-  timeWrapper.style.flex = "1";
+  const topRow = document.createElement("div");
+  topRow.style.display = "flex";
+  topRow.style.gap = "0.75rem";
+  topRow.style.alignItems = "center";
 
   const dateInput = document.createElement("input");
   dateInput.type = "date";
@@ -7879,18 +7977,18 @@ function addRehearsalTimeRow(date = "", time = "", id = null, alertOffsets = [])
     alertsRow.appendChild(chip);
   });
 
-  timeWrapper.appendChild(dateInput);
-  timeWrapper.appendChild(timeInput);
-  timeWrapper.appendChild(alertsRow);
-
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "btn ghost small solo-icon-btn";
   removeBtn.innerHTML = '<i class="fa-solid fa-trash solo-icon-btn"></i>';
   removeBtn.addEventListener("click", () => row.remove());
 
-  row.appendChild(timeWrapper);
-  row.appendChild(removeBtn);
+  topRow.appendChild(dateInput);
+  topRow.appendChild(timeInput);
+  topRow.appendChild(removeBtn);
+
+  row.appendChild(topRow);
+  row.appendChild(alertsRow);
   container.appendChild(row);
 
   if (alertOffsets && alertOffsets.length > 0) {
@@ -13710,6 +13808,171 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+
+
+
+const THEMES = {
+  // Simple accent color themes
+  green: "#00996d",
+  blue: "#009db1ff",
+  red: "#e8003eff",
+  yellow: "#ffc800ff",
+  purple: "#be54ffff",
+  cadencedefault: "#ff7b51",
+
+  // Complex themes
+  crazy: {
+    "--accent-color": "#ff00ff",
+    "--bg-primary": "#000000",
+    "--bg-secondary": "#111111",
+    "--bg-tertiary": "#222222", // Input background
+    "--bg-card": "#222222",
+    "--text-primary": "#00ff00",
+    "--text-secondary": "#ccffcc",
+    "--text-muted": "#88aa88",
+    "--border-color": "#44aa44",
+    "--secondary-btn-bg": "#333333",
+    "--secondary-btn-bg-hover": "#444444"
+  },
+
+  ocean: {
+    "--accent-color": "#00e5ff",
+    "--bg-primary": "#191b1fff", // Slate 900
+    "--bg-secondary": "#21252bff", // Slate 800
+    "--bg-tertiary": "#343b46ff", // Slate 700 (Input background)
+    "--bg-card": "#1a1f27ff", // Slate 700
+    "--text-primary": "#f8fafc", // Slate 50
+    "--text-secondary": "#cbd5e1", // Slate 300
+    "--text-muted": "#94a3b8", // Slate 400
+    "--border-color": "#475569", // Slate 600
+    "--secondary-btn-bg": "#213756ff", // Slate 600
+    "--secondary-btn-bg-hover": "#1a3e71ff", // Slate 500
+    // Force Dark Glass
+    "--glass-bg": "rgba(30, 30, 30, 0.1)",
+    "--glass-border": "rgba(255, 255, 255, 0.1)",
+    "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
+    "--glass-backdrop": "blur(12px)"
+  },
+
+  sunset: {
+    "--accent-color": "#ff684aff", // Orange 400
+    "--bg-primary": "#241434ff", // Deep Dusk
+    "--bg-secondary": "#2f2133ff", // Dusk Light
+    "--bg-tertiary": "#1a162bff", // Dusk Lighter (Input background)
+    "--bg-card": "#180e26ff", // Dusk Lighter
+    "--text-primary": "#ffdbcaff", // Rose 50
+    "--text-secondary": "#dec0ffff", // Purple 200
+    "--text-muted": "#a78bfa", // Purple 400
+    "--border-color": "#2d123cff",
+    "--secondary-btn-bg": "#ff377dff",
+    "--secondary-btn-bg-hover": "#ff659bff",
+    // Force Dark Glass
+    "--glass-bg": "rgba(30, 30, 30, 0.1)",
+    "--glass-border": "rgba(255, 255, 255, 0.1)",
+    "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
+    "--glass-backdrop": "blur(12px)"
+  },
+
+  forest: {
+    "--accent-color": "#008a57ff", // Emerald 400
+    "--bg-primary": "#ffeccfff", // Deep Woods
+    "--bg-secondary": "#ffebc9ff", // Woods Light
+    "--bg-tertiary": "#9cd7a6ff", // Woods Lighter (Input background)
+    "--bg-card": "#ffebc9ff", // Woods Lighter
+    "--text-primary": "#1f1714ff", // Emerald 50
+    "--text-secondary": "#6e4026ff", // Emerald 200
+    "--text-muted": "#4d675dff", // Emerald 300
+    "--border-color": "#6b502fff",
+    "--secondary-btn-bg": "#b18065ff",
+    "--secondary-btn-bg-hover": "#cc9d86ff",
+    // Force Dark Glass
+    "--glass-bg": "rgba(30, 30, 30, 0.1)",
+    "--glass-border": "rgba(255, 255, 255, 0.1)",
+    "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
+    "--glass-backdrop": "blur(12px)"
+  },
+
+  midnight: {
+    "--accent-color": "#818cf8", // Indigo 400
+    "--bg-primary": "#020617", // Slate 950 (almost black)
+    "--bg-secondary": "#0f172a", // Slate 900
+    "--bg-tertiary": "#1e293b", // Slate 800 (Input background)
+    "--bg-card": "#1e293b", // Slate 800
+    "--text-primary": "#e2e8f0", // Slate 200
+    "--text-secondary": "#94a3b8", // Slate 400
+    "--text-muted": "#64748b", // Slate 500
+    "--border-color": "#334155", // Slate 700
+    "--secondary-btn-bg": "#334155", // Slate 700
+    "--secondary-btn-bg-hover": "#475569", // Slate 600
+    // Force Dark Glass
+    "--glass-bg": "rgba(30, 30, 30, 0.1)",
+    "--glass-border": "rgba(255, 255, 255, 0.1)",
+    "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
+    "--glass-backdrop": "blur(12px)"
+  }
+};
+
+let lastAppliedThemeKeys = [];
+
+function setTheme(themeName) {
+  const root = document.documentElement;
+  const themeData = THEMES[themeName];
+
+  if (!themeData) return;
+
+  // Cleanup previous theme properties
+  // (We remove ALL properties set by the previous theme to ensure a clean slate,
+  // preventing "leakage" where a complex theme leaves variables behind when switching to a simple one)
+  lastAppliedThemeKeys.forEach(key => root.style.removeProperty(key));
+  lastAppliedThemeKeys = [];
+
+  // Apply new theme
+  if (typeof themeData === 'string') {
+    // Simple accent color shorthand
+    root.style.setProperty("--accent-color", themeData);
+    lastAppliedThemeKeys.push("--accent-color");
+    document.body.classList.remove('force-dark-mode');
+  } else if (typeof themeData === 'object') {
+    // Robust theme object
+    Object.entries(themeData).forEach(([key, value]) => {
+      root.style.setProperty(key, value);
+      lastAppliedThemeKeys.push(key);
+    });
+    document.body.classList.add('force-dark-mode');
+  }
+
+  // Persist choice
+  document.cookie = `theme_preference=${themeName}; path=/; max-age=31536000`; // 1 year
+}
+
+function initTheme() {
+  // Restore theme preference
+  // Check new cookie name first
+  let match = document.cookie.match(new RegExp('(^| )theme_preference=([^;]+)'));
+  if (match) {
+    setTheme(match[2]);
+  } else {
+    // Migration: Check old cookie name for backward compatibility
+    match = document.cookie.match(new RegExp('(^| )theme_accent=([^;]+)'));
+    if (match) {
+      setTheme(match[2]);
+    }
+  }
+
+  // Restore picker visibility
+  if (document.cookie.match(new RegExp('(^| )theme_picker_enabled=true'))) {
+    const picker = document.getElementById("hidden-color-picker");
+    if (picker) {
+      picker.classList.remove("hidden");
+    }
+  }
+}
+
+// Make globally available
+window.setTheme = setTheme;
+window.initTheme = initTheme;
+
+
 
 function highlightMatch(text, searchTerm) {
   if (!searchTerm || !text) return escapeHtml(text);
