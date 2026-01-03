@@ -912,6 +912,9 @@ function bindEvents() {
   });
 
   el("btn-logout-menu")?.addEventListener("click", () => {
+    // Clear theme usage cookies
+    document.cookie = 'theme_preference=; path=/; max-age=0';
+    document.cookie = 'theme_picker_enabled=; path=/; max-age=0';
     supabase.auth.signOut();
   });
 
