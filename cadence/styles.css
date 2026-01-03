@@ -247,7 +247,7 @@ body {
 }
 
 #hidden-color-picker {
-  display: grid !important;
+  display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 0.5rem;
   margin-bottom: 0.5rem;
