@@ -13947,7 +13947,7 @@ function setTheme(themeName) {
 
 function initTheme() {
   // Restore theme preference
-  // Check new cookie name first
+  // Check new cookie name
   let match = document.cookie.match(new RegExp('(^| )theme_preference=([^;]+)'));
   if (match) {
     setTheme(match[2]);
