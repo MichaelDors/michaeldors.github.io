@@ -469,6 +469,39 @@ function isOwner() {
   return false;
 }
 
+/* Helper to safely check MFA with timeout */
+async function checkMfaRequirements(session) {
+  if (!supabase.auth.mfa) return false;
+
+  try {
+    console.log("🔒 Checking MFA status...");
+    // Timeout promise - 5s
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("MFA check timed out")), 5000));
+
+    const { data: factorsData, error: factorsError } = await Promise.race([
+      supabase.auth.mfa.listFactors(),
+      timeout.then(() => { throw new Error("MFA check timed out"); })
+    ]);
+
+    if (factorsError) throw factorsError;
+
+    const totpFactor = factorsData?.all?.find(f => f.factor_type === 'totp' && f.status === 'verified');
+
+    if (totpFactor) {
+      const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalError) throw aalError;
+
+      if (aal.currentLevel !== 'aal2') {
+        return true; // MFA REQUIRED
+      }
+    }
+    return false;
+  } catch (err) {
+    console.warn("⚠️ MFA Check skipped/failed:", err);
+    return false; // Fail open
+  }
+}
+
 async function init() {
   // Initialize color picker visibility logic
   initTheme();
@@ -481,38 +514,7 @@ async function init() {
   let initialSessionChecked = false;
   let isProcessingSession = false;
 
-  /* Helper to safely check MFA with timeout */
-  async function checkMfaRequirements(session) {
-    if (!supabase.auth.mfa) return false;
 
-    try {
-      console.log("🔒 Checking MFA status...");
-      // Timeout promise - 5s
-      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("MFA check timed out")), 5000));
-
-      const { data: factorsData, error: factorsError } = await Promise.race([
-        supabase.auth.mfa.listFactors(),
-        timeout.then(() => { throw new Error("MFA check timed out"); })
-      ]);
-
-      if (factorsError) throw factorsError;
-
-      const totpFactor = factorsData?.all?.find(f => f.factor_type === 'totp' && f.status === 'verified');
-
-      if (totpFactor) {
-        const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (aalError) throw aalError;
-
-        if (aal.currentLevel !== 'aal2') {
-          return true; // MFA REQUIRED
-        }
-      }
-      return false;
-    } catch (err) {
-      console.warn("⚠️ MFA Check skipped/failed:", err);
-      return false; // Fail open
-    }
-  }
 
   // Set up auth state change handler FIRST so it can handle password setup cases
   supabase.auth.onAuthStateChange(async (event, session) => {
@@ -531,6 +533,12 @@ async function init() {
     // Prevent double-processing
     if (isProcessingSession && event === 'SIGNED_IN') {
       console.log('  - Already processing session, skipping duplicate SIGNED_IN');
+      return;
+    }
+
+    // Ignore TOKEN_REFRESHED if we already have a session and app is loaded
+    if (event === 'TOKEN_REFRESHED' && state.session) {
+      console.log('  - Token refreshed, skipping full reload');
       return;
     }
 
@@ -2786,7 +2794,10 @@ async function fetchUserTeams() {
         team:team_id (
           id,
           name,
-          owner_id
+          owner_id,
+          assignment_mode,
+          daily_reminder_time,
+          timezone
         )
       `)
       .eq("user_id", state.session.user.id)
@@ -2821,6 +2832,7 @@ async function fetchUserTeams() {
       role: tm.role,
       is_owner: tm.is_owner,
       can_manage: tm.can_manage,
+      assignment_mode: tm.team?.assignment_mode,
       daily_reminder_time: tm.team?.daily_reminder_time,
       timezone: tm.team?.timezone,
     }));
@@ -15216,114 +15228,133 @@ async function openTeamSettingsModal() {
 
   if (!modal || !nameInput || !assignmentModeContainer) return;
 
-  // Show loading state if needed, or just wait
-  // Fetch fresh team data
-  const { data: teamData, error } = await supabase
-    .from("teams")
-    .select("id, name, assignment_mode, daily_reminder_time, timezone")
-    .eq("id", state.currentTeamId)
-    .single();
+  // Get local team data or default
+  let teamData = state.userTeams.find(t => t.id === state.currentTeamId) || {
+    name: '',
+    assignment_mode: state.teamAssignmentMode || 'per_set',
+    daily_reminder_time: '06:00:00',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+  };
 
-  if (error) {
-    console.error("Error fetching team details:", error);
-    toastError("Failed to load team settings.");
-    return;
-  }
-
-  const currentTeam = teamData;
-  console.log('Opening Team Settings. Fresh Team Data:', currentTeam);
-
-  // Update local state to match fresh data
-  const stateTeam = state.userTeams.find(t => t.id === state.currentTeamId);
-  if (stateTeam) {
-    stateTeam.name = currentTeam.name;
-    stateTeam.daily_reminder_time = currentTeam.daily_reminder_time;
-    stateTeam.timezone = currentTeam.timezone;
-  }
-
-  const currentTeamName = currentTeam?.name || "";
-  nameInput.value = currentTeamName;
-
-  // --- Assignment Mode ---
-  // Use fetched assignment_mode if available, otherwise fallback to state
-  const currentMode = currentTeam.assignment_mode || state.teamAssignmentMode || 'per_set';
-  teamAssignmentModeSelectedValue = currentMode;
-
-  assignmentModeContainer.innerHTML = "";
-  const modeOptions = [
-    { value: 'per_set', label: 'Per Set' },
-    { value: 'per_song', label: 'Per Song' }
-  ];
-  teamAssignmentModeDropdown = createSimpleDropdown(modeOptions, "Select assignment mode...", currentMode);
-  teamAssignmentModeDropdown.addEventListener("change", (e) => {
-    teamAssignmentModeSelectedValue = e.detail.value;
-  });
-  assignmentModeContainer.appendChild(teamAssignmentModeDropdown);
-
-  // --- Alert Time ---
-  if (alertTimeContainer) {
-    alertTimeContainer.innerHTML = "";
-    const savedTime = currentTeam?.daily_reminder_time || "06:00:00";
-    // Strip seconds if present for matching
-    const [h, m] = savedTime.split(':');
-    const timeValue = `${h}:${m}:00`; // Ensure HH:MM:00 format
-
-    teamAlertTimeSelectedValue = timeValue;
-
-    // Generate hours 00:00 - 23:00 with 12-hour labels
-    const timeOptions = [];
-    for (let i = 0; i < 24; i++) {
-      const hour = i.toString().padStart(2, '0');
-      const date = new Date(`2000-01-01T${hour}:00:00`);
-      // Force 12-hour format
-      const label = date.toLocaleTimeString("en-US", { hour: 'numeric', minute: '2-digit', hour12: true });
-      timeOptions.push({ value: `${hour}:00:00`, label: label });
+  const render = (data) => {
+    // Name
+    if (document.activeElement !== nameInput) {
+      nameInput.value = data.name || "";
     }
 
-    teamAlertTimeDropdown = createSimpleDropdown(timeOptions, "Select time...", timeValue);
-    teamAlertTimeDropdown.addEventListener("change", (e) => {
-      teamAlertTimeSelectedValue = e.detail.value;
-    });
-    alertTimeContainer.appendChild(teamAlertTimeDropdown);
-  }
-
-  // --- Timezone ---
-  if (timezoneContainer) {
-    timezoneContainer.innerHTML = "";
-    // Prioritize saved timezone, fallback to browser detection
-    const savedTimezone = currentTeam?.timezone;
-    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const defaultTimezone = savedTimezone || detectedTimezone;
-
-    teamTimezoneSelectedValue = defaultTimezone;
-
-    // Common Timezones List
-    const commonTimezones = [
-      "UTC",
-      "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "America/Phoenix", "America/Anchorage", "America/Honolulu",
-      "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Zurich", "Europe/Madrid", "Europe/Rome", "Europe/Moscow",
-      "Asia/Tokyo", "Asia/Seoul", "Asia/Shanghai", "Asia/Singapore", "Asia/Dubai", "Asia/Kolkata",
-      "Australia/Sydney", "Australia/Melbourne", "Australia/Perth",
-      "Pacific/Auckland"
+    // Assignment Mode
+    const currentMode = data.assignment_mode || state.teamAssignmentMode || 'per_set';
+    teamAssignmentModeSelectedValue = currentMode;
+    assignmentModeContainer.innerHTML = "";
+    const modeOptions = [
+      { value: 'per_set', label: 'Per Set' },
+      { value: 'per_song', label: 'Per Song' }
     ];
+    teamAssignmentModeDropdown = createSimpleDropdown(modeOptions, "Select assignment mode...", currentMode);
+    teamAssignmentModeDropdown.addEventListener("change", (e) => {
+      teamAssignmentModeSelectedValue = e.detail.value;
+    });
+    assignmentModeContainer.appendChild(teamAssignmentModeDropdown);
 
-    // Add detected/saved if not in list
-    if (!commonTimezones.includes(defaultTimezone)) {
-      commonTimezones.push(defaultTimezone);
-      commonTimezones.sort();
+    // Alert Time
+    if (alertTimeContainer) {
+      alertTimeContainer.innerHTML = "";
+      const savedTime = data.daily_reminder_time || "06:00:00";
+      // Strip seconds if present for matching
+      const [h, m] = savedTime.split(':');
+      const timeValue = `${h}:${m}:00`; // Ensure HH:MM:00 format
+      teamAlertTimeSelectedValue = timeValue;
+
+      // Generate hours 00:00 - 23:00 with 12-hour labels
+      const timeOptions = [];
+      for (let i = 0; i < 24; i++) {
+        const hour = i.toString().padStart(2, '0');
+        const date = new Date(`2000-01-01T${hour}:00:00`);
+        // Force 12-hour format
+        const label = date.toLocaleTimeString("en-US", { hour: 'numeric', minute: '2-digit', hour12: true });
+        timeOptions.push({ value: `${hour}:00:00`, label: label });
+      }
+
+      teamAlertTimeDropdown = createSimpleDropdown(timeOptions, "Select time...", timeValue);
+      teamAlertTimeDropdown.addEventListener("change", (e) => {
+        teamAlertTimeSelectedValue = e.detail.value;
+      });
+      alertTimeContainer.appendChild(teamAlertTimeDropdown);
     }
 
-    const timezoneOptions = commonTimezones.map(tz => ({ value: tz, label: tz }));
+    // Timezone
+    if (timezoneContainer) {
+      timezoneContainer.innerHTML = "";
+      const savedTimezone = data.timezone;
+      const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const defaultTimezone = savedTimezone || detectedTimezone;
+      teamTimezoneSelectedValue = defaultTimezone;
 
-    teamTimezoneDropdown = createSimpleDropdown(timezoneOptions, "Select timezone...", defaultTimezone);
-    teamTimezoneDropdown.addEventListener("change", (e) => {
-      teamTimezoneSelectedValue = e.detail.value;
-    });
-    timezoneContainer.appendChild(teamTimezoneDropdown);
-  }
+      const commonTimezones = [
+        "UTC",
+        "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "America/Phoenix", "America/Anchorage", "America/Honolulu",
+        "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Zurich", "Europe/Madrid", "Europe/Rome", "Europe/Moscow",
+        "Asia/Tokyo", "Asia/Seoul", "Asia/Shanghai", "Asia/Singapore", "Asia/Dubai", "Asia/Kolkata",
+        "Australia/Sydney", "Australia/Melbourne", "Australia/Perth",
+        "Pacific/Auckland"
+      ];
+      if (!commonTimezones.includes(defaultTimezone)) {
+        commonTimezones.push(defaultTimezone);
+        commonTimezones.sort();
+      }
+      const timezoneOptions = commonTimezones.map(tz => ({ value: tz, label: tz.replace(/_/g, " ") }));
+      teamTimezoneDropdown = createSimpleDropdown(timezoneOptions, "Select timezone...", defaultTimezone);
+      teamTimezoneDropdown.addEventListener("change", (e) => {
+        teamTimezoneSelectedValue = e.detail.value;
+      });
+      timezoneContainer.appendChild(teamTimezoneDropdown);
+    }
+  };
+
+  // Render immediately with local data
+  console.log('Opening Team Settings with local data:', teamData);
+  render(teamData);
 
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
+
+  // Fetch fresh data in background
+  try {
+    const { data: freshData, error } = await supabase
+      .from("teams")
+      .select("id, name, assignment_mode, daily_reminder_time, timezone")
+      .eq("id", state.currentTeamId)
+      .single();
+
+    if (error) {
+      console.error("Error refreshing team details:", error);
+      return;
+    }
+
+    if (freshData) {
+      console.log('Fresh Team Data fetched:', freshData);
+
+      // Check for changes before updating state (because state update mutates teamData if it's a reference)
+      const requiresUpdate =
+        (freshData.name !== teamData.name && document.activeElement !== nameInput) ||
+        (freshData.assignment_mode !== teamData.assignment_mode) ||
+        (freshData.daily_reminder_time !== teamData.daily_reminder_time) ||
+        (freshData.timezone !== teamData.timezone);
+
+      // Update local state
+      const stateTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+      if (stateTeam) {
+        Object.assign(stateTeam, freshData);
+      }
+
+      if (requiresUpdate && !modal.classList.contains("hidden")) {
+        console.log('Refreshing UI with fresh data');
+        render(freshData);
+      }
+    }
+  } catch (err) {
+    console.error("Unexpected error refreshing team data:", err);
+  }
 }
 
 function closeTeamSettingsModal() {
