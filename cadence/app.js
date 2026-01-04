@@ -223,6 +223,12 @@ function toastInfo(message, duration = 5000) {
 
 // Database Error Overlay System
 function showDatabaseError() {
+  // Don't show error if tab is in background (prevents false positives from throttling)
+  if (document.hidden) {
+    console.warn('⚠️ Suppressing database error overlay because tab is hidden');
+    return;
+  }
+
   const overlay = el('database-error-overlay');
   if (overlay) {
     overlay.classList.remove('hidden');
@@ -288,13 +294,31 @@ function isDatabaseUnresponsive(error) {
   return false;
 }
 
+// Quick health check to see if DB is actually down or just slow
+async function checkDatabaseHealth() {
+  try {
+    // 5 second timeout for health check
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Health check timeout')), 5000)
+    );
+
+    // Simple lightweight query
+    const pingPromise = supabase.from('profiles').select('id').limit(1).maybeSingle();
+
+    await Promise.race([pingPromise, timeoutPromise]);
+    return true; // Connection is good
+  } catch (e) {
+    return false; // Connection failed
+  }
+}
+
 // Wrapper function to handle Supabase operations with database error detection
 async function safeSupabaseOperation(operation, options = {}) {
   const {
     showErrorOnFailure = true,
     retryOnError = false,
     maxRetries = 0,
-    timeout = 30000 // 30 second default timeout
+    timeout = 45000 // Increased default timeout to 45s to reduce false positives
   } = options;
 
   try {
@@ -306,8 +330,20 @@ async function safeSupabaseOperation(operation, options = {}) {
     const result = await Promise.race([operation(), timeoutPromise]);
 
     // If we got here, operation succeeded - hide error overlay
+    // If we got here, operation succeeded - hide error overlay
     if (result?.error && isDatabaseUnresponsive(result.error)) {
+      let isActuallyUnresponsive = true;
+
+      // Check if it's a false positive
       if (showErrorOnFailure) {
+        const isHealthy = await checkDatabaseHealth();
+        if (isHealthy) {
+          isActuallyUnresponsive = false;
+          console.warn('Database health check passed despite error result. Suppressing unresponsive popup.', result.error);
+        }
+      }
+
+      if (showErrorOnFailure && isActuallyUnresponsive) {
         showDatabaseError();
       }
       return result;
@@ -321,7 +357,18 @@ async function safeSupabaseOperation(operation, options = {}) {
     console.error('Database operation error:', error);
 
     if (isDatabaseUnresponsive(error)) {
+      let isActuallyUnresponsive = true;
+
+      // Check if it's a false positive
       if (showErrorOnFailure) {
+        const isHealthy = await checkDatabaseHealth();
+        if (isHealthy) {
+          isActuallyUnresponsive = false;
+          console.warn('Database health check passed despite exception. Suppressing unresponsive popup.', error);
+        }
+      }
+
+      if (showErrorOnFailure && isActuallyUnresponsive) {
         showDatabaseError();
       }
 
@@ -330,7 +377,7 @@ async function safeSupabaseOperation(operation, options = {}) {
         data: null,
         error: {
           message: error.message || 'Database is unresponsive',
-          code: error.code || 'DATABASE_UNRESPONSIVE'
+          code: isActuallyUnresponsive ? (error.code || 'DATABASE_UNRESPONSIVE') : 'TIMEOUT_BUT_RESPONSIVE'
         }
       };
     }
@@ -796,6 +843,24 @@ function bindEvents() {
     e.preventDefault();
     isSignUpMode = !isSignUpMode;
     updateAuthUI();
+  });
+
+  // Auto-recovery from background throttling
+  // This handles the case where the user leaves the tab, background throttling causes a timeout/error,
+  // and then when they come back, we want to immediately check if the DB is actually fine.
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState === "visible") {
+      const overlay = el('database-error-overlay');
+      // If overlay is showing when user comes back
+      if (overlay && !overlay.classList.contains('hidden')) {
+        console.log('👀 Tab focused checking DB health to potentially dismiss overlay...');
+        const isHealthy = await checkDatabaseHealth();
+        if (isHealthy) {
+          console.log('✅ DB is healthy, dismissing stale overlay');
+          hideDatabaseError();
+        }
+      }
+    }
   });
 
   // Forgot password link
