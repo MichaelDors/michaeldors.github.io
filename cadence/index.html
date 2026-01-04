@@ -79,7 +79,24 @@
                   title="Purple">
                 </div>
 
-
+                <div class="hidden">
+                  <div class="color-circle" onclick="setTheme('sunset')"
+                    style="background: linear-gradient(135deg, #2e1065 0%, #fb923c 100%);" title="Sunset">
+                  </div>
+                  <div class="color-circle" onclick="setTheme('forest')"
+                    style="background: linear-gradient(135deg, #052e16 0%, #4ade80 100%);" title="Forest">
+                  </div>
+                  <div class="color-circle" onclick="setTheme('ocean')"
+                    style="background: linear-gradient(135deg, #0f172a 0%, #00e5ff 100%);" title="Ocean">
+                  </div>
+                  <div class="color-circle" onclick="setTheme('midnight')"
+                    style="background: linear-gradient(135deg, #020617 0%, #818cf8 100%);" title="Midnight">
+                  </div>
+                  <div class="color-circle" onclick="setTheme('crazy')"
+                    style="background: conic-gradient(from 0deg at 50% 50%, #ff00ff 0deg, #00ff00 120deg, #0000ff 240deg, #ff00ff 360deg);"
+                    title="Crazy">
+                  </div>
+                </div>
               </div>
 
               <button id="btn-create-team" class="btn small secondary" style="width: 100%; margin-bottom: 0.5rem;"><i
@@ -935,6 +952,26 @@
           Full Name
           <input type="text" id="edit-account-name-input" placeholder="Enter your name" required autocomplete="off" />
         </label>
+
+        <div class="section-header" style="margin-top: 1.5rem;">
+          <h4>Security</h4>
+        </div>
+        <div class="security-section">
+          <div class="security-item">
+            <div>
+              <div class="security-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                <span id="mfa-status-badge" class="badge hidden"
+                  style="background: var(--accent-color); font-size: 0.7rem; padding: 0.1rem 0.5rem;">ENABLED</span>
+                Authenticator App (Recommended)
+              </div>
+              <div class="security-description">Secure your account with an extra layer of protection.</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button type="button" id="btn-setup-totp" class="btn secondary small">Setup</button>
+              <button type="button" id="btn-manage-totp" class="btn secondary small hidden">Disable</button>
+            </div>
+          </div>
+        </div>
         <div class="modal-actions">
           <button type="button" class="btn ghost" id="cancel-edit-account">Cancel</button>
           <button type="submit" class="btn primary">Save</button>
@@ -943,6 +980,25 @@
       <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
         <button type="button" class="btn ghost" id="btn-delete-account"
           style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Account</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="totp-disable-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Disable 2FA?</h3>
+        <!-- No close button, force choice or cancel via action -->
+      </header>
+      <div class="totp-text-center" style="padding: 1rem 0;">
+        <p>Are you sure you want to disable Two-Factor Authentication?</p>
+        <p class="muted small-text" style="margin-top: 0.5rem;">Your account will be less secure without this extra
+          layer of
+          protection.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="btn-cancel-disable-totp">Cancel</button>
+        <button type="button" class="btn danger" id="btn-confirm-disable-totp">Disable 2FA</button>
       </div>
     </div>
   </div>
@@ -1112,6 +1168,109 @@
       </div>
 
       <div id="assignment-details-actions" class="assignment-modal-actions"></div>
+    </div>
+  </div>
+
+  <div id="totp-setup-modal" class="modal hidden">
+    <div class="modal-content totp-modal-content">
+      <header>
+        <h3>Set Up 2FA</h3>
+        <button class="icon-btn" id="close-totp-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+
+      <div id="totp-view-intro" class="totp-view">
+        <div class="totp-icon-container">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="totp-text-center">
+          <h4>Secure Your Account</h4>
+          <p class="muted">Two-factor authentication adds an extra layer of security to your account by requiring a code
+            from your authenticator app when you log in.</p>
+        </div>
+        <div class="modal-actions full-width-actions">
+          <button type="button" class="btn ghost" id="btn-totp-cancel-intro">Cancel</button>
+          <button type="button" class="btn primary" id="btn-totp-start">Get Started</button>
+        </div>
+      </div>
+
+      <div id="totp-view-scan" class="totp-view hidden">
+        <div class="totp-steps">
+          <div class="step active">1</div>
+          <div class="step-line"></div>
+          <div class="step">2</div>
+        </div>
+        <div class="totp-text-center">
+          <h4>Scan QR Code</h4>
+          <p class="muted small-text">Open your authenticator app (like Google Authenticator or Authy) and scan this
+            code.</p>
+        </div>
+        <div id="totp-qr-container" class="totp-qr-container">
+          <!-- SVG injected here -->
+        </div>
+        <div class="totp-manual-entry">
+          <p class="muted small-text" style="margin-bottom: 0.5rem;">Or enter code manually:</p>
+          <div class="copy-box">
+            <code id="totp-secret-key"></code>
+            <button class="icon-btn small" id="btn-copy-secret"><i class="fa-regular fa-copy"></i></button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="btn-totp-back-scan">Back</button>
+          <button type="button" class="btn primary" id="btn-totp-next-verify">Next</button>
+        </div>
+      </div>
+
+      <div id="totp-view-verify" class="totp-view hidden">
+        <div class="totp-steps">
+          <div class="step completed"><i class="fa-solid fa-check"></i></div>
+          <div class="step-line filled"></div>
+          <div class="step active">2</div>
+        </div>
+        <div class="totp-text-center">
+          <h4>Verify Code</h4>
+          <p class="muted small-text">Enter the 6-digit code from your authenticator app to enable 2FA.</p>
+        </div>
+        <div class="totp-input-container">
+          <input type="text" id="totp-verify-input" placeholder="000000" maxlength="6" inputmode="numeric"
+            autocomplete="one-time-code" />
+        </div>
+        <p id="totp-verify-error" class="error-text hidden"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="btn-totp-back-verify">Back</button>
+          <button type="button" class="btn primary" id="btn-totp-verify-enable">Verify & Enable</button>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+
+  <div id="mfa-challenge-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Two-Factor Authentication</h3>
+        <!-- No close button for mandatory challenges, optional for logic -->
+        <button class="icon-btn hidden" id="close-mfa-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="mfa-challenge-form">
+        <p class="muted" style="margin-bottom: 1.5rem;">Enter the verification code from your authenticator app.</p>
+        <div class="totp-input-container" style="margin-bottom: 2rem;">
+          <input type="text" id="mfa-code-input" placeholder="000000" maxlength="6" inputmode="numeric"
+            autocomplete="one-time-code" required autofocus />
+        </div>
+        <p id="mfa-error-message" class="error-text hidden" style="text-align: center; margin-bottom: 1rem;"></p>
+
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="btn-mfa-cancel">Cancel</button>
+          <!-- Only if not mandatory login flow -->
+          <button type="button" class="btn ghost hidden" id="btn-use-recovery-code">Use Recovery Code</button>
+          <button type="submit" class="btn primary">Verify</button>
+        </div>
+      </form>
     </div>
   </div>
 

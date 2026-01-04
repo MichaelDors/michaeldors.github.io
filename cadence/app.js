@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { FastAverageColor } from "https://esm.sh/fast-average-color@9.4.0";
 
 const SUPABASE_URL = "https://pvqrxkbyjhgomwqwkedw.supabase.co";
@@ -107,6 +107,12 @@ const state = {
       denominator: 4
     }
   },
+  mfa: {
+    setupFactorId: null,
+    setupSecret: null,
+    qrCode: null,
+    tempFactorId: null
+  }
 };
 
 const el = (id) => document.getElementById(id);
@@ -428,6 +434,39 @@ async function init() {
   let initialSessionChecked = false;
   let isProcessingSession = false;
 
+  /* Helper to safely check MFA with timeout */
+  async function checkMfaRequirements(session) {
+    if (!supabase.auth.mfa) return false;
+
+    try {
+      console.log("🔒 Checking MFA status...");
+      // Timeout promise - 5s
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("MFA check timed out")), 5000));
+
+      const { data: factorsData, error: factorsError } = await Promise.race([
+        supabase.auth.mfa.listFactors(),
+        timeout.then(() => { throw new Error("MFA check timed out"); })
+      ]);
+
+      if (factorsError) throw factorsError;
+
+      const totpFactor = factorsData?.factors?.find(f => f.factor_type === 'totp' && f.status === 'verified');
+
+      if (totpFactor) {
+        const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalError) throw aalError;
+
+        if (aal.currentLevel !== 'aal2') {
+          return true; // MFA REQUIRED
+        }
+      }
+      return false;
+    } catch (err) {
+      console.warn("⚠️ MFA Check skipped/failed:", err);
+      return false; // Fail open
+    }
+  }
+
   // Set up auth state change handler FIRST so it can handle password setup cases
   supabase.auth.onAuthStateChange(async (event, session) => {
     console.log('🔄 Auth state change event:', event);
@@ -486,19 +525,43 @@ async function init() {
       console.log('  - Session exists, setting up profile and showing app...');
       isProcessingSession = true;
 
-      // Create fallback profile immediately so UI can show
+      // Show app FIRST (optimistic)
+      // We start loading data immediately to prevent "hangs"
       if (!state.profile) {
         state.profile = {
           id: session.user.id,
           full_name: session.user.user_metadata.full_name || session.user.email || "User",
           can_manage: false,
         };
-        console.log('  - Created temporary profile:', state.profile);
       }
-
-      // Show app immediately, don't wait for profile fetch
-      console.log('  - Showing app immediately...');
       showApp();
+
+      // Run MFA check in background
+      checkMfaRequirements(session).then(mfaRequired => {
+        if (mfaRequired) {
+          console.log("🔒 MFA Enforced - Interrupting session");
+          showAuthGate();
+          setAuthMessage("Two-factor authentication required.", false);
+          openMfaChallengeModal({
+            onSuccess: () => {
+              isProcessingSession = false;
+              loadDataAndShowApp(session);
+            }
+          });
+        } else {
+          // MFA not required, proceed with full data load if not already started
+          console.log("✅ MFA Check passed (or not required)");
+          isProcessingSession = false;
+          // Ensure data continues loading (fetchProfile etc below)
+        }
+      }).catch(err => {
+        console.warn("MFA background check error:", err);
+        isProcessingSession = false;
+      });
+
+      // Proceed with normal data loading in parallel
+      // Fetch profile FIRST, then load data
+
 
       // Fetch profile FIRST, then load data
       const profileTimeout = setTimeout(() => {
@@ -1885,32 +1948,20 @@ async function handleAuth(event) {
 
     if (!error && signInData.session) {
       console.log('✅ Sign in successful!');
-      console.log('  - Session user:', signInData.session.user?.email);
-      console.log('  - Session expires at:', new Date(signInData.session.expires_at * 1000));
 
-      // Verify session is stored
-      const { data: { session: storedSession } } = await supabase.auth.getSession();
-      console.log('  - Stored session after sign in:', storedSession ? '✅ Found' : '❌ Not found');
+      // MFA CHECK
+      const mfaRequired = await checkMfaRequirements(signInData.session);
 
-      // Update state immediately
-      console.log('  - Updating state.session...');
-      state.session = signInData.session;
-      console.log('  - state.session updated:', !!state.session);
+      if (mfaRequired) {
+        setAuthMessage("Two-factor authentication required.");
+        openMfaChallengeModal({
+          onSuccess: () => loadDataAndShowApp(signInData.session)
+        });
+        toggleAuthButton(false);
+        return;
+      }
 
-      console.log('  - Fetching profile...');
-      await fetchProfile();
-      console.log('  - Profile fetched, state.profile:', state.profile);
-      console.log('  - team_id available:', state.profile?.team_id);
-
-      console.log('  - Loading songs, sets, and people...');
-      await Promise.all([loadSongs(), loadSets(), loadPeople()]);
-      console.log('  - Data loaded');
-
-      console.log('  - Calling showApp()...');
-      showApp();
-      setAuthMessage("");
-      authForm?.reset();
-      toggleAuthButton(false);
+      loadDataAndShowApp(signInData.session);
       return;
     }
 
@@ -1933,6 +1984,32 @@ async function handleAuth(event) {
       authForm?.reset();
       toggleAuthButton(false);
     }
+  }
+}
+
+
+async function loadDataAndShowApp(session) {
+  console.log('✅ Proceeding with authenticated session');
+
+  // Update state immediately
+  state.session = session;
+
+  try {
+    await fetchProfile();
+    console.log('  - Profile fetched');
+
+    await Promise.all([loadSongs(), loadSets(), loadPeople()]);
+    console.log('  - Data loaded');
+
+    showApp();
+    setAuthMessage("");
+
+    if (typeof authForm !== 'undefined') authForm?.reset();
+    toggleAuthButton(false);
+
+  } catch (err) {
+    console.error("Error loading app data:", err);
+    setAuthMessage("Error loading data. Please refresh.", true);
   }
 }
 
@@ -14976,6 +15053,9 @@ function openEditAccountModal() {
 
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
+
+  // Update MFA UI
+  updateMfaStatusUI();
 }
 
 function closeEditAccountModal() {
@@ -16252,5 +16332,478 @@ async function transferOwnership(person) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                MFA / TOTP Logic                            */
+/* -------------------------------------------------------------------------- */
+
+function setupMfaListeners() {
+  el("btn-setup-totp")?.addEventListener("click", handleTotpSetup);
+  el("close-totp-modal")?.addEventListener("click", cancelTotpSetup);
+  el("btn-totp-cancel-intro")?.addEventListener("click", cancelTotpSetup);
+  el("btn-totp-start")?.addEventListener("click", startTotpEnrollment);
+  el("btn-totp-back-scan")?.addEventListener("click", () => updateTotpView("intro"));
+  el("btn-totp-next-verify")?.addEventListener("click", () => updateTotpView("verify"));
+  el("btn-copy-secret")?.addEventListener("click", copyTotpSecret);
+  el("btn-totp-back-verify")?.addEventListener("click", () => updateTotpView("scan"));
+  el("btn-totp-verify-enable")?.addEventListener("click", onTotpVerify);
+  el("btn-totp-finish")?.addEventListener("click", onTotpFinish);
+
+  // Login Challenge Listeners
+  el("mfa-challenge-form")?.addEventListener("submit", handleMfaChallengeSubmit);
+  el("close-mfa-modal")?.addEventListener("click", () => el("mfa-challenge-modal")?.classList.add("hidden"));
+  el("btn-mfa-cancel")?.addEventListener("click", () => el("mfa-challenge-modal")?.classList.add("hidden"));
+
+  // Management & Disable
+  el("btn-manage-totp")?.addEventListener("click", promptDisableMfa);
+  el("btn-cancel-disable-totp")?.addEventListener("click", () => el("totp-disable-modal")?.classList.add("hidden"));
+  el("close-totp-disable-modal")?.addEventListener("click", () => el("totp-disable-modal")?.classList.add("hidden"));
+  el("btn-confirm-disable-totp")?.addEventListener("click", () => {
+    el("totp-disable-modal")?.classList.add("hidden");
+    openMfaChallengeModal({
+      onSuccess: disableMfa
+    });
+  });
+}
+
+async function updateMfaStatusUI() {
+  const badge = el("mfa-status-badge");
+  const setupBtn = el("btn-setup-totp");
+  const manageBtn = el("btn-manage-totp");
+
+  if (!badge || !setupBtn || !manageBtn) return;
+
+  try {
+    // 1. Force Refresh Session to see latest 'verified' status
+    await supabase.auth.refreshSession();
+
+    // Check factors
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) {
+      console.warn("Error listing factors:", error.message);
+      // alert("Error listing factors: " + error.message);
+      badge.classList.add("hidden");
+      setupBtn.classList.remove("hidden");
+      manageBtn.classList.add("hidden");
+      return;
+    }
+
+    const factors = data?.all || [];
+    const totpFactor = factors.find(f => f.factor_type === 'totp' && f.status === 'verified');
+
+    if (totpFactor) {
+      badge.classList.remove("hidden");
+      setupBtn.classList.add("hidden");
+      manageBtn.classList.remove("hidden");
+    } else {
+      badge.classList.add("hidden");
+      setupBtn.classList.remove("hidden");
+      manageBtn.classList.add("hidden");
+    }
+  } catch (e) {
+    console.warn("MFA UI update crash prevented:", e);
+  }
+}
+
+async function handleTotpSetup() {
+  // Reset wizards
+  resetTotpWizard();
+
+  // Show modal
+  const modal = el("totp-setup-modal");
+  modal.classList.remove("hidden");
+  updateTotpView("intro");
+}
+
+async function cancelTotpSetup() {
+  const modal = el("totp-setup-modal");
+  if (modal) modal.classList.add("hidden");
+
+  // If we have a pending factor ID that hasn't been verified, unenroll it
+  if (state.mfa.setupFactorId) {
+    console.log("Cancelling setup, removing factor:", state.mfa.setupFactorId);
+    try {
+      await supabase.auth.mfa.unenroll({ factorId: state.mfa.setupFactorId });
+      console.log("Factor unenrolled successfully");
+    } catch (err) {
+      console.warn("Error cleaning up factor on cancel:", err);
+      // It might fail if it was already verified or deleted, which is fine
+    }
+    state.mfa.setupFactorId = null;
+  }
+}
+
+function resetTotpWizard() {
+  state.mfa = {
+    setupFactorId: null,
+    setupSecret: null,
+    qrCode: null,
+    tempFactorId: null
+  };
+  el("totp-verify-input").value = "";
+  el("totp-verify-error").textContent = "";
+  el("totp-verify-error").classList.add("hidden");
+  el("totp-secret-key").textContent = "";
+  el("totp-qr-container").innerHTML = "";
+
+
+  // Reset verify button
+  const verifyBtn = el("btn-totp-verify-enable");
+  if (verifyBtn) {
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = "Verify & Enable";
+  }
+}
+
+function updateTotpView(viewName) {
+  // views: intro, scan, verify, recovery
+  const views = ["intro", "scan", "verify"];
+
+  views.forEach(v => {
+    const elView = el(`totp-view-${v}`);
+    if (elView) {
+      if (v === viewName) elView.classList.remove("hidden");
+      else elView.classList.add("hidden");
+    }
+  });
+}
+
+async function startTotpEnrollment() {
+  const startBtn = el("btn-totp-start");
+  if (startBtn) {
+    startBtn.disabled = true;
+    startBtn.textContent = "Generating...";
+  }
+
+  try {
+    // 1. Refresh session to ensure we have latest claims
+    await supabase.auth.refreshSession();
+
+    // 2. Cleanup (Try to list factors)
+    const { data: factorsData, error: listError } = await supabase.auth.mfa.listFactors();
+
+    if (listError) {
+      console.warn("List factors failed:", listError);
+      // If 422/error, we proceed anyway hoping Enroll works or we catch the specific error
+    } else if (factorsData?.factors) {
+      // Filter for unverified TOTP
+      const unverifiedFactors = factorsData.factors.filter(f => f.factor_type === 'totp' && f.status === 'unverified');
+
+      if (unverifiedFactors.length > 0) {
+        console.log("Cleaning up unverified factors:", unverifiedFactors.length);
+        for (const factor of unverifiedFactors) {
+          await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        }
+      }
+    }
+
+    // 3. Enroll with a Friendly Name
+    // Strategy: Try standard name. If it conflicts (and cleanup failed), try unique name.
+    let friendlyName = `Cadence (${state.profile?.email || 'User'})`;
+
+    let enrollData, enrollError;
+
+    try {
+      const res = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: friendlyName
+      });
+      enrollData = res.data;
+      enrollError = res.error;
+
+      if (enrollError && enrollError.message && enrollError.message.includes("already exists")) {
+        console.log("Enrollment conflict detected. Retrying with unique name...");
+        throw enrollError; // Throw to catch block for retry
+      }
+    } catch (e) {
+      // Retry with timestamp if it was a conflict
+      if (e.message && e.message.includes("already exists")) {
+        const timestamp = new Date().getTime().toString().slice(-4);
+        friendlyName = `Cadence (${state.profile?.email || 'User'}) - ${timestamp}`;
+
+        const retryRes = await supabase.auth.mfa.enroll({
+          factorType: 'totp',
+          friendlyName: friendlyName
+        });
+        enrollData = retryRes.data;
+        enrollError = retryRes.error;
+      } else {
+        // Some other error, rethrow
+        throw e;
+      }
+    }
+
+    if (enrollError) throw enrollError;
+
+    // Map response
+    state.mfa.setupFactorId = enrollData.id;
+    state.mfa.setupSecret = enrollData.totp?.secret || enrollData.secret;
+    let qrCodeSvg = enrollData.totp?.qr_code || enrollData.qr_code;
+
+    // CLEANUP: Supabase sometimes returns "data:image/svg+xml;utf-8, <svg...>" or similar.
+    // We want PURE SVG for inline rendering.
+    if (qrCodeSvg && typeof qrCodeSvg === 'string') {
+      const svgStart = qrCodeSvg.indexOf('<svg');
+      if (svgStart > -1) {
+        qrCodeSvg = qrCodeSvg.substring(svgStart);
+      }
+
+      // FIX: Inject viewBox if missing (restored logic)
+      if (!qrCodeSvg.includes('viewBox')) {
+        const wMatch = qrCodeSvg.match(/width="(\d+)"/);
+        const hMatch = qrCodeSvg.match(/height="(\d+)"/);
+        if (wMatch && hMatch) {
+          const w = wMatch[1];
+          const h = hMatch[1];
+          qrCodeSvg = qrCodeSvg.replace('<svg', `<svg viewBox="0 0 ${w} ${h}"`);
+        }
+      }
+    }
+
+    state.mfa.qrCode = qrCodeSvg;
+
+    // Render QR
+    if (el("totp-qr-container")) {
+      // Use inline SVG (Direct)
+      if (state.mfa.qrCode) {
+        el("totp-qr-container").innerHTML = state.mfa.qrCode;
+      } else {
+        console.error("QR Code is undefined in response", enrollData);
+        el("totp-qr-container").textContent = "Error loading QR Code. Please use the manual key.";
+      }
+    }
+
+    if (el("totp-secret-key")) el("totp-secret-key").textContent = state.mfa.setupSecret;
+
+    updateTotpView("scan");
+
+  } catch (err) {
+    console.error("Enrollment error:", err);
+    toastError("Failed to start enrollment.");
+  } finally {
+    startBtn.disabled = false;
+    startBtn.textContent = "Get Started";
+  }
+}
+
+function copyTotpSecret() {
+  const secret = state.mfa.setupSecret;
+  if (secret) {
+    navigator.clipboard.writeText(secret).then(() => {
+      toastSuccess("Secret copied to clipboard");
+    });
+  }
+}
+
+async function onTotpVerify() {
+  const verifyBtn = el("btn-totp-verify-enable");
+  const codeInput = el("totp-verify-input");
+  const errorText = el("totp-verify-error");
+
+  const code = codeInput.value.trim();
+  if (code.length !== 6) {
+    errorText.textContent = "Please enter a 6-digit code.";
+    errorText.classList.remove("hidden");
+    return;
+  }
+
+  verifyBtn.disabled = true;
+  verifyBtn.textContent = "Verifying...";
+  errorText.classList.add("hidden");
+
+  try {
+    // 1. Create a Challenge first (Required for enrollment verification in some flows, or just robust)
+    const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+      factorId: state.mfa.setupFactorId
+    });
+
+    if (challengeError) throw challengeError;
+
+    // 2. Verify against that challenge
+    const verifyRes = await supabase.auth.mfa.verify({
+      factorId: state.mfa.setupFactorId,
+      challengeId: challengeData.id,
+      code: code
+    });
+
+    if (verifyRes.error) throw verifyRes.error;
+
+    console.log("✅ TOTP Factor Verified");
+
+    // DEBUG: Alert check status
+    // alert("Verified! Checking AAL...");
+
+    // 2. Force Refresh & Check AAL
+    const { data: sessionData, error: sessionError } = await supabase.auth.refreshSession();
+    if (sessionError) console.error("Session refresh error:", sessionError);
+
+    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    console.log("📊 Current AAL:", aalData.currentLevel);
+
+    // DEBUG: Alert AAL
+    // alert("Current AAL: " + aalData.currentLevel);
+
+    if (aalData.currentLevel !== 'aal2') {
+      // Try upgrading session using the token from verifyRes if available?
+      // verifyRes.data might contain a session
+      if (verifyRes.data?.session) {
+        await supabase.auth.setSession(verifyRes.data.session);
+        // alert("Set session from verify response");
+      } else {
+        // alert("No session in verify response. Attempting reuse challenge...");
+        // Try reusing code (might fail due to replay check)
+        const challengeRes = await supabase.auth.mfa.challengeAndVerify({
+          factorId: state.mfa.setupFactorId,
+          code: code
+        });
+        if (challengeRes.error) {
+          console.warn("Upgrade failed:", challengeRes.error);
+          // alert("Upgrade failed: " + challengeRes.error.message);
+        } else {
+          // alert("Upgraded to AAL2 via reuse!");
+        }
+      }
+    }
+
+    // Re-check AAL
+    const { data: aalData2 } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    // alert("Final AAL before recovery: " + aalData2.currentLevel);
+
+    // 3. Success & Finish
+    // Force UI update explicitly
+    await updateMfaStatusUI();
+
+    // Done
+    onTotpFinish();
+
+  } catch (err) {
+    console.error("Verification error:", err);
+    errorText.textContent = err.message || "Invalid code. Please try again.";
+    errorText.classList.remove("hidden");
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = "Verify & Enable";
+  }
+}
+
+function onTotpFinish() {
+  el("totp-setup-modal")?.classList.add("hidden");
+  toastSuccess("Two-Factor Authentication Enabled!");
+}
+
+async function openMfaManagement() {
+  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aalData.currentLevel !== 'aal2') {
+    openMfaChallengeModal({
+      onSuccess: showMfaActionSheet
+    });
+  } else {
+    showMfaActionSheet();
+  }
+}
+
+// function showMfaActionSheet() {
+//   // Replaced by promptDisableMfa
+// }
+
+function promptDisableMfa() {
+  const modal = el("totp-disable-modal");
+  if (modal) modal.classList.remove("hidden");
+
+  // Clean up old listeners to prevent dupes (though usually we'd use .onclick or a cleaner event manager)
+  // For simplicity here, let's just re-bind or ensure we handle it in setupMfaListeners
+}
+
+// NOTE: Moved actual disable call to event listener in setupMfaListeners
+
+
+
+async function disableMfa() {
+  try {
+    const { data: factorsData } = await supabase.auth.mfa.listFactors();
+    const totpFactor = factorsData.all.find(f => f.factor_type === 'totp' && f.status === 'verified');
+
+    if (!totpFactor) {
+      toastError("No TOTP factor found to disable.");
+      return;
+    }
+
+    const { error } = await supabase.auth.mfa.unenroll({ factorId: totpFactor.id });
+    if (error) throw error;
+
+    toastSuccess("Two-Factor Authentication Disabled.");
+    updateMfaStatusUI();
+
+  } catch (err) {
+    console.error("Disable MFA error:", err);
+    toastError("Failed to disable MFA: " + err.message);
+  }
+}
+
+// Global challenge handler
+let onMfaChallengeSuccess = null;
+
+function openMfaChallengeModal(options = {}) {
+  onMfaChallengeSuccess = options.onSuccess;
+  const modal = el("mfa-challenge-modal");
+  const input = el("mfa-code-input");
+
+  if (input) input.value = "";
+  el("mfa-error-message").classList.add("hidden");
+
+  modal.classList.remove("hidden");
+  if (input) input.focus();
+}
+
+async function handleMfaChallengeSubmit(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
+  const input = el("mfa-code-input");
+  const errorEl = el("mfa-error-message");
+
+  const code = input.value.trim();
+  if (!code) return;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Verifying...";
+  }
+
+  try {
+    const { data: factorsData } = await supabase.auth.mfa.listFactors();
+    const totpFactor = factorsData.all.find(f => f.factor_type === 'totp' && f.status === 'verified');
+
+    if (!totpFactor) {
+      throw new Error("No TOTP factor found.");
+    }
+
+    const { error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: totpFactor.id,
+      code: code
+    });
+
+    if (error) throw error;
+
+    el("mfa-challenge-modal").classList.add("hidden");
+    if (onMfaChallengeSuccess) {
+      onMfaChallengeSuccess();
+      onMfaChallengeSuccess = null;
+    } else {
+      // Default behavior: just close (for login, we might handle differently)
+      // But usually login challenge is handled in handleAuth, not here.
+      // This modal is used for re-verification.
+    }
+
+  } catch (err) {
+    console.error("Challenge error:", err);
+    errorEl.textContent = "Invalid code.";
+    errorEl.classList.remove("hidden");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Verify";
+    }
+  }
+}
+
 init();
+setupMfaListeners();
 
