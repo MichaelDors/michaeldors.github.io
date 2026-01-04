@@ -450,7 +450,7 @@ async function init() {
 
       if (factorsError) throw factorsError;
 
-      const totpFactor = factorsData?.factors?.find(f => f.factor_type === 'totp' && f.status === 'verified');
+      const totpFactor = factorsData?.all?.find(f => f.factor_type === 'totp' && f.status === 'verified');
 
       if (totpFactor) {
         const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -522,76 +522,40 @@ async function init() {
     }
 
     if (session) {
-      console.log('  - Session exists, setting up profile and showing app...');
+      console.log('  - Session exists. Verifying MFA before loading app...');
       isProcessingSession = true;
 
-      // Show app FIRST (optimistic)
-      // We start loading data immediately to prevent "hangs"
-      if (!state.profile) {
-        state.profile = {
-          id: session.user.id,
-          full_name: session.user.user_metadata.full_name || session.user.email || "User",
-          can_manage: false,
-        };
-      }
-      showApp();
+      try {
+        // MFA CHECK (Blocking)
+        const mfaRequired = await checkMfaRequirements(session);
 
-      // Run MFA check in background
-      checkMfaRequirements(session).then(mfaRequired => {
         if (mfaRequired) {
-          console.log("🔒 MFA Enforced - Interrupting session");
+          console.log("🔒 MFA Enforced - Blocking access");
           showAuthGate();
           setAuthMessage("Two-factor authentication required.", false);
+
           openMfaChallengeModal({
             onSuccess: () => {
               isProcessingSession = false;
+              // Now safe to load app
               loadDataAndShowApp(session);
             }
           });
-        } else {
-          // MFA not required, proceed with full data load if not already started
-          console.log("✅ MFA Check passed (or not required)");
-          isProcessingSession = false;
-          // Ensure data continues loading (fetchProfile etc below)
+          // Do NOT load app or data yet
+          return;
         }
-      }).catch(err => {
-        console.warn("MFA background check error:", err);
+
+        console.log("✅ MFA Check passed. Loading application...");
         isProcessingSession = false;
-      });
+        loadDataAndShowApp(session);
 
-      // Proceed with normal data loading in parallel
-      // Fetch profile FIRST, then load data
-
-
-      // Fetch profile FIRST, then load data
-      const profileTimeout = setTimeout(() => {
-        console.log('  - ⚠️ Profile fetch timeout, keeping temporary profile');
+      } catch (err) {
+        console.error("Critical Auth/MFA Error:", err);
         isProcessingSession = false;
-      }, 2000); // 2 second timeout
-
-      fetchProfile().then(() => {
-        clearTimeout(profileTimeout);
-        console.log('  - Profile fetch complete, state.profile:', state.profile);
-        console.log('  - team_id available:', state.profile?.team_id);
-
-        // NOW load data after profile is loaded
-        Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
-          console.log('  - Data loading complete');
-          // Refresh the active tab to show newly loaded data
-          refreshActiveTab();
-        }).catch(err => {
-          console.error('  - Error loading data:', err);
-        });
-
-        // Update UI in case profile changed (e.g., can_manage status)
-        console.log('  - Updating UI with final profile');
-        showApp();
-        isProcessingSession = false;
-      }).catch(err => {
-        clearTimeout(profileTimeout);
-        console.error('  - ❌ Error fetching profile:', err);
-        isProcessingSession = false;
-      });
+        // Fallback to allowed to prevent lockout if just an API error? 
+        // Or fail closed for security? Fails closed here (auth gate stays).
+        setAuthMessage("Authentication verification failed. Please try again.", true);
+      }
     } else {
       console.log('  - No session');
       // Only reset if this isn't the initial load
