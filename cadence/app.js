@@ -440,16 +440,8 @@ async function init() {
 
     try {
       console.log("🔒 Checking MFA status...");
-
-      // Optimization: If already AAL2 (Verified), skip the rest
-      const { data: aalCheck } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aalCheck && aalCheck.currentLevel === 'aal2') {
-        console.log("✅ Already AAL2 Verified. Skipping factor check.");
-        return false;
-      }
-
-      // Timeout promise - 2s (Was 5s which feels like forever on slow connections)
-      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("MFA check timed out")), 2000));
+      // Timeout promise - 5s
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("MFA check timed out")), 5000));
 
       const { data: factorsData, error: factorsError } = await Promise.race([
         supabase.auth.mfa.listFactors(),
