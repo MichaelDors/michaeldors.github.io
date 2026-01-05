@@ -2031,9 +2031,17 @@ textarea {
     padding: 1rem;
   }
 
+  .modal {
+    padding: 0;
+  }
+
   .modal-content {
     width: 100%;
-    max-height: calc(100vh - 2rem);
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    border: none;
+    margin: 0;
     overflow-y: auto;
   }
 
