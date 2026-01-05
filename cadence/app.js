@@ -491,14 +491,77 @@ function isOwner() {
 }
 
 /* Helper to safely check MFA with timeout */
+// App Data Caching System
+const APP_CACHE_PREFIX = 'cadence_app_data_';
+
+function saveAppDataToCache(session) {
+  if (!session?.user?.id) return;
+  try {
+    const cacheData = {
+      profile: state.profile,
+      sets: state.sets,
+      songs: state.songs,
+      people: state.people,
+      userTeams: state.userTeams,
+      currentTeamId: state.currentTeamId,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(APP_CACHE_PREFIX + session.user.id, JSON.stringify(cacheData));
+    console.log('💾 App data cached to localStorage');
+  } catch (e) {
+    console.warn('Failed to cache app data', e);
+  }
+}
+
+function loadAppDataFromCache(session) {
+  if (!session?.user?.id) return false;
+  try {
+    const cached = localStorage.getItem(APP_CACHE_PREFIX + session.user.id);
+    if (!cached) return false;
+    const data = JSON.parse(cached);
+
+    // Populate state
+    state.profile = data.profile;
+    state.sets = data.sets || [];
+    state.songs = data.songs || [];
+    state.people = data.people || [];
+    state.userTeams = data.userTeams || [];
+    state.currentTeamId = data.currentTeamId;
+    state.session = session; // Ensure session is set
+
+    // Important: Reset loading flags so UI renders content instead of spinners
+    state.isLoadingSets = false;
+    state.isLoadingSongs = false;
+    state.isLoadingPeople = false;
+    state.isLoadingProfile = false;
+
+    console.log('📂 App data loaded from cache');
+    return true;
+  } catch (e) {
+    console.warn('Failed to load app data from cache', e);
+    return false;
+  }
+}
+
 /* Helper to safely check MFA with timeout */
 async function checkMfaRequirements(session) {
   if (!supabase.auth.mfa) return false;
 
   try {
     console.log("🔒 Checking MFA status...");
+    const cacheKey = `cadence_mfa_factors_${session.user.id}`;
 
-    // 1. OPTIMIZATION: Check AAL first (Fast, local check)
+    // 0. PRIORITY OPTIMIZATION: Check Cached App Data FIRST
+    // The user wants instant load. If we have data, we show it and check MFA in background.
+    const hasCachedAppData = loadAppDataFromCache(session);
+    if (hasCachedAppData) {
+      console.log("⏩ Optimistic MFA check: Cached app data found. Allowing access while verifying in background.");
+      // Verification in background to catch any security changes
+      checkMfaInBackground(session, cacheKey);
+      return false; // Allow access immediately (Fail Open for UI speed)
+    }
+
+    // 1. Check AAL (Fast, local check)
     // If user is already AAL2 verified, we don't need to check factors
     let aalResult = null;
     try {
@@ -518,28 +581,21 @@ async function checkMfaRequirements(session) {
     } catch (aalErr) {
       console.warn("  - AAL check failed or timed out:", aalErr);
       console.log("⚠️ AAL check timed out. Failing OPEN to prevent lockout.");
-      console.log("   (Assuming user does not need MFA or Supabase is unresponsive)");
-      // CRITICAL CHANGE: If AAL check times out, we assume network/Supabase is flaky.
-      // We Fail Open immediately to let the user in.
       return false;
     }
 
-    // 2. OPTIMIZATION: Check Cache for Non-MFA users (Optimistic)
+    // 2. OPTIMIZATION: Check '0 factors' Cache for Non-MFA users
     // If we confidently know the user has 0 verified factors, skip network call
-    const cacheKey = `cadence_mfa_factors_${session.user.id}`;
     const cachedCount = localStorage.getItem(cacheKey);
 
     if (cachedCount === '0') {
       console.log("⏩ Optimistic MFA check: Cache says 0 factors. Allowing access while verifying in background.");
-
-      // Verification in background to catch any security changes
       checkMfaInBackground(session, cacheKey);
-
       return false; // Allow access immediately
     }
 
     // 3. Network Check (Slower, fallback)
-    console.log("  - Verification required (no cache or MFA potentially active). Verifying...");
+    console.log("  - Verification required (no cached app data or MFA potentially active). Verifying...");
     return await verifyMfaAndCache(session, cacheKey);
 
   } catch (err) {
@@ -554,14 +610,21 @@ function checkMfaInBackground(session, cacheKey) {
   verifyMfaAndCache(session, cacheKey).then(isRequired => {
     if (isRequired) {
       console.warn("🔒 Background MFA check found requirement! Locking UI.");
+
       // If we optimistically let them in but they actually need MFA, lock them out now
       if (!authGate || authGate.classList.contains("hidden")) {
+        // Only show if we aren't already dealing with auth
         showAuthGate();
         setAuthMessage("Security check failed. Two-factor authentication required.", false);
         openMfaChallengeModal({
           onSuccess: () => {
-            // Re-load app logic
-            loadDataAndShowApp(session);
+            // MFA passed, hide gate and refresh data
+            // We don't need to full reload because data is likely already there/fetching
+            const dashboard = el("dashboard");
+            const authGate = el("auth-gate");
+            if (dashboard) dashboard.classList.remove("hidden");
+            if (authGate) authGate.classList.add("hidden");
+            updateMfaStatusUI();
           }
         });
       }
@@ -908,79 +971,72 @@ async function init() {
   }
 
   // Check for existing session first
+  // Check for existing session first with timeout
   console.log('🔍 Checking for existing session...');
-  const { data: { session }, error } = await supabase.auth.getSession();
+  let session = null;
+
+  try {
+    const getSessionPromise = supabase.auth.getSession();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Session check timeout')), 3000)
+    );
+
+    // Race to prevent hanging
+    const result = await Promise.race([getSessionPromise, timeoutPromise]);
+    session = result?.data?.session || null;
+
+    if (result.error) {
+      console.error('❌ Session error from getSession:', result.error);
+    }
+  } catch (err) {
+    console.warn('⚠️ Session check failed or timed out:', err);
+    // Proceed as if no session; if one exists, onAuthStateChange or subsequent refreshes will catch it
+  }
+
   initialSessionChecked = true;
 
-  if (error) {
-    console.error('❌ Session error:', error);
-  }
-
   console.log('📋 Initial session check result:', session ? '✅ Found session' : '❌ No session');
-  if (session) {
-    console.log('  - Session user:', session.user?.email);
-    console.log('  - Session expires at:', new Date(session.expires_at * 1000));
-    console.log('  - Current time:', new Date());
-    console.log('  - Session expired?', new Date(session.expires_at * 1000) < new Date());
-  }
 
   // Only process if we have a session and haven't already processed it via onAuthStateChange
   if (session && !isProcessingSession) {
-    console.log('✅ Session found, setting up profile and showing app...');
+    console.log('✅ Session found in init. Verifying MFA/Cache...');
     state.session = session;
     isProcessingSession = true;
 
-    // Create fallback profile immediately so UI can show
-    if (!state.profile) {
-      state.profile = {
-        id: session.user.id,
-        full_name: session.user.user_metadata.full_name || session.user.email || "User",
-        can_manage: false,
-      };
-      console.log('  - Created temporary profile:', state.profile);
+    try {
+      // MFA CHECK (Blocking or Background)
+      // This uses the same logic as onAuthStateChange, enabling cache utilization
+      const mfaRequired = await checkMfaRequirements(session);
+
+      if (mfaRequired) {
+        console.log("🔒 MFA Enforced (Init) - Blocking access");
+        showAuthGate();
+        setAuthMessage("Two-factor authentication required.", false);
+
+        openMfaChallengeModal({
+          onSuccess: () => {
+            isProcessingSession = false;
+            // Now safe to load app
+            loadDataAndShowApp(session);
+          }
+        });
+      } else {
+        // MFA Check passed (or running in background)
+        console.log("✅ MFA Check passed/backgrounded (Init). Loading application...");
+        isProcessingSession = false;
+        loadDataAndShowApp(session);
+      }
+    } catch (err) {
+      console.error("Critical Auth/MFA Error in Init:", err);
+      isProcessingSession = false;
+      showAuthGate();
+      setAuthMessage("Authentication check failed. Please refresh.", true);
     }
-
-    // Show app immediately, don't wait for profile fetch
-    console.log('  - Showing app immediately...');
-    showApp();
-
-    // Load data in background (non-blocking)
-    // Fetch profile FIRST, then load data
-    const profileTimeout = setTimeout(() => {
-      console.log('  - ⚠️ Profile fetch timeout, keeping temporary profile');
-      isProcessingSession = false;
-      state.isLoadingProfile = false;
-    }, 2000); // 2 second timeout
-
-    fetchProfile().then(() => {
-      clearTimeout(profileTimeout);
-      state.isLoadingProfile = false;
-      console.log('✅ Profile fetch complete, state.profile:', state.profile);
-      console.log('  - team_id available:', state.profile?.team_id);
-
-      // NOW load data after profile is loaded
-      Promise.all([loadSongs(), loadSets(), loadPeople()]).then(() => {
-        console.log('✅ Data loading complete');
-        // Refresh the active tab to show newly loaded data, but NO animation (data just replaced skeleton)
-        refreshActiveTab(false);
-      }).catch(err => {
-        console.error('❌ Error loading data:', err);
-      });
-
-      // Update UI in case profile changed (e.g., can_manage status)
-      console.log('  - Updating UI with final profile');
-      showApp();
-      isProcessingSession = false;
-    }).catch(err => {
-      clearTimeout(profileTimeout);
-      console.error('❌ Error fetching profile:', err);
-      state.isLoadingProfile = false;
-      isProcessingSession = false;
-    });
   } else if (!session) {
-    console.log('❌ No session, calling showAuthGate()');
+    console.log('❌ No session in init, calling showAuthGate()');
     showAuthGate();
   } else {
+    // Session exists but isProcessingSession is true?
     console.log('⏳ Session already being processed by auth state change handler');
   }
 
@@ -2238,6 +2294,20 @@ async function loadDataAndShowApp(session) {
   // Update state immediately
   state.session = session;
 
+  // NEW: Try to render content immediately from cache if we have data
+  // (checkMfaRequirements likely loaded it, but we handle the showApp call here)
+  if (state.sets.length > 0 || loadAppDataFromCache(session)) {
+    console.log('⚡️ Rendering cached interface');
+
+    // Explicitly render the cached data so it appears immediately
+    // Ideally we'd only render the active tab, but fast enough to do all
+    renderSets();
+    renderSongCatalog();
+    renderPeople();
+
+    showApp();
+  }
+
   try {
     await fetchProfile();
     console.log('  - Profile fetched');
@@ -2245,9 +2315,13 @@ async function loadDataAndShowApp(session) {
     await Promise.all([loadSongs(), loadSets(), loadPeople()]);
     console.log('  - Data loaded');
 
+    // Save fresh data to cache
+    saveAppDataToCache(session);
+
     // Pre-check MFA status so the modal UI is fresh
     updateMfaStatusUI();
 
+    // Ensure app is shown (if not already showed by cache)
     showApp();
     setAuthMessage("");
 
@@ -2256,7 +2330,12 @@ async function loadDataAndShowApp(session) {
 
   } catch (err) {
     console.error("Error loading app data:", err);
-    setAuthMessage("Error loading data. Please refresh.", true);
+    // If we have cached data displayed, just show a toast or small error
+    if (state.sets.length > 0) {
+      toastError("Could not sync latest changes. You are viewing cached data.");
+    } else {
+      setAuthMessage("Error loading data. Please refresh.", true);
+    }
   }
 }
 
@@ -3308,8 +3387,11 @@ function updateTeamSwitcher() {
 
 async function loadSongs() {
   console.log('🎵 loadSongs() called');
-  state.isLoadingSongs = true;
-  renderSongCatalog();
+  // Only show loading spinner if we don't have cached data visible
+  if (state.songs.length === 0) {
+    state.isLoadingSongs = true;
+    renderSongCatalog();
+  }
 
   console.log('  - state.currentTeamId:', state.currentTeamId);
 
@@ -3379,8 +3461,11 @@ async function loadSongs() {
 
 async function loadSets() {
   console.log('📋 loadSets() called');
-  state.isLoadingSets = true;
-  renderSets();
+  // Only show loading spinner if we don't have cached data visible
+  if (state.sets.length === 0) {
+    state.isLoadingSets = true;
+    renderSets();
+  }
 
   console.log('  - state.currentTeamId:', state.currentTeamId);
 
@@ -4829,8 +4914,11 @@ function refreshActiveTab(animate = true) {
 
 async function loadPeople() {
   console.log('👥 loadPeople() called');
-  state.isLoadingPeople = true;
-  renderPeople();
+  // Only show loading spinner if we don't have cached data visible
+  if (state.people.length === 0) {
+    state.isLoadingPeople = true;
+    renderPeople();
+  }
   console.log('  - state.currentTeamId:', state.currentTeamId);
 
   if (!state.currentTeamId) {
