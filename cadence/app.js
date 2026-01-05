@@ -642,6 +642,24 @@ async function init() {
       return;
     }
 
+    // AUTH LOADING STATE OPTIMIZATION
+    // Immediately show spinner if we have a session to improve perceived performance
+    if (session) {
+      const authGateInner = document.getElementById('auth-gate');
+      const spinner = document.getElementById('auth-loading-spinner');
+      if (authGateInner && spinner) {
+        // Hide the login form but keep the auth gate visible (the card)
+        const loginForm = authGateInner.querySelector('#login-form-container');
+        if (loginForm) loginForm.classList.add('hidden');
+
+        // Show the spinner
+        spinner.classList.remove('hidden');
+
+        // Ensure the auth gate card itself is visible
+        authGateInner.classList.remove('hidden');
+      }
+    }
+
     state.session = session;
 
     // If we're in password reset mode, show password reset form
@@ -2204,6 +2222,10 @@ function showLoginForm() {
   // Hide forgot password form, show login form
   if (forgotPasswordContainer) forgotPasswordContainer.classList.add("hidden");
   if (loginFormContainer) loginFormContainer.classList.remove("hidden");
+
+  // Ensure spinner is hidden
+  const spinner = document.getElementById('auth-loading-spinner');
+  if (spinner) spinner.classList.add("hidden");
 
   // Clear forgot password form
   if (forgotPasswordForm) forgotPasswordForm.reset();
@@ -15201,6 +15223,143 @@ function openEditAccountModal() {
 
   // Update MFA UI
   updateMfaStatusUI();
+
+  // Load Sessions
+  fetchSessions();
+}
+
+async function fetchSessions() {
+  const listContainer = el("account-session-list");
+  if (!listContainer) return;
+
+  // Show skeleton loader (1 item for seamless feel)
+  listContainer.innerHTML = Array(1).fill(0).map(() => `
+    <div class="session-item" style="border: 1px solid var(--border-color);">
+      <div class="session-info" style="width: 100%;">
+        <div class="skeleton skeleton-avatar" style="width: 2.5rem; height: 2.5rem;"></div>
+        <div class="session-details" style="width: 100%;">
+          <div class="skeleton skeleton-text" style="width: 60%; margin-bottom: 0.5rem;"></div>
+          <div class="skeleton skeleton-text" style="width: 40%;"></div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const { data, error } = await supabase.functions.invoke('session-manager', {
+      body: { action: 'get-sessions' }
+    });
+
+    if (error) throw error;
+
+    const sessions = data.sessions || [];
+
+    if (sessions.length === 0) {
+      listContainer.innerHTML = '<p class="muted small-text" style="text-align: center;">No active sessions found.</p>';
+      return;
+    }
+
+    listContainer.innerHTML = ''; // Clear loading
+
+    sessions.forEach((s, index) => {
+      // Determine if this is the current session
+      let isCurrent = false;
+      if (session) {
+        try {
+          // Basic JWT decode to find session_id
+          const base64Url = session.access_token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join(''));
+          const payload = JSON.parse(jsonPayload);
+          if (payload.session_id === s.id) {
+            isCurrent = true;
+          }
+        } catch (e) {
+          console.warn("Error decoding token for session check", e);
+        }
+      }
+
+      const elItem = document.createElement('div');
+      elItem.className = 'session-item ripple-item';
+      // Stagger animation
+      elItem.style.animationDelay = `${index * 0.05}s`;
+
+      // Icon selection
+      let iconClass = 'fa-desktop';
+      if (s.device_type === 'mobile') iconClass = 'fa-mobile-screen-button';
+
+      // Relative Time
+      const lastActive = new Date(s.updated_at);
+      const now = new Date();
+      const diffMs = now - lastActive;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      let timeString = 'Just now';
+      if (diffDays > 0) timeString = `${diffDays}d ago`;
+      else if (diffHours > 0) timeString = `${diffHours}h ago`;
+      else if (diffMins > 0) timeString = `${diffMins}m ago`;
+
+      elItem.innerHTML = `
+        <div class="session-info">
+          <div class="session-icon">
+            <i class="fa-solid ${iconClass}"></i>
+          </div>
+          <div class="session-details">
+            <h4>
+              ${s.device_name}
+              ${isCurrent ? '<span class="current-session-badge">This Device</span>' : ''}
+            </h4>
+            <p>Active ${timeString} • ${s.ip || 'Unknown IP'}</p>
+          </div>
+        </div>
+        ${!isCurrent ? `
+          <button class="btn small ghost btn-revoke-session" data-id="${s.id}" style="color: var(--error-color);">
+            Log Out
+          </button>
+        ` : ''}
+      `;
+
+      // Bind event
+      const revokeBtn = elItem.querySelector('.btn-revoke-session');
+      if (revokeBtn) {
+        revokeBtn.addEventListener('click', () => revokeSession(s.id));
+      }
+
+      listContainer.appendChild(elItem);
+    });
+
+  } catch (err) {
+    console.error("Error fetching sessions:", err);
+    listContainer.innerHTML = '<p class="error-text small-text" style="text-align: center;">Failed to load sessions.</p>';
+  }
+}
+
+async function revokeSession(sessionId) {
+  if (!confirm("Are you sure you want to log out of this session?")) return;
+
+  // Optimistic UI updates could happen here, or show loading state on button
+  // For now, simple toast
+
+  try {
+    const { error } = await supabase.functions.invoke('session-manager', {
+      body: { action: 'revoke-session', sessionId }
+    });
+
+    if (error) throw error;
+
+    toastSuccess("Session will be logged out shortly.");
+    fetchSessions(); // Reload list
+
+  } catch (err) {
+    console.error("Error revoking session:", err);
+    toastError("Failed to revoke session.");
+  }
 }
 
 function closeEditAccountModal() {

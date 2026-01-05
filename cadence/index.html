@@ -147,6 +147,12 @@
         </p>
       </div>
 
+      <div id="auth-loading-spinner" class="hidden"
+        style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem;">
+        <div class="spinner"></div>
+        <p class="muted" style="margin-top: 1rem;">Signing in...</p>
+      </div>
+
       <div id="forgot-password-container" class="hidden">
         <h2>Reset Password</h2>
         <p>Enter your email address and we'll send you a link to reset your password.</p>
@@ -972,11 +978,21 @@
             </div>
           </div>
         </div>
-        <div class="modal-actions">
+        <div class="section-header" style="margin-top: 1.5rem;">
+          <h4>Active Sessions</h4>
+        </div>
+        <div id="account-session-list" class="session-list">
+          <!-- Sessions will be loaded here -->
+          <div class="loading-spinner-container">
+            <div class="loading-spinner"></div>
+          </div>
+        </div>
+        <div class="modal-actions" style="margin-top: 2rem;">
           <button type="button" class="btn ghost" id="cancel-edit-account">Cancel</button>
           <button type="submit" class="btn primary">Save</button>
         </div>
       </form>
+
       <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
         <button type="button" class="btn ghost" id="btn-delete-account"
           style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Account</button>
@@ -1244,6 +1260,21 @@
       </div>
 
 
+    </div>
+  </div>
+
+  <div id="simple-confirm-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3 id="simple-confirm-title">Confirm</h3>
+      </header>
+      <div style="padding: 1rem 0;">
+        <p id="simple-confirm-message"></p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="simple-confirm-cancel">Cancel</button>
+        <button type="button" class="btn primary" id="simple-confirm-ok">Confirm</button>
+      </div>
     </div>
   </div>
 
