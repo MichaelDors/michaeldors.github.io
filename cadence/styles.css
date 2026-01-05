@@ -1336,27 +1336,56 @@ main {
   text-underline-offset: 2px;
 }
 
+/* Artistic Modal Animations */
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.6);
+  /* Slightly darker for focus */
+  backdrop-filter: blur(8px);
+  /* Glass effect */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
   padding: 1rem;
-  animation: fadeIn 0.2s ease;
+  /* Smooth Fade */
+  animation: modalFadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   overflow-y: auto;
 }
 
-@keyframes fadeIn {
-  from {
+/* Ensure animation resets when hidden */
+.modal.hidden {
+  display: none !important;
+  animation: none !important;
+}
+
+.modal.closing {
+  animation: modalFadeOut 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes modalFadeIn {
+  0% {
     opacity: 0;
+    backdrop-filter: blur(0px);
   }
 
-  to {
+  100% {
     opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes modalFadeOut {
+  0% {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+
+  100% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
   }
 }
 
@@ -1378,20 +1407,47 @@ main {
   flex-direction: column;
   gap: 1.5rem;
   border: 1px solid var(--border-color);
-  animation: slideUp 0.3s ease;
+  /* Artistic Spring Entry with Delay */
+  animation: modalContentIn 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 0;
+  /* Start invisible for delay */
+  animation-delay: 0.1s;
   overflow-y: auto;
   margin: auto;
+  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6);
 }
 
-@keyframes slideUp {
-  from {
+.modal.closing .modal-content {
+  animation: modalContentOut 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: 0s;
+  /* No delay on close */
+}
+
+@keyframes modalContentIn {
+  0% {
     opacity: 0;
-    transform: translateY(20px);
+    transform: scale(0.92) translateY(30px);
+    filter: blur(10px);
   }
 
-  to {
+  100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes modalContentOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+    filter: blur(5px);
   }
 }
 
@@ -2043,6 +2099,40 @@ textarea {
     border: none;
     margin: 0;
     overflow-y: auto;
+    /* Mobile: Slide Up */
+    animation: modalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 1;
+    /* Override desktop opacity: 0 */
+    animation-delay: 0s;
+    /* Override desktop delay */
+  }
+
+  .modal.closing .modal-content {
+    animation: modalSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 1;
+    animation-delay: 0s;
+  }
+
+  @keyframes modalSlideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 1;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes modalSlideDown {
+    from {
+      transform: translateY(0);
+    }
+
+    to {
+      transform: translateY(100%);
+    }
   }
 
   .set-detail-container {
@@ -2867,6 +2957,52 @@ i {
   box-shadow: var(--glass-shadow);
   /* Fix for Safari/Chrome backdrop-filter stacking context issues */
   transform: translate3d(0, 0, 0);
+}
+
+/* Physics Animation for Dropdowns */
+.account-menu,
+.header-dropdown-menu {
+  transform-origin: top center;
+  /* Smoother easing curve */
+  animation: dropdown-physics-enter 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.account-menu.animate-out,
+.header-dropdown-menu.animate-out {
+  animation: dropdown-physics-exit 0.25s cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes dropdown-physics-enter {
+  0% {
+    opacity: 0;
+    transform: perspective(1000px) rotateX(-50deg) translateY(-10px) scale(0.85);
+  }
+
+  60% {
+    transform: perspective(1000px) rotateX(4deg) translateY(2px) scale(1.01);
+  }
+
+  85% {
+    transform: perspective(1000px) rotateX(-1deg) translateY(0px) scale(0.995);
+  }
+
+  100% {
+    opacity: 1;
+    transform: perspective(1000px) rotateX(0) translateY(0) scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes dropdown-physics-exit {
+  0% {
+    opacity: 1;
+    transform: perspective(1000px) rotateX(0) translateY(0) scale(1) translate3d(0, 0, 0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
 }
 
 @media (prefers-color-scheme: light) {

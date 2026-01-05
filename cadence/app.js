@@ -237,6 +237,27 @@ function showDatabaseError() {
   }
 }
 
+// Helper to close modal with animation
+function closeModalWithAnimation(modalElement, onHidden) {
+  if (!modalElement) return;
+
+  // Add closing class to trigger exit animation
+  modalElement.classList.add('closing');
+
+  // Wait for animation to finish (match CSS duration ~250ms)
+  setTimeout(() => {
+    modalElement.classList.remove('closing');
+    modalElement.classList.add('hidden');
+    document.body.style.overflow = '';
+
+    // Execute callback for state cleanup/form reset
+    if (onHidden) {
+      onHidden();
+    }
+  }, 250); // Slightly longer than 0.2s to be safe
+}
+
+
 function hideDatabaseError() {
   const overlay = el('database-error-overlay');
   if (overlay) {
@@ -602,9 +623,54 @@ async function verifyMfaAndCache(session, cacheKey) {
   }
 }
 
+// Setup observers to ensure animations replay correctly on re-open
+function setupModalObservers() {
+  const modals = document.querySelectorAll('.modal');
+
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes' &&
+        mutation.attributeName === 'class' &&
+        mutation.oldValue &&
+        mutation.oldValue.includes('hidden') &&
+        !mutation.target.classList.contains('hidden')) {
+
+        // Modal just became visible
+        // Force animation restart if it doesn't happen automatically
+        const target = mutation.target;
+
+        // Slightly delay to ensure browser acknowledges visible state
+        requestAnimationFrame(() => {
+          target.style.animation = 'none';
+          target.offsetHeight; /* force reflow */
+          target.style.animation = '';
+
+          const content = target.querySelector('.modal-content');
+          if (content) {
+            content.style.animation = 'none';
+            content.offsetHeight; /* force reflow */
+            content.style.animation = '';
+          }
+        });
+      }
+    });
+  });
+
+  modals.forEach(modal => {
+    observer.observe(modal, {
+      attributes: true,
+      attributeFilter: ['class'],
+      attributeOldValue: true
+    });
+  });
+}
+
 async function init() {
   // Initialize color picker visibility logic
   initTheme();
+
+  // Setup modal animation listeners
+  setupModalObservers();
 
   console.log('🚀 init() called');
   console.log('🔍 State.isPasswordSetup:', state.isPasswordSetup);
@@ -1096,19 +1162,41 @@ function bindEvents() {
   el("btn-delete-account")?.addEventListener("click", () => deleteAccount());
 
 
+  // Helper to toggle dropdowns with exit animation
+  function toggleDropdown(element) {
+    if (!element) return;
+    if (element.classList.contains("hidden")) {
+      element.classList.remove("hidden");
+    } else {
+      element.classList.add("animate-out");
+      setTimeout(() => {
+        element.classList.add("hidden");
+        element.classList.remove("animate-out");
+      }, 250); // Matches CSS animation duration
+    }
+  }
+
   // Account switcher
   const accountMenuBtn = el("btn-account-menu");
   const accountMenu = el("account-menu");
   accountMenuBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
-    accountMenu?.classList.toggle("hidden");
+    toggleDropdown(accountMenu);
   });
 
   // Close account menu when clicking outside
   document.addEventListener("click", (e) => {
-    if (accountMenu && !accountMenu.contains(e.target) && !accountMenuBtn?.contains(e.target)) {
-      accountMenu.classList.add("hidden");
-    }
+    // Helper to close a dropdown if click is outside
+    const closeDropdownIfOutside = (menu, btn) => {
+      if (menu && !menu.classList.contains("hidden") && !menu.contains(e.target) && (!btn || !btn.contains(e.target))) {
+        toggleDropdown(menu);
+      }
+    };
+
+    closeDropdownIfOutside(accountMenu, accountMenuBtn);
+    closeDropdownIfOutside(el("header-add-dropdown-menu"), el("btn-header-add-toggle"));
+    closeDropdownIfOutside(el("mobile-header-add-dropdown-menu"), el("btn-mobile-header-add-toggle"));
+
     // Close person menus when clicking outside
     document.querySelectorAll(".person-menu").forEach(menu => {
       const menuBtn = document.querySelector(`.person-menu-btn[data-person-id="${menu.dataset.personId}"]`);
@@ -1120,8 +1208,8 @@ function bindEvents() {
 
   // Account menu buttons
   el("btn-create-team")?.addEventListener("click", () => {
-    el("account-menu")?.classList.add("hidden");
-    openCreateTeamModal();
+    toggleDropdown(el("account-menu"));
+    setTimeout(() => openCreateTeamModal(), 100);
   });
 
   // Empty state create team button
@@ -1298,10 +1386,7 @@ function bindEvents() {
     // Extra safety: if user isn't a manager (or is in member view), do nothing
     if (!isManager()) return;
     e.stopPropagation();
-    const dropdownMenu = el("header-add-dropdown-menu");
-    if (dropdownMenu) {
-      dropdownMenu.classList.toggle("hidden");
-    }
+    toggleDropdown(el("header-add-dropdown-menu"));
   });
 
   // Mobile header dropdown toggle
@@ -1311,9 +1396,10 @@ function bindEvents() {
     e.stopPropagation();
     const dropdownMenu = el("mobile-header-add-dropdown-menu");
     const button = e.currentTarget;
+
+    // Use toggleDropdown for consistent animation
     if (dropdownMenu && button) {
-      const isHidden = dropdownMenu.classList.contains("hidden");
-      if (isHidden) {
+      if (dropdownMenu.classList.contains("hidden")) {
         // Get click position relative to the button
         const buttonRect = button.getBoundingClientRect();
         const clickX = e.clientX - buttonRect.left;
@@ -1334,19 +1420,21 @@ function bindEvents() {
           if (leftPosition > maxLeft) {
             leftPosition = maxLeft;
           }
-
-          // Ensure dropdown doesn't go off the left edge of container
           if (leftPosition < 0) {
             leftPosition = 0;
           }
 
           dropdownMenu.style.left = `${leftPosition}px`;
-          dropdownMenu.style.right = 'auto';
         }
+
+        toggleDropdown(dropdownMenu);
+      } else {
+        toggleDropdown(dropdownMenu);
       }
-      dropdownMenu.classList.toggle("hidden");
     }
   });
+
+
 
   // Header dropdown items (desktop)
   el("btn-header-add-song")?.addEventListener("click", (e) => {
@@ -7382,22 +7470,22 @@ function openSetModal(set = null) {
 }
 
 function closeSetModal() {
-  setModal.classList.add("hidden");
-  document.body.style.overflow = "";
-  el("set-form").reset();
+  closeModalWithAnimation(setModal, () => {
+    el("set-form").reset();
 
-  // Preserve state.selectedSet if we're in detail view mode
-  // (i.e., if the detail view is currently visible)
-  const detailView = el("set-detail");
-  const isDetailViewVisible = detailView && !detailView.classList.contains("hidden");
+    // Preserve state.selectedSet if we're in detail view mode
+    // (i.e., if the detail view is currently visible)
+    const detailView = el("set-detail");
+    const isDetailViewVisible = detailView && !detailView.classList.contains("hidden");
 
-  if (!isDetailViewVisible) {
-    // Only clear selectedSet if we're not in detail view
-    state.selectedSet = null;
-  }
-  // If detail view is visible, keep state.selectedSet so the detail view stays open
+    if (!isDetailViewVisible) {
+      // Only clear selectedSet if we're not in detail view
+      state.selectedSet = null;
+    }
+    // If detail view is visible, keep state.selectedSet so the detail view stays open
 
-  state.currentSetSongs = [];
+    state.currentSetSongs = [];
+  });
 }
 
 async function openTimesModal() {
@@ -7487,11 +7575,11 @@ async function openTimesModal() {
 
 function closeTimesModal() {
   const timesModal = el("times-modal");
-  timesModal.classList.add("hidden");
-  document.body.style.overflow = "";
-  el("times-form").reset();
-  el("service-times-list").innerHTML = "";
-  el("rehearsal-times-list").innerHTML = "";
+  closeModalWithAnimation(timesModal, () => {
+    el("times-form").reset();
+    el("service-times-list").innerHTML = "";
+    el("rehearsal-times-list").innerHTML = "";
+  });
 }
 
 function openSetAssignmentsModal() {
@@ -7513,10 +7601,10 @@ function openSetAssignmentsModal() {
 
 function closeSetAssignmentsModal() {
   const modal = el("set-assignments-modal");
-  modal.classList.add("hidden");
-  document.body.style.overflow = "";
-  el("set-assignments-form").reset();
-  el("set-assignments-list").innerHTML = "";
+  closeModalWithAnimation(modal, () => {
+    el("set-assignments-form").reset();
+    el("set-assignments-list").innerHTML = "";
+  });
 }
 
 function addSetAssignmentInput(existingAssignment = null) {
@@ -8500,21 +8588,21 @@ async function openSongModal() {
 }
 
 function closeSongModal() {
-  songModal.classList.add("hidden");
-  document.body.style.overflow = "";
-  el("song-form").reset();
-  el("assignments-list").innerHTML = "";
-  el("import-assignments-container").innerHTML = "";
-  const keySelect = el("song-key-select");
-  if (keySelect) {
-    keySelect.value = "";
-  }
-  const durationInput = el("song-service-duration");
-  if (durationInput) {
-    durationInput.value = "";
-    durationInput.placeholder = "e.g., 3:45";
-  }
-  importAssignmentsDropdown = null;
+  closeModalWithAnimation(songModal, () => {
+    el("song-form").reset();
+    el("assignments-list").innerHTML = "";
+    el("import-assignments-container").innerHTML = "";
+    const keySelect = el("song-key-select");
+    if (keySelect) {
+      keySelect.value = "";
+    }
+    const durationInput = el("song-service-duration");
+    if (durationInput) {
+      durationInput.value = "";
+      durationInput.placeholder = "e.g., 3:45";
+    }
+    importAssignmentsDropdown = null;
+  });
 }
 
 function handleTagTypeChange() {
@@ -8644,28 +8732,26 @@ async function openTagModal() {
 
 function closeTagModal() {
   const modal = el("tag-modal");
-  if (!modal) return;
-  modal.classList.add("hidden");
-  document.body.style.overflow = "";
+  closeModalWithAnimation(modal, () => {
+    // Clear dropdowns
+    const songContainer = el("tag-song-select-container");
+    const typeContainer = el("tag-type-select-container");
+    const parentContainer = el("tag-parent-select-container");
+    if (songContainer) songContainer.innerHTML = "";
+    if (typeContainer) typeContainer.innerHTML = "";
+    if (parentContainer) parentContainer.innerHTML = "";
 
-  // Clear dropdowns
-  const songContainer = el("tag-song-select-container");
-  const typeContainer = el("tag-type-select-container");
-  const parentContainer = el("tag-parent-select-container");
-  if (songContainer) songContainer.innerHTML = "";
-  if (typeContainer) typeContainer.innerHTML = "";
-  if (parentContainer) parentContainer.innerHTML = "";
+    tagSongDropdown = null;
+    tagTypeDropdown = null;
+    tagParentDropdown = null;
 
-  tagSongDropdown = null;
-  tagTypeDropdown = null;
-  tagParentDropdown = null;
-
-  const form = el("tag-form");
-  form?.reset();
-  const customLabel = el("tag-custom-label");
-  if (customLabel) customLabel.classList.add("hidden");
-  const customInput = el("tag-custom-input");
-  if (customInput) customInput.value = "";
+    const form = el("tag-form");
+    form?.reset();
+    const customLabel = el("tag-custom-label");
+    if (customLabel) customLabel.classList.add("hidden");
+    const customInput = el("tag-custom-input");
+    if (customInput) customInput.value = "";
+  });
 }
 
 function isTag(setSong) {
@@ -8918,20 +9004,20 @@ async function openSectionModal() {
 }
 
 function closeSectionModal() {
-  sectionModal.classList.add("hidden");
-  document.body.style.overflow = "";
-  el("section-form").reset();
-  el("section-assignments-list").innerHTML = "";
-  el("import-section-assignments-container").innerHTML = "";
-  const sectionLinksList = el("section-links-list");
-  if (sectionLinksList) {
-    sectionLinksList.innerHTML = "";
-  }
-  const sectionDurationInput = el("section-duration");
-  if (sectionDurationInput) {
-    sectionDurationInput.value = "";
-    sectionDurationInput.placeholder = "e.g., 30:00";
-  }
+  closeModalWithAnimation(sectionModal, () => {
+    el("section-form").reset();
+    el("section-assignments-list").innerHTML = "";
+    el("import-section-assignments-container").innerHTML = "";
+    const sectionLinksList = el("section-links-list");
+    if (sectionLinksList) {
+      sectionLinksList.innerHTML = "";
+    }
+    const sectionDurationInput = el("section-duration");
+    if (sectionDurationInput) {
+      sectionDurationInput.value = "";
+      sectionDurationInput.placeholder = "e.g., 30:00";
+    }
+  });
 }
 
 async function openSectionHeaderModal() {
@@ -8944,21 +9030,28 @@ async function openSectionHeaderModal() {
 
 function closeSectionHeaderModal() {
   if (sectionHeaderModal) {
-    sectionHeaderModal.classList.add("hidden");
-    document.body.style.overflow = "";
-    el("section-header-form")?.reset();
+    closeModalWithAnimation(sectionHeaderModal, () => {
+      el("section-header-form")?.reset();
+    });
   }
 }
 
 function closeHeaderDropdown() {
   const dropdownMenu = el("header-add-dropdown-menu");
   const mobileDropdownMenu = el("mobile-header-add-dropdown-menu");
-  if (dropdownMenu) {
-    dropdownMenu.classList.add("hidden");
-  }
-  if (mobileDropdownMenu) {
-    mobileDropdownMenu.classList.add("hidden");
-  }
+
+  const closeWithAnim = (element) => {
+    if (element && !element.classList.contains("hidden")) {
+      element.classList.add("animate-out");
+      setTimeout(() => {
+        element.classList.add("hidden");
+        element.classList.remove("animate-out");
+      }, 250);
+    }
+  };
+
+  closeWithAnim(dropdownMenu);
+  closeWithAnim(mobileDropdownMenu);
 }
 
 let songDropdown = null;
@@ -9701,30 +9794,30 @@ async function openEditSetSongModal(setSong) {
 
 function closeEditSetSongModal() {
   const modal = el("edit-set-song-modal");
-  modal.classList.add("hidden");
-  document.body.style.overflow = "";
-  el("edit-set-song-form").reset();
-  el("edit-assignments-list").innerHTML = "";
-  el("import-edit-assignments-container").innerHTML = "";
-  const editSectionLinksList = el("edit-section-links-list");
-  if (editSectionLinksList) {
-    editSectionLinksList.innerHTML = "";
-  }
-  const editSectionLinksContainer = el("edit-section-links-container");
-  if (editSectionLinksContainer) {
-    editSectionLinksContainer.classList.add("hidden");
-  }
-  const keyInput = el("edit-set-song-key");
-  if (keyInput) {
-    keyInput.value = "";
-  }
-  const durationInput = el("edit-set-song-duration");
-  if (durationInput) {
-    durationInput.value = "";
-    durationInput.placeholder = "e.g., 4:00";
-  }
-  importEditAssignmentsDropdown = null;
-  delete el("edit-set-song-form").dataset.setSongId;
+  closeModalWithAnimation(modal, () => {
+    el("edit-set-song-form").reset();
+    el("edit-assignments-list").innerHTML = "";
+    el("import-edit-assignments-container").innerHTML = "";
+    const editSectionLinksList = el("edit-section-links-list");
+    if (editSectionLinksList) {
+      editSectionLinksList.innerHTML = "";
+    }
+    const editSectionLinksContainer = el("edit-section-links-container");
+    if (editSectionLinksContainer) {
+      editSectionLinksContainer.classList.add("hidden");
+    }
+    const keyInput = el("edit-set-song-key");
+    if (keyInput) {
+      keyInput.value = "";
+    }
+    const durationInput = el("edit-set-song-duration");
+    if (durationInput) {
+      durationInput.value = "";
+      durationInput.placeholder = "e.g., 4:00";
+    }
+    importEditAssignmentsDropdown = null;
+    delete el("edit-set-song-form").dataset.setSongId;
+  });
 }
 
 function addEditAssignmentInput(existingAssignment = null) {
@@ -10564,20 +10657,20 @@ function openInviteModal(prefilledName = null) {
 
 function closeInviteModal() {
   const modal = el("invite-modal");
-  modal.classList.add("hidden");
-  document.body.style.overflow = "";
-  el("invite-form").reset();
-  el("invite-message").textContent = "";
+  closeModalWithAnimation(modal, () => {
+    el("invite-form").reset();
+    el("invite-message").textContent = "";
 
-  // Hide name field
-  const nameLabel = el("invite-name-label");
-  if (nameLabel) {
-    nameLabel.classList.add("hidden");
-  }
-  const nameInput = el("invite-name");
-  if (nameInput) {
-    nameInput.removeAttribute("required");
-  }
+    // Hide name field
+    const nameLabel = el("invite-name-label");
+    if (nameLabel) {
+      nameLabel.classList.add("hidden");
+    }
+    const nameInput = el("invite-name");
+    if (nameInput) {
+      nameInput.removeAttribute("required");
+    }
+  });
 }
 
 async function checkEmailForInvite(email) {
@@ -10816,10 +10909,10 @@ async function openLeaveTeamModal(teamId, teamName) {
 function closeLeaveTeamModal() {
   const modal = el("leave-team-modal");
   if (modal) {
-    modal.classList.add("hidden");
-    document.body.style.overflow = "";
-    delete modal.dataset.teamId;
-    delete modal.dataset.teamName;
+    closeModalWithAnimation(modal, () => {
+      delete modal.dataset.teamId;
+      delete modal.dataset.teamName;
+    });
   }
 }
 
@@ -10917,12 +11010,12 @@ function openEditPersonModal(person) {
 function closeEditPersonModal() {
   const modal = el("edit-person-modal");
   if (modal) {
-    modal.classList.add("hidden");
-    document.body.style.overflow = "";
-    el("edit-person-form")?.reset();
-    delete el("edit-person-form")?.dataset.personId;
-    const emailInput = el("edit-person-email");
-    if (emailInput) emailInput.disabled = false;
+    closeModalWithAnimation(modal, () => {
+      el("edit-person-form")?.reset();
+      delete el("edit-person-form")?.dataset.personId;
+      const emailInput = el("edit-person-email");
+      if (emailInput) emailInput.disabled = false;
+    });
   }
 }
 
@@ -11165,8 +11258,7 @@ function openSongCatalogModal() {
 
 function closeSongCatalogModal() {
   const modal = el("song-catalog-modal");
-  modal.classList.add("hidden");
-  document.body.style.overflow = "";
+  closeModalWithAnimation(modal);
 }
 
 // Async search for content within resources (PDFs)
@@ -11693,26 +11785,28 @@ async function openSongEditModal(songId = null) {
 
 function closeSongEditModal() {
   const modal = el("song-edit-modal");
-  modal.classList.add("hidden");
 
-  // Check if song modal is still open
-  const songModalOpen = !el("song-modal").classList.contains("hidden");
+  // Custom close animation handling for this modal because of nested behavior
+  closeModalWithAnimation(modal, () => {
+    // Check if song modal is still open (was behind this one)
+    const songModalOpen = !el("song-modal").classList.contains("hidden");
 
-  // Only reset body overflow if no other modals are open
-  if (!songModalOpen) {
-    document.body.style.overflow = "";
-  }
+    // Only reset body overflow if no other modals are open
+    if (songModalOpen) {
+      // Re-disable overflow because it was cleared by closeModalWithAnimation
+      document.body.style.overflow = "hidden";
+    }
 
-  el("song-edit-form").reset();
-  delete el("song-edit-form").dataset.songId;
-  el("song-links-list").innerHTML = "";
-  el("song-keys-list").innerHTML = "";
+    el("song-edit-form").reset();
+    delete el("song-edit-form").dataset.songId;
+    el("song-links-list").innerHTML = "";
+    el("song-keys-list").innerHTML = "";
 
-  // Reset creatingSongFromModal if cancelled (not saved)
-  // This will be set to false in handleSongEditSubmit if saved successfully
-  if (state.creatingSongFromModal) {
-    state.creatingSongFromModal = false;
-  }
+    // Reset creatingSongFromModal if cancelled (not saved)
+    if (state.creatingSongFromModal) {
+      state.creatingSongFromModal = false;
+    }
+  });
 }
 
 async function openSongDetailsModal(song, selectedKey = null, setSongContext = null) {
@@ -12061,16 +12155,16 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 function closeSongDetailsModal() {
   const modal = el("song-details-modal");
   if (modal) {
-    // Stop all audio players in the modal
+    // Stop all audio players in the modal BEFORE animation starts (optional, but cleaner)
     const audioPlayers = modal.querySelectorAll("audio");
     audioPlayers.forEach(audio => {
       audio.pause();
       audio.currentTime = 0; // Reset to beginning
     });
 
-    modal.classList.add("hidden");
-    document.body.style.overflow = "";
-    state.currentSongDetailsId = null;
+    closeModalWithAnimation(modal, () => {
+      state.currentSongDetailsId = null;
+    });
   }
 }
 
@@ -15365,10 +15459,10 @@ async function revokeSession(sessionId) {
 function closeEditAccountModal() {
   const modal = el("edit-account-modal");
   if (modal) {
-    modal.classList.add("hidden");
-    document.body.style.overflow = "";
-    const form = el("edit-account-form");
-    if (form) form.reset();
+    closeModalWithAnimation(modal, () => {
+      const form = el("edit-account-form");
+      if (form) form.reset();
+    });
   }
 }
 
@@ -15620,8 +15714,7 @@ async function openTeamSettingsModal() {
 function closeTeamSettingsModal() {
   const modal = el("team-settings-modal");
   if (modal) {
-    modal.classList.add("hidden");
-    document.body.style.overflow = "";
+    closeModalWithAnimation(modal);
   }
 }
 
