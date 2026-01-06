@@ -112,7 +112,8 @@ const state = {
     setupSecret: null,
     qrCode: null,
     tempFactorId: null
-  }
+  },
+  lottieAnimations: {}
 };
 
 const el = (id) => document.getElementById(id);
@@ -728,9 +729,53 @@ function setupModalObservers() {
   });
 }
 
+function initTabAnimations() {
+  if (typeof lottie === 'undefined') {
+    console.warn('Lottie not loaded');
+    return;
+  }
+
+  // Star Ticket.json for sets
+  // Check if element exists before loading
+  if (document.getElementById('anim-sets')) {
+    state.lottieAnimations.sets = lottie.loadAnimation({
+      container: document.getElementById('anim-sets'),
+      renderer: 'svg',
+      loop: false,
+      autoplay: false,
+      path: 'Star Ticket.json'
+    });
+  }
+
+  // Song slide.json for songs
+  if (document.getElementById('anim-songs')) {
+    state.lottieAnimations.songs = lottie.loadAnimation({
+      container: document.getElementById('anim-songs'),
+      renderer: 'svg',
+      loop: false,
+      autoplay: false,
+      path: 'Song slide.json'
+    });
+  }
+
+  // 2 users ai.json for team/people
+  if (document.getElementById('anim-people')) {
+    state.lottieAnimations.people = lottie.loadAnimation({
+      container: document.getElementById('anim-people'),
+      renderer: 'svg',
+      loop: false,
+      autoplay: false,
+      path: '2 users ai.json'
+    });
+  }
+}
+
 async function init() {
   // Initialize color picker visibility logic
   initTheme();
+
+  // Initialize tab animations
+  initTabAnimations();
 
   // Setup modal animation listeners
   setupModalObservers();
@@ -4834,6 +4879,22 @@ function switchTab(tabName) {
       btn.classList.remove("active");
     }
   });
+
+  // Play animation for active tab and reset others
+  if (state.lottieAnimations) {
+    Object.keys(state.lottieAnimations).forEach(key => {
+      if (state.lottieAnimations[key]) {
+        if (key === tabName) {
+          // Reset to 0 and play
+          state.lottieAnimations[key].goToAndPlay(0, true);
+        } else {
+          // Stop (resets to 0 usually in stop mode if passing true/frame, or just pause)
+          // goToAndStop(0) resets to beginning
+          state.lottieAnimations[key].goToAndStop(0, true);
+        }
+      }
+    });
+  }
 
   // Handle specific tab logic BEFORE showing/hiding content
   if (tabName === "people") {

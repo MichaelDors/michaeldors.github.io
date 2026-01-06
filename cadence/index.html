@@ -12,6 +12,7 @@
     href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Instrument+Serif:ital@0;1&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -214,9 +215,15 @@
         </button>
       </div>
       <div class="dashboard-tabs">
-        <button class="tab-btn active" data-tab="sets"><i class="fa-solid fa-rectangle-list"></i> Sets</button>
-        <button class="tab-btn" data-tab="songs"><i class="fa-solid fa-file-waveform"></i> Songs</button>
-        <button class="tab-btn" data-tab="people"><i class="fa-solid fa-users"></i> Team</button>
+        <button class="tab-btn active" data-tab="sets">
+          <div id="anim-sets" class="lottie-icon"></div> Sets
+        </button>
+        <button class="tab-btn" data-tab="songs">
+          <div id="anim-songs" class="lottie-icon"></div> Songs
+        </button>
+        <button class="tab-btn" data-tab="people">
+          <div id="anim-people" class="lottie-icon"></div> Team
+        </button>
       </div>
 
       <div id="sets-tab" class="tab-content">

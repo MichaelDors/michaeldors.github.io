@@ -3480,6 +3480,14 @@ i {
   .assignments-actions #import-edit-assignments-container {
     width: 100%;
   }
+
+  .totp-input-container input {
+    max-width: 100%;
+    font-size: 2rem !important;
+    padding: 1rem 0.5rem;
+    width: 100%;
+    border-radius: 1rem;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3682,18 +3690,19 @@ i {
 }
 
 .totp-input-container input {
-  font-size: 2rem;
+  font-size: 2.5rem;
   letter-spacing: 0.5rem;
   text-align: center;
   width: 100%;
-  max-width: 250px;
-  padding: 0.5rem;
+  max-width: 340px;
+  padding: 1rem;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   color: var(--accent-color);
   /* Fix placeholder overlap or weirdness */
   font-family: monospace;
+  transition: all 0.2s ease;
 }
 
 .totp-input-container input::placeholder {
@@ -3745,8 +3754,21 @@ i {
     max-width: none !important;
     max-height: none !important;
     border-radius: 0;
-    padding: 2rem;
+    padding: 1.5rem;
     overflow-y: auto;
+  }
+
+  .totp-input-container {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .totp-input-container input {
+    max-width: 100%;
+    font-size: 2rem !important;
+    padding: 1rem 0.5rem;
+    width: 100%;
+    border-radius: 1rem;
   }
 }
 
@@ -3852,4 +3874,26 @@ i {
   100% {
     transform: rotate(360deg);
   }
+}
+
+.lottie-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+  pointer-events: none;
+}
+
+.lottie-icon svg path {
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+.lottie-icon svg path[fill="none"] {
+  fill: none !important;
+}
+
+.lottie-icon svg path[stroke="none"] {
+  stroke: none !important;
 }
