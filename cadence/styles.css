@@ -3174,8 +3174,8 @@ i {
 @keyframes ripple-in {
   0% {
     opacity: 0;
-    transform: translateY(20px) scale(0.95);
-    filter: blur(10px);
+    transform: translateY(30px) scale(0.95);
+    filter: blur(5px);
   }
 
   100% {
@@ -3186,7 +3186,7 @@ i {
 }
 
 .ripple-item {
-  animation: ripple-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: ripple-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   opacity: 0;
 }
 

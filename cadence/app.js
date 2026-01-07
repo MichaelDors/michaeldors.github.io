@@ -3774,7 +3774,7 @@ async function loadSets() {
   }
   state.sets = data ?? [];
   state.isLoadingSets = false;
-  renderSets(false);
+  renderSets(true);
 
   // Load and render pending requests
   await loadPendingRequests();
@@ -4646,7 +4646,7 @@ function recalculateAllAssignmentPills() {
   });
 }
 
-function renderSetCard(set, container, index = 0, animate = true) {
+function renderSetCard(set, container, index = 0, animate = true, baseDelay = 0) {
   const template = document.getElementById("set-card-template");
   const node = template.content.cloneNode(true);
 
@@ -4663,7 +4663,7 @@ function renderSetCard(set, container, index = 0, animate = true) {
   const card = node.querySelector(".set-card");
   if (animate) {
     card.classList.add("ripple-item");
-    card.style.animationDelay = `${index * 0.05}s`;
+    card.style.animationDelay = `${(index * 0.07) + baseDelay}s`;
   }
   const editBtn = node.querySelector(".edit-set-btn");
   const deleteBtn = node.querySelector(".delete-set-btn");
@@ -4891,12 +4891,21 @@ function renderSets(animate = true) {
     allSets.push(set);
   });
 
+  // Calculate base delay if pending requests are present (or will be)
+  // Pending requests animate with 0.05s stagger + 0.1s initial delay
+  let baseDelay = 0;
+  if (state.pendingRequests && state.pendingRequests.length > 0) {
+    baseDelay = 0.1 + (state.pendingRequests.length * 0.05);
+  }
+
   // Render "All Sets" section FIRST so we have reference cards for width measurement
   if (allSets.length === 0) {
     setsList.innerHTML = `<p class="muted">No sets scheduled yet.</p>`;
   } else {
     allSets.forEach((set, index) => {
-      renderSetCard(set, setsList, index, animate);
+      // Offset the index by yourSets.length so the ripple continues from the top section
+      // If yourSets is empty, index starts at 0.
+      renderSetCard(set, setsList, index + (yourSets ? yourSets.length : 0), animate, baseDelay);
     });
   }
 
@@ -4906,7 +4915,7 @@ function renderSets(animate = true) {
       yourSetsList.innerHTML = `<p class="muted">You're not assigned to any sets yet.</p>`;
     } else {
       yourSets.forEach((set, index) => {
-        renderSetCard(set, yourSetsList, index, animate);
+        renderSetCard(set, yourSetsList, index, animate, baseDelay);
       });
     }
   }
