@@ -14367,7 +14367,7 @@ const THEMES = {
   // Simple accent color themes
   green: "#00996d",
   blue: "#009db1ff",
-  red: "#e8003eff",
+  red: "#ff3d4d",
   yellow: "#ffc800ff",
   purple: "#be54ffff",
   cadencedefault: "#ff7b51",
