@@ -19,7 +19,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   const ACCENT_COLORS_INIT = {
     green: "#00996d",
     blue: "#009db1ff",
-    red: "#e8003eff",
+    red: "#ff3d4d",
     yellow: "#ffc800ff",
     purple: "#be54ffff",
     cadencedefault: "#ff7b51"
@@ -79,6 +79,7 @@ const state = {
   songs: [],
   people: [],
   pendingInvites: [],
+  pendingRequests: [],
   selectedSet: null,
   currentSetSongs: [],
   creatingSongFromModal: false,
@@ -505,6 +506,7 @@ function saveAppDataToCache(session) {
       people: state.people,
       userTeams: state.userTeams,
       currentTeamId: state.currentTeamId,
+      pendingRequests: state.pendingRequests,
       timestamp: Date.now()
     };
     localStorage.setItem(APP_CACHE_PREFIX + session.user.id, JSON.stringify(cacheData));
@@ -528,6 +530,7 @@ function loadAppDataFromCache(session) {
     state.people = data.people || [];
     state.userTeams = data.userTeams || [];
     state.currentTeamId = data.currentTeamId;
+    state.pendingRequests = data.pendingRequests || [];
     state.session = session; // Ensure session is set
 
     // Important: Reset loading flags so UI renders content instead of spinners
@@ -3868,6 +3871,11 @@ async function loadPendingRequests() {
     return;
   }
 
+  // Optimistic render from cache if available
+  if (state.pendingRequests && state.pendingRequests.length > 0) {
+    renderPendingRequests(state.pendingRequests);
+  }
+
   // Get pending set assignments
   const { data: pendingSetAssignments } = await supabase
     .from("set_assignments")
@@ -3949,6 +3957,8 @@ async function loadPendingRequests() {
     });
   });
 
+  state.pendingRequests = pendingRequests;
+  saveAppDataToCache(state.session);
   renderPendingRequests(pendingRequests);
 }
 
@@ -3966,7 +3976,29 @@ function renderPendingRequests(requests) {
     return;
   }
 
+  const wasHidden = section.classList.contains("hidden");
   section.classList.remove("hidden");
+
+  // Animate header text if showing for the first time
+  if (wasHidden) {
+    const headerTitle = section.querySelector(".section-header h2");
+    const headerP = section.querySelector(".section-header p");
+
+    if (headerTitle) {
+      headerTitle.classList.remove("ripple-item");
+      void headerTitle.offsetWidth;
+      headerTitle.classList.add("ripple-item");
+      headerTitle.style.animationDelay = "0s";
+    }
+
+    if (headerP) {
+      headerP.classList.remove("ripple-item");
+      void headerP.offsetWidth;
+      headerP.classList.add("ripple-item");
+      headerP.style.animationDelay = "0.05s";
+    }
+  }
+
   // Move badge to the requests section header
   const sectionHeader = section.querySelector(".section-header h2");
   if (badge && sectionHeader) {
@@ -3982,9 +4014,21 @@ function renderPendingRequests(requests) {
 
   list.innerHTML = "";
 
-  requests.forEach(request => {
+  requests.forEach((request, index) => {
     const item = document.createElement("div");
-    item.className = "pending-request-item";
+    item.className = "pending-request-item ripple-item";
+    item.style.animationDelay = `${(index * 0.05) + 0.1}s`;
+    item.style.cursor = "pointer";
+    item.onclick = () => {
+      // Find the full set object from state to ensure we have all details (songs, times, etc.)
+      const fullSet = state.sets.find(s => s.id === (request.setId || request.set?.id));
+      if (fullSet) {
+        showSetDetail(fullSet);
+      } else if (request.set) {
+        // Fallback to partial set data if full set not found
+        showSetDetail(request.set);
+      }
+    };
 
     const info = document.createElement("div");
     info.className = "pending-request-info";
@@ -4010,12 +4054,18 @@ function renderPendingRequests(requests) {
     const acceptBtn = document.createElement("button");
     acceptBtn.className = "btn primary small";
     acceptBtn.innerHTML = '<i class="fa-solid fa-check"></i> Accept';
-    acceptBtn.onclick = () => handleAcceptRequest(request);
+    acceptBtn.onclick = (e) => {
+      e.stopPropagation();
+      handleAcceptRequest(request);
+    };
 
     const declineBtn = document.createElement("button");
     declineBtn.className = "btn ghost small";
     declineBtn.innerHTML = '<i class="fa-solid fa-x"></i> Decline';
-    declineBtn.onclick = () => handleDeclineRequest(request);
+    declineBtn.onclick = (e) => {
+      e.stopPropagation();
+      handleDeclineRequest(request);
+    };
 
     actions.appendChild(acceptBtn);
     actions.appendChild(declineBtn);
@@ -6115,6 +6165,9 @@ function showSetDetail(set) {
 
   // Render songs
   renderSetDetailSongs(set);
+
+  // Check for and render pending requests (assignments) for this set
+  renderSetDetailPendingRequests(set);
 }
 
 function renderSetDetailSongs(set) {
@@ -17372,3 +17425,140 @@ async function handleMfaChallengeSubmit(e) {
 init();
 setupMfaListeners();
 
+
+function renderSetDetailPendingRequests(set) {
+  const container = el("set-detail-pending-requests");
+  if (!container) return;
+
+  const currentUserId = state.profile?.id;
+  if (!currentUserId || !set) {
+    container.classList.add("hidden");
+    return;
+  }
+
+  // Check for pending requests for this set
+  Promise.all([
+    supabase
+      .from("set_assignments")
+      .select("id, role, set_id, status")
+      .eq("set_id", set.id)
+      .eq("person_id", currentUserId)
+      .eq("status", "pending"),
+    supabase
+      .from("song_assignments")
+      .select(`
+        id,
+        role,
+        status,
+        set_song:set_song_id (
+          set_id
+        )
+      `)
+      .eq("person_id", currentUserId)
+      .eq("status", "pending")
+  ]).then(([setRes, songRes]) => {
+    const pendingSetAssignments = setRes.data || [];
+    const pendingSongAssignments = songRes.data || [];
+
+    const relevantSongAssignments = pendingSongAssignments.filter(a => a.set_song?.set_id === set.id);
+
+    if (pendingSetAssignments.length === 0 && relevantSongAssignments.length === 0) {
+      container.classList.add("hidden");
+      container.innerHTML = '';
+      return;
+    }
+
+    // Determine what to show
+    let requestPayload = null;
+    let titleText = "";
+    let descText = "";
+
+    if (pendingSetAssignments.length > 0) {
+      const assignment = pendingSetAssignments[0];
+      requestPayload = {
+        type: 'set',
+        assignmentId: assignment.id,
+        setId: set.id,
+        set: set,
+        role: assignment.role
+      };
+      titleText = "Set Assignment Request";
+      descText = `You have been requested to serve on this set`;
+    } else {
+      // Group song assignments
+      requestPayload = {
+        type: 'song',
+        assignmentIds: relevantSongAssignments.map(a => a.id),
+        setId: set.id,
+        set: set,
+        roles: [...new Set(relevantSongAssignments.map(a => a.role))],
+        assignmentCount: relevantSongAssignments.length
+      };
+      titleText = "Song Assignment Requests";
+      descText = `You have ${requestPayload.assignmentCount} song assignment${requestPayload.assignmentCount > 1 ? 's' : ''} pending (${requestPayload.roles.join(', ')})`;
+    }
+
+    // Render
+    container.classList.remove("hidden");
+    container.innerHTML = '';
+
+    const banner = document.createElement('div');
+    // Add ripple animation
+    banner.classList.add('ripple-item');
+    banner.style.animationDelay = '0.05s';
+
+    banner.style.background = 'var(--bg-secondary)';
+    banner.style.padding = '1rem';
+    banner.style.borderRadius = '1rem';
+    banner.style.marginBottom = '1.5rem';
+    banner.style.display = 'flex';
+    banner.style.alignItems = 'center';
+    banner.style.justifyContent = 'space-between';
+    banner.style.border = '1px solid var(--border-color)';
+    banner.style.flexWrap = 'wrap';
+    banner.style.gap = '1rem';
+    banner.style.boxShadow = '0 4px 12px -2px rgba(0,0,0,0.05)';
+
+    const infoDiv = document.createElement('div');
+    infoDiv.style.flex = '1';
+    infoDiv.style.minWidth = '200px';
+
+    const titleEl = document.createElement('div');
+    titleEl.innerHTML = `<i class="fa-solid fa-bell" style="color: var(--accent-color); margin-right: 0.5rem;"></i><span style="font-weight: 600; color: var(--text-primary); font-size: 1.05rem;">${titleText}</span>`;
+
+    const descEl = document.createElement('div');
+    descEl.textContent = descText;
+    descEl.style.fontSize = '0.9rem';
+    descEl.style.color = 'var(--text-secondary)';
+    descEl.style.marginTop = '0.35rem';
+    descEl.style.marginLeft = '1.75rem'; // Indent to align with text
+    descEl.style.lineHeight = '1.4';
+
+    infoDiv.appendChild(titleEl);
+    infoDiv.appendChild(descEl);
+
+    const actionsDiv = document.createElement('div');
+    actionsDiv.style.display = 'flex';
+    actionsDiv.style.gap = '0.5rem';
+
+    const acceptBtn = document.createElement("button");
+    acceptBtn.className = "btn primary small";
+    acceptBtn.innerHTML = '<i class="fa-solid fa-check"></i> Accept';
+    acceptBtn.onclick = () => handleAcceptRequest(requestPayload);
+
+    const declineBtn = document.createElement("button");
+    declineBtn.className = "btn ghost small";
+    declineBtn.innerHTML = '<i class="fa-solid fa-x"></i> Decline';
+    declineBtn.onclick = () => handleDeclineRequest(requestPayload);
+
+    actionsDiv.appendChild(acceptBtn);
+    actionsDiv.appendChild(declineBtn);
+
+    banner.appendChild(infoDiv);
+    banner.appendChild(actionsDiv);
+
+    container.appendChild(banner);
+  }).catch(err => {
+    console.error("Error loading pending requests for set detail:", err);
+  });
+}
