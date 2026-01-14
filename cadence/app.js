@@ -4874,7 +4874,7 @@ function renderSets(animate = true) {
   if (!state.sets.length) {
     setsList.innerHTML = `<p class="muted">No sets scheduled yet.</p>`;
     if (yourSetsList) {
-      yourSetsList.innerHTML = `<p class="muted">You're not assigned to any sets yet.</p>`;
+      yourSetsList.innerHTML = `<p class="muted">You haven't been assigned to or pinned any sets yet.</p>`;
     }
     return;
   }
@@ -4912,7 +4912,7 @@ function renderSets(animate = true) {
   // Render "Your Sets" section AFTER "All Sets" so we can use them as reference
   if (yourSetsList) {
     if (yourSets.length === 0) {
-      yourSetsList.innerHTML = `<p class="muted">You're not assigned to any sets yet.</p>`;
+      yourSetsList.innerHTML = `<p class="muted">You haven't been assigned to or pinned any sets yet.</p>`;
     } else {
       yourSets.forEach((set, index) => {
         renderSetCard(set, yourSetsList, index, animate, baseDelay);
@@ -12020,6 +12020,243 @@ function closeSongEditModal() {
   });
 }
 
+/**
+ * Extract dominant vibrant color from an image, filtering out black/white/grey
+ * @param {HTMLImageElement} img - The image element
+ * @returns {Promise<string|null>} - Hex color string or null if no vibrant color found
+ */
+/**
+ * Sample a region of an image and get its average color
+ */
+function sampleImageRegion(img, x, y, width, height) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = width;
+  canvas.height = height;
+  
+  ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  
+  let r = 0, g = 0, b = 0, count = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    r += data[i];
+    g += data[i + 1];
+    b += data[i + 2];
+    count++;
+  }
+  
+  return {
+    r: Math.round(r / count),
+    g: Math.round(g / count),
+    b: Math.round(b / count)
+  };
+}
+
+async function extractVibrantColor(img) {
+  try {
+    // Wait for image to be fully loaded
+    if (!img.complete || img.naturalWidth === 0) {
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+    }
+
+    const width = img.naturalWidth;
+    const height = img.naturalHeight;
+    
+    // Sample multiple regions of the image to find vibrant colors
+    // Include edge regions to catch borders, and center regions for main content
+    const borderThickness = Math.max(5, Math.min(width, height) * 0.05); // At least 5px, or 5% of image
+    const sampleSize = Math.min(width, height) * 0.2;
+    const regions = [
+      // Edge/border regions (important for catching border colors like purple)
+      // Top edge
+      { x: 0, y: 0, w: width, h: borderThickness, isEdge: true },
+      // Bottom edge
+      { x: 0, y: height - borderThickness, w: width, h: borderThickness, isEdge: true },
+      // Left edge
+      { x: 0, y: 0, w: borderThickness, h: height, isEdge: true },
+      // Right edge
+      { x: width - borderThickness, y: 0, w: borderThickness, h: height, isEdge: true },
+      // Corner regions (often have borders)
+      { x: 0, y: 0, w: sampleSize, h: sampleSize, isEdge: true },
+      { x: width - sampleSize, y: 0, w: sampleSize, h: sampleSize, isEdge: true },
+      { x: 0, y: height - sampleSize, w: sampleSize, h: sampleSize, isEdge: true },
+      { x: width - sampleSize, y: height - sampleSize, w: sampleSize, h: sampleSize, isEdge: true },
+      // Center region (main content)
+      { x: width * 0.3, y: height * 0.3, w: width * 0.4, h: height * 0.4, isEdge: false },
+      // Quadrants
+      { x: width * 0.1, y: height * 0.1, w: width * 0.3, h: height * 0.3, isEdge: false },
+      { x: width * 0.6, y: height * 0.1, w: width * 0.3, h: height * 0.3, isEdge: false },
+      { x: width * 0.1, y: height * 0.6, w: width * 0.3, h: height * 0.3, isEdge: false },
+      { x: width * 0.6, y: height * 0.6, w: width * 0.3, h: height * 0.3, isEdge: false },
+    ];
+
+    const allColors = [];
+
+    // Sample each region
+    for (const region of regions) {
+      try {
+        const rgb = sampleImageRegion(img, Math.round(region.x), Math.round(region.y), Math.round(region.w), Math.round(region.h));
+        const r = rgb.r;
+        const g = rgb.g;
+        const b = rgb.b;
+        
+        // Calculate brightness and saturation
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const saturation = max === 0 ? 0 : (max - min) / max;
+        
+        const hex = `#${[r, g, b].map(x => {
+          const hex = x.toString(16);
+          return hex.length === 1 ? '0' + hex : hex;
+        }).join('')}`;
+        
+        allColors.push({ hex, r, g, b, brightness, saturation, isEdge: region.isEdge });
+      } catch (err) {
+        // Skip this region if sampling fails
+        continue;
+      }
+    }
+
+    // Filter and score colors
+    let bestColor = null;
+    let bestScore = 0;
+
+    for (const color of allColors) {
+      // Strictly filter out beiges, greys, blacks, and whites
+      const isGrey = Math.abs(color.r - color.g) < 15 && Math.abs(color.g - color.b) < 15 && Math.abs(color.r - color.b) < 15;
+      const isBlack = color.brightness < 40;
+      const isWhite = color.brightness > 220;
+      const isBeige = color.brightness > 180 && color.saturation < 0.15;
+      
+      if (isGrey || isBlack || isWhite || isBeige) {
+        continue;
+      }
+      
+      // Require minimum saturation
+      if (color.saturation < 0.15) {
+        continue;
+      }
+      
+      // Score heavily favors saturation
+      // Give bonus to edge samples (borders are often on edges)
+      const edgeBonus = color.isEdge ? 0.15 : 0;
+      const brightnessScore = Math.min(color.brightness / 255, 1);
+      const brightnessPenalty = color.brightness > 200 ? 0.3 : 1;
+      const score = color.saturation * 0.85 + (brightnessScore * brightnessPenalty) * 0.1 + edgeBonus;
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestColor = color;
+      }
+    }
+
+    // Debug logging
+    console.log('Sampled colors from regions:', allColors);
+    if (bestColor) {
+      console.log('Selected color:', bestColor.hex, 'Saturation:', bestColor.saturation, 'Score:', bestScore);
+    } else if (allColors.length > 0) {
+      // Fallback: use most saturated color
+      const fallbackColor = allColors
+        .filter(c => {
+          const isGrey = Math.abs(c.r - c.g) < 15 && Math.abs(c.g - c.b) < 15 && Math.abs(c.r - c.b) < 15;
+          const isBlack = c.brightness < 40;
+          const isWhite = c.brightness > 220;
+          const isBeige = c.brightness > 180 && c.saturation < 0.15;
+          return !isGrey && !isBlack && !isWhite && !isBeige;
+        })
+        .sort((a, b) => b.saturation - a.saturation)[0];
+      
+      if (fallbackColor) {
+        console.log('Using fallback color (most saturated):', fallbackColor.hex, 'Saturation:', fallbackColor.saturation);
+        return fallbackColor.hex;
+      }
+    }
+
+    return bestColor ? bestColor.hex : null;
+  } catch (error) {
+    console.warn('Error extracting color from album art:', error);
+    return null;
+  }
+}
+
+/**
+ * Setup 3D tilt effect for album art on hover (desktop only)
+ * @param {HTMLElement} container - The album art container element
+ */
+function setupAlbumArtTilt(container) {
+  const img = container.querySelector('.song-album-art');
+  if (!img) return;
+
+  let rafId = null;
+
+  container.addEventListener('mousemove', (e) => {
+    // Use requestAnimationFrame for smoother animation
+    if (rafId) cancelAnimationFrame(rafId);
+    
+    rafId = requestAnimationFrame(() => {
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      
+      const rotateX = (y - centerY) / centerY * -10; // Max 10 degrees
+      const rotateY = (x - centerX) / centerX * 10; // Max 10 degrees
+      
+      // Apply transform to container so pseudo-elements move with it
+      container.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+    });
+  });
+
+  container.addEventListener('mouseleave', () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    container.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)';
+  });
+}
+
+/**
+ * Fetch album art for a song using iTunes Search API (free, no API key required)
+ * @param {string} songTitle - The title of the song
+ * @returns {Promise<string|null>} - URL of the album art image, or null if not found
+ */
+async function fetchAlbumArt(songTitle) {
+  if (!songTitle || !songTitle.trim()) return null;
+
+  try {
+    // iTunes Search API - completely free, no API key needed
+    const searchQuery = encodeURIComponent(songTitle.trim());
+    const apiUrl = `https://itunes.apple.com/search?term=${searchQuery}&media=music&limit=1`;
+    
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      console.warn('iTunes API request failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    // Extract album art URL from iTunes response
+    if (data?.results?.[0]?.artworkUrl100) {
+      // iTunes provides artworkUrl100 (100x100), artworkUrl60 (60x60), etc.
+      // We can get a larger version by replacing the size in the URL
+      // artworkUrl100 can be upgraded to 600x600 by replacing '100x100' with '600x600'
+      const imageUrl = data.results[0].artworkUrl100.replace('100x100', '600x600');
+      return imageUrl;
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('Error fetching album art:', error);
+    return null;
+  }
+}
+
 async function openSongDetailsModal(song, selectedKey = null, setSongContext = null) {
   if (!song) return;
 
@@ -12032,7 +12269,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   // Track which song is open
   state.currentSongDetailsId = song.id;
 
-  title.textContent = song.title || "Song Details";
+  title.textContent = "Song Details";
 
   // Fetch song with keys and links
   let songWithLinks = song;
@@ -12101,32 +12338,34 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   // Render all song information in an expanded view
   content.innerHTML = `
   <div class="song-details-section">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem;">
-          <h2 class="song-details-title" style="margin: 0;">${escapeHtml(songWithLinks.title || "Untitled")}</h2>
-          
-           ${isManager() ? `
-          <div class="header-dropdown-container" id="song-details-edit-dropdown">
-            <button class="btn small secondary" type="button" id="btn-song-details-edit-toggle">
-              <i class="fa-solid fa-pencil"></i> Edit <i class="fa-solid fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.75rem;"></i>
-            </button>
-            <div class="header-dropdown-menu hidden" style="right: 0; left: auto;">
-              <button type="button" class="header-dropdown-item" id="btn-song-details-edit-global">
-                <i class="fa-solid fa-music"></i>
-                <span>Edit Song Details</span>
-              </button>
-              ${setSongContext ? `
-              <button type="button" class="header-dropdown-item" id="btn-song-details-edit-set">
-                <i class="fa-solid fa-list-ul"></i>
-                <span>Edit Song in Set</span>
-              </button>
+        <div class="song-details-header-wrapper">
+          <div id="song-album-art-placeholder" class="song-album-art-container">
+            <img id="song-album-art-img" src="" alt="Album art for ${escapeHtml(songWithLinks.title || 'song')}" class="song-album-art" onerror="this.parentElement.style.display='none';" loading="lazy" />
+          </div>
+          <div class="song-details-header-content">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem;">
+              <h2 class="song-details-title" style="margin: 0; flex: 1;">${escapeHtml(songWithLinks.title || "Untitled")}</h2>
+              ${isManager() ? `
+              <div class="header-dropdown-container" id="song-details-edit-dropdown">
+                <button class="btn small secondary" type="button" id="btn-song-details-edit-toggle">
+                  <i class="fa-solid fa-pencil"></i> Edit <i class="fa-solid fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.75rem;"></i>
+                </button>
+                <div class="header-dropdown-menu hidden" style="right: 0; left: auto;">
+                  <button type="button" class="header-dropdown-item" id="btn-song-details-edit-global">
+                    <i class="fa-solid fa-music"></i>
+                    <span>Edit Song Details</span>
+                  </button>
+                  ${setSongContext ? `
+                  <button type="button" class="header-dropdown-item" id="btn-song-details-edit-set">
+                    <i class="fa-solid fa-list-ul"></i>
+                    <span>Edit Song in Set</span>
+                  </button>
+                  ` : ''}
+                </div>
+              </div>
               ` : ''}
             </div>
-          </div>
-          ` : ''}
-
-        </div>
-        
-        <div class="song-details-meta">
+            <div class="song-details-meta">
           ${songWithLinks.bpm ? `<div class="detail-item">
             <span class="detail-label">BPM</span>
             <span class="detail-value">${songWithLinks.bpm}</span>
@@ -12147,6 +12386,8 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             <span class="detail-label">Duration</span>
             <span class="detail-value">${formatDuration(songWithLinks.duration_seconds)}</span>
           </div>` : ''}
+            </div>
+          </div>
         </div>
         
         ${songWithLinks.bpm ? `
@@ -12302,6 +12543,80 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   }
 
   updateClickTrackButtons();
+
+  // Fetch and display album art asynchronously (don't block modal opening)
+  fetchAlbumArt(songWithLinks.title).then(albumArtUrl => {
+    if (albumArtUrl) {
+      const placeholder = content.querySelector("#song-album-art-placeholder");
+      const img = content.querySelector("#song-album-art-img");
+      if (placeholder && img) {
+        // Function to extract and apply color
+        const applyColorToShadow = async () => {
+          try {
+            const vibrantColor = await extractVibrantColor(img);
+            if (vibrantColor) {
+              // Convert hex to rgba for shadow with opacity
+              const r = parseInt(vibrantColor.slice(1, 3), 16);
+              const g = parseInt(vibrantColor.slice(3, 5), 16);
+              const b = parseInt(vibrantColor.slice(5, 7), 16);
+              
+              // Get opacity from CSS variables (changes automatically with theme)
+              const root = document.documentElement;
+              const mainOpacity = getComputedStyle(root).getPropertyValue('--album-art-shadow-opacity-main').trim() || '0.35';
+              const secondaryOpacity = getComputedStyle(root).getPropertyValue('--album-art-shadow-opacity-secondary').trim() || '0.25';
+              
+              // Use a more vibrant shadow with the extracted color
+              img.style.boxShadow = `0 12px 80px rgba(${r}, ${g}, ${b}, ${mainOpacity}), 0 6px 80px rgba(${r}, ${g}, ${b}, ${secondaryOpacity})`;
+              console.log('Applied vibrant color shadow:', vibrantColor);
+            } else {
+              console.log('No vibrant color found, using default shadow');
+            }
+          } catch (err) {
+            console.warn('Error applying color to shadow:', err);
+          }
+        };
+
+        // Try with crossOrigin first, fallback without if CORS fails
+        const tryLoadImage = (useCrossOrigin) => {
+          if (useCrossOrigin) {
+            img.crossOrigin = 'anonymous';
+          } else {
+            img.crossOrigin = null;
+          }
+
+          // Check if image is already loaded (cached)
+          if (img.complete && img.naturalHeight !== 0) {
+            // Image already loaded, extract color immediately
+            applyColorToShadow();
+          } else {
+            // Wait for image to load
+            img.addEventListener('load', applyColorToShadow, { once: true });
+            img.addEventListener('error', () => {
+              if (useCrossOrigin) {
+                // Retry without crossOrigin if CORS fails
+                console.log('CORS failed, retrying without crossOrigin');
+                tryLoadImage(false);
+              } else {
+                console.warn('Failed to load album art image');
+              }
+            }, { once: true });
+          }
+
+          img.src = albumArtUrl;
+        };
+
+        tryLoadImage(true);
+        placeholder.style.display = "flex";
+        
+        // Add 3D tilt effect on hover (desktop only)
+        if (window.matchMedia('(hover: hover)').matches) {
+          setupAlbumArtTilt(placeholder);
+        }
+      }
+    }
+  }).catch(err => {
+    console.warn('Failed to load album art:', err);
+  });
 
   // Logic for Edit Dropdown
   const dropdownContainer = content.querySelector("#song-details-edit-dropdown");
