@@ -122,6 +122,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* Use dynamic viewport height for mobile browsers */
+  height: 100%;
+  height: 100dvh;
 }
 
 body {
@@ -139,6 +142,9 @@ body {
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Use dynamic viewport height for mobile browsers */
+  min-height: 100%;
+  min-height: 100dvh;
 }
 
 .app-header {
@@ -1348,6 +1354,9 @@ main {
 .modal {
   position: fixed;
   inset: 0;
+  /* Use dynamic viewport height for mobile browsers */
+  height: 100vh;
+  height: 100dvh;
   background: rgba(0, 0, 0, 0.6);
   /* Slightly darker for focus */
   backdrop-filter: blur(8px);
@@ -1411,6 +1420,7 @@ main {
   padding: 2rem;
   width: min(640px, 100%);
   max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -2160,6 +2170,9 @@ textarea {
 @media (max-width: 640px) {
   .app-header {
     padding: 1rem;
+    position: sticky;
+    top: 0;
+    /* Ensure header stays above content on mobile */
   }
 
   main {
@@ -2173,7 +2186,9 @@ textarea {
   .modal-content {
     width: 100%;
     height: 100%;
+    height: 100dvh;
     max-height: 100%;
+    max-height: 100dvh;
     border-radius: 0;
     border: none;
     margin: 0;
@@ -2974,9 +2989,9 @@ i {
   align-items: center;
   gap: 0.35rem;
   padding: 0.2rem 0.6rem;
-  background: rgba(255, 122, 81, 0.053);
+  background: color-mix(in srgb, var(--accent-color) 5%, transparent);
   color: var(--accent-color);
-  border: 1px solid rgba(255, 123, 81, 0.3);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent);
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
