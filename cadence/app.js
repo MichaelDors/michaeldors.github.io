@@ -12589,13 +12589,18 @@ async function searchSongResources(searchTerm, existingResults) {
     loadingIndicator = document.createElement("div");
     loadingIndicator.id = "resource-search-loading";
     loadingIndicator.className = "resource-search-loading";
-    loadingIndicator.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Searching within files...';
+    loadingIndicator.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Searching metadata and files...';
     list.appendChild(loadingIndicator);
   } else {
     // Move to bottom
     list.appendChild(loadingIndicator);
     loadingIndicator.classList.remove("hidden");
   }
+
+  // Parse iTunes metadata filters from search term
+  const itunesMetadata = parseItunesMetadataQuery(searchTerm);
+  const hasItunesFilters = Object.keys(itunesMetadata.filters).length > 0;
+  const searchTextForResources = itunesMetadata.text || searchTerm;
 
   // Filter songs to check:
   // 1. Not already in existingResults
@@ -12608,6 +12613,9 @@ async function searchSongResources(searchTerm, existingResults) {
   });
 
   console.log(`🔍 Deep search: Checking ${candidateSongs.length} candidate songs for "${searchTerm}"`);
+  
+  // Track songs that matched via iTunes metadata search
+  const itunesMatchedSongIds = new Set();
 
   // Process songs in chunks to avoid blocking UI too much
   for (const song of candidateSongs) {
@@ -12625,10 +12633,10 @@ async function searchSongResources(searchTerm, existingResults) {
 
     // 1. Check Link Titles
     for (const link of links) {
-      if ((link.title || "").toLowerCase().includes(searchTerm.toLowerCase())) {
+      if ((link.title || "").toLowerCase().includes(searchTextForResources.toLowerCase())) {
         matchFound = true;
         isLinkTitleMatch = true;
-        matchContext = `Link: ${highlightMatch(link.title, searchTerm)}`;
+        matchContext = `Link: ${highlightMatch(link.title, searchTextForResources)}`;
         break;
       }
     }
@@ -12645,19 +12653,107 @@ async function searchSongResources(searchTerm, existingResults) {
 
         try {
           const text = await extractTextFromPdf(link.url);
-          if (text && text.toLowerCase().includes(searchTerm.toLowerCase())) {
+          if (text && text.toLowerCase().includes(searchTextForResources.toLowerCase())) {
             matchFound = true;
             // Find a snippet for context
-            const index = text.toLowerCase().indexOf(searchTerm.toLowerCase());
+            const index = text.toLowerCase().indexOf(searchTextForResources.toLowerCase());
             const start = Math.max(0, index - 20);
-            const end = Math.min(text.length, index + searchTerm.length + 20);
-            matchContext = "..." + highlightMatch(text.substring(start, end), searchTerm) + "...";
+            const end = Math.min(text.length, index + searchTextForResources.length + 20);
+            matchContext = "..." + highlightMatch(text.substring(start, end), searchTextForResources) + "...";
           }
         } catch (err) {
           console.warn(`⚠️ Failed to parse PDF for song ${song.title}:`, err);
         }
       }
     }
+    
+    // 3. Check iTunes Metadata (if no match yet and we have iTunes filters or search text)
+    if (!matchFound && (hasItunesFilters || searchTextForResources)) {
+      // Stop if search term changed
+      if (activeResourceSearchTerm !== currentSearchTerm) {
+        console.log('🛑 Deep search aborted: search term changed');
+        return;
+      }
+      
+      try {
+        // For specific songs, use the same search as album art to get consistent results
+        // This ensures we get the same iTunes result that provided the album art
+        const itunesItem = await getItunesMetadataForSong(song.title);
+        
+        if (itunesItem) {
+          // Check if this result matches our search filters (if any)
+          let matchesFilters = true;
+          
+          if (itunesMetadata.filters.genre) {
+            const genreMatch = (itunesItem.primaryGenreName || '').toLowerCase().includes(itunesMetadata.filters.genre.toLowerCase()) ||
+                             (itunesItem.genres || []).some(g => g.toLowerCase().includes(itunesMetadata.filters.genre.toLowerCase()));
+            if (!genreMatch) matchesFilters = false;
+          }
+          
+          if (itunesMetadata.filters.album && matchesFilters) {
+            const albumMatch = (itunesItem.collectionName || '').toLowerCase().includes(itunesMetadata.filters.album.toLowerCase());
+            if (!albumMatch) matchesFilters = false;
+          }
+          
+          if (itunesMetadata.filters.artist && matchesFilters) {
+            const artistMatch = (itunesItem.artistName || '').toLowerCase().includes(itunesMetadata.filters.artist.toLowerCase());
+            if (!artistMatch) matchesFilters = false;
+          }
+          
+          if (itunesMetadata.filters.releaseDate && matchesFilters) {
+            const targetYear = itunesMetadata.filters.releaseDate.split('-')[0];
+            if (itunesItem.releaseDate) {
+              const itemYear = new Date(itunesItem.releaseDate).getFullYear().toString();
+              const dateMatch = itunesItem.releaseDate.startsWith(itunesMetadata.filters.releaseDate) || itemYear === targetYear;
+              if (!dateMatch) matchesFilters = false;
+            } else {
+              matchesFilters = false;
+            }
+          }
+          
+          // Also check if search text matches (if no specific filters, just check if we have a search term)
+          if (matchesFilters && (!hasItunesFilters || searchTextForResources)) {
+            // If we have filters, they've already been checked above
+            // If we only have search text, check if it matches any metadata field
+            if (!hasItunesFilters && searchTextForResources) {
+              const searchLower = searchTextForResources.toLowerCase();
+              const matchesText = 
+                (itunesItem.trackName || '').toLowerCase().includes(searchLower) ||
+                (itunesItem.artistName || '').toLowerCase().includes(searchLower) ||
+                (itunesItem.collectionName || '').toLowerCase().includes(searchLower) ||
+                (itunesItem.primaryGenreName || '').toLowerCase().includes(searchLower);
+              if (!matchesText) matchesFilters = false;
+            }
+          }
+          
+          if (matchesFilters) {
+            matchFound = true;
+            itunesMatchedSongIds.add(song.id);
+            
+            // Build match context from iTunes metadata
+            const contextParts = [];
+            if (itunesItem.artistName) {
+              contextParts.push(`Artist: ${highlightMatch(itunesItem.artistName, itunesMetadata.filters.artist || searchTextForResources)}`);
+            }
+            if (itunesItem.collectionName) {
+              contextParts.push(`Album: ${highlightMatch(itunesItem.collectionName, itunesMetadata.filters.album || searchTextForResources)}`);
+            }
+            if (itunesItem.primaryGenreName) {
+              contextParts.push(`Genre: ${highlightMatch(itunesItem.primaryGenreName, itunesMetadata.filters.genre || searchTextForResources)}`);
+            }
+            if (itunesItem.releaseDate) {
+              const releaseDate = new Date(itunesItem.releaseDate).getFullYear();
+              contextParts.push(`Released: ${releaseDate}`);
+            }
+            
+            matchContext = contextParts.length > 0 
+              ? `iTunes: ${contextParts.join(', ')}`
+              : 'iTunes metadata match';
+          }
+        }
+      } catch (err) {
+        console.warn(`⚠️ Failed to search iTunes metadata for song ${song.title}:`, err);
+      }
 
     if (matchFound) {
       // Check again if search term changed before appending
@@ -12683,8 +12779,9 @@ async function searchSongResources(searchTerm, existingResults) {
       const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
       const highlightedDuration = durationStr ? `<span>Duration: ${durationStr}</span>` : '';
 
-      const badgeIcon = isLinkTitleMatch ? 'fa-link' : 'fa-file-pdf';
-      const badgeText = isLinkTitleMatch ? 'Link Match' : 'Content Match';
+      const isItunesMatch = itunesMatchedSongIds.has(song.id);
+      const badgeIcon = isLinkTitleMatch ? 'fa-link' : (isItunesMatch ? 'fa-music' : 'fa-file-pdf');
+      const badgeText = isLinkTitleMatch ? 'Link Match' : (isItunesMatch ? 'iTunes Match' : 'Content Match');
 
       div.innerHTML = `
         <div class="set-song-header song-card-header">
@@ -12740,6 +12837,185 @@ async function searchSongResources(searchTerm, existingResults) {
       list.insertBefore(div, loadingIndicator);
     }
   }
+
+  // Also search iTunes metadata for songs without links (if we have iTunes filters or search text)
+  if ((hasItunesFilters || searchTextForResources) && activeResourceSearchTerm === currentSearchTerm) {
+    // Get songs without links that haven't been matched yet
+    const songsWithoutLinks = state.songs.filter(song => {
+      if (existingIds.has(song.id)) return false;
+      if (itunesMatchedSongIds.has(song.id)) return false;
+      const links = song.song_links || [];
+      return links.length === 0 && song.title; // Only songs with titles
+    });
+    
+    if (songsWithoutLinks.length > 0) {
+      console.log(`🎵 Searching iTunes metadata for ${songsWithoutLinks.length} songs without links`);
+      
+      for (const song of songsWithoutLinks) {
+        // Stop if search term changed
+        if (activeResourceSearchTerm !== currentSearchTerm) {
+          console.log('🛑 iTunes metadata search aborted: search term changed');
+          break;
+        }
+        
+        try {
+          // For specific songs, use the same search as album art to get consistent results
+          const itunesItem = await getItunesMetadataForSong(song.title);
+          
+          if (itunesItem) {
+            // Check if this result matches our search filters (if any)
+            let matchesFilters = true;
+            
+            if (itunesMetadata.filters.genre) {
+              const genreMatch = (itunesItem.primaryGenreName || '').toLowerCase().includes(itunesMetadata.filters.genre.toLowerCase()) ||
+                               (itunesItem.genres || []).some(g => g.toLowerCase().includes(itunesMetadata.filters.genre.toLowerCase()));
+              if (!genreMatch) matchesFilters = false;
+            }
+            
+            if (itunesMetadata.filters.album && matchesFilters) {
+              const albumMatch = (itunesItem.collectionName || '').toLowerCase().includes(itunesMetadata.filters.album.toLowerCase());
+              if (!albumMatch) matchesFilters = false;
+            }
+            
+            if (itunesMetadata.filters.artist && matchesFilters) {
+              const artistMatch = (itunesItem.artistName || '').toLowerCase().includes(itunesMetadata.filters.artist.toLowerCase());
+              if (!artistMatch) matchesFilters = false;
+            }
+            
+            if (itunesMetadata.filters.releaseDate && matchesFilters) {
+              const targetYear = itunesMetadata.filters.releaseDate.split('-')[0];
+              if (itunesItem.releaseDate) {
+                const itemYear = new Date(itunesItem.releaseDate).getFullYear().toString();
+                const dateMatch = itunesItem.releaseDate.startsWith(itunesMetadata.filters.releaseDate) || itemYear === targetYear;
+                if (!dateMatch) matchesFilters = false;
+              } else {
+                matchesFilters = false;
+              }
+            }
+            
+            // Also check if search text matches (if no specific filters)
+            if (matchesFilters && (!hasItunesFilters || searchTextForResources)) {
+              if (!hasItunesFilters && searchTextForResources) {
+                const searchLower = searchTextForResources.toLowerCase();
+                const matchesText = 
+                  (itunesItem.trackName || '').toLowerCase().includes(searchLower) ||
+                  (itunesItem.artistName || '').toLowerCase().includes(searchLower) ||
+                  (itunesItem.collectionName || '').toLowerCase().includes(searchLower) ||
+                  (itunesItem.primaryGenreName || '').toLowerCase().includes(searchLower);
+                if (!matchesText) matchesFilters = false;
+              }
+            }
+            
+            if (matchesFilters) {
+              
+              // Check again if search term changed before appending
+              if (activeResourceSearchTerm !== currentSearchTerm) return;
+              
+              // Remove "No songs match" message if it exists
+              const noSongsMsg = Array.from(list.children).find(child => child.tagName === 'P' && child.textContent.includes("No songs match"));
+              if (noSongsMsg) {
+                noSongsMsg.remove();
+              }
+              
+              // Append song card
+              const div = document.createElement("div");
+              div.className = "card set-song-card fade-in";
+              
+              const highlightedTitle = escapeHtml(song.title || "");
+              const highlightedBpm = song.bpm ? `<span>BPM: ${song.bpm}</span>` : '';
+              const keysSet = new Set((song.song_keys || []).map(k => k.key).filter(Boolean));
+              const keys = Array.from(keysSet).join(", ");
+              const highlightedKey = keys ? `<span>Key: ${keys}</span>` : '';
+              const highlightedTime = song.time_signature ? `<span>Time: ${escapeHtml(song.time_signature)}</span>` : '';
+              const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
+              const highlightedDuration = durationStr ? `<span>Duration: ${durationStr}</span>` : '';
+              
+              // Build match context from iTunes metadata
+              const contextParts = [];
+              if (itunesItem.artistName) {
+                contextParts.push(`Artist: ${highlightMatch(itunesItem.artistName, itunesMetadata.filters.artist || searchTextForResources)}`);
+              }
+              if (itunesItem.collectionName) {
+                contextParts.push(`Album: ${highlightMatch(itunesItem.collectionName, itunesMetadata.filters.album || searchTextForResources)}`);
+              }
+              if (itunesItem.primaryGenreName) {
+                contextParts.push(`Genre: ${highlightMatch(itunesItem.primaryGenreName, itunesMetadata.filters.genre || searchTextForResources)}`);
+              }
+              if (itunesItem.releaseDate) {
+                const releaseDate = new Date(itunesItem.releaseDate).getFullYear();
+                contextParts.push(`Released: ${releaseDate}`);
+              }
+              
+              const matchContext = contextParts.length > 0 
+                ? `${contextParts.join(', ')}`
+                : 'iTunes metadata match';
+              
+              div.innerHTML = `
+                <div class="set-song-header song-card-header">
+                  <div class="set-song-info">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                      <h4 class="song-title" style="margin: 0;">${highlightedTitle}</h4>
+                      <span class="badge-resource-match"><i class="fa-solid fa-music"></i> iTunes Match</span>
+                    </div>
+                    <div class="song-meta-text">
+                      ${highlightedBpm}
+                      ${highlightedKey}
+                      ${highlightedTime}
+                      ${highlightedDuration}
+                    </div>
+                    <div class="song-match-context">
+                      <small class="muted">${matchContext}</small>
+                    </div>
+                  </div>
+                  <div class="set-song-actions song-card-actions">
+                    <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
+                    ${isManager() ? `
+                    <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
+                    <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+              
+              // Attach event listeners
+              const viewDetailsBtn = div.querySelector(".view-song-details-catalog-btn");
+              if (viewDetailsBtn) {
+                viewDetailsBtn.addEventListener("click", () => {
+                  openSongDetailsModal(song);
+                });
+              }
+              
+              const editBtn = div.querySelector(".edit-song-btn");
+              if (editBtn) {
+                editBtn.addEventListener("click", () => {
+                  console.log('Edit button clicked for song:', song.id);
+                  openSongEditModal(song.id);
+                });
+              }
+              
+              const deleteBtn = div.querySelector(".delete-song-btn");
+              if (deleteBtn) {
+                deleteBtn.addEventListener("click", () => {
+                  deleteSong(song.id);
+                });
+              }
+              
+              // Insert before loading indicator
+              list.insertBefore(div, loadingIndicator);
+            }
+          }
+        } catch (err) {
+          console.warn(`⚠️ Failed to search iTunes metadata for song ${song.title}:`, err);
+        }
+      }
+    }
+  }
+
+  // Hide loading indicator when done
+  if (activeResourceSearchTerm === currentSearchTerm) {
+    if (loadingIndicator) loadingIndicator.classList.add("hidden");
+  }
+}
 
   // Hide loading indicator when done
   if (activeResourceSearchTerm === currentSearchTerm) {
@@ -13777,6 +14053,11 @@ async function getAlbumArt(song, songTitle) {
 // Only stores successful results - failures are not cached to allow retries
 const imageLoadCache = new Map();
 
+// Cache for iTunes metadata by song title
+// This ensures we always use the same iTunes result that provided the album art
+// Key: song title (lowercase), Value: full iTunes result object
+const itunesMetadataCache = new Map();
+
 /**
  * Detect if the current device is mobile
  * @returns {boolean} - True if mobile device
@@ -13976,6 +14257,310 @@ async function loadImageViaEdgeFunction(imageUrl) {
 }
 
 /**
+ * Convert various date formats to ISO8601 format
+ * Supports: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, YYYY/MM/DD, YYYY, MM-DD-YYYY, etc.
+ * @param {string} dateStr - Date string in various formats
+ * @returns {string|null} - ISO8601 formatted date (YYYY-MM-DD) or null if invalid
+ */
+function convertDateToISO8601(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  
+  const trimmed = dateStr.trim();
+  if (!trimmed) return null;
+  
+  // Already in ISO8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss)
+  if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?/.test(trimmed)) {
+    return trimmed.split('T')[0]; // Return just the date part
+  }
+  
+  // Try parsing as Date object (handles many formats)
+  const date = new Date(trimmed);
+  if (!isNaN(date.getTime())) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  
+  // Try manual parsing for common formats
+  // MM/DD/YYYY or DD/MM/YYYY
+  const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, part1, part2, year] = slashMatch;
+    // Heuristic: if first part > 12, it's likely DD/MM/YYYY
+    if (parseInt(part1) > 12) {
+      return `${year}-${part2.padStart(2, '0')}-${part1.padStart(2, '0')}`;
+    } else {
+      // Assume MM/DD/YYYY
+      return `${year}-${part1.padStart(2, '0')}-${part2.padStart(2, '0')}`;
+    }
+  }
+  
+  // MM-DD-YYYY
+  const dashMatch = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dashMatch) {
+    const [, month, day, year] = dashMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // YYYY only
+  const yearOnly = trimmed.match(/^(\d{4})$/);
+  if (yearOnly) {
+    return `${yearOnly[1]}-01-01`; // Default to January 1st
+  }
+  
+  // YYYY/MM/DD
+  const ymdMatch = trimmed.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (ymdMatch) {
+    const [, year, month, day] = ymdMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  return null;
+}
+
+/**
+ * Parse search query for iTunes metadata filters
+ * Extracts genre:, album:, artist:, date:, releaseDate: from search query
+ * @param {string} query - The search query
+ * @returns {{filters: Object, text: string}} - Parsed filters and remaining text
+ */
+function parseItunesMetadataQuery(query) {
+  const filters = {};
+  
+  // Regex for extracting key:value pairs (supports quoted strings)
+  const regex = /(\w+):(?:"([^"]+)"|'([^']+)'|([^\s]+))/g;
+  
+  let match;
+  while ((match = regex.exec(query)) !== null) {
+    const key = match[1].toLowerCase();
+    const value = match[2] || match[3] || match[4] || "";
+    
+    switch (key) {
+      case 'genre':
+        filters.genre = value;
+        break;
+      case 'album':
+        filters.album = value;
+        break;
+      case 'artist':
+        filters.artist = value;
+        break;
+      case 'date':
+      case 'releasedate':
+      case 'release':
+        const isoDate = convertDateToISO8601(value);
+        if (isoDate) {
+          filters.releaseDate = isoDate;
+        }
+        break;
+    }
+  }
+  
+  // Remove the matches from the text to get residual search terms
+  const text = query.replace(regex, "").replace(/\s+/g, " ").trim();
+  
+  return { filters, text };
+}
+
+/**
+ * Get iTunes metadata for a specific song (uses cached result from album art fetch when available)
+ * This ensures metadata always matches the album art, regardless of search terms
+ * @param {string} songTitle - The title of the song
+ * @returns {Promise<Object|null>} - iTunes result object with metadata, or null if not found
+ */
+async function getItunesMetadataForSong(songTitle) {
+  if (!songTitle || !songTitle.trim()) {
+    return null;
+  }
+
+  // First, check cache - this ensures we use the EXACT same iTunes result that provided the album art
+  const cacheKey = songTitle.toLowerCase().trim();
+  if (itunesMetadataCache.has(cacheKey)) {
+    const cached = itunesMetadataCache.get(cacheKey);
+    console.log('🎵 Using cached iTunes metadata for:', cacheKey);
+    return cached;
+  }
+
+  // If not cached, fetch it (this might happen if album art hasn't been loaded yet)
+  console.log('🎵 No cached metadata, fetching from iTunes for:', cacheKey);
+  const isMobile = isMobileDevice();
+  
+  try {
+    if (isMobile) {
+      // Use edge function for mobile
+      const { data, error } = await supabase.functions.invoke('fetch-album-art', {
+        body: { 
+          searchQuery: songTitle.trim(),
+          metadataSearch: true,
+          exactMatch: true // Flag to get just the first result (same as album art)
+        }
+      });
+      
+      if (error) {
+        console.error('❌ Edge function error for iTunes metadata:', error);
+        return null;
+      }
+      
+      if (data?.success && data?.results && data.results.length > 0) {
+        const result = data.results[0];
+        // Cache it for future use
+        itunesMetadataCache.set(cacheKey, result);
+        return result;
+      }
+    } else {
+      // Direct API call for desktop - use same search as album art
+      const searchQuery = encodeURIComponent(songTitle.trim());
+      const apiUrl = `https://itunes.apple.com/search?term=${searchQuery}&media=music&limit=1`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        console.warn('iTunes API request failed:', response.status, response.statusText);
+        return null;
+      }
+      
+      const data = await response.json();
+      if (data?.results && data.results.length > 0) {
+        const result = data.results[0];
+        // Cache it for future use
+        itunesMetadataCache.set(cacheKey, result);
+        return result;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting iTunes metadata for song:', error);
+    return null;
+  }
+}
+
+/**
+ * Search iTunes API with metadata filters (genre, album, artist, release date)
+ * Used for general searches with filters, not for matching specific songs
+ * @param {Object} params - Search parameters
+ * @param {string} params.term - General search term (song title)
+ * @param {string} [params.genre] - Genre filter
+ * @param {string} [params.album] - Album filter
+ * @param {string} [params.artist] - Artist filter
+ * @param {string} [params.releaseDate] - Release date in ISO8601 format (YYYY-MM-DD)
+ * @returns {Promise<Array>} - Array of iTunes results
+ */
+async function searchItunesMetadata(params) {
+  const { term, genre, album, artist, releaseDate } = params;
+  
+  // Build search query - combine all terms
+  const searchTerms = [];
+  if (term) searchTerms.push(term);
+  if (artist) searchTerms.push(artist);
+  if (album) searchTerms.push(album);
+  if (genre) searchTerms.push(genre);
+  
+  const searchQuery = searchTerms.join(' ');
+  
+  if (!searchQuery.trim()) {
+    console.warn('🎵 searchItunesMetadata: no search terms provided');
+    return [];
+  }
+  
+  const isMobile = isMobileDevice();
+  let results = [];
+  
+  try {
+    if (isMobile) {
+      // Use edge function for mobile
+      const { data, error } = await supabase.functions.invoke('fetch-album-art', {
+        body: { 
+          searchQuery: searchQuery.trim(),
+          metadataSearch: true,
+          genre,
+          album,
+          artist,
+          releaseDate
+        }
+      });
+      
+      if (error) {
+        console.error('❌ Edge function error for iTunes metadata search:', error);
+        return [];
+      }
+      
+      if (data?.success && data?.results) {
+        results = data.results;
+      }
+    } else {
+      // Direct API call for desktop
+      const encodedQuery = encodeURIComponent(searchQuery.trim());
+      const apiUrl = `https://itunes.apple.com/search?term=${encodedQuery}&media=music&limit=50`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        console.warn('iTunes API request failed:', response.status, response.statusText);
+        return [];
+      }
+      
+      const data = await response.json();
+      results = data?.results || [];
+    }
+    
+    // Filter results by metadata if provided
+    let filteredResults = results;
+    
+    if (genre) {
+      filteredResults = filteredResults.filter(item => 
+        (item.primaryGenreName || '').toLowerCase().includes(genre.toLowerCase()) ||
+        (item.genres || []).some(g => g.toLowerCase().includes(genre.toLowerCase()))
+      );
+    }
+    
+    if (album) {
+      filteredResults = filteredResults.filter(item => 
+        (item.collectionName || '').toLowerCase().includes(album.toLowerCase())
+      );
+    }
+    
+    if (artist) {
+      filteredResults = filteredResults.filter(item => 
+        (item.artistName || '').toLowerCase().includes(artist.toLowerCase())
+      );
+    }
+    
+    if (releaseDate) {
+      // Filter by release date (allow matches within the same year for flexibility)
+      const targetYear = releaseDate.split('-')[0];
+      filteredResults = filteredResults.filter(item => {
+        if (!item.releaseDate) return false;
+        const itemDate = new Date(item.releaseDate);
+        const itemYear = itemDate.getFullYear().toString();
+        // Match exact date or same year
+        return item.releaseDate.startsWith(releaseDate) || itemYear === targetYear;
+      });
+    }
+    
+    return filteredResults;
+  } catch (error) {
+    console.error('❌ Error searching iTunes metadata:', error);
+    return [];
+  }
+}
+
+/**
  * Search iTunes API via edge function (for mobile CORS bypass) or direct (for desktop)
  * @param {string} songTitle - The title of the song
  * @returns {Promise<{small: string, large: string}|null>} - URLs of the album art images, or null if not found
@@ -13985,12 +14570,29 @@ async function searchItunesViaEdgeFunction(songTitle) {
     console.log('🌐 Searching iTunes via edge function:', songTitle);
     
     const { data, error } = await supabase.functions.invoke('fetch-album-art', {
-      body: { searchQuery: songTitle.trim() }
+      body: { 
+        searchQuery: songTitle.trim(),
+        metadataSearch: true,
+        exactMatch: true // Get full result so we can cache it
+      }
     });
 
     if (error) {
       console.error('❌ Edge function error for iTunes search:', error);
       return null;
+    }
+
+    // Cache the iTunes result if we got it back (either in results array or result object)
+    const cacheKey = songTitle.toLowerCase().trim();
+    if (data?.success) {
+      if (data?.results && data.results.length > 0) {
+        itunesMetadataCache.set(cacheKey, data.results[0]);
+        console.log('🎵 Cached iTunes metadata from edge function (results array) for:', cacheKey);
+      } else if (data?.result) {
+        // Edge function returns result object when exactMatch is true
+        itunesMetadataCache.set(cacheKey, data.result);
+        console.log('🎵 Cached iTunes metadata from edge function (result object) for:', cacheKey);
+      }
     }
 
     if (data?.success && data?.small && data?.large) {
@@ -14061,6 +14663,14 @@ async function fetchAlbumArt(songTitle) {
     
     // Extract album art URL from iTunes response
     if (data?.results?.[0]?.artworkUrl100) {
+      // Cache the full iTunes result for this song title so we can use it for metadata later
+      // This ensures metadata always matches the album art
+      const cacheKey = songTitle.toLowerCase().trim();
+      if (data.results[0]) {
+        itunesMetadataCache.set(cacheKey, data.results[0]);
+        console.log('🎵 Cached iTunes metadata for:', cacheKey);
+      }
+      
       // iTunes provides artworkUrl100 (100x100), artworkUrl60 (60x60), etc.
       // Return both medium (600x600) for fast initial load and large (10000x10000) for high quality
       const smallUrl = data.results[0].artworkUrl100.replace('100x100', '600x600');
