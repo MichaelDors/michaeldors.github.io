@@ -5547,6 +5547,9 @@ function switchTab(tabName) {
   // Save the current tab to localStorage
   localStorage.setItem('cadence-active-tab', tabName);
 
+  // Always hide set details when switching tabs - set details should only be visible when explicitly viewing a set
+  hideSetDetail();
+
   // Update tab buttons
   document.querySelectorAll(".tab-btn").forEach(btn => {
     if (btn.dataset.tab === tabName) {
@@ -14347,6 +14350,67 @@ const imageLoadCache = new Map();
 // Key: song title (lowercase), Value: full iTunes result object
 const itunesMetadataCache = new Map();
 
+// Rate limiting for mobile edge function calls
+// Debounce edge function calls on mobile to wait until user is done typing
+const mobileEdgeFunctionQueue = new Map(); // Key: function identifier, Value: { timeout, promise, resolve, reject, latestParams }
+const MOBILE_DEBOUNCE_DELAY = 1500; // Wait 1.5 seconds after user stops typing before calling edge function
+
+/**
+ * Debounced edge function invoker for mobile devices
+ * Waits until user stops typing before making the call
+ * @param {string} functionName - The edge function name
+ * @param {string} cacheKey - Unique key for this specific call (e.g., song title)
+ * @param {Object} params - Parameters to pass to the edge function
+ * @param {boolean} skipDebounce - If true, skip debouncing (for resource search)
+ * @returns {Promise} - Promise that resolves with the edge function result
+ */
+async function invokeEdgeFunctionDebounced(functionName, cacheKey, params, skipDebounce = false) {
+  const isMobile = isMobileDevice();
+  
+  // On desktop or if debouncing is skipped, call directly
+  if (!isMobile || skipDebounce) {
+    return await supabase.functions.invoke(functionName, { body: params });
+  }
+  
+  // On mobile, use debouncing
+  const queueKey = `${functionName}:${cacheKey}`;
+  
+  // Clear existing timeout if any
+  if (mobileEdgeFunctionQueue.has(queueKey)) {
+    const existing = mobileEdgeFunctionQueue.get(queueKey);
+    clearTimeout(existing.timeout);
+    // Reject the old promise
+    if (existing.reject) {
+      existing.reject(new Error('Debounced: superseded by newer call'));
+    }
+  }
+  
+  // Create new promise
+  let resolve, reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  
+  // Set up timeout
+  const timeout = setTimeout(async () => {
+    try {
+      console.log(`📱 Mobile: Calling edge function ${functionName} after debounce for:`, cacheKey);
+      const result = await supabase.functions.invoke(functionName, { body: params });
+      resolve(result);
+    } catch (error) {
+      reject(error);
+    } finally {
+      mobileEdgeFunctionQueue.delete(queueKey);
+    }
+  }, MOBILE_DEBOUNCE_DELAY);
+  
+  // Store in queue
+  mobileEdgeFunctionQueue.set(queueKey, { timeout, promise, resolve, reject, latestParams: params });
+  
+  return promise;
+}
+
 /**
  * Detect if the current device is mobile
  * @returns {boolean} - True if mobile device
@@ -14677,14 +14741,19 @@ async function getItunesMetadataForSong(songTitle) {
   
   try {
     if (isMobile) {
-      // Use edge function for mobile
-      const { data, error } = await supabase.functions.invoke('fetch-album-art', {
-        body: { 
+      // Use debounced edge function for mobile
+      // Even though this is called from resource search, we still debounce to avoid
+      // multiple rapid calls when user is typing quickly
+      const { data, error } = await invokeEdgeFunctionDebounced(
+        'fetch-album-art',
+        cacheKey,
+        { 
           searchQuery: songTitle.trim(),
           metadataSearch: true,
           exactMatch: true // Flag to get just the first result (same as album art)
-        }
-      });
+        },
+        false // Use debouncing to rate limit mobile calls
+      );
       
       if (error) {
         console.error('❌ Edge function error for iTunes metadata:', error);
@@ -14765,17 +14834,21 @@ async function searchItunesMetadata(params) {
   
   try {
     if (isMobile) {
-      // Use edge function for mobile
-      const { data, error } = await supabase.functions.invoke('fetch-album-art', {
-        body: { 
+      // Use debounced edge function for mobile
+      const cacheKey = `${searchQuery.trim()}:${genre || ''}:${album || ''}:${artist || ''}:${releaseDate || ''}`;
+      const { data, error } = await invokeEdgeFunctionDebounced(
+        'fetch-album-art',
+        cacheKey,
+        { 
           searchQuery: searchQuery.trim(),
           metadataSearch: true,
           genre,
           album,
           artist,
           releaseDate
-        }
-      });
+        },
+        false // Use debouncing for general searches
+      );
       
       if (error) {
         console.error('❌ Edge function error for iTunes metadata search:', error);
@@ -14858,13 +14931,17 @@ async function searchItunesViaEdgeFunction(songTitle) {
   try {
     console.log('🌐 Searching iTunes via edge function:', songTitle);
     
-    const { data, error } = await supabase.functions.invoke('fetch-album-art', {
-      body: { 
+    const functionCacheKey = songTitle.toLowerCase().trim();
+    const { data, error } = await invokeEdgeFunctionDebounced(
+      'fetch-album-art',
+      functionCacheKey,
+      { 
         searchQuery: songTitle.trim(),
         metadataSearch: true,
         exactMatch: true // Get full result so we can cache it
-      }
-    });
+      },
+      false // Use debouncing for album art fetches
+    );
 
     if (error) {
       console.error('❌ Edge function error for iTunes search:', error);
@@ -14872,15 +14949,14 @@ async function searchItunesViaEdgeFunction(songTitle) {
     }
 
     // Cache the iTunes result if we got it back (either in results array or result object)
-    const cacheKey = songTitle.toLowerCase().trim();
     if (data?.success) {
       if (data?.results && data.results.length > 0) {
-        itunesMetadataCache.set(cacheKey, data.results[0]);
-        console.log('🎵 Cached iTunes metadata from edge function (results array) for:', cacheKey);
+        itunesMetadataCache.set(metadataCacheKey, data.results[0]);
+        console.log('🎵 Cached iTunes metadata from edge function (results array) for:', metadataCacheKey);
       } else if (data?.result) {
         // Edge function returns result object when exactMatch is true
-        itunesMetadataCache.set(cacheKey, data.result);
-        console.log('🎵 Cached iTunes metadata from edge function (result object) for:', cacheKey);
+        itunesMetadataCache.set(metadataCacheKey, data.result);
+        console.log('🎵 Cached iTunes metadata from edge function (result object) for:', metadataCacheKey);
       }
     }
 
