@@ -1280,6 +1280,91 @@
     </div>
   </div>
 
+  <div id="person-details-modal" class="modal hidden">
+    <div class="modal-content person-details-modal-content">
+      <button class="icon-btn close-modal-absolute" id="close-person-details-modal" aria-label="Close modal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="person-details-header">
+        <div id="person-details-avatar" class="person-details-avatar"></div>
+        <div class="person-details-user-info">
+          <h2 id="person-details-name"></h2>
+          <p id="person-details-email" class="muted"></p>
+        </div>
+      </div>
+
+      <div class="person-details-body">
+        <div class="person-details-section">
+          <div class="assignment-info-group">
+            <label>Assignment Statistics</label>
+            <div class="stats-container">
+              <div class="pie-chart-container">
+                <svg id="pie-chart" class="pie-chart" viewBox="0 0 100 100">
+                  <circle id="pie-background" cx="50" cy="50" r="45" fill="var(--bg-tertiary)"></circle>
+                </svg>
+                <div class="pie-chart-center">
+                  <div class="pie-total" id="pie-total">0</div>
+                  <div class="pie-label">Total</div>
+                </div>
+              </div>
+              <div class="stats-legend">
+                <div class="stat-legend-item">
+                  <div class="stat-legend-info">
+                    <div class="stat-legend-value">
+                      <span id="stat-accepted-count">0</span>
+                      <span class="stat-legend-percent" id="stat-accepted-percent">0%</span>
+                    </div>
+                    <div class="stat-legend-label">Accepted</div>
+                  </div>
+                  <div class="stat-legend-color accepted"></div>
+                </div>
+                <div class="stat-legend-item">
+                  <div class="stat-legend-info">
+                    <div class="stat-legend-value">
+                      <span id="stat-declined-count">0</span>
+                      <span class="stat-legend-percent" id="stat-declined-percent">0%</span>
+                    </div>
+                    <div class="stat-legend-label">Declined</div>
+                  </div>
+                  <div class="stat-legend-color declined"></div>
+                </div>
+                <div class="stat-legend-item">
+                  <div class="stat-legend-info">
+                    <div class="stat-legend-value">
+                      <span id="stat-pending-count">0</span>
+                      <span class="stat-legend-percent" id="stat-pending-percent">0%</span>
+                    </div>
+                    <div class="stat-legend-label">Pending</div>
+                  </div>
+                  <div class="stat-legend-color pending"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="person-details-section">
+          <div class="assignment-info-group">
+            <label>Past Sets</label>
+            <div id="person-details-past-sets" class="person-sets-list">
+              <p class="muted">Loading...</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="person-details-section">
+          <div class="assignment-info-group">
+            <label>Upcoming Sets</label>
+            <div id="person-details-future-sets" class="person-sets-list">
+              <p class="muted">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="totp-setup-modal" class="modal hidden">
     <div class="modal-content totp-modal-content">
       <header>

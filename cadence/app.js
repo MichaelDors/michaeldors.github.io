@@ -1736,6 +1736,13 @@ function bindEvents() {
       document.body.style.overflow = "";
     }
   });
+  el("close-person-details-modal")?.addEventListener("click", () => {
+    const modal = el("person-details-modal");
+    if (modal) {
+      modal.classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+  });
   el("btn-add-set-assignment")?.addEventListener("click", () => addSetAssignmentInput());
   el("btn-add-service-time")?.addEventListener("click", () => addServiceTimeRow());
   el("btn-add-rehearsal-time")?.addEventListener("click", () => addRehearsalTimeRow());
@@ -4825,6 +4832,275 @@ async function handleChangeAssignmentStatus(assignmentId, newStatus, assignmentT
   }
 }
 
+// Open person details modal
+async function openPersonDetailsModal(person) {
+  // Only managers and owners can view person details
+  if (!isManager() && !isOwner()) {
+    return;
+  }
+  
+  const modal = el("person-details-modal");
+  if (!modal || !person) return;
+
+  const avatarEl = el("person-details-avatar");
+  const nameEl = el("person-details-name");
+  const emailEl = el("person-details-email");
+  const acceptedCountEl = el("stat-accepted-count");
+  const acceptedPercentEl = el("stat-accepted-percent");
+  const declinedCountEl = el("stat-declined-count");
+  const declinedPercentEl = el("stat-declined-percent");
+  const pendingCountEl = el("stat-pending-count");
+  const pendingPercentEl = el("stat-pending-percent");
+  const pastSetsEl = el("person-details-past-sets");
+  const futureSetsEl = el("person-details-future-sets");
+
+  // Show modal and set loading state
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+
+  // Initialize statistics to 0 while loading
+  if (acceptedCountEl) acceptedCountEl.textContent = "0";
+  if (declinedCountEl) declinedCountEl.textContent = "0";
+  if (pendingCountEl) pendingCountEl.textContent = "0";
+  if (acceptedPercentEl) acceptedPercentEl.textContent = "0%";
+  if (declinedPercentEl) declinedPercentEl.textContent = "0%";
+  if (pendingPercentEl) pendingPercentEl.textContent = "0%";
+
+  // Set basic info
+  const fullName = person.full_name || "Unknown";
+  if (nameEl) nameEl.textContent = fullName;
+  if (emailEl) {
+    if (person.email) {
+      emailEl.innerHTML = `<a href="mailto:${escapeHtml(person.email)}" style="color: inherit; text-decoration: none;">${escapeHtml(person.email)}</a>`;
+      emailEl.style.display = "block";
+    } else {
+      emailEl.style.display = "none";
+    }
+  }
+
+  // Load profile picture
+  if (avatarEl) {
+    let profilePicturePath = null;
+    if (person.id) {
+      const { data: personProfile } = await supabase
+        .from("profiles")
+        .select("profile_picture_path")
+        .eq("id", person.id)
+        .maybeSingle();
+      
+      if (personProfile?.profile_picture_path) {
+        profilePicturePath = personProfile.profile_picture_path;
+      }
+    }
+
+    if (profilePicturePath) {
+      const pictureUrl = await getFileUrl(profilePicturePath, PROFILE_PICTURES_BUCKET);
+      if (pictureUrl) {
+        avatarEl.innerHTML = `<img src="${pictureUrl}" alt="${fullName}" style="width: 100%; height: 100%; object-fit: cover;">`;
+      } else {
+        displayProfilePictureWithGradient(avatarEl, fullName);
+      }
+    } else {
+      displayProfilePictureWithGradient(avatarEl, fullName);
+    }
+  }
+
+  // Fetch assignment statistics
+  const personId = person.id;
+  if (!personId) {
+    if (pastSetsEl) pastSetsEl.innerHTML = '<p class="muted">No data available.</p>';
+    if (futureSetsEl) futureSetsEl.innerHTML = '<p class="muted">No data available.</p>';
+    // Statistics are already set to 0 above
+    return;
+  }
+
+  // Get all assignments for this person in the current team
+  const [setAssignmentsResult, songAssignmentsResult] = await Promise.all([
+    supabase
+      .from("set_assignments")
+      .select(`
+        id,
+        status,
+        set_id,
+        set:set_id (
+          id,
+          title,
+          scheduled_date,
+          team_id
+        )
+      `)
+      .eq("person_id", personId),
+    supabase
+      .from("song_assignments")
+      .select(`
+        id,
+        status,
+        set_song_id,
+        set_song:set_song_id (
+          id,
+          set_id,
+          set:set_id (
+            id,
+            title,
+            scheduled_date,
+            team_id
+          )
+        )
+      `)
+      .eq("person_id", personId)
+  ]);
+
+  // Filter assignments to current team only
+  const currentTeamId = state.currentTeamId;
+  const setAssignments = (setAssignmentsResult.data || []).filter(a => 
+    a.set?.team_id === currentTeamId
+  );
+  const songAssignments = (songAssignmentsResult.data || []).filter(a => 
+    a.set_song?.set?.team_id === currentTeamId
+  );
+
+  // Count assignments by status
+  const allAssignments = [
+    ...setAssignments.map(a => ({ status: a.status || 'pending', set: a.set })),
+    ...songAssignments.map(a => ({ status: a.status || 'pending', set: a.set_song?.set }))
+  ];
+
+  const accepted = allAssignments.filter(a => a.status === 'accepted').length;
+  const declined = allAssignments.filter(a => a.status === 'declined').length;
+  const pending = allAssignments.filter(a => a.status === 'pending').length;
+  const total = allAssignments.length;
+
+  // Update statistics
+  if (acceptedCountEl) acceptedCountEl.textContent = accepted;
+  if (declinedCountEl) declinedCountEl.textContent = declined;
+  if (pendingCountEl) pendingCountEl.textContent = pending;
+
+  const acceptedPercent = total > 0 ? Math.round((accepted / total) * 100) : 0;
+  const declinedPercent = total > 0 ? Math.round((declined / total) * 100) : 0;
+  const pendingPercent = total > 0 ? Math.round((pending / total) * 100) : 0;
+  
+  if (acceptedPercentEl) acceptedPercentEl.textContent = `${acceptedPercent}%`;
+  if (declinedPercentEl) declinedPercentEl.textContent = `${declinedPercent}%`;
+  if (pendingPercentEl) pendingPercentEl.textContent = `${pendingPercent}%`;
+  
+  // Render pie chart
+  renderPieChart(accepted, declined, pending, total);
+
+  // Get unique sets from assignments
+  const setMap = new Map();
+  setAssignments.forEach(a => {
+    if (a.set) setMap.set(a.set.id, a.set);
+  });
+  songAssignments.forEach(a => {
+    if (a.set_song?.set) setMap.set(a.set_song.set.id, a.set_song.set);
+  });
+
+  const allSets = Array.from(setMap.values());
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  // Separate past and future sets
+  const pastSets = allSets.filter(set => {
+    if (!set.scheduled_date) return false;
+    const setDate = new Date(set.scheduled_date);
+    setDate.setHours(0, 0, 0, 0);
+    return setDate < now;
+  }).sort((a, b) => {
+    const dateA = a.scheduled_date ? new Date(a.scheduled_date) : new Date(0);
+    const dateB = b.scheduled_date ? new Date(b.scheduled_date) : new Date(0);
+    return dateB - dateA; // Most recent first
+  });
+
+  const futureSets = allSets.filter(set => {
+    if (!set.scheduled_date) return true; // Treat sets without dates as future
+    const setDate = new Date(set.scheduled_date);
+    setDate.setHours(0, 0, 0, 0);
+    return setDate >= now;
+  }).sort((a, b) => {
+    const dateA = a.scheduled_date ? new Date(a.scheduled_date) : new Date(0);
+    const dateB = b.scheduled_date ? new Date(b.scheduled_date) : new Date(0);
+    return dateA - dateB; // Earliest first
+  });
+
+  // Render past sets
+  if (pastSetsEl) {
+    if (pastSets.length === 0) {
+      pastSetsEl.innerHTML = '<p class="muted">No past sets.</p>';
+    } else {
+      pastSetsEl.innerHTML = '';
+      pastSets.forEach(set => {
+        const date = set.scheduled_date ? new Date(set.scheduled_date).toLocaleDateString() : 'No date';
+        const relativeTime = set.scheduled_date ? formatRelativeTime(set.scheduled_date) : 'No date';
+        const setItem = document.createElement('div');
+        setItem.className = 'person-set-item';
+        setItem.style.cursor = 'pointer';
+        setItem.innerHTML = `
+          <div class="person-set-title">${escapeHtml(set.title || 'Untitled Set')}</div>
+          <div class="person-set-meta">
+            <div class="person-set-date muted">${date}</div>
+            <div class="person-set-relative muted">${relativeTime}</div>
+          </div>
+        `;
+        setItem.addEventListener('click', () => {
+          // Find the full set object from state.sets
+          const fullSet = state.sets.find(s => s.id === set.id);
+          if (fullSet) {
+            // Close the person details modal
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+            // Navigate to the set
+            showSetDetail(fullSet);
+          } else {
+            // If set not in state, try to load it
+            // For now, just show an error or reload sets
+            toastError('Set not found. Please refresh and try again.');
+          }
+        });
+        pastSetsEl.appendChild(setItem);
+      });
+    }
+  }
+
+  // Render future sets
+  if (futureSetsEl) {
+    if (futureSets.length === 0) {
+      futureSetsEl.innerHTML = '<p class="muted">No upcoming sets.</p>';
+    } else {
+      futureSetsEl.innerHTML = '';
+      futureSets.forEach(set => {
+        const date = set.scheduled_date ? new Date(set.scheduled_date).toLocaleDateString() : 'No date';
+        const relativeTime = set.scheduled_date ? formatRelativeTime(set.scheduled_date) : 'No date';
+        const setItem = document.createElement('div');
+        setItem.className = 'person-set-item';
+        setItem.style.cursor = 'pointer';
+        setItem.innerHTML = `
+          <div class="person-set-title">${escapeHtml(set.title || 'Untitled Set')}</div>
+          <div class="person-set-meta">
+            <div class="person-set-date muted">${date}</div>
+            <div class="person-set-relative muted">${relativeTime}</div>
+          </div>
+        `;
+        setItem.addEventListener('click', () => {
+          // Find the full set object from state.sets
+          const fullSet = state.sets.find(s => s.id === set.id);
+          if (fullSet) {
+            // Close the person details modal
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+            // Navigate to the set
+            showSetDetail(fullSet);
+          } else {
+            // If set not in state, try to load it
+            // For now, just show an error or reload sets
+            toastError('Set not found. Please refresh and try again.');
+          }
+        });
+        futureSetsEl.appendChild(setItem);
+      });
+    }
+  }
+}
+
 function isUserAssignedToSet(set, userId) {
   if (!userId) return false;
 
@@ -5831,6 +6107,19 @@ function renderPeople(animate = true) {
         div.classList.add("ripple-item");
         div.style.animationDelay = `${index * 0.05}s`;
       }
+
+      // Make person card clickable to show details
+      div.style.cursor = "pointer";
+      div.addEventListener("click", (e) => {
+        // Don't open modal if clicking on interactive elements
+        if (e.target.closest(".person-menu-btn") || 
+            e.target.closest(".person-menu") ||
+            e.target.closest("button") ||
+            e.target.closest("a")) {
+          return;
+        }
+        openPersonDetailsModal(person);
+      });
 
       if (isManagerCheck) {
         // Manager view: show email, edit name, delete
@@ -18561,6 +18850,195 @@ function displayProfilePictureInitials(element, fullName) {
   } else {
     element.style.fontSize = "2.5rem";
   }
+}
+
+// Display profile picture with gradient background based on name
+function displayProfilePictureWithGradient(element, fullName) {
+  if (!element || !fullName) {
+    element.innerHTML = '<i class="fa-solid fa-user"></i>';
+    return;
+  }
+  
+  const initials = fullName
+    .split(" ")
+    .map(n => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
+  
+  // Generate consistent colors based on name hash
+  let hash = 0;
+  for (let i = 0; i < fullName.length; i++) {
+    hash = fullName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  // Use the --accent-color CSS variable for a solid background
+  element.style.background = 'var(--accent-color)';
+  element.style.color = '#ffffff';
+  element.textContent = initials;
+  
+  // Adjust font size based on element size
+  const size = element.offsetWidth || 64;
+  if (size <= 64) {
+    element.style.fontSize = "1.25rem";
+  } else {
+    element.style.fontSize = "2.5rem";
+  }
+}
+
+// Format relative time (e.g., "2 days ago", "in 3 days")
+function formatRelativeTime(dateString) {
+  if (!dateString) return 'No date';
+  
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = date - now;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return 'Today';
+  } else if (diffDays === 1) {
+    return 'Tomorrow';
+  } else if (diffDays === -1) {
+    return 'Yesterday';
+  } else if (diffDays > 0) {
+    if (diffDays < 7) {
+      return `in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+    } else if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `in ${weeks} week${weeks !== 1 ? 's' : ''}`;
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return `in ${months} month${months !== 1 ? 's' : ''}`;
+    } else {
+      const years = Math.floor(diffDays / 365);
+      return `in ${years} year${years !== 1 ? 's' : ''}`;
+    }
+  } else {
+    const absDays = Math.abs(diffDays);
+    if (absDays < 7) {
+      return `${absDays} day${absDays !== 1 ? 's' : ''} ago`;
+    } else if (absDays < 30) {
+      const weeks = Math.floor(absDays / 7);
+      return `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
+    } else if (absDays < 365) {
+      const months = Math.floor(absDays / 30);
+      return `${months} month${months !== 1 ? 's' : ''} ago`;
+    } else {
+      const years = Math.floor(absDays / 365);
+      return `${years} year${years !== 1 ? 's' : ''} ago`;
+    }
+  }
+}
+
+// Render pie chart for assignment statistics
+function renderPieChart(accepted, declined, pending, total) {
+  const pieChartEl = el("pie-chart");
+  const pieTotalEl = el("pie-total");
+  const pieBackgroundEl = el("pie-background");
+  
+  if (!pieChartEl) {
+    console.error('Pie chart element not found');
+    return;
+  }
+  
+  if (pieTotalEl) {
+    pieTotalEl.textContent = total;
+  }
+  
+  // Clear existing paths (but keep the background circle)
+  const existingPaths = pieChartEl.querySelectorAll('path');
+  existingPaths.forEach(p => p.remove());
+  
+  // If no assignments, show grey background
+  if (total === 0) {
+    if (pieBackgroundEl) {
+      // Use a proper grey color that works in both light and dark mode
+      const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const greyColor = isDark ? '#4a4a4a' : '#9ca3af'; // Medium grey for light mode, darker grey for dark mode
+      pieBackgroundEl.style.fill = greyColor;
+    }
+    return;
+  }
+  
+  // If there are assignments, make background transparent so pie segments show
+  if (pieBackgroundEl) {
+    pieBackgroundEl.style.fill = 'transparent';
+  }
+  
+  const centerX = 50;
+  const centerY = 50;
+  const radius = 45;
+  
+  // Color scheme
+  const colors = {
+    accepted: '#10b981', // green
+    declined: '#ef4444', // red
+    pending: '#f59e0b'  // amber
+  };
+  
+  const data = [
+    { value: accepted, color: colors.accepted, label: 'accepted' },
+    { value: declined, color: colors.declined, label: 'declined' },
+    { value: pending, color: colors.pending, label: 'pending' }
+  ].filter(d => d.value > 0);
+  
+  if (data.length === 0) {
+    return;
+  }
+  
+  // Calculate angles starting from top (0 degrees, but SVG is rotated -90deg so this will appear at top)
+  let currentAngle = 0;
+  
+  data.forEach((item) => {
+    const percentage = (item.value / total) * 100;
+    const angle = (percentage / 100) * 360;
+    
+    // Handle full circle case
+    if (angle >= 360) {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', centerX);
+      circle.setAttribute('cy', centerY);
+      circle.setAttribute('r', radius);
+      circle.setAttribute('fill', item.color);
+      circle.setAttribute('class', `pie-segment pie-${item.label}`);
+      circle.setAttribute('stroke', 'var(--bg-card)');
+      circle.setAttribute('stroke-width', '2');
+      pieChartEl.appendChild(circle);
+      return;
+    }
+    
+    const startAngle = currentAngle;
+    const endAngle = currentAngle + angle;
+    
+    const startAngleRad = (startAngle * Math.PI) / 180;
+    const endAngleRad = (endAngle * Math.PI) / 180;
+    
+    const x1 = centerX + radius * Math.cos(startAngleRad);
+    const y1 = centerY + radius * Math.sin(startAngleRad);
+    const x2 = centerX + radius * Math.cos(endAngleRad);
+    const y2 = centerY + radius * Math.sin(endAngleRad);
+    
+    const largeArcFlag = angle > 180 ? 1 : 0;
+    
+    const pathData = [
+      `M ${centerX} ${centerY}`,
+      `L ${x1} ${y1}`,
+      `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+      'Z'
+    ].join(' ');
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    path.setAttribute('fill', item.color);
+    path.setAttribute('class', `pie-segment pie-${item.label}`);
+    path.setAttribute('stroke', 'var(--bg-card)');
+    path.setAttribute('stroke-width', '2');
+    
+    pieChartEl.appendChild(path);
+    
+    currentAngle = endAngle;
+  });
 }
 
 // Update user profile picture in header
