@@ -526,7 +526,18 @@ function loadAppDataFromCache(session) {
     // Populate state
     state.profile = data.profile;
     state.sets = data.sets || [];
-    state.songs = data.songs || [];
+    
+    // Deduplicate songs by ID (keep first occurrence) before storing in state
+    const seenSongIds = new Set();
+    const uniqueSongsFromCache = (data.songs || []).filter(song => {
+      if (seenSongIds.has(song.id)) {
+        return false;
+      }
+      seenSongIds.add(song.id);
+      return true;
+    });
+    state.songs = uniqueSongsFromCache;
+    
     state.people = data.people || [];
     state.userTeams = data.userTeams || [];
     state.currentTeamId = data.currentTeamId;
@@ -1682,6 +1693,14 @@ function bindEvents() {
   });
   el("close-song-edit-modal")?.addEventListener("click", () => closeSongEditModal());
   el("cancel-song-edit")?.addEventListener("click", () => closeSongEditModal());
+  el("delete-song-from-edit-modal")?.addEventListener("click", () => {
+    const deleteBtn = el("delete-song-from-edit-modal");
+    const songId = deleteBtn?.dataset.songId;
+    if (songId) {
+      closeSongEditModal();
+      deleteSong(songId);
+    }
+  });
   el("song-edit-form")?.addEventListener("submit", handleSongEditSubmit);
   el("btn-add-song-key")?.addEventListener("click", () => addSongKeyInput());
   el("close-song-details-modal")?.addEventListener("click", () => closeSongDetailsModal());
@@ -1900,6 +1919,9 @@ function showApp() {
     userNameEl.textContent = state.profile?.full_name ?? "Signed In";
   }
 
+  // Update profile picture in header
+  updateUserProfilePicture();
+
   // Update team switcher
   updateTeamSwitcher();
 
@@ -1990,6 +2012,9 @@ function showEmptyState() {
   emptyStateEl.classList.remove("hidden");
   if (userInfoEl) userInfoEl.classList.remove("hidden");
   if (userNameEl) userNameEl.textContent = state.profile?.full_name ?? "Signed In";
+
+  // Update profile picture in header
+  updateUserProfilePicture();
 
   // Update team switcher
   updateTeamSwitcher();
@@ -2357,7 +2382,8 @@ async function loadDataAndShowApp(session) {
     // Explicitly render the cached data so it appears immediately
     // Ideally we'd only render the active tab, but fast enough to do all
     renderSets();
-    renderSongCatalog();
+    // Await renderSongCatalog to ensure deduplication completes before continuing
+    await renderSongCatalog();
     renderPeople();
 
     showApp();
@@ -2915,6 +2941,7 @@ async function fetchProfile() {
           can_manage,
           is_owner,
           team_id,
+          profile_picture_path,
           created_at,
           team:team_id (
             id,
@@ -3104,6 +3131,9 @@ async function fetchProfile() {
 
     // Fetch user teams and set current team
     await fetchUserTeams();
+
+    // Update profile picture in header after profile is loaded
+    updateUserProfilePicture();
 
   } catch (err) {
     console.error('  - ❌ Unexpected error in fetchProfile:', err);
@@ -3447,7 +3477,7 @@ async function loadSongs() {
   // Only show loading spinner if we don't have cached data visible
   if (state.songs.length === 0) {
     state.isLoadingSongs = true;
-    renderSongCatalog();
+    await renderSongCatalog();
   }
 
   console.log('  - state.currentTeamId:', state.currentTeamId);
@@ -3456,7 +3486,7 @@ async function loadSongs() {
     console.warn('⚠️ No currentTeamId, cannot load songs');
     state.songs = [];
     state.isLoadingSongs = false;
-    renderSongCatalog();
+    await renderSongCatalog();
     return;
   }
 
@@ -3498,7 +3528,7 @@ async function loadSongs() {
     console.error('  - Query was for team_id:', state.profile?.team_id);
     state.songs = [];
     state.isLoadingSongs = false;
-    renderSongCatalog();
+    await renderSongCatalog();
     return;
   }
 
@@ -3511,9 +3541,20 @@ async function loadSongs() {
     console.warn('    2. RLS policies are blocking access');
     console.warn('    3. team_id mismatch');
   }
-  state.songs = data || [];
+  
+  // Deduplicate songs by ID (keep first occurrence) before storing in state
+  const seenIds = new Set();
+  const uniqueSongs = (data || []).filter(song => {
+    if (seenIds.has(song.id)) {
+      return false;
+    }
+    seenIds.add(song.id);
+    return true;
+  });
+  
+  state.songs = uniqueSongs;
   state.isLoadingSongs = false;
-  renderSongCatalog(false);
+  await renderSongCatalog(false);
 }
 
 async function loadSets() {
@@ -4408,15 +4449,38 @@ async function showAssignmentDetailsModal(assignment) {
     emailEl.style.display = assignment.personEmail ? "block" : "none";
   }
 
-  // Populate avatar with initials
+  // Populate avatar with profile picture or initials
   if (avatarEl) {
-    const initials = (fullName || "?")
-      .split(" ")
-      .map(n => n[0])
-      .join("")
-      .substring(0, 2)
-      .toUpperCase();
-    avatarEl.textContent = initials;
+    // Try to get profile picture from person data
+    // First, we need to fetch the person's profile to get their picture
+    let personProfilePicturePath = null;
+    
+    // If we have person_id, fetch their profile
+    if (assignment.personId) {
+      const { data: personProfile } = await supabase
+        .from("profiles")
+        .select("profile_picture_path")
+        .eq("id", assignment.personId)
+        .maybeSingle();
+      
+      if (personProfile?.profile_picture_path) {
+        personProfilePicturePath = personProfile.profile_picture_path;
+      }
+    }
+
+    // Try to display profile picture
+    if (personProfilePicturePath) {
+      const pictureUrl = await getFileUrl(personProfilePicturePath);
+      if (pictureUrl) {
+        avatarEl.innerHTML = `<img src="${pictureUrl}" alt="${fullName}" style="width: 100%; height: 100%; object-fit: cover;">`;
+      } else {
+        // Fallback to initials
+        displayProfilePictureInitials(avatarEl, fullName);
+      }
+    } else {
+      // No profile picture, show initials
+      displayProfilePictureInitials(avatarEl, fullName);
+    }
   }
 
   // For per-song assignments, fetch all assignments for this person in this set
@@ -6035,6 +6099,7 @@ function renderSetAssignments(set, container) {
           showAssignmentDetailsModal({
             personName: personName,
             personEmail: assignment.person?.email || assignment.pending_invite?.email || assignment.person_email || "",
+            personId: assignment.person_id || assignment.person?.id || null,
             role: assignment.role,
             songTitle: null, // No song for set-level
             status: assignmentStatus,
@@ -6879,6 +6944,7 @@ function renderSetDetailSongs(set) {
                   showAssignmentDetailsModal({
                     personName: personName,
                     personEmail: assignment.person?.email || assignment.pending_invite?.email || assignment.person_email || "",
+                    personId: assignment.person_id || assignment.person?.id || null,
                     role: assignment.role,
                     songTitle: setSong.song_id
                       ? (setSong.song?.title || setSong.title || "Unknown Song")
@@ -9529,12 +9595,25 @@ function findPresetValueByLabel(label) {
   return preset?.value ?? "custom";
 }
 
-function populateTagSongOptions() {
+async function populateTagSongOptions() {
   const container = el("tag-song-select-container");
   if (!container) return;
   container.innerHTML = "";
 
-  const options = state.songs.map(song => ({
+  // Get weeks offset to nearest scheduled performance (past or future) for each song
+  const weeksSinceMap = await getWeeksSinceLastPerformance();
+
+  // Deduplicate songs by ID (keep first occurrence)
+  const seenIds = new Set();
+  const uniqueSongs = state.songs.filter(song => {
+    if (seenIds.has(song.id)) {
+      return false;
+    }
+    seenIds.add(song.id);
+    return true;
+  });
+
+  const options = uniqueSongs.map(song => ({
     value: song.id,
     label: song.title,
     meta: {
@@ -9542,8 +9621,50 @@ function populateTagSongOptions() {
       key: (song.song_keys || []).map(k => k.key).join(", "),
       timeSignature: song.time_signature,
       duration: song.duration_seconds ? formatDuration(song.duration_seconds) : null,
+      weeksSinceLastPerformed: weeksSinceMap.get(song.id) || null,
     }
   }));
+
+  // Sort by most recently scheduled using the weeks value
+  // Upcoming (0, +1, +2, ...) sorted lowest to highest
+  // Past (-1, -2, -3, ...) sorted lowest to highest (most recent past first)
+  // Unscheduled (null) at the bottom
+  options.sort((a, b) => {
+    const weeksA = a.meta.weeksSinceLastPerformed;
+    const weeksB = b.meta.weeksSinceLastPerformed;
+
+    // Parse weeks string to number
+    const parseWeeks = (weeksStr) => {
+      if (!weeksStr) return null;
+      if (weeksStr === "0") return 0;
+      return parseInt(weeksStr, 10);
+    };
+
+    const numA = parseWeeks(weeksA);
+    const numB = parseWeeks(weeksB);
+
+    // Both have scheduled dates
+    if (numA !== null && numB !== null) {
+      // Both upcoming (>= 0): sort ascending (0, 1, 2, 3...)
+      if (numA >= 0 && numB >= 0) {
+        return numA - numB;
+      }
+      // Both past (< 0): sort ascending (-1, -2, -3...) which means most recent past first
+      if (numA < 0 && numB < 0) {
+        return numA - numB;
+      }
+      // One upcoming, one past: upcoming comes first
+      if (numA >= 0 && numB < 0) return -1;
+      if (numA < 0 && numB >= 0) return 1;
+    }
+
+    // One has date, one doesn't: dated comes first
+    if (numA !== null && numB === null) return -1;
+    if (numA === null && numB !== null) return 1;
+
+    // Neither has date: sort by title
+    return a.label.localeCompare(b.label);
+  });
 
   tagSongDropdown = createSearchableDropdown(options, "Select a song to tag...");
   container.appendChild(tagSongDropdown);
@@ -9991,7 +10112,17 @@ async function populateSongOptions() {
   // Get weeks offset to nearest scheduled performance (past or future) for each song
   const weeksSinceMap = await getWeeksSinceLastPerformance();
 
-  const options = state.songs.map(song => ({
+  // Deduplicate songs by ID (keep first occurrence)
+  const seenIds = new Set();
+  const uniqueSongs = state.songs.filter(song => {
+    if (seenIds.has(song.id)) {
+      return false;
+    }
+    seenIds.add(song.id);
+    return true;
+  });
+
+  const options = uniqueSongs.map(song => ({
     value: song.id,
     label: song.title,
     meta: {
@@ -10003,6 +10134,47 @@ async function populateSongOptions() {
       weeksSinceLastPerformed: weeksSinceMap.get(song.id) || null,
     }
   }));
+
+  // Sort by most recently scheduled using the weeks value
+  // Upcoming (0, +1, +2, ...) sorted lowest to highest
+  // Past (-1, -2, -3, ...) sorted lowest to highest (most recent past first)
+  // Unscheduled (null) at the bottom
+  options.sort((a, b) => {
+    const weeksA = a.meta.weeksSinceLastPerformed;
+    const weeksB = b.meta.weeksSinceLastPerformed;
+
+    // Parse weeks string to number
+    const parseWeeks = (weeksStr) => {
+      if (!weeksStr) return null;
+      if (weeksStr === "0") return 0;
+      return parseInt(weeksStr, 10);
+    };
+
+    const numA = parseWeeks(weeksA);
+    const numB = parseWeeks(weeksB);
+
+    // Both have scheduled dates
+    if (numA !== null && numB !== null) {
+      // Both upcoming (>= 0): sort ascending (0, 1, 2, 3...)
+      if (numA >= 0 && numB >= 0) {
+        return numA - numB;
+      }
+      // Both past (< 0): sort ascending (-1, -2, -3...) which means most recent past first
+      if (numA < 0 && numB < 0) {
+        return numA - numB;
+      }
+      // One upcoming, one past: upcoming comes first
+      if (numA >= 0 && numB < 0) return -1;
+      if (numA < 0 && numB >= 0) return 1;
+    }
+
+    // One has date, one doesn't: dated comes first
+    if (numA !== null && numB === null) return -1;
+    if (numA === null && numB !== null) return 1;
+
+    // Neither has date: sort by title
+    return a.label.localeCompare(b.label);
+  });
 
   songDropdown = createSearchableDropdown(options, "Select a song...");
   container.appendChild(songDropdown);
@@ -10021,14 +10193,28 @@ async function populateSongOptions() {
   }
 }
 
-async function getWeeksSinceLastPerformance() {
+async function getWeeksSinceLastPerformance(songsToUse = null) {
   const weeksMap = new Map();
 
-  if (!state.songs || state.songs.length === 0) {
+  // Use provided songs list, or fall back to state.songs
+  // Deduplicate to ensure we don't query for duplicate IDs
+  const songs = songsToUse || state.songs;
+  if (!songs || songs.length === 0) {
     return weeksMap;
   }
 
-  const songIds = state.songs.map(s => s.id);
+  // Deduplicate by ID before querying
+  const seenIds = new Set();
+  const uniqueSongs = songs.filter(song => {
+    if (!song || !song.id) return false;
+    if (seenIds.has(song.id)) {
+      return false;
+    }
+    seenIds.add(song.id);
+    return true;
+  });
+
+  const songIds = uniqueSongs.map(s => s.id);
 
   // Query to find all set dates for each song
   const { data, error } = await supabase
@@ -11573,6 +11759,20 @@ async function deleteSong(songId) {
     songTitle,
     `Deleting "${songTitle}"? will remove it from all sets.`,
     async () => {
+      // Delete album art override file if it exists
+      if (song?.album_art_override_path) {
+        await deleteFileFromSupabase(song.album_art_override_path);
+      }
+
+      // Delete all song link files
+      if (song?.song_links) {
+        for (const link of song.song_links) {
+          if (link.is_file_upload && link.file_path) {
+            await deleteFileFromSupabase(link.file_path);
+          }
+        }
+      }
+
       const { error } = await supabase
         .from("songs")
         .delete()
@@ -11588,6 +11788,13 @@ async function deleteSong(songId) {
       // Close details modal if this song is open
       if (state.currentSongDetailsId === songId) {
         closeSongDetailsModal();
+      }
+
+      // Close edit modal if it's open for this song
+      const editModal = el("song-edit-modal");
+      const editForm = el("song-edit-form");
+      if (editModal && !editModal.classList.contains("hidden") && editForm?.dataset.songId === String(songId)) {
+        closeSongEditModal();
       }
 
       await loadSongs();
@@ -12589,9 +12796,27 @@ function filterSongs(songs, queryRaw) {
   });
 }
 
-function renderSongCatalog(animate = true) {
+async function renderSongCatalog(animate = true) {
   const list = el("songs-catalog-list");
   if (!list) return;
+
+  // Deduplicate state.songs by ID first (keep first occurrence) to ensure no duplicates
+  // Do this IMMEDIATELY and update state to prevent race conditions
+  const seenSongIds = new Set();
+  const deduplicatedSongs = (state.songs || []).filter(song => {
+    if (!song || !song.id) return false; // Filter out invalid entries
+    if (seenSongIds.has(song.id)) {
+      return false;
+    }
+    seenSongIds.add(song.id);
+    return true;
+  });
+  
+  // Update state immediately with deduplicated songs
+  state.songs = deduplicatedSongs;
+  
+  // Create a snapshot of songs to work with (prevents race conditions during async operations)
+  const songsSnapshot = [...deduplicatedSongs];
 
   const searchInput = el("songs-tab-search");
   const searchTermRaw = searchInput ? searchInput.value.trim() : "";
@@ -12610,18 +12835,18 @@ function renderSongCatalog(animate = true) {
 
   list.innerHTML = "";
 
-  if (state.isLoadingSongs && state.songs.length === 0) {
+  if (state.isLoadingSongs && songsSnapshot.length === 0) {
     list.innerHTML = getSkeletonLoader(4, 'row');
     return;
   }
 
-  if (!state.songs || state.songs.length === 0) {
+  if (!songsSnapshot || songsSnapshot.length === 0) {
     list.innerHTML = '<p class="muted">No songs yet. Create your first song!</p>';
     return;
   }
 
-  // Filter songs using new Logic
-  const filteredSongs = filterSongs(state.songs, searchTermRaw);
+  // Filter songs using new Logic - use snapshot to prevent race conditions
+  let filteredSongs = filterSongs(songsSnapshot, searchTermRaw);
 
   if (filteredSongs.length === 0) {
     list.innerHTML = '<p class="muted">No songs match your search.</p>';
@@ -12631,6 +12856,61 @@ function renderSongCatalog(animate = true) {
     }
     return;
   }
+
+  // Deduplicate songs by ID (keep first occurrence)
+  const seenIds = new Set();
+  filteredSongs = filteredSongs.filter(song => {
+    if (seenIds.has(song.id)) {
+      return false;
+    }
+    seenIds.add(song.id);
+    return true;
+  });
+
+  // Get weeks offset to sort by most recently scheduled
+  // Pass the deduplicated snapshot to ensure we don't query for duplicates
+  const weeksSinceMap = await getWeeksSinceLastPerformance(filteredSongs);
+
+  // Sort by most recently scheduled using the weeks value
+  // Upcoming (0, +1, +2, ...) sorted lowest to highest
+  // Past (-1, -2, -3, ...) sorted lowest to highest (most recent past first)
+  // Unscheduled (null) at the bottom
+  filteredSongs.sort((a, b) => {
+    const weeksA = weeksSinceMap.get(a.id);
+    const weeksB = weeksSinceMap.get(b.id);
+
+    // Parse weeks string to number
+    const parseWeeks = (weeksStr) => {
+      if (!weeksStr) return null;
+      if (weeksStr === "0") return 0;
+      return parseInt(weeksStr, 10);
+    };
+
+    const numA = parseWeeks(weeksA);
+    const numB = parseWeeks(weeksB);
+
+    // Both have scheduled dates
+    if (numA !== null && numB !== null) {
+      // Both upcoming (>= 0): sort ascending (0, 1, 2, 3...)
+      if (numA >= 0 && numB >= 0) {
+        return numA - numB;
+      }
+      // Both past (< 0): sort ascending (-1, -2, -3...) which means most recent past first
+      if (numA < 0 && numB < 0) {
+        return numA - numB;
+      }
+      // One upcoming, one past: upcoming comes first
+      if (numA >= 0 && numB < 0) return -1;
+      if (numA < 0 && numB >= 0) return 1;
+    }
+
+    // One has date, one doesn't: dated comes first
+    if (numA !== null && numB === null) return -1;
+    if (numA === null && numB !== null) return 1;
+
+    // Neither has date: sort by title
+    return (a.title || "").localeCompare(b.title || "");
+  });
 
   filteredSongs.forEach((song, index) => {
     const div = document.createElement("div");
@@ -12733,6 +13013,17 @@ async function openSongEditModal(songId = null) {
     document.body.style.overflow = "hidden";
   }
 
+  // Show/hide delete button based on whether we're editing or creating
+  const deleteBtn = el("delete-song-from-edit-modal");
+  if (deleteBtn) {
+    deleteBtn.style.display = songId ? "block" : "none";
+    if (songId) {
+      deleteBtn.dataset.songId = songId;
+    } else {
+      deleteBtn.removeAttribute("data-song-id");
+    }
+  }
+
   if (songId) {
     title.textContent = "Edit Song";
     form.dataset.songId = songId;
@@ -12805,6 +13096,10 @@ async function openSongEditModal(songId = null) {
     delete form.dataset.songId;
     renderSongKeys([]);
     renderSongLinks([]);
+    // Hide delete button for new songs
+    if (deleteBtn) {
+      deleteBtn.style.display = "none";
+    }
   }
 
   // Focus on first input field for keyboard navigation
@@ -13005,6 +13300,276 @@ async function extractVibrantColor(img) {
 }
 
 /**
+ * Display album art in the song details modal
+ * @param {HTMLElement} content - The modal content element
+ * @param {Object} albumArtData - Album art data with small, large, and isOverride properties
+ * @param {Object} song - The song object
+ */
+async function displayAlbumArt(content, albumArtData, song) {
+  const placeholder = content.querySelector("#song-album-art-placeholder");
+  const img = content.querySelector("#song-album-art-img");
+  if (!placeholder || !img) return;
+
+  // Function to extract and apply color
+  const applyColorToShadow = async () => {
+    try {
+      const vibrantColor = await extractVibrantColor(img);
+      if (vibrantColor) {
+        // Convert hex to rgba for shadow with opacity
+        const r = parseInt(vibrantColor.slice(1, 3), 16);
+        const g = parseInt(vibrantColor.slice(3, 5), 16);
+        const b = parseInt(vibrantColor.slice(5, 7), 16);
+        
+        // Get opacity from CSS variables (changes automatically with theme)
+        const root = document.documentElement;
+        const mainOpacity = getComputedStyle(root).getPropertyValue('--album-art-shadow-opacity-main').trim() || '0.35';
+        const secondaryOpacity = getComputedStyle(root).getPropertyValue('--album-art-shadow-opacity-secondary').trim() || '0.25';
+        
+        // Use a more vibrant shadow with the extracted color
+        img.style.boxShadow = `0 12px 80px rgba(${r}, ${g}, ${b}, ${mainOpacity}), 0 6px 80px rgba(${r}, ${g}, ${b}, ${secondaryOpacity})`;
+        console.log('Applied vibrant color shadow:', vibrantColor);
+      } else {
+        console.log('No vibrant color found, using default shadow');
+      }
+    } catch (err) {
+      console.warn('Error applying color to shadow:', err);
+    }
+  };
+
+  // Progressive loading: load small image first, then swap to large when ready
+  const loadProgressiveImage = () => {
+    // Set referrerPolicy to ensure image loads on mobile browsers
+    img.referrerPolicy = 'no-referrer-when-downgrade';
+
+    // For override images, we don't need crossOrigin handling
+    if (albumArtData.isOverride) {
+      img.crossOrigin = null;
+      img.src = albumArtData.small;
+      placeholder.style.display = "flex";
+      img.addEventListener('load', applyColorToShadow, { once: true });
+      img.addEventListener('error', () => {
+        console.warn('Failed to load album art override image');
+        placeholder.style.display = "flex";
+      }, { once: true });
+    } else {
+      // For iTunes images, use crossOrigin handling
+      const tryLoadSmallImage = (useCrossOrigin) => {
+        if (useCrossOrigin) {
+          img.crossOrigin = 'anonymous';
+        } else {
+          img.crossOrigin = null;
+        }
+
+        // Load small image first for fast display
+        const smallImg = new Image();
+        smallImg.crossOrigin = useCrossOrigin ? 'anonymous' : null;
+        smallImg.referrerPolicy = 'no-referrer-when-downgrade';
+        
+        smallImg.addEventListener('load', () => {
+          // Small image loaded, display it immediately
+          img.src = albumArtData.small;
+          placeholder.style.display = "flex";
+          applyColorToShadow();
+          
+          // Now preload the large image in the background
+          const largeImg = new Image();
+          largeImg.crossOrigin = useCrossOrigin ? 'anonymous' : null;
+          largeImg.referrerPolicy = 'no-referrer-when-downgrade';
+          
+          largeImg.addEventListener('load', () => {
+            // Large image ready, swap it in
+            img.src = albumArtData.large;
+            // Re-apply color extraction on the high-res image
+            img.addEventListener('load', applyColorToShadow, { once: true });
+          }, { once: true });
+          
+          largeImg.addEventListener('error', () => {
+            // If large image fails, keep using small image
+            console.log('Failed to load high-res album art, using small version');
+          }, { once: true });
+          
+          largeImg.src = albumArtData.large;
+        }, { once: true });
+        
+        smallImg.addEventListener('error', () => {
+          if (useCrossOrigin) {
+            // Retry without crossOrigin if CORS fails (common on mobile)
+            console.log('CORS failed on small image, retrying without crossOrigin');
+            setTimeout(() => tryLoadSmallImage(false), 100);
+          } else {
+            console.warn('Failed to load album art image after retry');
+            // Still show the placeholder even if image fails to load
+            placeholder.style.display = "flex";
+          }
+        }, { once: true });
+        
+        smallImg.src = albumArtData.small;
+      };
+
+      tryLoadSmallImage(true);
+    }
+  };
+
+  loadProgressiveImage();
+  
+  // Add 3D tilt effect on hover (desktop only)
+  if (window.matchMedia('(hover: hover)').matches) {
+    setupAlbumArtTilt(placeholder);
+  }
+  
+  // Add click handler to open full-screen modal
+  const openAlbumArtModal = (e) => {
+    // Don't open modal if clicking on overlay controls (upload/remove buttons)
+    if (e && e.target) {
+      const overlayControls = placeholder.querySelector("#album-art-overlay-controls");
+      if (overlayControls && overlayControls.contains(e.target)) {
+        return;
+      }
+      // Also check if clicking directly on a button or label
+      if (e.target.closest('button') || e.target.closest('label') || e.target.closest('input')) {
+        return;
+      }
+    }
+    
+    if (!img.src) return;
+    
+    const modal = el("album-art-modal");
+    const modalImg = el("album-art-modal-img");
+    const closeBtn = el("close-album-art-modal");
+    
+    if (!modal || !modalImg) return;
+    
+    // Use the album art data that was passed to this function
+    // For override, use the override URL; for iTunes, use large version
+    if (albumArtData.isOverride) {
+      // For override, use the override URL
+      modalImg.src = albumArtData.small; // override uses same URL for small and large
+    } else {
+      // For iTunes, prefer large version
+      modalImg.src = img.src; // Start with current for instant display
+      if (albumArtData.large) {
+        const largeImg = new Image();
+        largeImg.crossOrigin = img.crossOrigin;
+        largeImg.referrerPolicy = 'no-referrer-when-downgrade';
+        largeImg.addEventListener('load', () => {
+          modalImg.src = albumArtData.large;
+        }, { once: true });
+        largeImg.addEventListener('error', () => {
+          // If large fails, keep using current src
+          console.log('Failed to load high-res image in modal, using current');
+        }, { once: true });
+        largeImg.src = albumArtData.large;
+      }
+    }
+    
+    modalImg.alt = img.alt || "Album art";
+    
+    // Show modal
+    modal.classList.remove("hidden");
+    
+    // Close handlers
+    let isClosing = false;
+    const closeModal = () => {
+      if (isClosing) return;
+      isClosing = true;
+      
+      modal.classList.add("closing");
+      setTimeout(() => {
+        modal.classList.add("hidden");
+        modal.classList.remove("closing");
+        isClosing = false;
+      }, 300);
+    };
+    
+    // Close button handler
+    const closeBtnHandler = () => {
+      closeModal();
+      closeBtn.removeEventListener("click", closeBtnHandler);
+      backdrop.removeEventListener("click", backdropClickHandler);
+      document.removeEventListener("keydown", handleEsc);
+    };
+    
+    // Close on backdrop click
+    const backdrop = modal.querySelector(".album-art-modal-backdrop");
+    const backdropClickHandler = (e) => {
+      if (e.target === backdrop) {
+        closeModal();
+        closeBtn.removeEventListener("click", closeBtnHandler);
+        backdrop.removeEventListener("click", backdropClickHandler);
+        document.removeEventListener("keydown", handleEsc);
+      }
+    };
+    
+    // Close on ESC key
+    const handleEsc = (e) => {
+      if (e.key === "Escape") {
+        closeModal();
+        closeBtn.removeEventListener("click", closeBtnHandler);
+        backdrop.removeEventListener("click", backdropClickHandler);
+        document.removeEventListener("keydown", handleEsc);
+      }
+    };
+    
+    // Attach all event listeners
+    closeBtn.addEventListener("click", closeBtnHandler);
+    backdrop.addEventListener("click", backdropClickHandler);
+    document.addEventListener("keydown", handleEsc);
+  };
+  
+  // Add click handler to both container and image
+  // Only open modal if clicking on the image/container itself, not on buttons
+  placeholder.style.cursor = "pointer";
+  img.style.cursor = "pointer";
+  placeholder.addEventListener("click", (e) => {
+    // Check if click is on overlay controls
+    const overlayControls = placeholder.querySelector("#album-art-overlay-controls");
+    if (overlayControls && (overlayControls.contains(e.target) || e.target === overlayControls)) {
+      return;
+    }
+    // Check if click is on a button, label, or input
+    if (e.target.closest('button') || e.target.closest('label') || e.target.closest('input')) {
+      return;
+    }
+    openAlbumArtModal(e);
+  });
+  img.addEventListener("click", (e) => {
+    e.stopPropagation(); // Prevent container click from also firing
+    openAlbumArtModal(e);
+  });
+}
+
+/**
+ * Remove album art override for a song
+ * @param {string} songId - The song ID
+ * @param {string} filePath - The file path to delete
+ */
+async function removeAlbumArtOverride(songId, filePath) {
+  if (!filePath) return;
+
+  try {
+    // Delete file from storage
+    await deleteFileFromSupabase(filePath);
+
+    // Update song to remove override path
+    const { error } = await supabase
+      .from("songs")
+      .update({ album_art_override_path: null })
+      .eq("id", songId);
+
+    if (error) {
+      console.error("Error removing album art override:", error);
+      toastError("Failed to remove album art. Check console.");
+      return;
+    }
+
+    toastSuccess("Album art override removed.");
+  } catch (error) {
+    console.error("Error removing album art override:", error);
+    toastError("Failed to remove album art. Check console.");
+  }
+}
+
+/**
  * Setup 3D tilt effect for album art on hover (desktop only)
  * @param {HTMLElement} container - The album art container element
  */
@@ -13041,9 +13606,39 @@ function setupAlbumArtTilt(container) {
 }
 
 /**
+ * Get album art for a song - checks override first, then falls back to iTunes API
+ * @param {Object} song - The song object with album_art_override_path
+ * @param {string} songTitle - The title of the song (for iTunes fallback)
+ * @returns {Promise<{small: string, large: string, isOverride: boolean}|null>} - URLs of the album art images, or null if not found
+ */
+async function getAlbumArt(song, songTitle) {
+  // Check for override first
+  if (song?.album_art_override_path) {
+    try {
+      const url = await getFileUrl(song.album_art_override_path);
+      if (url) {
+        // For uploaded images, use the same URL for both small and large
+        return { small: url, large: url, isOverride: true };
+      }
+    } catch (error) {
+      console.warn('Error loading album art override:', error);
+      // Fall through to iTunes API
+    }
+  }
+
+  // Fall back to iTunes API
+  const itunesArt = await fetchAlbumArt(songTitle);
+  if (itunesArt) {
+    return { ...itunesArt, isOverride: false };
+  }
+
+  return null;
+}
+
+/**
  * Fetch album art for a song using iTunes Search API (free, no API key required)
  * @param {string} songTitle - The title of the song
- * @returns {Promise<string|null>} - URL of the album art image, or null if not found
+ * @returns {Promise<{small: string, large: string}|null>} - URLs of the album art images (small and large), or null if not found
  */
 async function fetchAlbumArt(songTitle) {
   if (!songTitle || !songTitle.trim()) return null;
@@ -13053,9 +13648,21 @@ async function fetchAlbumArt(songTitle) {
     const searchQuery = encodeURIComponent(songTitle.trim());
     const apiUrl = `https://itunes.apple.com/search?term=${searchQuery}&media=music&limit=1`;
     
-    const response = await fetch(apiUrl);
+    // Add Accept header to ensure proper content negotiation
+    // Note: User-Agent cannot be set in fetch (forbidden header), but Accept helps
+    // ensure the API returns JSON properly on all browsers including mobile
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      },
+      // Add mode and credentials to ensure CORS works on mobile browsers
+      mode: 'cors',
+      credentials: 'omit'
+    });
+    
     if (!response.ok) {
-      console.warn('iTunes API request failed:', response.status);
+      console.warn('iTunes API request failed:', response.status, response.statusText);
       return null;
     }
 
@@ -13064,15 +13671,19 @@ async function fetchAlbumArt(songTitle) {
     // Extract album art URL from iTunes response
     if (data?.results?.[0]?.artworkUrl100) {
       // iTunes provides artworkUrl100 (100x100), artworkUrl60 (60x60), etc.
-      // We can get a larger version by replacing the size in the URL
-      // artworkUrl100 can be upgraded to 600x600 by replacing '100x100' with '600x600'
-      const imageUrl = data.results[0].artworkUrl100.replace('100x100', '600x600');
-      return imageUrl;
+      // Return both medium (600x600) for fast initial load and large (10000x10000) for high quality
+      const smallUrl = data.results[0].artworkUrl100.replace('100x100', '600x600');
+      const largeUrl = data.results[0].artworkUrl100.replace('100x100', '10000x10000');
+      return { small: smallUrl, large: largeUrl };
     }
 
     return null;
   } catch (error) {
+    // Enhanced error logging to help debug mobile issues
     console.warn('Error fetching album art:', error);
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.warn('Network error - this may be a CORS or connectivity issue on mobile');
+    }
     return null;
   }
 }
@@ -13164,6 +13775,19 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         <div class="song-details-header-wrapper">
           <div id="song-album-art-placeholder" class="song-album-art-container">
             <img id="song-album-art-img" src="" alt="Album art for ${escapeHtml(songWithLinks.title || 'song')}" class="song-album-art" onerror="this.parentElement.style.display='none';" loading="lazy" />
+            ${isManager() ? `
+            <div class="album-art-overlay-controls" id="album-art-overlay-controls" style="position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.5rem; opacity: 0; transition: opacity 0.2s;">
+              <label for="album-art-upload-input" class="btn small secondary" style="cursor: pointer; margin: 0; padding: 0.4rem 0.6rem;" title="Upload album art">
+                <i class="fa-solid fa-upload"></i>
+              </label>
+              ${songWithLinks.album_art_override_path ? `
+              <button type="button" class="btn small ghost" id="remove-album-art-btn" style="margin: 0; padding: 0.4rem 0.6rem;" title="Remove custom album art">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+              ` : ''}
+            </div>
+            <input type="file" id="album-art-upload-input" accept="image/*" style="display: none;">
+            ` : ''}
           </div>
           <div class="song-details-header-content">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem;">
@@ -13182,6 +13806,13 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
                   <button type="button" class="header-dropdown-item" id="btn-song-details-edit-set">
                     <i class="fa-solid fa-list-ul"></i>
                     <span>Edit Song in Set</span>
+                  </button>
+                  ` : ''}
+                  ${songWithLinks.album_art_override_path ? `
+                  <div class="header-dropdown-divider"></div>
+                  <button type="button" class="header-dropdown-item" id="btn-song-details-reset-album-art">
+                    <i class="fa-solid fa-image"></i>
+                    <span>Reset Album Art</span>
                   </button>
                   ` : ''}
                 </div>
@@ -13371,75 +14002,149 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 
   updateClickTrackButtons();
 
-  // Fetch and display album art asynchronously (don't block modal opening)
-  fetchAlbumArt(songWithLinks.title).then(albumArtUrl => {
-    if (albumArtUrl) {
-      const placeholder = content.querySelector("#song-album-art-placeholder");
-      const img = content.querySelector("#song-album-art-img");
-      if (placeholder && img) {
-        // Function to extract and apply color
-        const applyColorToShadow = async () => {
-          try {
-            const vibrantColor = await extractVibrantColor(img);
-            if (vibrantColor) {
-              // Convert hex to rgba for shadow with opacity
-              const r = parseInt(vibrantColor.slice(1, 3), 16);
-              const g = parseInt(vibrantColor.slice(3, 5), 16);
-              const b = parseInt(vibrantColor.slice(5, 7), 16);
-              
-              // Get opacity from CSS variables (changes automatically with theme)
-              const root = document.documentElement;
-              const mainOpacity = getComputedStyle(root).getPropertyValue('--album-art-shadow-opacity-main').trim() || '0.35';
-              const secondaryOpacity = getComputedStyle(root).getPropertyValue('--album-art-shadow-opacity-secondary').trim() || '0.25';
-              
-              // Use a more vibrant shadow with the extracted color
-              img.style.boxShadow = `0 12px 80px rgba(${r}, ${g}, ${b}, ${mainOpacity}), 0 6px 80px rgba(${r}, ${g}, ${b}, ${secondaryOpacity})`;
-              console.log('Applied vibrant color shadow:', vibrantColor);
-            } else {
-              console.log('No vibrant color found, using default shadow');
-            }
-          } catch (err) {
-            console.warn('Error applying color to shadow:', err);
-          }
-        };
+  // Setup album art overlay controls hover effect
+  const albumArtContainer = content.querySelector("#song-album-art-placeholder");
+  const overlayControls = content.querySelector("#album-art-overlay-controls");
+  if (albumArtContainer && overlayControls && isManager()) {
+    albumArtContainer.addEventListener("mouseenter", () => {
+      overlayControls.style.opacity = "1";
+    });
+    albumArtContainer.addEventListener("mouseleave", () => {
+      overlayControls.style.opacity = "0";
+    });
+    
+    // Stop event propagation on overlay controls to prevent opening modal
+    overlayControls.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+    
+    // Also stop propagation on buttons and labels within overlay
+    const buttons = overlayControls.querySelectorAll("button, label");
+    buttons.forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+    });
+  }
 
-        // Try with crossOrigin first, fallback without if CORS fails
-        const tryLoadImage = (useCrossOrigin) => {
-          if (useCrossOrigin) {
-            img.crossOrigin = 'anonymous';
-          } else {
-            img.crossOrigin = null;
-          }
+  // Setup album art upload handler
+  const uploadInput = content.querySelector("#album-art-upload-input");
+  if (uploadInput && isManager()) {
+    uploadInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-          // Check if image is already loaded (cached)
-          if (img.complete && img.naturalHeight !== 0) {
-            // Image already loaded, extract color immediately
-            applyColorToShadow();
-          } else {
-            // Wait for image to load
-            img.addEventListener('load', applyColorToShadow, { once: true });
-            img.addEventListener('error', () => {
-              if (useCrossOrigin) {
-                // Retry without crossOrigin if CORS fails
-                console.log('CORS failed, retrying without crossOrigin');
-                tryLoadImage(false);
-              } else {
-                console.warn('Failed to load album art image');
-              }
-            }, { once: true });
-          }
-
-          img.src = albumArtUrl;
-        };
-
-        tryLoadImage(true);
-        placeholder.style.display = "flex";
-        
-        // Add 3D tilt effect on hover (desktop only)
-        if (window.matchMedia('(hover: hover)').matches) {
-          setupAlbumArtTilt(placeholder);
-        }
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toastError("Please select an image file.");
+        e.target.value = '';
+        return;
       }
+
+      // Validate file size
+      const validation = validateFileSize(file);
+      if (!validation.valid) {
+        toastError(validation.error);
+        e.target.value = '';
+        return;
+      }
+
+      try {
+        // Delete old override if it exists
+        if (songWithLinks.album_art_override_path) {
+          await deleteFileFromSupabase(songWithLinks.album_art_override_path);
+        }
+
+        // Upload new file (album art)
+        const uploadResult = await uploadFileToSupabase(file, songWithLinks.id, null, state.currentTeamId, true);
+        if (!uploadResult.success) {
+          toastError(`Failed to upload album art: ${uploadResult.error}`);
+          e.target.value = '';
+          return;
+        }
+
+        // Update song with new override path
+        const { error: updateError } = await supabase
+          .from("songs")
+          .update({ album_art_override_path: uploadResult.filePath })
+          .eq("id", songWithLinks.id);
+
+        if (updateError) {
+          console.error("Error updating album art override:", updateError);
+          toastError("Failed to save album art. Check console.");
+          // Try to delete the uploaded file
+          await deleteFileFromSupabase(uploadResult.filePath);
+          e.target.value = '';
+          return;
+        }
+
+        // Update local song data
+        songWithLinks.album_art_override_path = uploadResult.filePath;
+
+        // Reload album art
+        const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title);
+        if (albumArtData) {
+          displayAlbumArt(content, albumArtData, songWithLinks);
+        }
+
+        // Update remove button visibility
+        const removeBtn = content.querySelector("#remove-album-art-btn");
+        if (removeBtn) {
+          removeBtn.style.display = "block";
+        } else {
+          // Add remove button if it doesn't exist
+          const overlayControls = content.querySelector("#album-art-overlay-controls");
+          if (overlayControls) {
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "btn small ghost";
+            removeBtn.id = "remove-album-art-btn";
+            removeBtn.style.cssText = "margin: 0; padding: 0.4rem 0.6rem;";
+            removeBtn.title = "Remove custom album art";
+            removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+            removeBtn.addEventListener("click", async () => {
+            await removeAlbumArtOverride(songWithLinks.id, songWithLinks.album_art_override_path);
+            songWithLinks.album_art_override_path = null;
+            removeBtn.remove();
+            // Reload album art from iTunes
+            const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title);
+            if (albumArtData) {
+              displayAlbumArt(content, albumArtData, songWithLinks);
+            }
+          });
+            overlayControls.appendChild(removeBtn);
+          }
+        }
+
+        toastSuccess("Album art uploaded successfully!");
+        e.target.value = '';
+      } catch (error) {
+        console.error("Error uploading album art:", error);
+        toastError("Failed to upload album art. Check console.");
+        e.target.value = '';
+      }
+    });
+  }
+
+  // Setup remove album art button
+  const removeBtn = content.querySelector("#remove-album-art-btn");
+  if (removeBtn && isManager()) {
+    removeBtn.addEventListener("click", async () => {
+      await removeAlbumArtOverride(songWithLinks.id, songWithLinks.album_art_override_path);
+      songWithLinks.album_art_override_path = null;
+      removeBtn.remove();
+      // Reload album art from iTunes
+      const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title);
+      if (albumArtData) {
+        displayAlbumArt(content, albumArtData, songWithLinks);
+      }
+    });
+  }
+
+  // Fetch and display album art asynchronously (don't block modal opening)
+  getAlbumArt(songWithLinks, songWithLinks.title).then(albumArtData => {
+    if (albumArtData) {
+      displayAlbumArt(content, albumArtData, songWithLinks);
     }
   }).catch(err => {
     console.warn('Failed to load album art:', err);
@@ -13452,6 +14157,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
     const menu = dropdownContainer.querySelector(".header-dropdown-menu");
     const globalEditBtn = menu.querySelector("#btn-song-details-edit-global");
     const setEditBtn = menu.querySelector("#btn-song-details-edit-set");
+    const resetAlbumArtBtn = menu.querySelector("#btn-song-details-reset-album-art");
 
     // Toggle Menu
     toggleBtn.addEventListener("click", (e) => {
@@ -13479,6 +14185,30 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
       setEditBtn.addEventListener("click", () => {
         closeSongDetailsModal();
         openEditSetSongModal(setSongContext);
+      });
+    }
+
+    // Reset Album Art Action
+    if (resetAlbumArtBtn && songWithLinks.album_art_override_path) {
+      resetAlbumArtBtn.addEventListener("click", async () => {
+        menu.classList.add("hidden");
+        await removeAlbumArtOverride(songWithLinks.id, songWithLinks.album_art_override_path);
+        songWithLinks.album_art_override_path = null;
+        
+        // Update remove button in overlay
+        const overlayRemoveBtn = content.querySelector("#remove-album-art-btn");
+        if (overlayRemoveBtn) {
+          overlayRemoveBtn.remove();
+        }
+        
+        // Update dropdown menu - remove reset option
+        resetAlbumArtBtn.remove();
+        
+        // Reload album art from iTunes
+        const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title);
+        if (albumArtData) {
+          displayAlbumArt(content, albumArtData, songWithLinks);
+        }
       });
     }
   }
@@ -13867,23 +14597,80 @@ function getFileType(file) {
 }
 
 // Generate file path for Supabase Storage
-function generateFilePath(teamId, songId, setSongId, fileName) {
+function generateFilePath(teamId, songId, setSongId, fileName, isAlbumArt = false) {
   const uuid = crypto.randomUUID();
   const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
   const timestamp = Date.now();
   const extension = fileName.split('.').pop();
-  const uniqueFileName = `${uuid} -${timestamp}.${extension} `;
+  const uniqueFileName = `${uuid}-${timestamp}.${extension}`;
 
   if (songId) {
-    return `${teamId} /songs/${songId}/${uniqueFileName}`;
+    if (isAlbumArt) {
+      return `${teamId}/songs/${songId}/album-art/${uniqueFileName}`;
+    }
+    return `${teamId}/songs/${songId}/${uniqueFileName}`;
   } else if (setSongId) {
     return `${teamId}/sections/${setSongId}/${uniqueFileName}`;
   }
   throw new Error('Either songId or setSongId must be provided');
 }
 
+// Generate file path for profile pictures (using team-based structure for RLS)
+function generateProfilePicturePath(teamId, userId, fileName) {
+  const uuid = crypto.randomUUID();
+  const timestamp = Date.now();
+  const extension = fileName.split('.').pop();
+  const uniqueFileName = `${uuid}-${timestamp}.${extension}`;
+  // Use team-based path structure to match existing RLS policies
+  return `${teamId}/profiles/${userId}/${uniqueFileName}`;
+}
+
+// Upload profile picture to Supabase Storage
+async function uploadProfilePicture(file, userId, teamId) {
+  try {
+    if (!teamId) {
+      return { success: false, error: 'Team ID is required for profile picture upload' };
+    }
+
+    // Validate file size (max 5MB for profile pictures)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return { success: false, error: 'Profile picture must be less than 5MB' };
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      return { success: false, error: 'File must be an image' };
+    }
+
+    // Generate file path using team-based structure
+    const filePath = generateProfilePicturePath(teamId, userId, file.name);
+
+    // Upload file
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Profile picture upload error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      filePath: data.path
+    };
+  } catch (error) {
+    console.error('Profile picture upload exception:', error);
+    return { success: false, error: error.message || 'Failed to upload profile picture' };
+  }
+}
+
 // Upload file to Supabase Storage
-async function uploadFileToSupabase(file, songId, setSongId, teamId) {
+async function uploadFileToSupabase(file, songId, setSongId, teamId, isAlbumArt = false) {
   try {
     // Validate file size
     const validation = validateFileSize(file);
@@ -13892,7 +14679,7 @@ async function uploadFileToSupabase(file, songId, setSongId, teamId) {
     }
 
     // Generate file path
-    const filePath = generateFilePath(teamId, songId, setSongId, file.name);
+    const filePath = generateFilePath(teamId, songId, setSongId, file.name, isAlbumArt);
 
     // Upload file
     const { data, error } = await supabase.storage
@@ -16665,6 +17452,9 @@ function openEditAccountModal() {
   input.value = currentName;
   input.select();
 
+  // Load and display profile picture
+  loadProfilePicturePreview();
+
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 
@@ -16673,6 +17463,126 @@ function openEditAccountModal() {
 
   // Load Sessions
   fetchSessions();
+}
+
+// Load profile picture preview in account settings modal
+async function loadProfilePicturePreview() {
+  const previewEl = el("profile-picture-preview");
+  const removeBtn = el("btn-remove-profile-picture");
+  const uploadInput = el("profile-picture-upload");
+
+  if (!previewEl) return;
+
+  const profilePicturePath = state.profile?.profile_picture_path;
+  
+  if (profilePicturePath) {
+    // Get signed URL for profile picture
+    const url = await getFileUrl(profilePicturePath);
+    if (url) {
+      previewEl.innerHTML = `<img src="${url}" alt="Profile picture" style="width: 100%; height: 100%; object-fit: cover;">`;
+      if (removeBtn) removeBtn.style.display = "block";
+    } else {
+      // Fallback to initials
+      displayProfilePictureInitials(previewEl, state.profile?.full_name);
+      if (removeBtn) removeBtn.style.display = "none";
+    }
+  } else {
+    // Display initials
+    displayProfilePictureInitials(previewEl, state.profile?.full_name);
+    if (removeBtn) removeBtn.style.display = "none";
+  }
+
+  // Setup upload handler
+  if (uploadInput) {
+    uploadInput.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Show preview immediately
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        previewEl.innerHTML = `<img src="${event.target.result}" alt="Profile picture preview" style="width: 100%; height: 100%; object-fit: cover;">`;
+        if (removeBtn) removeBtn.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    };
+  }
+
+  // Setup remove handler
+  if (removeBtn) {
+    removeBtn.onclick = () => {
+      previewEl.innerHTML = "";
+      displayProfilePictureInitials(previewEl, state.profile?.full_name);
+      if (uploadInput) uploadInput.value = "";
+      removeBtn.style.display = "none";
+      // Mark for removal
+      previewEl.dataset.removePicture = "true";
+    };
+  }
+}
+
+// Display profile picture initials
+function displayProfilePictureInitials(element, fullName) {
+  if (!element || !fullName) {
+    element.innerHTML = '<i class="fa-solid fa-user"></i>';
+    return;
+  }
+  const initials = fullName
+    .split(" ")
+    .map(n => n[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
+  element.textContent = initials;
+  
+  // Adjust font size based on element size
+  const size = element.offsetWidth || 64;
+  if (size <= 64) {
+    element.style.fontSize = "1.25rem";
+  } else {
+    element.style.fontSize = "2.5rem";
+  }
+}
+
+// Update user profile picture in header
+async function updateUserProfilePicture() {
+  const profilePictureEl = el("user-profile-picture");
+  if (!profilePictureEl) return;
+
+  const profilePicturePath = state.profile?.profile_picture_path;
+  
+  if (profilePicturePath) {
+    // Get signed URL for profile picture
+    const url = await getFileUrl(profilePicturePath);
+    if (url) {
+      profilePictureEl.innerHTML = `<img src="${url}" alt="Profile picture" style="width: 100%; height: 100%; object-fit: cover;">`;
+      return;
+    }
+  }
+
+  // Fallback to initials or icon
+  const fullName = state.profile?.full_name;
+  if (fullName) {
+    const initials = fullName
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+    profilePictureEl.textContent = initials;
+    profilePictureEl.style.fontSize = "1rem";
+  } else {
+    profilePictureEl.innerHTML = '<i class="fa-solid fa-user-circle" style="font-size: 1.5rem;"></i>';
+  }
+}
+
+// Get profile picture URL for a user (by profile picture path)
+async function getUserProfilePictureUrl(profilePicturePath, fullName) {
+  if (profilePicturePath) {
+    const url = await getFileUrl(profilePicturePath);
+    if (url) return url;
+  }
+  return null; // Return null if no picture, caller will handle fallback
 }
 
 async function fetchSessions() {
@@ -16815,6 +17725,10 @@ function closeEditAccountModal() {
     closeModalWithAnimation(modal, () => {
       const form = el("edit-account-form");
       if (form) form.reset();
+      const previewEl = el("profile-picture-preview");
+      if (previewEl) {
+        delete previewEl.dataset.removePicture;
+      }
     });
   }
 }
@@ -16824,6 +17738,8 @@ async function handleEditAccountSubmit(e) {
 
   const modal = el("edit-account-modal");
   const input = el("edit-account-name-input");
+  const uploadInput = el("profile-picture-upload");
+  const previewEl = el("profile-picture-preview");
 
   if (!input || !state.profile) return;
 
@@ -16835,43 +17751,99 @@ async function handleEditAccountSubmit(e) {
     return;
   }
 
-  if (newName === currentName) {
+  let profilePicturePath = state.profile.profile_picture_path || null;
+  let shouldRemovePicture = previewEl?.dataset.removePicture === "true";
+
+  // Handle profile picture upload
+  if (uploadInput?.files?.[0]) {
+    const file = uploadInput.files[0];
+    
+    // Delete old picture if it exists
+    if (profilePicturePath) {
+      await deleteFileFromSupabase(profilePicturePath);
+    }
+
+    // Upload new picture (need team ID for RLS policies)
+    const teamId = state.currentTeamId;
+    if (!teamId) {
+      toastError("Unable to upload profile picture: No team selected.");
+      return;
+    }
+
+    const uploadResult = await uploadProfilePicture(file, state.session.user.id, teamId);
+    if (!uploadResult.success) {
+      toastError(`Failed to upload profile picture: ${uploadResult.error}`);
+      return;
+    }
+    profilePicturePath = uploadResult.filePath;
+  } else if (shouldRemovePicture && profilePicturePath) {
+    // Remove profile picture
+    await deleteFileFromSupabase(profilePicturePath);
+    profilePicturePath = null;
+  }
+
+  // Check if anything changed
+  const nameChanged = newName !== currentName;
+  const pictureChanged = profilePicturePath !== (state.profile.profile_picture_path || null);
+
+  if (!nameChanged && !pictureChanged) {
     // No change, just close modal
     closeEditAccountModal();
     return;
   }
 
+  // Build update object
+  const updateData = {};
+  if (nameChanged) {
+    updateData.full_name = newName;
+  }
+  if (pictureChanged) {
+    updateData.profile_picture_path = profilePicturePath;
+  }
+
   const { error } = await supabase
     .from("profiles")
-    .update({ full_name: newName })
+    .update(updateData)
     .eq("id", state.session.user.id);
 
   if (error) {
-    console.error("Error updating account name:", error);
-    toastError("Unable to update account name. Check console.");
+    console.error("Error updating account:", error);
+    toastError("Unable to update account. Check console.");
     return;
   }
 
   // Also update auth metadata to keep it in sync
-  try {
-    await supabase.auth.updateUser({
-      data: { full_name: newName }
-    });
-  } catch (metadataError) {
-    console.warn("Failed to update auth metadata:", metadataError);
-    // Non-critical, continue
+  if (nameChanged) {
+    try {
+      await supabase.auth.updateUser({
+        data: { full_name: newName }
+      });
+    } catch (metadataError) {
+      console.warn("Failed to update auth metadata:", metadataError);
+      // Non-critical, continue
+    }
   }
 
   // Update local state
-  state.profile.full_name = newName;
-
-  // Update UI
-  const userNameEl = el("user-name");
-  if (userNameEl) {
-    userNameEl.textContent = newName;
+  if (nameChanged) {
+    state.profile.full_name = newName;
+  }
+  if (pictureChanged) {
+    state.profile.profile_picture_path = profilePicturePath;
   }
 
-  // Refresh people list to show updated name
+  // Update UI
+  if (nameChanged) {
+    const userNameEl = el("user-name");
+    if (userNameEl) {
+      userNameEl.textContent = newName;
+    }
+  }
+
+  // Update profile picture in header
+  updateUserProfilePicture();
+
+  // Refresh people list to show updated name/picture
   await loadPeople();
 
   // Close modal
@@ -17397,6 +18369,23 @@ async function deleteTeam() {
       }
 
       console.log(`✅ Final verification passed. Deleting team: ${exactTeamCheck.name} (${teamId})`);
+
+      // Clean up album art override files before deleting team
+      console.log('  - Cleaning up album art override files...');
+      const { data: songs } = await supabase
+        .from("songs")
+        .select("album_art_override_path")
+        .eq("team_id", teamId)
+        .not("album_art_override_path", "is", null);
+
+      if (songs && songs.length > 0) {
+        for (const song of songs) {
+          if (song.album_art_override_path) {
+            await deleteFileFromSupabase(song.album_art_override_path);
+          }
+        }
+        console.log(`  - Deleted ${songs.length} album art override file(s)`);
+      }
 
       // Perform the deletion using RPC function - simple direct delete
       const { data: deleteResult, error } = await supabase
