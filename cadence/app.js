@@ -1264,6 +1264,7 @@ function bindEvents() {
     }
   });
   el("btn-delete-account")?.addEventListener("click", () => deleteAccount());
+  el("btn-reset-password")?.addEventListener("click", () => handleAccountPasswordReset());
 
 
   // Helper to toggle dropdowns with exit animation
@@ -1484,6 +1485,11 @@ function bindEvents() {
       hideSetDetail();
     }
   });
+  el("btn-publish-set-detail")?.addEventListener("click", async () => {
+    if (state.selectedSet && isManager()) {
+      startPublishCountdown(state.selectedSet);
+    }
+  });
 
   // Header dropdown toggle (desktop)
   el("btn-header-add-toggle")?.addEventListener("click", (e) => {
@@ -1622,6 +1628,7 @@ function bindEvents() {
   el("close-set-modal")?.addEventListener("click", () => closeSetModal());
   el("cancel-set")?.addEventListener("click", () => closeSetModal());
   el("set-form")?.addEventListener("submit", handleSetSubmit);
+  el("btn-publish-set")?.addEventListener("click", handlePublishSet);
   el("btn-edit-times")?.addEventListener("click", () => openTimesModal());
   el("btn-edit-times-mobile")?.addEventListener("click", () => openTimesModal());
   el("btn-edit-assignments")?.addEventListener("click", () => openSetAssignmentsModal());
@@ -3135,7 +3142,8 @@ async function fetchUserTeams() {
           owner_id,
           assignment_mode,
           daily_reminder_time,
-          timezone
+          timezone,
+          require_publish
         )
       `)
       .eq("user_id", state.session.user.id)
@@ -3173,6 +3181,7 @@ async function fetchUserTeams() {
       assignment_mode: tm.team?.assignment_mode,
       daily_reminder_time: tm.team?.daily_reminder_time,
       timezone: tm.team?.timezone,
+      require_publish: tm.team?.require_publish !== false, // Default to true
     }));
 
     console.log('  - ✅ Found', state.userTeams.length, 'teams');
@@ -3528,11 +3537,12 @@ async function loadSets() {
   console.log('  - Loading sets for team_id:', state.currentTeamId);
   console.log('  - Testing sets query...');
 
-  // Load team assignment mode (handle gracefully if column doesn't exist yet)
+  // Load team settings (assignment mode and require_publish)
+  let teamRequirePublish = true; // Default to true
   try {
     const { data: teamData } = await supabase
       .from("teams")
-      .select("assignment_mode")
+      .select("assignment_mode, require_publish")
       .eq("id", state.currentTeamId)
       .single();
 
@@ -3542,10 +3552,20 @@ async function loadSets() {
       // Default to per_set if not set
       state.teamAssignmentMode = 'per_set';
     }
+
+    // Get require_publish setting (default to true if not set)
+    teamRequirePublish = teamData?.require_publish !== false;
+    
+    // Update local team data
+    const stateTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+    if (stateTeam) {
+      stateTeam.require_publish = teamRequirePublish;
+    }
   } catch (err) {
-    // If assignment_mode column doesn't exist yet, default to per_set
-    console.warn('Assignment mode column may not exist yet, defaulting to per_set');
+    // If columns don't exist yet, use defaults
+    console.warn('Team settings columns may not exist yet, using defaults');
     state.teamAssignmentMode = 'per_set';
+    teamRequirePublish = true;
   }
 
   // Try to load with service/rehearsal times first
@@ -3772,7 +3792,144 @@ async function loadSets() {
     console.warn('    2. RLS policies are blocking access');
     console.warn('    3. team_id mismatch');
   }
+
+  // Filter sets based on publishing requirements
+  // Owners and managers can see all sets (published and unpublished)
+  // Other users can only see published sets if require_publish is enabled
+  const canSeeUnpublished = isOwner() || isManager();
+  if (data && !canSeeUnpublished && teamRequirePublish) {
+    data = data.filter(set => set.is_published === true);
+    console.log('  - Filtered to published sets only:', data.length, 'sets');
+  }
+
   state.sets = data ?? [];
+
+  // Load pinned sets for the current user (even if not in current team)
+  if (state.profile?.id) {
+    try {
+      const { data: pinnedData, error: pinnedError } = await supabase
+        .from("pinned_sets")
+        .select(`
+          set_id,
+          set:set_id (
+            *,
+            service_times (
+              id,
+              service_time
+            ),
+            rehearsal_times (
+              id,
+              rehearsal_date,
+              rehearsal_time
+            ),
+            set_assignments (
+              id,
+              person_id,
+              person_name,
+              person_email,
+              pending_invite_id,
+              role,
+              status,
+              person:person_id (
+                id,
+                full_name
+              ),
+              pending_invite:pending_invite_id (
+                id,
+                full_name,
+                email
+              )
+            ),
+            set_songs (
+              id,
+              sequence_order,
+              notes,
+              title,
+              description,
+              planned_duration_seconds,
+              song_id,
+              key,
+              song:song_id (
+                id, title, bpm, time_signature, duration_seconds, description,
+                song_keys (
+                  id,
+                  key
+                ),
+                song_links (
+                  id,
+                  title,
+                  url,
+                  key,
+                  file_path,
+                  file_name,
+                  file_type,
+                  is_file_upload
+                )
+              ),
+              song_links (
+                id,
+                title,
+                url,
+                key,
+                display_order,
+                file_path,
+                file_name,
+                file_type,
+                is_file_upload
+              ),
+              song_assignments (
+                id,
+                person_id,
+                person_name,
+                person_email,
+                pending_invite_id,
+                role,
+                status,
+                person:person_id (
+                  id,
+                  full_name
+                ),
+                pending_invite:pending_invite_id (
+                  id,
+                  full_name,
+                  email
+                )
+              )
+            )
+          )
+        `)
+        .eq("user_id", state.profile.id);
+
+      if (!pinnedError && pinnedData) {
+        // Extract the set objects and mark them as pinned
+        const pinnedSets = pinnedData
+          .map(item => item.set)
+          .filter(set => set !== null)
+          .map(set => ({ ...set, is_pinned: true }));
+
+        // Merge pinned sets into state.sets, avoiding duplicates
+        const existingSetIds = new Set(state.sets.map(s => s.id));
+        pinnedSets.forEach(pinnedSet => {
+          if (!existingSetIds.has(pinnedSet.id)) {
+            state.sets.push(pinnedSet);
+          } else {
+            // Mark existing set as pinned
+            const existingSet = state.sets.find(s => s.id === pinnedSet.id);
+            if (existingSet) {
+              existingSet.is_pinned = true;
+            }
+          }
+        });
+
+        console.log('  - ✅ Pinned sets loaded:', pinnedSets.length, 'sets');
+      } else if (pinnedError && pinnedError.code !== 'PGRST116' && pinnedError.code !== '42P01') {
+        console.warn('  - ⚠️ Error loading pinned sets (table may not exist yet):', pinnedError.message);
+      }
+    } catch (err) {
+      console.warn('  - ⚠️ Error loading pinned sets:', err);
+    }
+  }
+
   state.isLoadingSets = false;
   renderSets(true);
 
@@ -4667,12 +4824,36 @@ function renderSetCard(set, container, index = 0, animate = true, baseDelay = 0)
   }
   const editBtn = node.querySelector(".edit-set-btn");
   const deleteBtn = node.querySelector(".delete-set-btn");
+  const pinBtn = node.querySelector(".pin-set-btn");
+
+  // Update pin button state
+  if (pinBtn) {
+    const isPinned = set.is_pinned === true;
+    const icon = pinBtn.querySelector("i");
+    if (icon) {
+      if (isPinned) {
+        icon.classList.remove("fa-regular", "fa-thumbtack");
+        icon.classList.add("fa-solid", "fa-thumbtack");
+        pinBtn.title = "Unpin set";
+        pinBtn.classList.add("pinned");
+      } else {
+        icon.classList.remove("fa-solid", "fa-thumbtack");
+        icon.classList.add("fa-regular", "fa-thumbtack");
+        pinBtn.title = "Pin set";
+        pinBtn.classList.remove("pinned");
+      }
+    }
+    pinBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await togglePinSet(set, pinBtn);
+    });
+  }
 
   // Make card clickable to view details
   card.addEventListener("click", (e) => {
-    // Don't trigger if clicking edit/delete buttons
-    if (e.target === editBtn || e.target === deleteBtn ||
-      editBtn.contains(e.target) || deleteBtn.contains(e.target)) {
+    // Don't trigger if clicking edit/delete/pin buttons
+    if (e.target === editBtn || e.target === deleteBtn || e.target === pinBtn ||
+      editBtn?.contains(e.target) || deleteBtn?.contains(e.target) || pinBtn?.contains(e.target)) {
       return;
     }
     showSetDetail(set);
@@ -4885,10 +5066,27 @@ function renderSets(animate = true) {
 
   // Separate sets into "your sets" and "all sets"
   state.sets.forEach((set) => {
-    if (currentUserId && isUserAssignedToSet(set, currentUserId)) {
+    const isAssigned = currentUserId && isUserAssignedToSet(set, currentUserId);
+    const isPinned = set.is_pinned === true;
+    
+    // Include in "Your Sets" if assigned OR pinned
+    if (isAssigned || isPinned) {
       yourSets.push(set);
     }
     allSets.push(set);
+  });
+
+  // Sort "Your Sets" to show pinned sets first, then by scheduled_date
+  yourSets.sort((a, b) => {
+    const aPinned = a.is_pinned === true ? 1 : 0;
+    const bPinned = b.is_pinned === true ? 1 : 0;
+    if (aPinned !== bPinned) {
+      return bPinned - aPinned; // Pinned sets first
+    }
+    // Then sort by scheduled_date
+    const aDate = a.scheduled_date ? new Date(a.scheduled_date) : new Date(0);
+    const bDate = b.scheduled_date ? new Date(b.scheduled_date) : new Date(0);
+    return aDate - bDate;
   });
 
   // Calculate base delay if pending requests are present (or will be)
@@ -6075,6 +6273,7 @@ function showSetDetail(set) {
   const editBtn = el("btn-edit-set-detail");
   const deleteBtn = el("btn-delete-set-detail");
   const viewAsMemberDetailBtn = el("btn-view-as-member-detail");
+  const publishBtn = el("btn-publish-set-detail");
   const headerAddDropdown = el("header-add-dropdown-container");
   const mobileHeaderAddDropdown = el("mobile-header-add-dropdown-container");
 
@@ -6083,6 +6282,17 @@ function showSetDetail(set) {
 
   if (editBtn) editBtn.classList.toggle("hidden", !isMgr);
   if (deleteBtn) deleteBtn.classList.toggle("hidden", !isMgr);
+
+  // Show/hide publish button - only show for managers when set is unpublished and team requires publishing
+  if (publishBtn) {
+    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+    const teamRequiresPublish = currentTeam?.require_publish !== false;
+    const isPublished = set.is_published === true;
+    
+    // Show publish button if: user is manager, set is unpublished, and team requires publishing
+    const shouldShowPublish = isMgr && !isPublished && teamRequiresPublish;
+    publishBtn.classList.toggle("hidden", !shouldShowPublish);
+  }
 
   // Always toggle both desktop and mobile add containers together
   if (headerAddDropdown) headerAddDropdown.classList.toggle("hidden", !isMgr);
@@ -7644,6 +7854,74 @@ function openSetModal(set = null) {
     assignmentModeSection.classList.remove("hidden");
   }
 
+  // Show publish section only when editing an existing set
+  // Reset pending changes when opening modal for a new set or different set
+  // Also reset if opening for the same set (to start fresh)
+  if (!set) {
+    state.pendingSetChanges = null;
+  } else if (state.selectedSet && set.id !== state.selectedSet.id) {
+    state.pendingSetChanges = null;
+  } else {
+    // For the same set, preserve pending changes (user might want to continue editing)
+    // But we'll reset it if they close without saving
+  }
+
+  const publishSection = el("set-publish-section");
+  const publishBtn = el("btn-publish-set");
+  const publishBtnText = el("btn-publish-set-text");
+  const publishStatus = el("set-publish-status");
+  
+  if (publishSection && publishBtn && publishBtnText && publishStatus) {
+    if (set) {
+      // Show publish section for existing sets
+      publishSection.classList.remove("hidden");
+      
+      // Check if team requires publishing
+      const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+      const teamRequiresPublish = currentTeam?.require_publish !== false;
+      
+      if (teamRequiresPublish) {
+        // Check if there's a pending change, otherwise use current status
+        const pendingPublishStatus = state.pendingSetChanges?.is_published;
+        const isPublished = pendingPublishStatus !== undefined 
+          ? pendingPublishStatus 
+          : (set.is_published === true);
+        
+        if (isPublished) {
+          const statusText = pendingPublishStatus !== undefined 
+            ? "This set will be published when you save."
+            : "This set is published and visible to all team members.";
+          publishStatus.textContent = statusText;
+          publishBtnText.textContent = "Unpublish";
+          const icon = publishBtn.querySelector("i");
+          if (icon) {
+            icon.className = "fa-solid fa-eye-slash";
+          }
+          publishBtn.classList.remove("secondary");
+          publishBtn.classList.add("ghost");
+        } else {
+          const statusText = pendingPublishStatus !== undefined 
+            ? "This set will be unpublished when you save."
+            : "This set is unpublished and only visible to owners and managers.";
+          publishStatus.textContent = statusText;
+          publishBtnText.textContent = "Publish";
+          const icon = publishBtn.querySelector("i");
+          if (icon) {
+            icon.className = "fa-solid fa-eye";
+          }
+          publishBtn.classList.remove("ghost");
+          publishBtn.classList.add("secondary");
+        }
+      } else {
+        // Team doesn't require publishing, hide the section
+        publishSection.classList.add("hidden");
+      }
+    } else {
+      // Hide publish section for new sets (they start unpublished)
+      publishSection.classList.add("hidden");
+    }
+  }
+
   // Set assignment mode override checkbox
   const overrideCheckbox = el("set-override-assignment-mode");
   const overrideText = el("set-override-assignment-mode-text");
@@ -7678,11 +7956,20 @@ function openSetModal(set = null) {
       overrideCheckbox.checked = shouldBeChecked;
     }
   }
+
+  // Focus on first input field for keyboard navigation
+  const titleInput = el("set-title");
+  if (titleInput) {
+    setTimeout(() => titleInput.focus(), 100);
+  }
 }
 
 function closeSetModal() {
   closeModalWithAnimation(setModal, () => {
     el("set-form").reset();
+    
+    // Reset pending changes when closing modal without saving
+    state.pendingSetChanges = null;
 
     // Preserve state.selectedSet if we're in detail view mode
     // (i.e., if the detail view is currently visible)
@@ -7878,7 +8165,106 @@ function getAssignmentIdentityKeyFromFormAssignment(assignment) {
   return null;
 }
 
+// Send notifications for all assignments when a set is published
+async function sendNotificationsForPublishedSet(setId, teamId) {
+  if (!setId || !teamId) return;
+
+  try {
+    // Fetch the set to get assignment mode
+    const { data: set, error: setError } = await supabase
+      .from("sets")
+      .select("id, assignment_mode, assignment_mode_override")
+      .eq("id", setId)
+      .single();
+
+    if (setError || !set) {
+      console.error("Error fetching set for notifications:", setError);
+      return;
+    }
+
+    // Determine assignment mode
+    const assignmentMode = set.assignment_mode_override || set.assignment_mode || 'per_set';
+
+    if (assignmentMode === 'per_set') {
+      // Get all set-level assignments
+      const { data: setAssignments, error: assignmentsError } = await supabase
+        .from("set_assignments")
+        .select("person_id, pending_invite_id, person_email")
+        .eq("set_id", setId);
+
+      if (assignmentsError) {
+        console.error("Error fetching set assignments for notifications:", assignmentsError);
+        return;
+      }
+
+      if (setAssignments && setAssignments.length > 0) {
+        // Build recipients list
+        const recipients = setAssignments
+          .map((assignment) => {
+            const key = getAssignmentIdentityKeyFromDbRow(assignment);
+            if (!key) return null;
+            return {
+              key,
+              person_id: assignment.person_id || null,
+              pending_invite_id: assignment.pending_invite_id || null,
+              person_email: assignment.person_email || null,
+            };
+          })
+          .filter(Boolean);
+
+        if (recipients.length > 0) {
+          console.log(`📧 Sending notifications for ${recipients.length} set-level assignments on publish`);
+          await notifyAssignmentEmails(setId, teamId, recipients, "per_set");
+        }
+      }
+    } else {
+      // per_song mode - get all song-level assignments
+      const { data: songAssignments, error: songAssignmentsError } = await supabase
+        .from("song_assignments")
+        .select(`
+          person_id,
+          pending_invite_id,
+          person_email,
+          set_song:set_song_id ( set_id )
+        `)
+        .eq("set_song.set_id", setId);
+
+      if (songAssignmentsError) {
+        console.error("Error fetching song assignments for notifications:", songAssignmentsError);
+        return;
+      }
+
+      if (songAssignments && songAssignments.length > 0) {
+        // Build recipients list (deduplicate by identity key)
+        const recipientMap = new Map();
+        songAssignments.forEach((assignment) => {
+          const key = getAssignmentIdentityKeyFromDbRow(assignment);
+          if (!key) return;
+          if (!recipientMap.has(key)) {
+            recipientMap.set(key, {
+              key,
+              person_id: assignment.person_id || null,
+              pending_invite_id: assignment.pending_invite_id || null,
+              person_email: assignment.person_email || null,
+            });
+          }
+        });
+
+        const recipients = Array.from(recipientMap.values());
+        if (recipients.length > 0) {
+          console.log(`📧 Sending notifications for ${recipients.length} song-level assignments on publish`);
+          await notifyAssignmentEmails(setId, teamId, recipients, "per_song");
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error sending notifications for published set:", error);
+    // Don't block the publish flow on notification errors
+  }
+}
+
 // Fire-and-forget wrapper for sending assignment notification emails via Supabase Edge Function
+// Note: The edge function will verify the set is published before sending
 async function notifyAssignmentEmails(setId, teamId, recipients, mode) {
   if (!setId || !teamId || !recipients || recipients.length === 0) return;
 
@@ -8599,6 +8985,13 @@ async function handleSetSubmit(event) {
   // Only include created_by when creating a new set
   if (!isEditing) {
     payload.created_by = state.profile.id;
+    // New sets start as unpublished (default is false, but be explicit)
+    payload.is_published = false;
+  }
+
+  // Apply pending publish status change if set
+  if (state.pendingSetChanges?.is_published !== undefined) {
+    payload.is_published = state.pendingSetChanges.is_published;
   }
 
   let response;
@@ -8621,6 +9014,14 @@ async function handleSetSubmit(event) {
   }
 
   const finalSetId = response.data.id;
+
+  // Send notifications if set was just published
+  if (state.pendingSetChanges?.is_published === true && response.data.is_published === true) {
+    await sendNotificationsForPublishedSet(finalSetId, state.currentTeamId);
+  }
+
+  // Clear pending changes
+  state.pendingSetChanges = null;
 
   // If assignment mode changed, clear all assignments for this set
   if (isEditing && oldAssignmentMode && newAssignmentMode && oldAssignmentMode !== newAssignmentMode) {
@@ -8687,6 +9088,281 @@ async function handleSetSubmit(event) {
     const updatedSet = state.sets.find(s => s.id === editedSetId);
     if (updatedSet) {
       showSetDetail(updatedSet);
+    }
+  }
+}
+
+// Track publish countdown state
+let publishCountdownTimer = null;
+let publishCountdownInterval = null;
+let beforeUnloadHandler = null;
+
+function startPublishCountdown(set) {
+  if (!isManager() || !set) return;
+
+  // Cancel any existing countdown first
+  cancelPublishCountdown();
+
+  const publishBtn = el("btn-publish-set-detail");
+  if (!publishBtn || !publishBtn.parentNode) {
+    console.error("Publish button not found or has no parent");
+    return;
+  }
+
+  let timeRemaining = 3;
+  const totalTime = 3;
+
+  // Update button to show countdown state
+  publishBtn.classList.add("publish-countdown-active");
+  publishBtn.classList.remove("hidden");
+  publishBtn.disabled = false; // Keep enabled so it's clickable for cancel
+  
+  // Create progress bar element
+  const progressBar = document.createElement("div");
+  progressBar.className = "publish-progress-bar";
+  
+  // Build button structure
+  const icon = document.createElement("i");
+  icon.className = "fa-solid fa-clock";
+  
+  // Create text container
+  const textContainer = document.createElement("span");
+  textContainer.className = "publish-countdown-text";
+  textContainer.textContent = `Cancel... (${timeRemaining})`;
+  
+  // Clear and rebuild button content
+  publishBtn.innerHTML = '';
+  publishBtn.appendChild(icon);
+  publishBtn.appendChild(textContainer);
+  publishBtn.appendChild(progressBar);
+  
+  // Force a reflow to ensure button updates
+  publishBtn.offsetHeight;
+
+  // Store reference to textContainer for updates
+  const updateText = () => {
+    const btn = el("btn-publish-set-detail");
+    if (btn) {
+      const textEl = btn.querySelector(".publish-countdown-text");
+      if (textEl) {
+        textEl.textContent = `Cancel... (${timeRemaining})`;
+      }
+    }
+  };
+
+  // Make the whole button cancelable by clicking it
+  const cancelHandler = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    cancelPublishCountdown();
+  };
+  
+  // Remove any existing handlers by cloning
+  const newBtn = publishBtn.cloneNode(false);
+  newBtn.className = publishBtn.className;
+  newBtn.id = publishBtn.id;
+  newBtn.innerHTML = '';
+  newBtn.classList.add("publish-countdown-active");
+  newBtn.classList.remove("hidden");
+  newBtn.disabled = false;
+  
+  const newIcon = document.createElement("i");
+  newIcon.className = "fa-solid fa-clock";
+  const newTextContainer = document.createElement("span");
+  newTextContainer.className = "publish-countdown-text";
+  newTextContainer.textContent = `Cancel... (${timeRemaining})`;
+  const newProgressBar = document.createElement("div");
+  newProgressBar.className = "publish-progress-bar";
+  
+  newBtn.appendChild(newIcon);
+  newBtn.appendChild(newTextContainer);
+  newBtn.appendChild(newProgressBar);
+  
+  // Replace button
+  publishBtn.parentNode.replaceChild(newBtn, publishBtn);
+
+  // Add cancel handler
+  newBtn.addEventListener("click", cancelHandler);
+
+  // Add beforeunload handler
+  beforeUnloadHandler = (e) => {
+    e.preventDefault();
+    e.returnValue = "You have a set publication in progress. Are you sure you want to leave?";
+    return e.returnValue;
+  };
+  window.addEventListener("beforeunload", beforeUnloadHandler);
+
+  // Start countdown animation - subtle fill from left
+  newProgressBar.style.width = "0%";
+  newProgressBar.style.transition = `width ${totalTime}s ease-out`;
+
+  // Force reflow to start animation
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      newProgressBar.style.width = "100%";
+    });
+  });
+
+  // Update countdown text
+  publishCountdownInterval = setInterval(() => {
+    timeRemaining--;
+    if (timeRemaining > 0) {
+      // Update text using fresh reference
+      const btn = el("btn-publish-set-detail");
+      if (btn) {
+        const textEl = btn.querySelector(".publish-countdown-text");
+        if (textEl) {
+          textEl.textContent = `Cancel... (${timeRemaining})`;
+        }
+      }
+    } else {
+      // Countdown complete
+      clearInterval(publishCountdownInterval);
+      publishCountdownInterval = null;
+    }
+  }, 1000);
+
+  // Complete countdown after 3 seconds
+  publishCountdownTimer = setTimeout(async () => {
+    clearTimeout(publishCountdownTimer);
+    publishCountdownTimer = null;
+    await completePublishCountdown(set);
+  }, totalTime * 1000);
+}
+
+function cancelPublishCountdown() {
+  const publishBtn = el("btn-publish-set-detail");
+  
+  if (publishCountdownTimer) {
+    clearTimeout(publishCountdownTimer);
+    publishCountdownTimer = null;
+  }
+  
+  if (publishCountdownInterval) {
+    clearInterval(publishCountdownInterval);
+    publishCountdownInterval = null;
+  }
+
+  if (beforeUnloadHandler) {
+    window.removeEventListener("beforeunload", beforeUnloadHandler);
+    beforeUnloadHandler = null;
+  }
+
+  if (publishBtn && publishBtn.parentNode) {
+    // Remove all event listeners by cloning and replacing
+    const newBtn = publishBtn.cloneNode(false);
+    newBtn.className = publishBtn.className;
+    newBtn.id = publishBtn.id;
+    publishBtn.parentNode.replaceChild(newBtn, publishBtn);
+    
+    // Restore button state
+    newBtn.classList.remove("publish-countdown-active");
+    newBtn.disabled = false;
+    newBtn.classList.remove("hidden");
+    
+    // Restore original button content
+    newBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Publish';
+    
+    // Re-attach original handler
+    newBtn.addEventListener("click", async () => {
+      if (state.selectedSet && isManager()) {
+        startPublishCountdown(state.selectedSet);
+      }
+    });
+  }
+}
+
+async function completePublishCountdown(set) {
+  // Clean up countdown UI
+  cancelPublishCountdown();
+  
+  // Actually publish the set
+  await publishSetFromDetail(set);
+}
+
+async function publishSetFromDetail(set) {
+  if (!isManager() || !set) return;
+
+  // Update the set's published status to true
+  const { error } = await supabase
+    .from("sets")
+    .update({ is_published: true })
+    .eq("id", set.id)
+    .eq("team_id", state.currentTeamId);
+
+  if (error) {
+    console.error("Error publishing set:", error);
+    toastError("Unable to publish set. Check console.");
+    return;
+  }
+
+  // Update local state
+  set.is_published = true;
+  
+  // Update state.sets
+  const setInState = state.sets.find(s => s.id === set.id);
+  if (setInState) {
+    setInState.is_published = true;
+  }
+
+  // Send notifications for all assignments when set is published
+  await sendNotificationsForPublishedSet(set.id, state.currentTeamId);
+
+  toastSuccess("Set published successfully.");
+
+  // Reload sets to reflect the change
+  await loadSets();
+
+  // Refresh detail view
+  const updatedSet = state.sets.find(s => s.id === set.id);
+  if (updatedSet) {
+    showSetDetail(updatedSet);
+  }
+}
+
+function handlePublishSet(event) {
+  event.preventDefault();
+  if (!isManager() || !state.selectedSet) return;
+
+  const set = state.selectedSet;
+  // Check pending changes first, then current status
+  const currentPublishedStatus = state.pendingSetChanges?.is_published !== undefined
+    ? state.pendingSetChanges.is_published
+    : (set.is_published === true);
+  const newPublishedStatus = !currentPublishedStatus;
+
+  // Store the desired publish status in state (will be applied on save)
+  if (!state.pendingSetChanges) {
+    state.pendingSetChanges = {};
+  }
+  state.pendingSetChanges.is_published = newPublishedStatus;
+
+  // Update the UI in the modal to reflect the pending change
+  const publishBtn = el("btn-publish-set");
+  const publishBtnText = el("btn-publish-set-text");
+  const publishStatus = el("set-publish-status");
+
+  if (publishBtn && publishBtnText && publishStatus) {
+    if (newPublishedStatus) {
+      publishStatus.textContent = "This set will be published when you save.";
+      publishBtnText.textContent = "Unpublish";
+      // Update icon
+      const icon = publishBtn.querySelector("i");
+      if (icon) {
+        icon.className = "fa-solid fa-eye-slash";
+      }
+      publishBtn.classList.remove("secondary");
+      publishBtn.classList.add("ghost");
+    } else {
+      publishStatus.textContent = "This set will be unpublished when you save.";
+      publishBtnText.textContent = "Publish";
+      // Update icon
+      const icon = publishBtn.querySelector("i");
+      if (icon) {
+        icon.className = "fa-solid fa-eye";
+      }
+      publishBtn.classList.remove("ghost");
+      publishBtn.classList.add("secondary");
     }
   }
 }
@@ -8795,6 +9471,12 @@ async function openSongModal() {
       populateImportAssignmentsDropdown("import-assignments-container", null);
       el("assignments-list").innerHTML = "";
     }
+  }
+
+  // Focus on first input field for keyboard navigation
+  const keyInput = el("song-key-select");
+  if (keyInput) {
+    setTimeout(() => keyInput.focus(), 100);
   }
 }
 
@@ -8939,6 +9621,23 @@ async function openTagModal() {
     customInput.value = "";
   }
   handleTagTypeChange();
+
+  // Focus on first input field for keyboard navigation
+  // Try to focus on custom input if visible, otherwise focus will go to first dropdown
+  setTimeout(() => {
+    const customInputEl = el("tag-custom-input");
+    const customLabel = el("tag-custom-label");
+    if (customInputEl && customLabel && !customLabel.classList.contains("hidden")) {
+      customInputEl.focus();
+    } else {
+      // Focus on first visible input - try the song select dropdown input
+      const songSelectContainer = el("tag-song-select-container");
+      const firstInput = songSelectContainer?.querySelector("input");
+      if (firstInput) {
+        firstInput.focus();
+      }
+    }
+  }, 100);
 }
 
 function closeTagModal() {
@@ -9212,6 +9911,12 @@ async function openSectionModal() {
       el("section-assignments-list").innerHTML = "";
     }
   }
+
+  // Focus on first input field for keyboard navigation
+  const titleInput = el("section-title");
+  if (titleInput) {
+    setTimeout(() => titleInput.focus(), 100);
+  }
 }
 
 function closeSectionModal() {
@@ -9236,6 +9941,12 @@ async function openSectionHeaderModal() {
   if (sectionHeaderModal) {
     sectionHeaderModal.classList.remove("hidden");
     document.body.style.overflow = "hidden";
+    
+    // Focus on first input field for keyboard navigation
+    const titleInput = el("section-header-title");
+    if (titleInput) {
+      setTimeout(() => titleInput.focus(), 100);
+    }
   }
 }
 
@@ -10001,6 +10712,31 @@ async function openEditSetSongModal(setSong) {
 
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
+
+  // Focus on first visible input field for keyboard navigation
+  setTimeout(() => {
+    // Try section title first (if visible)
+    const sectionTitle = el("edit-section-title");
+    if (sectionTitle && sectionFields && !sectionFields.classList.contains("hidden")) {
+      sectionTitle.focus();
+      return;
+    }
+    // Try key input (if visible)
+    const keyInputEl = el("edit-set-song-key");
+    if (keyInputEl && keyLabel && !keyLabel.classList.contains("hidden")) {
+      keyInputEl.focus();
+      return;
+    }
+    // Try duration input (if visible)
+    if (durationInput && durationLabel && !durationLabel.classList.contains("hidden")) {
+      durationInput.focus();
+      return;
+    }
+    // Fallback to notes
+    if (notesInput && notesInput.closest("label") && !notesInput.closest("label").classList.contains("hidden")) {
+      notesInput.focus();
+    }
+  }, 100);
 }
 
 function closeEditSetSongModal() {
@@ -10726,6 +11462,78 @@ function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
   input.focus();
 }
 
+async function togglePinSet(set, pinBtn) {
+  if (!state.profile?.id) {
+    toastError("You must be logged in to pin sets");
+    return;
+  }
+
+  const isPinned = set.is_pinned === true;
+  const icon = pinBtn.querySelector("i");
+
+  try {
+    if (isPinned) {
+      // Unpin: delete from pinned_sets
+      const { error } = await supabase
+        .from("pinned_sets")
+        .delete()
+        .eq("user_id", state.profile.id)
+        .eq("set_id", set.id);
+
+      if (error) {
+        console.error("Error unpinning set:", error);
+        toastError("Unable to unpin set. Please try again.");
+        return;
+      }
+
+      // Update local state
+      set.is_pinned = false;
+      if (icon) {
+        icon.classList.remove("fa-solid", "fa-thumbtack");
+        icon.classList.add("fa-regular", "fa-thumbtack");
+        pinBtn.title = "Pin set";
+        pinBtn.classList.remove("pinned");
+      }
+      toastSuccess("Set unpinned");
+    } else {
+      // Pin: insert into pinned_sets
+      const { error } = await supabase
+        .from("pinned_sets")
+        .insert({
+          user_id: state.profile.id,
+          set_id: set.id
+        });
+
+      if (error) {
+        console.error("Error pinning set:", error);
+        // If error is due to table not existing, show a helpful message
+        if (error.code === 'PGRST116' || error.code === '42P01') {
+          toastError("Pinning feature is not available yet. Please run the database migration.");
+        } else {
+          toastError("Unable to pin set. Please try again.");
+        }
+        return;
+      }
+
+      // Update local state
+      set.is_pinned = true;
+      if (icon) {
+        icon.classList.remove("fa-regular", "fa-thumbtack");
+        icon.classList.add("fa-solid", "fa-thumbtack");
+        pinBtn.title = "Unpin set";
+        pinBtn.classList.add("pinned");
+      }
+      toastSuccess("Set pinned");
+    }
+
+    // Reload sets to update the "Your Sets" section
+    await loadSets();
+  } catch (err) {
+    console.error("Error toggling pin:", err);
+    toastError("An error occurred. Please try again.");
+  }
+}
+
 async function deleteSet(set) {
   if (!isManager()) return;
 
@@ -11213,6 +12021,12 @@ function openEditPersonModal(person) {
   el("edit-person-email").disabled = true; // Email is read-only
 
   form.dataset.personId = person.id;
+
+  // Focus on first input field for keyboard navigation
+  const nameInput = el("edit-person-name");
+  if (nameInput) {
+    setTimeout(() => nameInput.focus(), 100);
+  }
 
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -11992,6 +12806,12 @@ async function openSongEditModal(songId = null) {
     renderSongKeys([]);
     renderSongLinks([]);
   }
+
+  // Focus on first input field for keyboard navigation
+  const titleInput = el("song-edit-title");
+  if (titleInput) {
+    setTimeout(() => titleInput.focus(), 100);
+  }
 }
 
 function closeSongEditModal() {
@@ -12334,6 +13154,9 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 
   const hasLinks = (songWithLinks.song_links || []).length > 0;
   const hasKeys = (songWithLinks.song_keys || []).length > 0;
+  const keysArray = songWithLinks.song_keys || [];
+  const singleKey = keysArray.length === 1 ? keysArray[0].key : null;
+  const isSingleKeyMatch = singleKey && selectedKey && singleKey === selectedKey;
 
   // Render all song information in an expanded view
   content.innerHTML = `
@@ -12370,11 +13193,15 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             <span class="detail-label">BPM</span>
             <span class="detail-value">${songWithLinks.bpm}</span>
           </div>` : ''}
-          ${hasKeys ? `<div class="detail-item">
-            <span class="detail-label">Keys</span>
-            <span class="detail-value">${(songWithLinks.song_keys || []).map(k => escapeHtml(k.key)).join(", ")}</span>
+          ${isSingleKeyMatch ? `<div class="detail-item">
+            <span class="detail-label">Key</span>
+            <span class="detail-value">${escapeHtml(selectedKey)}</span>
           </div>` : ''}
-          ${selectedKey ? `<div class="detail-item">
+          ${hasKeys && !isSingleKeyMatch ? `<div class="detail-item">
+            <span class="detail-label">Keys</span>
+            <span class="detail-value">${keysArray.map(k => escapeHtml(k.key)).join(", ")}</span>
+          </div>` : ''}
+          ${selectedKey && !isSingleKeyMatch ? `<div class="detail-item">
             <span class="detail-label">Selected Key</span>
             <span class="detail-value">${escapeHtml(selectedKey)}</span>
           </div>` : ''}
@@ -16054,6 +16881,49 @@ async function handleEditAccountSubmit(e) {
   el("account-menu")?.classList.add("hidden");
 }
 
+async function handleAccountPasswordReset() {
+  if (!state.session?.user?.email) {
+    toastError("Unable to get your email address. Please try again.");
+    return;
+  }
+
+  const email = state.session.user.email;
+  const resetBtn = el("btn-reset-password");
+  
+  if (!resetBtn) return;
+
+  // Disable button and show loading state
+  const originalText = resetBtn.innerHTML;
+  resetBtn.disabled = true;
+  resetBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}${window.location.pathname}`,
+    });
+
+    if (error) {
+      console.error('❌ Error sending password reset email:', error);
+      toastError(error.message || "Failed to send password reset email. Please try again.");
+      resetBtn.disabled = false;
+      resetBtn.innerHTML = originalText;
+      return;
+    }
+
+    console.log('✅ Password reset email sent successfully to:', email);
+    toastSuccess("Password reset email sent! Please check your inbox and follow the instructions to reset your password.");
+    
+    // Re-enable button
+    resetBtn.disabled = false;
+    resetBtn.innerHTML = originalText;
+  } catch (err) {
+    console.error('❌ Unexpected error sending password reset email:', err);
+    toastError("An unexpected error occurred. Please try again.");
+    resetBtn.disabled = false;
+    resetBtn.innerHTML = originalText;
+  }
+}
+
 async function deleteAccount() {
   if (!state.profile || !state.session?.user) return;
 
@@ -16105,6 +16975,7 @@ async function openTeamSettingsModal() {
   const assignmentModeContainer = el("team-assignment-mode-container");
   const alertTimeContainer = el("team-alert-time-container");
   const timezoneContainer = el("team-timezone-container");
+  const requirePublishCheckbox = el("team-require-publish");
 
   if (!modal || !nameInput || !assignmentModeContainer) return;
 
@@ -16113,7 +16984,8 @@ async function openTeamSettingsModal() {
     name: '',
     assignment_mode: state.teamAssignmentMode || 'per_set',
     daily_reminder_time: '06:00:00',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    require_publish: true
   };
 
   const render = (data) => {
@@ -16189,6 +17061,11 @@ async function openTeamSettingsModal() {
       });
       timezoneContainer.appendChild(teamTimezoneDropdown);
     }
+
+    // Require Publish
+    if (requirePublishCheckbox) {
+      requirePublishCheckbox.checked = data.require_publish !== false; // Default to true if not set
+    }
   };
 
   // Render immediately with local data
@@ -16202,7 +17079,7 @@ async function openTeamSettingsModal() {
   try {
     const { data: freshData, error } = await supabase
       .from("teams")
-      .select("id, name, assignment_mode, daily_reminder_time, timezone")
+      .select("id, name, assignment_mode, daily_reminder_time, timezone, require_publish")
       .eq("id", state.currentTeamId)
       .single();
 
@@ -16219,7 +17096,8 @@ async function openTeamSettingsModal() {
         (freshData.name !== teamData.name && document.activeElement !== nameInput) ||
         (freshData.assignment_mode !== teamData.assignment_mode) ||
         (freshData.daily_reminder_time !== teamData.daily_reminder_time) ||
-        (freshData.timezone !== teamData.timezone);
+        (freshData.timezone !== teamData.timezone) ||
+        (freshData.require_publish !== teamData.require_publish);
 
       // Update local state
       const stateTeam = state.userTeams.find(t => t.id === state.currentTeamId);
@@ -16262,6 +17140,7 @@ async function handleTeamSettingsSubmit(e) {
   const newAssignmentMode = teamAssignmentModeDropdown.getValue() || teamAssignmentModeSelectedValue || state.teamAssignmentMode || 'per_set';
   const newAlertTime = teamAlertTimeDropdown?.getValue() || teamAlertTimeSelectedValue;
   const newTimezone = teamTimezoneDropdown?.getValue() || teamTimezoneSelectedValue;
+  const newRequirePublish = requirePublishCheckbox?.checked !== false; // Default to true
 
   if (!newName) {
     toastError("Team name cannot be empty.");
@@ -16291,6 +17170,11 @@ async function handleTeamSettingsSubmit(e) {
     hasChanges = true;
   }
 
+  if (newRequirePublish !== (currentTeam?.require_publish !== false)) {
+    updates.require_publish = newRequirePublish;
+    hasChanges = true;
+  }
+
   if (!hasChanges) {
     // No changes, just close modal
     closeTeamSettingsModal();
@@ -16313,6 +17197,7 @@ async function handleTeamSettingsSubmit(e) {
     if (updates.name) currentTeam.name = updates.name;
     if (updates.daily_reminder_time) currentTeam.daily_reminder_time = updates.daily_reminder_time;
     if (updates.timezone) currentTeam.timezone = updates.timezone;
+    if (updates.require_publish !== undefined) currentTeam.require_publish = updates.require_publish;
   }
 
   if (state.profile?.team && updates.name) {

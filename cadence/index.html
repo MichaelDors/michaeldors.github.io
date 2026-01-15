@@ -353,6 +353,9 @@
               <button id="btn-export-set-print" class="btn secondary ripple-btn" type="button"><i
                   class="fa-solid fa-print"></i>
                 Print</button>
+              <button id="btn-publish-set-detail" class="btn primary hidden ripple-btn" type="button"><i
+                  class="fa-solid fa-eye"></i>
+                Publish</button>
               <button id="btn-view-as-member-detail" class="btn secondary hidden ripple-btn" type="button"><i
                   class="fa-solid fa-user"></i>
                 Preview</button>
@@ -493,6 +496,18 @@
             <input type="checkbox" id="set-override-assignment-mode" class="custom-checkbox" />
             <span id="set-override-assignment-mode-text"></span>
           </label>
+        </div>
+
+        <div id="set-publish-section" class="hidden" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+            <div style="flex: 1;">
+              <p style="margin: 0; font-weight: 500;">Publishing Status</p>
+              <p id="set-publish-status" class="muted small-text" style="margin: 0.25rem 0 0 0;"></p>
+            </div>
+            <button type="button" id="btn-publish-set" class="btn secondary" style="white-space: nowrap;">
+              <i class="fa-solid fa-eye"></i> <span id="btn-publish-set-text">Publish</span>
+            </button>
+          </div>
         </div>
 
         <div class="modal-actions">
@@ -941,6 +956,11 @@
           <div id="team-timezone-container"></div>
           <p class="muted small-text">Timezone for alerts and scheduling</p>
         </label>
+        <label class="custom-checkbox-label">
+          <input type="checkbox" id="team-require-publish" class="custom-checkbox" />
+          <span>Require sets to be published before visible to members</span>
+        </label>
+        <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">When enabled, sets must be published by owners/managers before they're visible to other team members.</p>
         <div class="modal-actions">
           <button type="button" class="btn ghost" id="cancel-team-settings">Cancel</button>
           <button type="submit" class="btn primary">Save</button>
@@ -983,6 +1003,15 @@
             <div style="display: flex; align-items: center; gap: 0.5rem;">
               <button type="button" id="btn-setup-totp" class="btn secondary small">Setup</button>
               <button type="button" id="btn-manage-totp" class="btn secondary small hidden">Disable</button>
+            </div>
+          </div>
+          <div class="security-item">
+            <div>
+              <div class="security-title">Password</div>
+              <div class="security-description">Reset your password by email. You'll receive a link to create a new password.</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button type="button" id="btn-reset-password" class="btn secondary small">Reset Password</button>
             </div>
           </div>
         </div>
@@ -1123,6 +1152,9 @@
           <p class="set-date"></p>
         </div>
         <div style="display: flex; gap: 0.5rem;">
+          <button class="btn small ghost pin-set-btn" title="Pin set">
+            <i class="fa-regular fa-thumbtack"></i>
+          </button>
           <button class="btn small ghost edit-set-btn hidden">Edit</button>
           <button class="btn small ghost delete-set-btn hidden">Delete</button>
         </div>
