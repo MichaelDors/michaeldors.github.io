@@ -2459,9 +2459,6 @@ async function loadDataAndShowApp(session) {
 
   // Update state immediately
   state.session = session;
-  
-  // Load iTunes cache from localStorage
-  loadItunesCacheFromStorage();
 
   // NEW: Try to render content immediately from cache if we have data
   // (checkMfaRequirements likely loaded it, but we handle the showApp call here)
@@ -2477,8 +2474,8 @@ async function loadDataAndShowApp(session) {
 
     showApp();
     
-    // Start background iTunes indexing with cached songs
-    startItunesIndexing();
+    // Check for unindexed songs (server-side indexing)
+    checkUnindexedSongs();
   }
 
   try {
@@ -2491,8 +2488,8 @@ async function loadDataAndShowApp(session) {
     // Save fresh data to cache
     saveAppDataToCache(session);
     
-    // Start background iTunes indexing
-    startItunesIndexing();
+    // Check for unindexed songs (server-side indexing)
+    checkUnindexedSongs();
 
     // Pre-check MFA status so the modal UI is fresh
     updateMfaStatusUI();
@@ -3609,6 +3606,7 @@ async function loadSongs() {
           is_file_upload
         )
       `)
+      // Include iTunes metadata fields in the query
       .eq("team_id", state.currentTeamId)
       .order("title");
   });
@@ -3650,6 +3648,9 @@ async function loadSongs() {
   state.songs = uniqueSongs;
   state.isLoadingSongs = false;
   await renderSongCatalog(false);
+  
+  // Check for unindexed songs after loading
+  checkUnindexedSongs();
 }
 
 async function loadSets() {
@@ -3749,6 +3750,10 @@ async function loadSets() {
         key,
         song:song_id (
           id, title, bpm, time_signature, duration_seconds, description,
+          album_art_small_url,
+          album_art_large_url,
+          itunes_metadata,
+          itunes_indexed_at,
           song_keys (
             id,
             key
@@ -4602,7 +4607,11 @@ async function showAssignmentDetailsModal(assignment) {
             title,
             song:song_id (
               id,
-              title
+              title,
+              album_art_small_url,
+              album_art_large_url,
+              itunes_metadata,
+              itunes_indexed_at
             )
           )
         `)
@@ -9819,7 +9828,11 @@ async function loadSetSongs(setId) {
     .select(
       `
       *,
-      song:song_id (*),
+      song:song_id (
+        *,
+        song_keys (*),
+        song_links (*)
+      ),
       song_assignments (*)
     `
     )
@@ -13040,9 +13053,8 @@ async function searchSongResources(searchTerm, existingResults) {
       }
       
       try {
-        // For specific songs, use the same search as album art to get consistent results
-        // This ensures we get the same iTunes result that provided the album art
-        const itunesItem = await getItunesMetadataForSong(song.title);
+        // Get iTunes metadata from database (or fall back to API if not indexed)
+        const itunesItem = await getItunesMetadataForSong(song);
         
         if (itunesItem) {
           // Check if this result matches our search filters (if any)
@@ -13278,8 +13290,8 @@ async function searchSongResources(searchTerm, existingResults) {
       }
       
       try {
-        // Get iTunes metadata for this song by searching with song title (same as album art)
-        const itunesItem = await getItunesMetadataForSong(song.title);
+        // Get iTunes metadata from database (or fall back to API if not indexed)
+        const itunesItem = await getItunesMetadataForSong(song);
         
         if (itunesItem) {
           // Now filter by search term - check if search text matches iTunes metadata
@@ -14495,20 +14507,30 @@ async function getAlbumArt(song, songTitle) {
       }
     } catch (error) {
       console.warn('Error loading album art override:', error);
-      // Fall through to iTunes API
+      // Fall through to database/iTunes
     }
-  } else {
-    console.log('🎵 No override path, trying iTunes');
   }
 
-  // Fall back to iTunes API
-  console.log('🎵 Fetching from iTunes API...');
-  const itunesArt = await fetchAlbumArt(songTitle);
-  if (itunesArt) {
-    console.log('🎵 iTunes API returned art:', itunesArt.small ? 'has small' : 'no small', itunesArt.large ? 'has large' : 'no large');
-    return { ...itunesArt, isOverride: false };
-  } else {
-    console.warn('🎵 iTunes API returned no art');
+  // Check database for indexed iTunes album art
+  if (song?.album_art_small_url && song?.album_art_large_url) {
+    console.log('🎵 Using database-stored iTunes album art');
+    return { 
+      small: song.album_art_small_url, 
+      large: song.album_art_large_url, 
+      isOverride: false 
+    };
+  }
+
+  // Fall back to iTunes API (for songs not yet indexed)
+  if (songTitle) {
+    console.log('🎵 No database art found, fetching from iTunes API...');
+    const itunesArt = await fetchAlbumArt(songTitle);
+    if (itunesArt) {
+      console.log('🎵 iTunes API returned art:', itunesArt.small ? 'has small' : 'no small', itunesArt.large ? 'has large' : 'no large');
+      return { ...itunesArt, isOverride: false };
+    } else {
+      console.warn('🎵 iTunes API returned no art');
+    }
   }
 
   console.warn('🎵 getAlbumArt returning null - no art found');
@@ -14524,237 +14546,47 @@ const imageLoadCache = new Map();
 // Key: song title (lowercase), Value: full iTunes result object
 const itunesMetadataCache = new Map();
 
-// Background indexing system
-let itunesIndexingQueue = [];
-let isIndexing = false;
-let indexingFailed = false; // Track if indexing has completely failed
-let indexingStats = { total: 0, indexed: 0, failed: 0 };
-const ITUNES_API_DELAY = 2000; // 2 seconds between requests to avoid rate limiting
-const ITUNES_CACHE_KEY = 'cadence-itunes-metadata-cache';
-const ITUNES_INDEXING_STATS_KEY = 'cadence-itunes-indexing-stats';
+// Server-side iTunes indexing - client just checks for unindexed songs
+// No client-side indexing queue needed anymore
 
-// Load iTunes cache from localStorage on startup
-function loadItunesCacheFromStorage() {
-  try {
-    const cached = localStorage.getItem(ITUNES_CACHE_KEY);
-    if (cached) {
-      const cacheData = JSON.parse(cached);
-      Object.entries(cacheData).forEach(([key, value]) => {
-        itunesMetadataCache.set(key, value);
-      });
-      console.log(`📦 Loaded ${itunesMetadataCache.size} iTunes metadata entries from localStorage`);
-    }
-    
-    // Load indexing stats
-    const statsCached = localStorage.getItem(ITUNES_INDEXING_STATS_KEY);
-    if (statsCached) {
-      indexingStats = JSON.parse(statsCached);
-    }
-  } catch (error) {
-    console.error('❌ Error loading iTunes cache from localStorage:', error);
+// Check for unindexed songs and update UI
+function checkUnindexedSongs() {
+  if (!state.songs || state.songs.length === 0) {
+    updateIndexingUI(0);
+    return;
   }
+  
+  // Count songs that don't have itunes_indexed_at timestamp
+  const unindexedCount = state.songs.filter(song => {
+    return song.title && song.title.trim() && !song.itunes_indexed_at;
+  }).length;
+  
+  updateIndexingUI(unindexedCount);
 }
 
-// Save iTunes cache to localStorage (debounced to avoid excessive writes)
-let cacheSaveTimeout = null;
-function saveItunesCacheToStorage() {
-  if (cacheSaveTimeout) {
-    clearTimeout(cacheSaveTimeout);
-  }
-  
-  cacheSaveTimeout = setTimeout(() => {
-    try {
-      const cacheObject = Object.fromEntries(itunesMetadataCache);
-      localStorage.setItem(ITUNES_CACHE_KEY, JSON.stringify(cacheObject));
-      localStorage.setItem(ITUNES_INDEXING_STATS_KEY, JSON.stringify(indexingStats));
-      console.log(`💾 Saved ${itunesMetadataCache.size} iTunes metadata entries to localStorage`);
-    } catch (error) {
-      console.error('❌ Error saving iTunes cache to localStorage:', error);
-      // If storage is full, try to clear old entries
-      if (error.name === 'QuotaExceededError') {
-        console.warn('⚠️ localStorage quota exceeded, clearing oldest entries');
-        // Keep only the most recent 1000 entries
-        const entries = Array.from(itunesMetadataCache.entries());
-        itunesMetadataCache.clear();
-        entries.slice(-1000).forEach(([key, value]) => {
-          itunesMetadataCache.set(key, value);
-        });
-        saveItunesCacheToStorage();
-      }
-    }
-  }, 1000); // Debounce saves by 1 second
-}
-
-// Background indexing system for iTunes metadata
-async function startItunesIndexing() {
-  if (isIndexing) {
-    console.log('⏸️ iTunes indexing already in progress');
-    return;
-  }
-  
-  // Build queue of ONLY songs that are NOT already in cache
-  const songsToIndex = state.songs.filter(song => {
-    if (!song.title || !song.title.trim()) return false;
-    const cacheKey = song.title.toLowerCase().trim();
-    const isCached = itunesMetadataCache.has(cacheKey);
-    if (isCached) {
-      return false; // Skip songs already in cache
-    }
-    return true; // Only index songs NOT in cache
-  });
-  
-  const totalSongs = state.songs.filter(song => song.title && song.title.trim()).length;
-  const cachedCount = totalSongs - songsToIndex.length;
-  
-  if (songsToIndex.length === 0) {
-    console.log(`✅ All ${totalSongs} songs already indexed (${cachedCount} in cache)`);
-    updateIndexingUI();
-    return;
-  }
-  
-  console.log(`📋 Queueing ${songsToIndex.length} new songs for iTunes indexing (${cachedCount} already cached, ${totalSongs} total)`);
-  itunesIndexingQueue = songsToIndex.map(song => song.title);
-  indexingStats.total = songsToIndex.length;
-  indexingStats.indexed = 0;
-  indexingStats.failed = 0;
-  indexingFailed = false; // Reset failure flag
-  
-  isIndexing = true;
-  updateIndexingUI();
-  
-  // Process queue with rate limiting
-  processIndexingQueue();
-}
-
-async function processIndexingQueue() {
-  // Stop if indexing has failed completely
-  if (indexingFailed) {
-    isIndexing = false;
-    updateIndexingUI();
-    return;
-  }
-  
-  if (itunesIndexingQueue.length === 0) {
-    isIndexing = false;
-    updateIndexingUI();
-    console.log(`✅ Indexing complete: ${indexingStats.indexed} indexed, ${indexingStats.failed} failed`);
-    saveItunesCacheToStorage();
-    return;
-  }
-  
-  const songTitle = itunesIndexingQueue.shift();
-  const cacheKey = songTitle.toLowerCase().trim();
-  
-  // Double-check: Skip if already cached (might have been cached by another operation during indexing)
-  if (itunesMetadataCache.has(cacheKey)) {
-    console.log(`⏭️ Skipping "${songTitle}" - already in cache`);
-    // Don't count as indexed since we didn't actually index it
-    // Just remove from queue and continue
-    setTimeout(() => processIndexingQueue(), 100);
-    return;
-  }
-  
-  try {
-    console.log(`🔍 Indexing: "${songTitle}" (${itunesIndexingQueue.length} remaining)`);
-    
-    // Use the existing function which handles caching
-    const result = await getItunesMetadataForSong(songTitle);
-    
-    if (result) {
-      indexingStats.indexed++;
-      console.log(`✅ Indexed: "${songTitle}"`);
-    } else {
-      indexingStats.failed++;
-      console.log(`⚠️ No iTunes data found for: "${songTitle}"`);
-    }
-  } catch (error) {
-    indexingStats.failed++;
-    console.error(`❌ Error indexing "${songTitle}":`, error);
-  }
-  
-  // Check if we've failed too many times - if all attempts failed, stop trying
-  const totalAttempted = indexingStats.indexed + indexingStats.failed;
-  if (totalAttempted >= 3 && indexingStats.indexed === 0) {
-    // If we've tried at least 3 songs and all failed, stop indexing
-    indexingFailed = true;
-    console.log('🛑 Stopping indexing - all attempts are failing');
-    isIndexing = false;
-  }
-  
-  updateIndexingUI();
-  saveItunesCacheToStorage();
-  
-  // Wait before processing next song to avoid rate limiting (only if not failed)
-  if (!indexingFailed) {
-    setTimeout(() => processIndexingQueue(), ITUNES_API_DELAY);
-  }
-}
-
-function updateIndexingUI() {
+// Simple UI update for server-side indexing status
+function updateIndexingUI(unindexedCount) {
   const indicator = el('itunes-indexing-indicator');
-  if (!indicator) {
-    console.warn('⚠️ iTunes indexing indicator element not found');
-    return;
+  if (!indicator) return;
+  
+  const statusEl = indicator.querySelector('.indexing-status');
+  const progressBar = indicator.querySelector('.indexing-progress-bar');
+  
+  // Hide progress bar (server-side indexing is slower, no real-time progress)
+  if (progressBar) {
+    progressBar.style.display = 'none';
   }
   
-  // Only count successfully indexed songs as progress - failed songs still count as "to go"
-  const remaining = indexingStats.total - indexingStats.indexed;
-  const progressBar = indicator.querySelector('.indexing-progress-bar');
-  const progressEl = indicator.querySelector('.indexing-progress');
-  const statusEl = indicator.querySelector('.indexing-status');
-  
-  // Hide if indexing is complete and no remaining songs
-  if (!isIndexing && remaining === 0 && !indexingFailed) {
+  // Hide indicator if all songs are indexed
+  if (unindexedCount === 0) {
     indicator.classList.add('hidden');
     return;
   }
   
+  // Show simple message
   indicator.classList.remove('hidden');
-  
-  // If indexing failed, show message and hide progress bar
-  if (indexingFailed) {
-    if (progressBar) {
-      progressBar.style.display = 'none';
-    }
-    if (statusEl) {
-      statusEl.textContent = 'Some song metadata is still indexing';
-    }
-    return;
-  }
-  
-  // Show progress bar when actively indexing
-  if (progressBar) {
-    progressBar.style.display = 'block';
-    progressBar.style.visibility = 'visible';
-  } else {
-    console.warn('⚠️ Progress bar element not found');
-  }
-  
-  const progress = indexingStats.total > 0 
-    ? Math.round((indexingStats.indexed / indexingStats.total) * 100) 
-    : 0;
-  
-  // Only show remaining count, not "X/Y"
-  const statusText = remaining > 0 
-    ? `Indexing some song metadata... ${remaining} to go`
-    : 'Indexing complete';
-  
   if (statusEl) {
-    statusEl.textContent = statusText;
-  } else {
-    console.warn('⚠️ Status element not found');
-  }
-  
-  if (progressEl) {
-    // Ensure progress bar is visible - use at least 2% width if there's any progress
-    const progressWidth = progress > 0 ? Math.max(progress, 2) : 0;
-    progressEl.style.width = `${progressWidth}%`;
-    progressEl.style.minWidth = progress > 0 ? '2px' : '0';
-    progressEl.style.display = 'block';
-    progressEl.style.visibility = 'visible';
-    console.log(`📊 Progress bar updated: ${progressWidth}% (${indexingStats.indexed}/${indexingStats.total} indexed, ${remaining} remaining)`);
-  } else {
-    console.warn('⚠️ Progress element not found');
+    statusEl.textContent = 'Some song metadata is still indexing';
   }
 }
 
@@ -15130,37 +14962,48 @@ function parseItunesMetadataQuery(query) {
  * @param {string} songTitle - The title of the song
  * @returns {Promise<Object|null>} - iTunes result object with metadata, or null if not found
  */
-async function getItunesMetadataForSong(songTitle) {
+/**
+ * Get iTunes metadata for a song - checks database first, then falls back to API
+ * @param {string|Object} songOrTitle - Either a song object (with itunes_metadata) or song title string
+ * @returns {Promise<Object|null>} - iTunes result object with metadata, or null if not found
+ */
+async function getItunesMetadataForSong(songOrTitle) {
+  // If passed a song object, use its database-stored metadata
+  if (songOrTitle && typeof songOrTitle === 'object' && songOrTitle.itunes_metadata) {
+    console.log('🎵 Using database-stored iTunes metadata for song:', songOrTitle.id);
+    return songOrTitle.itunes_metadata;
+  }
+  
+  // Extract song title
+  const songTitle = typeof songOrTitle === 'object' ? songOrTitle?.title : songOrTitle;
   if (!songTitle || !songTitle.trim()) {
     return null;
   }
 
-  // First, check cache - this ensures we use the EXACT same iTunes result that provided the album art
-  const cacheKey = songTitle.toLowerCase().trim();
-  if (itunesMetadataCache.has(cacheKey)) {
-    const cached = itunesMetadataCache.get(cacheKey);
-    console.log('🎵 Using cached iTunes metadata for:', cacheKey);
-    return cached;
+  // If we have a song object but no metadata, check if it's been indexed
+  if (typeof songOrTitle === 'object' && songOrTitle.itunes_indexed_at) {
+    // Song has been indexed but no metadata - means iTunes had no data
+    console.log('🎵 Song has been indexed but no iTunes metadata available');
+    return null;
   }
 
-  // If not cached, fetch it (this might happen if album art hasn't been loaded yet)
-  console.log('🎵 No cached metadata, fetching from iTunes for:', cacheKey);
+  // Fall back to fetching from iTunes API (for songs not yet indexed)
+  // This should rarely happen now that we have server-side indexing
+  console.log('🎵 No database metadata, fetching from iTunes API (song not yet indexed):', songTitle);
   const isMobile = isMobileDevice();
   
   try {
     if (isMobile) {
       // Use debounced edge function for mobile
-      // Even though this is called from resource search, we still debounce to avoid
-      // multiple rapid calls when user is typing quickly
       const { data, error } = await invokeEdgeFunctionDebounced(
         'fetch-album-art',
-        cacheKey,
+        songTitle.toLowerCase().trim(),
         { 
           searchQuery: songTitle.trim(),
           metadataSearch: true,
-          exactMatch: true // Flag to get just the first result (same as album art)
+          exactMatch: true
         },
-        false // Use debouncing to rate limit mobile calls
+        false
       );
       
       if (error) {
@@ -15169,14 +15012,10 @@ async function getItunesMetadataForSong(songTitle) {
       }
       
       if (data?.success && data?.results && data.results.length > 0) {
-        const result = data.results[0];
-        // Cache it for future use (in memory and localStorage)
-        itunesMetadataCache.set(cacheKey, result);
-        saveItunesCacheToStorage();
-        return result;
+        return data.results[0];
       }
     } else {
-      // Direct API call for desktop - use same search as album art
+      // Direct API call for desktop
       const searchQuery = encodeURIComponent(songTitle.trim());
       const apiUrl = `https://itunes.apple.com/search?term=${searchQuery}&media=music&limit=1`;
       
@@ -15196,11 +15035,7 @@ async function getItunesMetadataForSong(songTitle) {
       
       const data = await response.json();
       if (data?.results && data.results.length > 0) {
-        const result = data.results[0];
-        // Cache it for future use (in memory and localStorage)
-        itunesMetadataCache.set(cacheKey, result);
-        saveItunesCacheToStorage();
-        return result;
+        return data.results[0];
       }
     }
     
