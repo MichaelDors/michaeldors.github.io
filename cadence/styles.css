@@ -258,6 +258,14 @@ body {
   transition: color 0.5s ease;
 }
 
+.header-dropdown-item.selected {
+  background-color: color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+.header-dropdown-item.selected i {
+  color: var(--accent-color);
+}
+
 .user-info {
   display: flex;
   align-items: center;

@@ -84,7 +84,6 @@
                   title="Purple">
                 </div>
 
-                <div class="hidden">
                   <div class="color-circle" onclick="setTheme('sunset')"
                     style="background: linear-gradient(135deg, #2e1065 0%, #fb923c 100%);" title="Sunset">
                   </div>
@@ -97,10 +96,9 @@
                   <div class="color-circle" onclick="setTheme('midnight')"
                     style="background: linear-gradient(135deg, #020617 0%, #818cf8 100%);" title="Midnight">
                   </div>
-                  <div class="color-circle" onclick="setTheme('crazy')"
-                    style="background: conic-gradient(from 0deg at 50% 50%, #ff00ff 0deg, #00ff00 120deg, #0000ff 240deg, #ff00ff 360deg);"
-                    title="Crazy">
-                  </div>
+                  <div class="color-circle" onclick="setTheme('classic')"
+                    style="background: linear-gradient(135deg, #000000 0%, #dcff51 100%);"
+                    title="Classic">
                 </div>
               </div>
 
@@ -276,12 +274,37 @@
               Song</button>
           </div>
         </div>
-        <div style="margin-bottom: 1.5rem;">
-          <label>
+        <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center;">
+          <label style="flex: 1;">
             <input type="text" id="songs-tab-search"
               placeholder="Search songs by title, BPM, key, time signature, or duration"
               style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 3rem; color: var(--text-primary); font-size: 1rem;" />
           </label>
+          <div class="header-dropdown-container" id="songs-sort-dropdown-container" style="position: relative;">
+            <button id="btn-songs-sort-toggle" class="btn secondary" type="button" style="white-space: nowrap;">
+              <i class="fa-solid fa-sort"></i>
+              <span id="songs-sort-label">Sort: Relevancy</span>
+              <i class="fa-solid fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.75rem;"></i>
+            </button>
+            <div class="header-dropdown-menu hidden" id="songs-sort-dropdown-menu">
+              <button type="button" class="header-dropdown-item" data-sort="relevancy">
+                <i class="fa-solid fa-star"></i>
+                <span>Relevancy</span>
+              </button>
+              <button type="button" class="header-dropdown-item" data-sort="newest">
+                <i class="fa-solid fa-clock"></i>
+                <span>Newest</span>
+              </button>
+              <button type="button" class="header-dropdown-item" data-sort="oldest">
+                <i class="fa-solid fa-history"></i>
+                <span>Oldest</span>
+              </button>
+              <button type="button" class="header-dropdown-item" data-sort="alphabetical">
+                <i class="fa-solid fa-sort-alpha-down"></i>
+                <span>Alphabetical</span>
+              </button>
+            </div>
+          </div>
         </div>
         <div id="songs-catalog-list" class="song-list"></div>
       </div>

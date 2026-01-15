@@ -114,7 +114,8 @@ const state = {
     qrCode: null,
     tempFactorId: null
   },
-  lottieAnimations: {}
+  lottieAnimations: {},
+  songSortOption: "relevancy" // Default sort: relevancy, newest, oldest, alphabetical
 };
 
 const el = (id) => document.getElementById(id);
@@ -1424,6 +1425,84 @@ function bindEvents() {
       renderSongCatalog(false);
     }
   });
+
+  // Songs tab sort dropdown toggle
+  el("btn-songs-sort-toggle")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleDropdown(el("songs-sort-dropdown-menu"));
+  });
+
+  // Songs tab sort dropdown items
+  const updateSortSelection = () => {
+    document.querySelectorAll("#songs-sort-dropdown-menu .header-dropdown-item").forEach(item => {
+      if (item.dataset.sort === (state.songSortOption || "relevancy")) {
+        item.classList.add("selected");
+      } else {
+        item.classList.remove("selected");
+      }
+    });
+  };
+  
+  document.querySelectorAll("#songs-sort-dropdown-menu .header-dropdown-item").forEach(item => {
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const sortOption = item.dataset.sort;
+      state.songSortOption = sortOption;
+      
+      // Update label
+      const labelMap = {
+        relevancy: "Relevancy",
+        newest: "Newest",
+        oldest: "Oldest",
+        alphabetical: "Alphabetical"
+      };
+      const labelEl = el("songs-sort-label");
+      if (labelEl) {
+        labelEl.textContent = `Sort: ${labelMap[sortOption]}`;
+      }
+      
+      // Update selection visual
+      updateSortSelection();
+      
+      // Close dropdown
+      const menu = el("songs-sort-dropdown-menu");
+      if (menu) {
+        menu.classList.add("hidden");
+        menu.classList.remove("animate-out");
+      }
+      
+      // Re-render songs
+      renderSongCatalog(false);
+    });
+  });
+  
+  // Initialize selection visual
+  updateSortSelection();
+  
+  // Close sort dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    const container = el("songs-sort-dropdown-container");
+    const menu = el("songs-sort-dropdown-menu");
+    if (container && menu && !container.contains(e.target) && !menu.classList.contains("hidden")) {
+      menu.classList.add("hidden");
+      menu.classList.remove("animate-out");
+    }
+  });
+  
+  // Initialize sort label
+  const updateSortLabel = () => {
+    const labelMap = {
+      relevancy: "Relevancy",
+      newest: "Newest",
+      oldest: "Oldest",
+      alphabetical: "Alphabetical"
+    };
+    const labelEl = el("songs-sort-label");
+    if (labelEl) {
+      labelEl.textContent = `Sort: ${labelMap[state.songSortOption || "relevancy"]}`;
+    }
+  };
+  updateSortLabel();
 
   // People tab search
   let isPeopleSearchTransitioning = false;
@@ -4470,7 +4549,7 @@ async function showAssignmentDetailsModal(assignment) {
 
     // Try to display profile picture
     if (personProfilePicturePath) {
-      const pictureUrl = await getFileUrl(personProfilePicturePath);
+      const pictureUrl = await getFileUrl(personProfilePicturePath, PROFILE_PICTURES_BUCKET);
       if (pictureUrl) {
         avatarEl.innerHTML = `<img src="${pictureUrl}" alt="${fullName}" style="width: 100%; height: 100%; object-fit: cover;">`;
       } else {
@@ -12867,50 +12946,74 @@ async function renderSongCatalog(animate = true) {
     return true;
   });
 
-  // Get weeks offset to sort by most recently scheduled
-  // Pass the deduplicated snapshot to ensure we don't query for duplicates
-  const weeksSinceMap = await getWeeksSinceLastPerformance(filteredSongs);
+  // Sort based on selected option
+  const sortOption = state.songSortOption || "relevancy";
+  
+  if (sortOption === "relevancy") {
+    // Get weeks offset to sort by most recently scheduled
+    // Pass the deduplicated snapshot to ensure we don't query for duplicates
+    const weeksSinceMap = await getWeeksSinceLastPerformance(filteredSongs);
 
-  // Sort by most recently scheduled using the weeks value
-  // Upcoming (0, +1, +2, ...) sorted lowest to highest
-  // Past (-1, -2, -3, ...) sorted lowest to highest (most recent past first)
-  // Unscheduled (null) at the bottom
-  filteredSongs.sort((a, b) => {
-    const weeksA = weeksSinceMap.get(a.id);
-    const weeksB = weeksSinceMap.get(b.id);
+    // Sort by most recently scheduled using the weeks value
+    // Upcoming (0, +1, +2, ...) sorted lowest to highest
+    // Past (-1, -2, -3, ...) sorted lowest to highest (most recent past first)
+    // Unscheduled (null) at the bottom
+    filteredSongs.sort((a, b) => {
+      const weeksA = weeksSinceMap.get(a.id);
+      const weeksB = weeksSinceMap.get(b.id);
 
-    // Parse weeks string to number
-    const parseWeeks = (weeksStr) => {
-      if (!weeksStr) return null;
-      if (weeksStr === "0") return 0;
-      return parseInt(weeksStr, 10);
-    };
+      // Parse weeks string to number
+      const parseWeeks = (weeksStr) => {
+        if (!weeksStr) return null;
+        if (weeksStr === "0") return 0;
+        return parseInt(weeksStr, 10);
+      };
 
-    const numA = parseWeeks(weeksA);
-    const numB = parseWeeks(weeksB);
+      const numA = parseWeeks(weeksA);
+      const numB = parseWeeks(weeksB);
 
-    // Both have scheduled dates
-    if (numA !== null && numB !== null) {
-      // Both upcoming (>= 0): sort ascending (0, 1, 2, 3...)
-      if (numA >= 0 && numB >= 0) {
-        return numA - numB;
+      // Both have scheduled dates
+      if (numA !== null && numB !== null) {
+        // Both upcoming (>= 0): sort ascending (0, 1, 2, 3...)
+        if (numA >= 0 && numB >= 0) {
+          return numA - numB;
+        }
+        // Both past (< 0): sort ascending (-1, -2, -3...) which means most recent past first
+        if (numA < 0 && numB < 0) {
+          return numA - numB;
+        }
+        // One upcoming, one past: upcoming comes first
+        if (numA >= 0 && numB < 0) return -1;
+        if (numA < 0 && numB >= 0) return 1;
       }
-      // Both past (< 0): sort ascending (-1, -2, -3...) which means most recent past first
-      if (numA < 0 && numB < 0) {
-        return numA - numB;
-      }
-      // One upcoming, one past: upcoming comes first
-      if (numA >= 0 && numB < 0) return -1;
-      if (numA < 0 && numB >= 0) return 1;
-    }
 
-    // One has date, one doesn't: dated comes first
-    if (numA !== null && numB === null) return -1;
-    if (numA === null && numB !== null) return 1;
+      // One has date, one doesn't: dated comes first
+      if (numA !== null && numB === null) return -1;
+      if (numA === null && numB !== null) return 1;
 
-    // Neither has date: sort by title
-    return (a.title || "").localeCompare(b.title || "");
-  });
+      // Neither has date: sort by title
+      return (a.title || "").localeCompare(b.title || "");
+    });
+  } else if (sortOption === "newest") {
+    // Sort by created_at descending (newest first)
+    filteredSongs.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
+      const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+  } else if (sortOption === "oldest") {
+    // Sort by created_at ascending (oldest first)
+    filteredSongs.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
+      const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
+      return dateA.getTime() - dateB.getTime();
+    });
+  } else if (sortOption === "alphabetical") {
+    // Sort alphabetically by title
+    filteredSongs.sort((a, b) => {
+      return (a.title || "").localeCompare(b.title || "");
+    });
+  }
 
   filteredSongs.forEach((song, index) => {
     const div = document.createElement("div");
@@ -13299,6 +13402,9 @@ async function extractVibrantColor(img) {
   }
 }
 
+// Track which songs are currently loading album art to prevent duplicate calls
+const loadingAlbumArt = new Set();
+
 /**
  * Display album art in the song details modal
  * @param {HTMLElement} content - The modal content element
@@ -13306,9 +13412,30 @@ async function extractVibrantColor(img) {
  * @param {Object} song - The song object
  */
 async function displayAlbumArt(content, albumArtData, song) {
+  if (!albumArtData) {
+    console.warn('⚠️ displayAlbumArt called with no albumArtData for song:', song?.id);
+    return;
+  }
+
   const placeholder = content.querySelector("#song-album-art-placeholder");
   const img = content.querySelector("#song-album-art-img");
-  if (!placeholder || !img) return;
+  if (!placeholder || !img) {
+    console.warn('⚠️ displayAlbumArt: placeholder or img not found');
+    return;
+  }
+
+  // Prevent duplicate loading for the same song
+  const songId = song?.id;
+  if (songId && loadingAlbumArt.has(songId)) {
+    console.log('⏭️ Skipping duplicate album art load for song:', songId);
+    return;
+  }
+
+  if (songId) {
+    loadingAlbumArt.add(songId);
+  }
+
+  console.log('🎨 displayAlbumArt called for song:', songId, 'has small:', !!albumArtData.small, 'has large:', !!albumArtData.large);
 
   // Function to extract and apply color
   const applyColorToShadow = async () => {
@@ -13337,76 +13464,73 @@ async function displayAlbumArt(content, albumArtData, song) {
   };
 
   // Progressive loading: load small image first, then swap to large when ready
-  const loadProgressiveImage = () => {
+  const loadProgressiveImage = async () => {
     // Set referrerPolicy to ensure image loads on mobile browsers
     img.referrerPolicy = 'no-referrer-when-downgrade';
 
-    // For override images, we don't need crossOrigin handling
+    // For override images, try direct load first (they're from Supabase storage)
     if (albumArtData.isOverride) {
       img.crossOrigin = null;
       img.src = albumArtData.small;
       placeholder.style.display = "flex";
       img.addEventListener('load', applyColorToShadow, { once: true });
-      img.addEventListener('error', () => {
-        console.warn('Failed to load album art override image');
-        placeholder.style.display = "flex";
+      img.addEventListener('error', async () => {
+        console.warn('Failed to load album art override image directly, trying fallback');
+        // Try via edge function as fallback
+        const fallbackUrl = await loadImageWithFallback(albumArtData.small);
+        if (fallbackUrl) {
+          img.src = fallbackUrl;
+          img.addEventListener('load', applyColorToShadow, { once: true });
+        } else {
+          placeholder.style.display = "flex";
+        }
       }, { once: true });
     } else {
-      // For iTunes images, use crossOrigin handling
-      const tryLoadSmallImage = (useCrossOrigin) => {
-        if (useCrossOrigin) {
-          img.crossOrigin = 'anonymous';
-        } else {
-          img.crossOrigin = null;
-        }
-
+      // For iTunes images, use loadImageWithFallback which handles desktop/mobile logic
+      try {
+        console.log('🎨 Starting to load iTunes album art - small:', albumArtData.small, 'large:', albumArtData.large);
         // Load small image first for fast display
-        const smallImg = new Image();
-        smallImg.crossOrigin = useCrossOrigin ? 'anonymous' : null;
-        smallImg.referrerPolicy = 'no-referrer-when-downgrade';
+        const smallBlobUrl = await loadImageWithFallback(albumArtData.small);
+        console.log('🎨 Small image load result:', smallBlobUrl ? 'success' : 'failed');
         
-        smallImg.addEventListener('load', () => {
-          // Small image loaded, display it immediately
-          img.src = albumArtData.small;
+        if (smallBlobUrl) {
+          img.crossOrigin = null; // Blob URLs don't need CORS
+          img.src = smallBlobUrl;
           placeholder.style.display = "flex";
           applyColorToShadow();
           
-          // Now preload the large image in the background
-          const largeImg = new Image();
-          largeImg.crossOrigin = useCrossOrigin ? 'anonymous' : null;
-          largeImg.referrerPolicy = 'no-referrer-when-downgrade';
-          
-          largeImg.addEventListener('load', () => {
-            // Large image ready, swap it in
-            img.src = albumArtData.large;
-            // Re-apply color extraction on the high-res image
-            img.addEventListener('load', applyColorToShadow, { once: true });
-          }, { once: true });
-          
-          largeImg.addEventListener('error', () => {
-            // If large image fails, keep using small image
-            console.log('Failed to load high-res album art, using small version');
-          }, { once: true });
-          
-          largeImg.src = albumArtData.large;
-        }, { once: true });
-        
-        smallImg.addEventListener('error', () => {
-          if (useCrossOrigin) {
-            // Retry without crossOrigin if CORS fails (common on mobile)
-            console.log('CORS failed on small image, retrying without crossOrigin');
-            setTimeout(() => tryLoadSmallImage(false), 100);
-          } else {
-            console.warn('Failed to load album art image after retry');
-            // Still show the placeholder even if image fails to load
-            placeholder.style.display = "flex";
+          // On desktop, preload the large image in the background
+          // On mobile, only load large image when user clicks to expand (saves bandwidth)
+          const isMobile = isMobileDevice();
+          if (!isMobile && albumArtData.large && albumArtData.large !== albumArtData.small) {
+            // Small delay to let small image render first, then load large in background
+            setTimeout(async () => {
+              const largeBlobUrl = await loadImageWithFallback(albumArtData.large);
+              if (largeBlobUrl) {
+                // Large image ready, swap it in
+                img.src = largeBlobUrl;
+                // Re-apply color extraction on the high-res image
+                img.addEventListener('load', applyColorToShadow, { once: true });
+              } else {
+                console.log('Failed to load high-res album art, using small version');
+              }
+            }, 500); // 500ms delay to prioritize small image display
+          } else if (isMobile) {
+            console.log('📱 Mobile: skipping large image preload, will load on expand');
           }
-        }, { once: true });
-        
-        smallImg.src = albumArtData.small;
-      };
-
-      tryLoadSmallImage(true);
+        } else {
+          console.warn('Failed to load album art image');
+          placeholder.style.display = "flex";
+        }
+      } catch (error) {
+        console.error('Error loading album art:', error);
+        placeholder.style.display = "flex";
+      } finally {
+        // Remove from loading set when done
+        if (songId) {
+          loadingAlbumArt.delete(songId);
+        }
+      }
     }
   };
 
@@ -13447,18 +13571,19 @@ async function displayAlbumArt(content, albumArtData, song) {
     } else {
       // For iTunes, prefer large version
       modalImg.src = img.src; // Start with current for instant display
-      if (albumArtData.large) {
-        const largeImg = new Image();
-        largeImg.crossOrigin = img.crossOrigin;
-        largeImg.referrerPolicy = 'no-referrer-when-downgrade';
-        largeImg.addEventListener('load', () => {
-          modalImg.src = albumArtData.large;
-        }, { once: true });
-        largeImg.addEventListener('error', () => {
-          // If large fails, keep using current src
-          console.log('Failed to load high-res image in modal, using current');
-        }, { once: true });
-        largeImg.src = albumArtData.large;
+      if (albumArtData.large && albumArtData.large !== albumArtData.small) {
+        // Load large image when modal opens (especially important on mobile where we skip preload)
+        console.log('🖼️ Modal opened, loading large image:', albumArtData.large.substring(0, 50));
+        loadImageWithFallback(albumArtData.large).then(largeBlobUrl => {
+          if (largeBlobUrl) {
+            modalImg.src = largeBlobUrl;
+            console.log('✅ Large image loaded in modal');
+          } else {
+            console.log('Failed to load high-res image in modal, using current');
+          }
+        }).catch(error => {
+          console.warn('Error loading large image in modal:', error);
+        });
       }
     }
     
@@ -13612,27 +13737,273 @@ function setupAlbumArtTilt(container) {
  * @returns {Promise<{small: string, large: string, isOverride: boolean}|null>} - URLs of the album art images, or null if not found
  */
 async function getAlbumArt(song, songTitle) {
+  console.log('🎵 getAlbumArt called for song:', song?.id, 'title:', songTitle);
+  
   // Check for override first
   if (song?.album_art_override_path) {
+    console.log('🎵 Has override path:', song.album_art_override_path);
     try {
       const url = await getFileUrl(song.album_art_override_path);
       if (url) {
+        console.log('🎵 Override URL loaded successfully');
         // For uploaded images, use the same URL for both small and large
         return { small: url, large: url, isOverride: true };
+      } else {
+        console.warn('🎵 Override URL is null');
       }
     } catch (error) {
       console.warn('Error loading album art override:', error);
       // Fall through to iTunes API
     }
+  } else {
+    console.log('🎵 No override path, trying iTunes');
   }
 
   // Fall back to iTunes API
+  console.log('🎵 Fetching from iTunes API...');
   const itunesArt = await fetchAlbumArt(songTitle);
   if (itunesArt) {
+    console.log('🎵 iTunes API returned art:', itunesArt.small ? 'has small' : 'no small', itunesArt.large ? 'has large' : 'no large');
     return { ...itunesArt, isOverride: false };
+  } else {
+    console.warn('🎵 iTunes API returned no art');
   }
 
+  console.warn('🎵 getAlbumArt returning null - no art found');
   return null;
+}
+
+// Cache for loaded images to avoid duplicate edge function calls
+// Only stores successful results - failures are not cached to allow retries
+const imageLoadCache = new Map();
+
+/**
+ * Detect if the current device is mobile
+ * @returns {boolean} - True if mobile device
+ */
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+         (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+}
+
+/**
+ * Load an image URL, trying direct fetch first on desktop, falling back to edge function
+ * @param {string} imageUrl - The URL of the image to load
+ * @returns {Promise<string|null>} - Data URL or blob URL of the image, or null if failed
+ */
+async function loadImageWithFallback(imageUrl) {
+  if (!imageUrl) {
+    console.warn('⚠️ loadImageWithFallback called with empty URL');
+    return null;
+  }
+
+  // Check cache first to avoid duplicate calls (only successful results are cached)
+  if (imageLoadCache.has(imageUrl)) {
+    const cached = imageLoadCache.get(imageUrl);
+    // Only return cached value if it's a valid URL (not null)
+    if (cached) {
+      console.log('📦 Using cached image for:', imageUrl.substring(0, 50));
+      return cached;
+    } else {
+      // Cached null means it failed, but we'll retry anyway (cache might be stale)
+      console.log('📦 Found failed cache entry, will retry:', imageUrl.substring(0, 50));
+      imageLoadCache.delete(imageUrl); // Remove stale failure from cache
+    }
+  }
+
+  const isMobile = isMobileDevice();
+  console.log(`🔍 Device detection: isMobile=${isMobile}, userAgent=${navigator.userAgent.substring(0, 50)}...`);
+  console.log(`🔍 Screen width: ${window.innerWidth}px`);
+  console.log(`🔍 Loading image: ${imageUrl}`);
+  
+  // On mobile, use edge function directly since direct fetch often fails
+  if (isMobile) {
+    console.log('📱 Mobile device detected, using edge function for image:', imageUrl);
+    try {
+      const result = await loadImageViaEdgeFunction(imageUrl);
+      console.log('📱 Edge function result:', result ? 'success' : 'failed');
+      // Only cache successful results - don't cache failures to allow retries
+      if (result) {
+        imageLoadCache.set(imageUrl, result);
+        return result;
+      }
+      // Don't cache failures - allow retry on next attempt
+      
+      // If edge function fails on mobile, try direct fetch as last resort
+      console.log('📱 Edge function failed, trying direct fetch as last resort');
+      try {
+        const response = await fetch(imageUrl, {
+          method: 'GET',
+          mode: 'no-cors', // Try no-cors on mobile
+          credentials: 'omit'
+        });
+        if (response.ok || response.type === 'opaque') {
+          const blob = await response.blob();
+          return URL.createObjectURL(blob);
+        }
+      } catch (directError) {
+        console.warn('📱 Direct fetch also failed on mobile:', directError);
+      }
+      return null;
+    } catch (error) {
+      console.error('📱 Error in mobile image loading:', error);
+      return null;
+    }
+  }
+
+  // On desktop, try direct fetch first
+  try {
+    console.log('🖥️ Desktop: trying direct fetch for image:', imageUrl);
+    const response = await fetch(imageUrl, {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'omit'
+    });
+    
+    if (response.ok) {
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      console.log('✅ Direct fetch succeeded');
+      // Cache successful result
+      imageLoadCache.set(imageUrl, blobUrl);
+      return blobUrl;
+    } else {
+      console.warn('⚠️ Direct fetch failed (status:', response.status, '), falling back to edge function');
+    }
+  } catch (error) {
+    console.warn('⚠️ Direct fetch error, falling back to edge function:', error);
+  }
+
+  // Fallback to edge function if direct fetch fails
+  console.log('🔄 Falling back to edge function for:', imageUrl);
+  try {
+    const result = await loadImageViaEdgeFunction(imageUrl);
+    console.log('🔄 Edge function fallback result:', result ? 'success' : 'failed');
+    // Only cache successful results
+    if (result) {
+      imageLoadCache.set(imageUrl, result);
+    }
+    // Don't cache failures - allow retry
+    return result;
+  } catch (error) {
+    console.error('🔄 Edge function fallback also failed:', error);
+    // Don't cache failures - allow retry
+    return null;
+  }
+}
+
+/**
+ * Load an image via edge function (bypasses CORS)
+ * @param {string} imageUrl - The URL of the image to load
+ * @returns {Promise<string|null>} - Data URL of the image, or null if failed
+ */
+async function loadImageViaEdgeFunction(imageUrl) {
+  try {
+    console.log('🌐 Fetching image via edge function:', imageUrl);
+    console.log('🌐 Supabase client available:', !!supabase);
+    console.log('🌐 Supabase functions available:', !!supabase?.functions);
+    
+    if (!supabase || !supabase.functions) {
+      console.error('❌ Supabase client or functions not available');
+      return null;
+    }
+
+    let data, error;
+    try {
+      const result = await supabase.functions.invoke('fetch-album-art', {
+        body: { imageUrl }
+      });
+      data = result.data;
+      error = result.error;
+    } catch (invokeError) {
+      console.error('❌ Exception during invoke:', invokeError);
+      error = invokeError;
+    }
+
+    console.log('🌐 Edge function response - error:', error);
+    console.log('🌐 Edge function response - data:', data ? { success: data.success, hasDataUrl: !!data.dataUrl } : 'null');
+
+    if (error) {
+      console.error('❌ Edge function error:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      
+      // If it's a FunctionsHttpError, the function probably isn't deployed
+      // Try direct fetch as fallback
+      if (error.name === 'FunctionsHttpError' || error.message?.includes('404') || error.context?.status === 404) {
+        console.log('⚠️ Edge function not available, falling back to direct fetch');
+        try {
+          const response = await fetch(imageUrl, {
+            method: 'GET',
+            mode: 'no-cors',
+            credentials: 'omit'
+          });
+          if (response.ok || response.type === 'opaque') {
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            return blobUrl;
+          }
+        } catch (directError) {
+          console.error('Direct fetch fallback failed:', directError);
+        }
+      }
+      return null;
+    }
+
+    if (data?.success && data?.dataUrl) {
+      console.log('✅ Edge function succeeded, converting data URL to blob URL');
+      try {
+        // Convert data URL to blob URL for consistency and better memory management
+        const response = await fetch(data.dataUrl);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        console.log('✅ Blob URL created successfully');
+        return blobUrl;
+      } catch (blobError) {
+        console.error('❌ Error converting data URL to blob:', blobError);
+        // Fallback: return data URL directly
+        console.log('⚠️ Falling back to data URL');
+        return data.dataUrl;
+      }
+    }
+
+    console.warn('⚠️ Edge function returned unsuccessful response:', data);
+    return null;
+  } catch (error) {
+    console.error('❌ Error calling edge function:', error);
+    console.error('❌ Error stack:', error.stack);
+    return null;
+  }
+}
+
+/**
+ * Search iTunes API via edge function (for mobile CORS bypass) or direct (for desktop)
+ * @param {string} songTitle - The title of the song
+ * @returns {Promise<{small: string, large: string}|null>} - URLs of the album art images, or null if not found
+ */
+async function searchItunesViaEdgeFunction(songTitle) {
+  try {
+    console.log('🌐 Searching iTunes via edge function:', songTitle);
+    
+    const { data, error } = await supabase.functions.invoke('fetch-album-art', {
+      body: { searchQuery: songTitle.trim() }
+    });
+
+    if (error) {
+      console.error('❌ Edge function error for iTunes search:', error);
+      return null;
+    }
+
+    if (data?.success && data?.small && data?.large) {
+      console.log('✅ iTunes search via edge function succeeded');
+      return { small: data.small, large: data.large };
+    }
+
+    console.warn('⚠️ Edge function returned no artwork');
+    return null;
+  } catch (error) {
+    console.error('❌ Error calling edge function for iTunes search:', error);
+    return null;
+  }
 }
 
 /**
@@ -13641,12 +14012,29 @@ async function getAlbumArt(song, songTitle) {
  * @returns {Promise<{small: string, large: string}|null>} - URLs of the album art images (small and large), or null if not found
  */
 async function fetchAlbumArt(songTitle) {
-  if (!songTitle || !songTitle.trim()) return null;
+  if (!songTitle || !songTitle.trim()) {
+    console.warn('🎵 fetchAlbumArt: empty songTitle');
+    return null;
+  }
 
+  const isMobile = isMobileDevice();
+  
+  // On mobile, use edge function to bypass CORS
+  if (isMobile) {
+    console.log('📱 Mobile: using edge function for iTunes search');
+    const result = await searchItunesViaEdgeFunction(songTitle);
+    if (result) return result;
+    // If edge function fails, try direct as fallback
+    console.log('📱 Edge function failed, trying direct iTunes API as fallback');
+  }
+
+  // On desktop or as fallback on mobile, try direct fetch
   try {
     // iTunes Search API - completely free, no API key needed
     const searchQuery = encodeURIComponent(songTitle.trim());
     const apiUrl = `https://itunes.apple.com/search?term=${searchQuery}&media=music&limit=1`;
+    
+    console.log('🎵 Calling iTunes API directly:', apiUrl);
     
     // Add Accept header to ensure proper content negotiation
     // Note: User-Agent cannot be set in fetch (forbidden header), but Accept helps
@@ -13661,26 +14049,33 @@ async function fetchAlbumArt(songTitle) {
       credentials: 'omit'
     });
     
+    console.log('🎵 iTunes API response status:', response.status, 'ok:', response.ok);
+    
     if (!response.ok) {
       console.warn('iTunes API request failed:', response.status, response.statusText);
       return null;
     }
 
     const data = await response.json();
+    console.log('🎵 iTunes API data:', data?.results?.length || 0, 'results');
     
     // Extract album art URL from iTunes response
     if (data?.results?.[0]?.artworkUrl100) {
       // iTunes provides artworkUrl100 (100x100), artworkUrl60 (60x60), etc.
       // Return both medium (600x600) for fast initial load and large (10000x10000) for high quality
       const smallUrl = data.results[0].artworkUrl100.replace('100x100', '600x600');
-      const largeUrl = data.results[0].artworkUrl100.replace('100x100', '10000x10000');
+      const largeUrl = data.results[0].artworkUrl100.replace('100x100', '3000x3000');
+      console.log('🎵 Found artwork URLs - small:', smallUrl.substring(0, 50), 'large:', largeUrl.substring(0, 50));
       return { small: smallUrl, large: largeUrl };
+    } else {
+      console.warn('🎵 No artworkUrl100 in iTunes response');
     }
 
     return null;
   } catch (error) {
     // Enhanced error logging to help debug mobile issues
-    console.warn('Error fetching album art:', error);
+    console.error('❌ Error fetching album art:', error);
+    console.error('❌ Error name:', error.name, 'message:', error.message);
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       console.warn('Network error - this may be a CORS or connectivity issue on mobile');
     }
@@ -14578,6 +14973,7 @@ function collectSongKeys() {
 //    - DELETE: Managers can delete files, users can delete their own uploads
 
 const STORAGE_BUCKET = 'song-resources';
+const PROFILE_PICTURES_BUCKET = 'profile-pictures';
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB in bytes
 
 // Validate file size (20MB limit)
@@ -14615,23 +15011,19 @@ function generateFilePath(teamId, songId, setSongId, fileName, isAlbumArt = fals
   throw new Error('Either songId or setSongId must be provided');
 }
 
-// Generate file path for profile pictures (using team-based structure for RLS)
-function generateProfilePicturePath(teamId, userId, fileName) {
+// Generate file path for profile pictures (user-specific, not team-specific)
+function generateProfilePicturePath(userId, fileName) {
   const uuid = crypto.randomUUID();
   const timestamp = Date.now();
   const extension = fileName.split('.').pop();
   const uniqueFileName = `${uuid}-${timestamp}.${extension}`;
-  // Use team-based path structure to match existing RLS policies
-  return `${teamId}/profiles/${userId}/${uniqueFileName}`;
+  // User-specific path structure
+  return `profiles/${userId}/${uniqueFileName}`;
 }
 
 // Upload profile picture to Supabase Storage
-async function uploadProfilePicture(file, userId, teamId) {
+async function uploadProfilePicture(file, userId) {
   try {
-    if (!teamId) {
-      return { success: false, error: 'Team ID is required for profile picture upload' };
-    }
-
     // Validate file size (max 5MB for profile pictures)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
@@ -14643,12 +15035,12 @@ async function uploadProfilePicture(file, userId, teamId) {
       return { success: false, error: 'File must be an image' };
     }
 
-    // Generate file path using team-based structure
-    const filePath = generateProfilePicturePath(teamId, userId, file.name);
+    // Generate file path (user-specific)
+    const filePath = generateProfilePicturePath(userId, file.name);
 
-    // Upload file
+    // Upload file to dedicated profile pictures bucket
     const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET)
+      .from(PROFILE_PICTURES_BUCKET)
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
@@ -14728,16 +15120,16 @@ async function deleteFileFromSupabase(filePath) {
 }
 
 // Get signed URL for file access (valid for 1 hour)
-async function getFileUrl(filePath) {
+async function getFileUrl(filePath, bucket = STORAGE_BUCKET) {
   if (!filePath) {
     console.error('getFileUrl called with null/undefined filePath');
     return null;
   }
 
   try {
-    console.log('Generating signed URL for:', filePath);
+    console.log('Generating signed URL for:', filePath, 'from bucket:', bucket);
     const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET)
+      .from(bucket)
       .createSignedUrl(filePath, 3600); // 1 hour expiry
 
     if (error) {
@@ -16302,18 +16694,27 @@ const THEMES = {
   cadencedefault: "#ff7b51",
 
   // Complex themes
-  crazy: {
-    "--accent-color": "#ff00ff",
-    "--bg-primary": "#000000",
-    "--bg-secondary": "#111111",
-    "--bg-tertiary": "#222222", // Input background
-    "--bg-card": "#222222",
-    "--text-primary": "#00ff00",
-    "--text-secondary": "#ccffcc",
-    "--text-muted": "#88aa88",
-    "--border-color": "#44aa44",
-    "--secondary-btn-bg": "#333333",
-    "--secondary-btn-bg-hover": "#444444"
+  classic: {
+    "--accent-color": "#dcff51",
+    "--accent-light": "color-mix(in srgb, var(--accent-color) 20%, black)",
+    "--accent-lighter": "color-mix(in srgb, var(--accent-color) 10%, black)",
+    "--bg-primary": "#0a0a0a",
+    "--bg-secondary": "#1a1a1a",
+    "--bg-tertiary": "#252525",
+    "--bg-card": "#151515",
+    "--bg-card-hover": "#2a2a2a",
+    "--text-primary": "#ffffff",
+    "--text-secondary": "#e5e5e5",
+    "--text-muted": "#a0a0a0",
+    "--border-color": "rgba(255, 255, 255, 0.08)",
+    "--border-light": "rgba(255, 255, 255, 0.12)",
+    "--border-accent": "rgba(220, 255, 81, 0.3)",
+
+    "--glass-bg": "rgba(30, 30, 30, 0.1)",
+    "--glass-border": "rgba(255, 255, 255, 0.1)",
+    "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
+    "--glass-backdrop": "blur(12px)",
+    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)"
   },
 
   ocean: {
@@ -16332,7 +16733,9 @@ const THEMES = {
     "--glass-bg": "rgba(30, 30, 30, 0.1)",
     "--glass-border": "rgba(255, 255, 255, 0.1)",
     "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
-    "--glass-backdrop": "blur(12px)"
+    "--glass-backdrop": "blur(12px)",
+    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)"
+
   },
 
   sunset: {
@@ -16351,7 +16754,9 @@ const THEMES = {
     "--glass-bg": "rgba(30, 30, 30, 0.1)",
     "--glass-border": "rgba(255, 255, 255, 0.1)",
     "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
-    "--glass-backdrop": "blur(12px)"
+    "--glass-backdrop": "blur(12px)",
+    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)"
+
   },
 
   forest: {
@@ -16370,7 +16775,9 @@ const THEMES = {
     "--glass-bg": "rgba(30, 30, 30, 0.1)",
     "--glass-border": "rgba(255, 255, 255, 0.1)",
     "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
-    "--glass-backdrop": "blur(12px)"
+    "--glass-backdrop": "blur(12px)",
+    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)"
+
   },
 
   midnight: {
@@ -16389,7 +16796,9 @@ const THEMES = {
     "--glass-bg": "rgba(30, 30, 30, 0.1)",
     "--glass-border": "rgba(255, 255, 255, 0.1)",
     "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
-    "--glass-backdrop": "blur(12px)"
+    "--glass-backdrop": "blur(12px)",
+    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)"
+
   }
 };
 
@@ -17476,8 +17885,8 @@ async function loadProfilePicturePreview() {
   const profilePicturePath = state.profile?.profile_picture_path;
   
   if (profilePicturePath) {
-    // Get signed URL for profile picture
-    const url = await getFileUrl(profilePicturePath);
+    // Get signed URL for profile picture from profile pictures bucket
+    const url = await getFileUrl(profilePicturePath, PROFILE_PICTURES_BUCKET);
     if (url) {
       previewEl.innerHTML = `<img src="${url}" alt="Profile picture" style="width: 100%; height: 100%; object-fit: cover;">`;
       if (removeBtn) removeBtn.style.display = "block";
@@ -17552,8 +17961,8 @@ async function updateUserProfilePicture() {
   const profilePicturePath = state.profile?.profile_picture_path;
   
   if (profilePicturePath) {
-    // Get signed URL for profile picture
-    const url = await getFileUrl(profilePicturePath);
+    // Get signed URL for profile picture from profile pictures bucket
+    const url = await getFileUrl(profilePicturePath, PROFILE_PICTURES_BUCKET);
     if (url) {
       profilePictureEl.innerHTML = `<img src="${url}" alt="Profile picture" style="width: 100%; height: 100%; object-fit: cover;">`;
       return;
@@ -17579,7 +17988,7 @@ async function updateUserProfilePicture() {
 // Get profile picture URL for a user (by profile picture path)
 async function getUserProfilePictureUrl(profilePicturePath, fullName) {
   if (profilePicturePath) {
-    const url = await getFileUrl(profilePicturePath);
+    const url = await getFileUrl(profilePicturePath, PROFILE_PICTURES_BUCKET);
     if (url) return url;
   }
   return null; // Return null if no picture, caller will handle fallback
@@ -17760,17 +18169,11 @@ async function handleEditAccountSubmit(e) {
     
     // Delete old picture if it exists
     if (profilePicturePath) {
-      await deleteFileFromSupabase(profilePicturePath);
+      await deleteFileFromSupabase(profilePicturePath, PROFILE_PICTURES_BUCKET);
     }
 
-    // Upload new picture (need team ID for RLS policies)
-    const teamId = state.currentTeamId;
-    if (!teamId) {
-      toastError("Unable to upload profile picture: No team selected.");
-      return;
-    }
-
-    const uploadResult = await uploadProfilePicture(file, state.session.user.id, teamId);
+    // Upload new picture
+    const uploadResult = await uploadProfilePicture(file, state.session.user.id);
     if (!uploadResult.success) {
       toastError(`Failed to upload profile picture: ${uploadResult.error}`);
       return;
@@ -17778,7 +18181,7 @@ async function handleEditAccountSubmit(e) {
     profilePicturePath = uploadResult.filePath;
   } else if (shouldRemovePicture && profilePicturePath) {
     // Remove profile picture
-    await deleteFileFromSupabase(profilePicturePath);
+    await deleteFileFromSupabase(profilePicturePath, PROFILE_PICTURES_BUCKET);
     profilePicturePath = null;
   }
 
