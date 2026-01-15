@@ -4034,20 +4034,8 @@ i {
     max-height: 95vh;
   }
 
-  .stats-container {
-    flex-direction: column;
-    gap: 1.5rem;
-    align-items: center;
-  }
-
-  .pie-chart-container {
-    width: 100px;
-    height: 100px;
-  }
-
-  .stats-legend {
-    width: 100%;
-  }
+  /* Keep desktop layout - stats container remains horizontal */
+  /* .stats-container stays as flex row (desktop default) */
 
   .person-details-header {
     padding: 2rem 1.5rem 1.5rem;
