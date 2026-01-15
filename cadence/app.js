@@ -12999,8 +12999,14 @@ async function searchSongResources(searchTerm, existingResults) {
       return;
     }
 
+    // Early duplicate check - before doing any async work
+    if (isSongAlreadyAdded(song.id)) {
+      continue; // Skip to next song
+    }
+
     let matchFound = false;
-    let matchContext = "";
+    let resourceMatchContext = "";
+    let itunesMatchContext = "";
     let isLinkTitleMatch = false;
 
     const links = song.song_links || [];
@@ -13010,7 +13016,7 @@ async function searchSongResources(searchTerm, existingResults) {
       if ((link.title || "").toLowerCase().includes(searchTextForResources.toLowerCase())) {
         matchFound = true;
         isLinkTitleMatch = true;
-        matchContext = `Link: ${highlightMatch(link.title, searchTextForResources)}`;
+        resourceMatchContext = `Link: ${highlightMatch(link.title, searchTextForResources)}`;
         break;
       }
     }
@@ -13033,7 +13039,7 @@ async function searchSongResources(searchTerm, existingResults) {
             const index = text.toLowerCase().indexOf(searchTextForResources.toLowerCase());
             const start = Math.max(0, index - 20);
             const end = Math.min(text.length, index + searchTextForResources.length + 20);
-            matchContext = "..." + highlightMatch(text.substring(start, end), searchTextForResources) + "...";
+            resourceMatchContext = "..." + highlightMatch(text.substring(start, end), searchTextForResources) + "...";
           }
         } catch (err) {
           console.warn(`⚠️ Failed to parse PDF for song ${song.title}:`, err);
@@ -13042,7 +13048,6 @@ async function searchSongResources(searchTerm, existingResults) {
     }
     
     // 3. Check iTunes Metadata (always check if we have iTunes filters or search text, even if resource match found)
-    let itunesMatchContext = "";
     if ((hasItunesFilters || searchTextForResources)) {
       // Stop if search was aborted
       try {
@@ -13088,12 +13093,12 @@ async function searchSongResources(searchTerm, existingResults) {
           }
           
           // Also check if search text matches (if no specific filters)
-          // BUT: if we already have a resource match, show iTunes metadata regardless of text match
+          // Always check if iTunes actually matches, regardless of whether we have a resource match
           if (matchesFilters && (!hasItunesFilters || searchTextForResources)) {
             // If we have filters, they've already been checked above
             // If we only have search text, check if it matches any metadata field
-            // UNLESS we already have a resource match - then show iTunes metadata anyway
-            if (!hasItunesFilters && searchTextForResources && !matchFound) {
+            // Always check this, even if we already have a resource match
+            if (!hasItunesFilters && searchTextForResources) {
               const searchLower = searchTextForResources.toLowerCase();
               const matchesText = 
                 (itunesItem.trackName || '').toLowerCase().includes(searchLower) ||
@@ -13102,14 +13107,11 @@ async function searchSongResources(searchTerm, existingResults) {
                 (itunesItem.primaryGenreName || '').toLowerCase().includes(searchLower);
               if (!matchesText) matchesFilters = false;
             }
-            // If matchFound is true (resource match exists), we'll show iTunes metadata regardless
           }
           
-          // Show iTunes metadata if:
-          // 1. Filters match, OR
-          // 2. We already have a resource match (show iTunes as additional context)
-          if (matchesFilters || matchFound) {
-            // Mark as iTunes match (even if we already had a resource match)
+          // Only show iTunes metadata if iTunes actually matched
+          if (matchesFilters) {
+            // Mark as iTunes match
             itunesMatchedSongIds.add(song.id);
             
             // Build iTunes match context
@@ -13132,14 +13134,11 @@ async function searchSongResources(searchTerm, existingResults) {
               ? `iTunes: ${contextParts.join(', ')}`
               : 'iTunes metadata match';
             
-            // If no resource match yet, mark as found and use iTunes context
+            // If no resource match yet, mark as found
             if (!matchFound) {
               matchFound = true;
-              matchContext = itunesMatchContext;
-            } else {
-              // If we already have a resource match, append iTunes info to the context
-              matchContext = `${matchContext} | ${itunesMatchContext}`;
             }
+            // Note: we keep resourceMatchContext and itunesMatchContext separate for better rendering
           }
         }
       } catch (err) {
@@ -13157,20 +13156,20 @@ async function searchSongResources(searchTerm, existingResults) {
         continue; // Skip this song, continue to next
       }
       
-      // Check for duplicates
+      // Double-check for duplicates (in case async operations completed in parallel)
       if (isSongAlreadyAdded(song.id)) {
         console.log(`⏭️ Skipping duplicate song: ${song.title} (${song.id})`);
         continue; // Skip to next song
       }
+
+      // Mark as added BEFORE adding to DOM to prevent race conditions
+      addedSongIds.add(song.id);
 
       // Remove "No songs match" message if it exists
       const noSongsMsg = Array.from(list.children).find(child => child.tagName === 'P' && child.textContent.includes("No songs match"));
       if (noSongsMsg) {
         noSongsMsg.remove();
       }
-
-      // Mark as added
-      addedSongIds.add(song.id);
 
       // Append song card
       const div = document.createElement("div");
@@ -13187,7 +13186,8 @@ async function searchSongResources(searchTerm, existingResults) {
       const highlightedDuration = durationStr ? `<span>Duration: ${durationStr}</span>` : '';
 
       const isItunesMatch = itunesMatchedSongIds.has(song.id);
-      const hasResourceMatch = isLinkTitleMatch || (!isItunesMatch && matchContext && !matchContext.includes('iTunes:'));
+      // Check if there's a resource match (link title or PDF content)
+      const hasResourceMatch = isLinkTitleMatch || !!resourceMatchContext;
       
       // Determine badge - prioritize resource matches, but show both if applicable
       let badgeIcon, badgeText;
@@ -13205,6 +13205,34 @@ async function searchSongResources(searchTerm, existingResults) {
         badgeText = 'Match';
       }
 
+      // Build match context HTML - separate sections for resource and iTunes matches
+      let matchContextHtml = '';
+      if (hasResourceMatch && isItunesMatch) {
+        // Both matches - show in separate sections
+        matchContextHtml = `
+          <div class="song-match-context">
+            <small class="muted">${resourceMatchContext}</small>
+          </div>
+          <div class="song-match-context" style="margin-top: 0.5rem;">
+            <small class="muted">${itunesMatchContext}</small>
+          </div>
+        `;
+      } else if (hasResourceMatch) {
+        // Only resource match
+        matchContextHtml = `
+          <div class="song-match-context">
+            <small class="muted">${resourceMatchContext}</small>
+          </div>
+        `;
+      } else if (isItunesMatch) {
+        // Only iTunes match
+        matchContextHtml = `
+          <div class="song-match-context">
+            <small class="muted">${itunesMatchContext}</small>
+          </div>
+        `;
+      }
+
       div.innerHTML = `
         <div class="set-song-header song-card-header">
           <div class="set-song-info">
@@ -13218,9 +13246,7 @@ async function searchSongResources(searchTerm, existingResults) {
               ${highlightedTime}
               ${highlightedDuration}
             </div>
-            <div class="song-match-context">
-              <small class="muted">${matchContext}</small>
-            </div>
+            ${matchContextHtml}
           </div>
           <div class="set-song-actions song-card-actions">
             <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
@@ -13391,14 +13417,14 @@ async function searchSongResources(searchTerm, existingResults) {
               continue;
             }
             
+            // Mark as added BEFORE adding to DOM to prevent race conditions
+            addedSongIds.add(song.id);
+            
             // Remove "No songs match" message if it exists
             const noSongsMsg = Array.from(list.children).find(child => child.tagName === 'P' && child.textContent.includes("No songs match"));
             if (noSongsMsg) {
               noSongsMsg.remove();
             }
-            
-            // Mark as added
-            addedSongIds.add(song.id);
             
             // Create and append song card
             const div = document.createElement("div");
