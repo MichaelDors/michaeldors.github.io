@@ -14343,6 +14343,10 @@ async function displayAlbumArt(content, albumArtData, song) {
     
     if (!modal || !modalImg) return;
     
+    // Reset any previously set dimensions
+    modalImg.style.width = '';
+    modalImg.style.height = '';
+    
     // Use the album art data that was passed to this function
     // For override, use the override URL; for iTunes, use large version
     if (albumArtData.isOverride) {
@@ -14351,11 +14355,44 @@ async function displayAlbumArt(content, albumArtData, song) {
     } else {
       // For iTunes, prefer large version
       modalImg.src = img.src; // Start with current for instant display
+      
+      // Function to capture and lock the displayed size
+      const lockImageSize = () => {
+        // Use requestAnimationFrame to ensure the image has been rendered
+        requestAnimationFrame(() => {
+          if (modalImg.offsetWidth > 0 && modalImg.offsetHeight > 0) {
+            // Capture the actual rendered size
+            const renderedWidth = modalImg.offsetWidth;
+            const renderedHeight = modalImg.offsetHeight;
+            
+            // Set explicit dimensions to maintain size when high-res image loads
+            modalImg.style.width = `${renderedWidth}px`;
+            modalImg.style.height = `${renderedHeight}px`;
+            console.log('🔒 Locked image size:', renderedWidth, 'x', renderedHeight);
+          }
+        });
+      };
+      
+      // Capture size once the initial image loads and is displayed
+      if (modalImg.complete && modalImg.naturalWidth > 0) {
+        // Image already loaded, wait a frame for rendering
+        lockImageSize();
+      } else {
+        modalImg.addEventListener('load', lockImageSize, { once: true });
+      }
+      
       if (albumArtData.large && albumArtData.large !== albumArtData.small) {
         // Load large image when modal opens (especially important on mobile where we skip preload)
         console.log('🖼️ Modal opened, loading large image:', albumArtData.large.substring(0, 50));
         loadImageWithFallback(albumArtData.large).then(largeBlobUrl => {
           if (largeBlobUrl) {
+            // Ensure we have locked dimensions before swapping
+            if (!modalImg.style.width && modalImg.offsetWidth > 0) {
+              modalImg.style.width = `${modalImg.offsetWidth}px`;
+              modalImg.style.height = `${modalImg.offsetHeight}px`;
+            }
+            
+            // Swap to high-res image while maintaining the locked size
             modalImg.src = largeBlobUrl;
             console.log('✅ Large image loaded in modal');
           } else {
@@ -19296,16 +19333,18 @@ function renderPieChart(accepted, declined, pending, total) {
     pieTotalEl.textContent = total;
   }
   
-  // Clear existing paths (but keep the background circle)
+  // Clear existing paths and circles (but keep the background circle)
   const existingPaths = pieChartEl.querySelectorAll('path');
   existingPaths.forEach(p => p.remove());
+  const existingCircles = pieChartEl.querySelectorAll('circle:not(#pie-background)');
+  existingCircles.forEach(c => c.remove());
   
   // If no assignments, show grey background
   if (total === 0) {
     if (pieBackgroundEl) {
       // Use a proper grey color that works in both light and dark mode
       const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const greyColor = isDark ? '#4a4a4a' : '#9ca3af'; // Medium grey for light mode, darker grey for dark mode
+      const greyColor = isDark ? '#36393d' : '#d9d9d9'; // Medium grey for light mode, darker grey for dark mode
       pieBackgroundEl.style.fill = greyColor;
     }
     return;
