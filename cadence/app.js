@@ -118,6 +118,84 @@ const state = {
   songSortOption: "relevancy" // Default sort: relevancy, newest, oldest, alphabetical
 };
 
+// PostHog tracking helper - safely tracks events even if PostHog isn't loaded yet
+function trackPostHogEvent(eventName, properties = {}) {
+  if (typeof window === 'undefined') {
+    console.warn('PostHog: window not available');
+    return false;
+  }
+
+  // Check if PostHog is available and has capture method
+  const posthog = window.posthog;
+  const hasPostHog = !!posthog;
+  const hasCapture = posthog && typeof posthog.capture === 'function';
+  
+  console.log('📊 PostHog debug:', {
+    hasPostHog,
+    hasCapture,
+    posthogType: typeof posthog,
+    posthogKeys: posthog ? Object.keys(posthog).slice(0, 10) : null,
+    eventName
+  });
+
+  // Try to capture immediately if PostHog is ready
+  if (hasPostHog && hasCapture) {
+    try {
+      posthog.capture(eventName, properties);
+      console.log('✅ PostHog captured:', eventName, properties);
+      return true;
+    } catch (e) {
+      console.error('❌ PostHog capture error:', e);
+      return false;
+    }
+  }
+  
+  // If PostHog isn't ready, queue the event
+  if (!window._posthogQueue) {
+    window._posthogQueue = [];
+  }
+  window._posthogQueue.push({ eventName, properties });
+  console.log('⏳ PostHog queued (not ready):', eventName, properties);
+  
+  return false;
+}
+
+// Flush queued PostHog events
+function flushPostHogQueue() {
+  if (typeof window !== 'undefined' && window._posthogQueue && window._posthogQueue.length > 0) {
+    if (window.posthog && typeof window.posthog.capture === 'function') {
+      console.log('📊 PostHog: Flushing', window._posthogQueue.length, 'queued events');
+      window._posthogQueue.forEach(({ eventName, properties }) => {
+        try {
+          window.posthog.capture(eventName, properties);
+        } catch (e) {
+          console.warn('PostHog capture error:', e);
+        }
+      });
+      window._posthogQueue = [];
+    }
+  }
+}
+
+// Make flushPostHogQueue globally available
+if (typeof window !== 'undefined') {
+  window.flushPostHogQueue = flushPostHogQueue;
+}
+
+// Monitor for PostHog to become ready
+if (typeof window !== 'undefined') {
+  // Check periodically if PostHog loaded
+  const checkPostHogReady = setInterval(() => {
+    if (window.posthog && typeof window.posthog.capture === 'function') {
+      clearInterval(checkPostHogReady);
+      flushPostHogQueue();
+    }
+  }, 100);
+  
+  // Stop checking after 10 seconds
+  setTimeout(() => clearInterval(checkPostHogReady), 10000);
+}
+
 const el = (id) => document.getElementById(id);
 const authGate = el("auth-gate");
 const dashboard = el("dashboard");
@@ -1214,6 +1292,11 @@ function bindEvents() {
         picker.classList.remove("hidden");
         // Save unlocked state
         document.cookie = "theme_picker_enabled=true; path=/; max-age=31536000"; // 1 year
+        
+        // PostHog: Track theme Easter egg discovery
+        trackPostHogEvent('theme_easter_egg_discovered', {
+          team_id: state.currentTeamId
+        });
       }
       return;
     }
@@ -3308,6 +3391,14 @@ async function fetchUserTeams() {
 
     console.log('  - ✅ Found', state.userTeams.length, 'teams');
     console.log('  - Teams Data:', JSON.stringify(state.userTeams, null, 2));
+    
+    // PostHog: Track number of teams per user
+    if (state.userTeams.length > 0) {
+      trackPostHogEvent('user_teams_count', {
+        team_count: state.userTeams.length,
+        team_ids: state.userTeams.map(t => t.id)
+      });
+    }
 
     // Auto-detect and save timezone if missing for owned/managed teams
     const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -6728,6 +6819,7 @@ function showSetDetail(set) {
   const deleteBtn = el("btn-delete-set-detail");
   const viewAsMemberDetailBtn = el("btn-view-as-member-detail");
   const publishBtn = el("btn-publish-set-detail");
+  const pinBtn = el("btn-pin-set-detail");
   const headerAddDropdown = el("header-add-dropdown-container");
   const mobileHeaderAddDropdown = el("mobile-header-add-dropdown-container");
 
@@ -6736,6 +6828,44 @@ function showSetDetail(set) {
 
   if (editBtn) editBtn.classList.toggle("hidden", !isMgr);
   if (deleteBtn) deleteBtn.classList.toggle("hidden", !isMgr);
+
+  // Setup pin button
+  if (pinBtn) {
+    const isPinned = set.is_pinned === true;
+    const icon = pinBtn.querySelector("i");
+    
+    // Update initial button state
+    if (icon) {
+      if (isPinned) {
+        icon.classList.remove("fa-regular", "fa-thumbtack");
+        icon.classList.add("fa-solid", "fa-thumbtack");
+        pinBtn.innerHTML = '<i class="fa-solid fa-thumbtack"></i>\n                Unpin';
+        pinBtn.classList.add("pinned");
+      } else {
+        icon.classList.remove("fa-solid", "fa-thumbtack");
+        icon.classList.add("fa-regular", "fa-thumbtack");
+        pinBtn.innerHTML = '<i class="fa-regular fa-thumbtack"></i>\n                Pin';
+        pinBtn.classList.remove("pinned");
+      }
+    }
+    
+    // Remove existing event listeners by cloning the button
+    const newPinBtn = pinBtn.cloneNode(true);
+    pinBtn.parentNode.replaceChild(newPinBtn, pinBtn);
+    const finalPinBtn = el("btn-pin-set-detail");
+    finalPinBtn.addEventListener("click", async () => {
+      await togglePinSet(set, finalPinBtn);
+      // Update the button text after toggling
+      const updatedIsPinned = set.is_pinned === true;
+      if (updatedIsPinned) {
+        finalPinBtn.innerHTML = '<i class="fa-solid fa-thumbtack"></i>\n                Unpin';
+        finalPinBtn.classList.add("pinned");
+      } else {
+        finalPinBtn.innerHTML = '<i class="fa-regular fa-thumbtack"></i>\n                Pin';
+        finalPinBtn.classList.remove("pinned");
+      }
+    });
+  }
 
   // Show/hide publish button - only show for managers when set is unpublished and team requires publishing
   if (publishBtn) {
@@ -8299,6 +8429,12 @@ function openSetModal(set = null) {
   setModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   el("set-modal-title").textContent = set ? "Edit Set" : "New Set";
+  
+  // PostHog: Track modal open
+  trackPostHogEvent('modal_opened', {
+    modal_type: set ? 'edit_set' : 'new_set',
+    team_id: state.currentTeamId
+  });
   el("set-title").value = set?.title ?? "";
   el("set-date").value = set?.scheduled_date ?? "";
   el("set-description").value = set?.description ?? "";
@@ -8803,6 +8939,14 @@ async function notifyAssignmentEmails(setId, teamId, recipients, mode) {
             toastError(
               "Couldn't send assignment emails: this team has hit its daily email limit. Please contact support if you think this is a mistake."
             );
+          } else if (data?.summary?.sent) {
+            // PostHog: Track emails sent per day per team
+            trackPostHogEvent('emails_sent', {
+              team_id: teamId,
+              email_count: data.summary.sent,
+              set_id: setId,
+              mode: mode
+            });
           }
         }
       })
@@ -9467,6 +9611,13 @@ async function handleSetSubmit(event) {
     console.error(response.error);
     return;
   }
+
+  // PostHog: Track modal conversion
+  trackPostHogEvent('modal_converted', {
+    modal_type: isEditing ? 'edit_set' : 'new_set',
+    team_id: state.currentTeamId,
+    set_id: isEditing ? editingSetId : response.data.id
+  });
 
   const finalSetId = response.data.id;
 
@@ -12217,6 +12368,12 @@ function openInviteModal(prefilledName = null) {
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   el("invite-form").reset();
+  
+  // PostHog: Track modal open
+  trackPostHogEvent('modal_opened', {
+    modal_type: 'add_person_to_team',
+    team_id: state.currentTeamId
+  });
 
   // Hide name field initially
   const nameLabel = el("invite-name-label");
@@ -12445,6 +12602,21 @@ async function handleInviteSubmit(event) {
     messageEl.textContent = `${email} has been added to the team! They'll see this team in their account.`;
     messageEl.classList.remove("error-text");
     messageEl.classList.add("muted");
+    
+    // PostHog: Track person added (preexisting account)
+    trackPostHogEvent('person_added_to_team', {
+      team_id: state.currentTeamId,
+      user_type: 'preexisting_account',
+      person_id: existingProfile.id
+    });
+    
+    // PostHog: Track modal conversion
+    trackPostHogEvent('modal_converted', {
+      modal_type: 'add_person_to_team',
+      team_id: state.currentTeamId,
+      user_type: 'preexisting_account'
+    });
+    
     el("invite-form").reset();
     return;
   }
@@ -12479,6 +12651,21 @@ async function handleInviteSubmit(event) {
   messageEl.textContent = `Invite sent to ${email}! They'll receive an email to create their account and join the team.`;
   messageEl.classList.remove("error-text");
   messageEl.classList.add("muted");
+  
+  // PostHog: Track person added (invite)
+  trackPostHogEvent('person_added_to_team', {
+    team_id: state.currentTeamId,
+    user_type: 'invite',
+    email: normalizedEmail
+  });
+  
+  // PostHog: Track modal conversion
+  trackPostHogEvent('modal_converted', {
+    modal_type: 'add_person_to_team',
+    team_id: state.currentTeamId,
+    user_type: 'invite'
+  });
+  
   el("invite-form").reset();
 
   // Optionally store the invite info for profile creation
@@ -13891,6 +14078,12 @@ async function openSongEditModal(songId = null) {
 
   // Show modal immediately to ensure responsiveness
   modal.classList.remove("hidden");
+  
+  // PostHog: Track modal open
+  trackPostHogEvent('modal_opened', {
+    modal_type: songId ? 'edit_song' : 'new_song',
+    team_id: state.currentTeamId
+  });
   // Only set body overflow if song modal isn't already open
   if (!songModalOpen) {
     document.body.style.overflow = "hidden";
@@ -17375,6 +17568,13 @@ async function handleSongEditSubmit(event) {
     return;
   }
 
+  // PostHog: Track modal conversion
+  trackPostHogEvent('modal_converted', {
+    modal_type: songId ? 'edit_song' : 'new_song',
+    team_id: state.currentTeamId,
+    song_id: songId || response.data.id
+  });
+
   const finalSongId = response.data.id;
   const keys = collectSongKeys();
   const links = collectSongLinks();
@@ -19152,6 +19352,12 @@ function openEditAccountModal() {
 
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
+  
+  // PostHog: Track modal open
+  trackPostHogEvent('modal_opened', {
+    modal_type: 'edit_account',
+    team_id: state.currentTeamId
+  });
 
   // Update MFA UI
   updateMfaStatusUI();
@@ -19691,6 +19897,14 @@ async function handleEditAccountSubmit(e) {
     toastError("Unable to update account. Check console.");
     return;
   }
+
+  // PostHog: Track modal conversion
+  trackPostHogEvent('modal_converted', {
+    modal_type: 'edit_account',
+    team_id: state.currentTeamId,
+    name_changed: nameChanged,
+    picture_changed: pictureChanged
+  });
 
   // Also update auth metadata to keep it in sync
   if (nameChanged) {

@@ -26,6 +26,46 @@
   <meta property="og:description" content="Schedule sets and manage your team" />
   <meta property="og:site_name" content="Michael Dors" />
   <meta property="og:url" content="https://michaeldors.com/cadence" />
+
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group identify setPersonProperties setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags resetGroups onFeatureFlags addFeatureFlagsHandler onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_ki3tgfxMI9num84CiDrln5HqCkLV1xoSNoDkxvEVBTG', {
+        api_host: 'https://us.i.posthog.com',
+        loaded: function(posthogInstance) {
+          console.log('✅ PostHog loaded and ready');
+          console.log('PostHog instance:', posthogInstance);
+          console.log('PostHog capture available:', typeof posthogInstance?.capture);
+          window.posthogReady = true;
+          
+          // Test capture immediately
+          try {
+            posthogInstance.capture('posthog_test_loaded', { test: true });
+            console.log('✅ PostHog test event sent');
+          } catch (e) {
+            console.error('❌ PostHog test capture failed:', e);
+          }
+          
+          // Flush any queued events (function will be available after app.js loads)
+          setTimeout(() => {
+            if (typeof window.flushPostHogQueue === 'function') {
+              window.flushPostHogQueue();
+            }
+          }, 100);
+        }
+    });
+    // Mark PostHog as initializing
+    window.posthogReady = false;
+    
+    // Debug: Check PostHog state after a delay
+    setTimeout(() => {
+      console.log('🔍 PostHog state check:', {
+        exists: typeof window.posthog !== 'undefined',
+        ready: window.posthogReady,
+        hasCapture: typeof window.posthog?.capture === 'function',
+        posthog: window.posthog
+      });
+    }, 2000);
+</script>
 </head>
 
 <body>
@@ -384,6 +424,9 @@
               <button id="btn-export-set-print" class="btn secondary ripple-btn" type="button"><i
                   class="fa-solid fa-print"></i>
                 Print</button>
+              <button id="btn-pin-set-detail" class="btn primary ripple-btn" type="button"><i
+                  class="fa-regular fa-thumbtack"></i>
+                Pin</button>
               <button id="btn-publish-set-detail" class="btn primary hidden ripple-btn" type="button"><i
                   class="fa-solid fa-eye"></i>
                 Publish</button>
@@ -1511,6 +1554,30 @@
   </div>
 
   <script type="module" src="app.js"></script>
+  
+  <!-- PostHog Debug Helper (remove in production) -->
+  <script>
+    // Make trackPostHogEvent available globally for testing
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        if (typeof trackPostHogEvent === 'function') {
+          window.testPostHog = function() {
+            console.log('🧪 Testing PostHog...');
+            trackPostHogEvent('manual_test_event', { 
+              timestamp: new Date().toISOString(),
+              test: true 
+            });
+            console.log('PostHog state:', {
+              posthog: window.posthog,
+              hasCapture: typeof window.posthog?.capture === 'function',
+              ready: window.posthogReady
+            });
+          };
+          console.log('💡 Run window.testPostHog() in console to test PostHog');
+        }
+      }, 1000);
+    });
+  </script>
 </body>
 
 </html>
