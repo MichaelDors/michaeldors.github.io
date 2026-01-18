@@ -115,7 +115,15 @@ const state = {
     tempFactorId: null
   },
   lottieAnimations: {},
-  songSortOption: "relevancy" // Default sort: relevancy, newest, oldest, alphabetical
+  songSortOption: "relevancy", // Default sort: relevancy, newest, oldest, alphabetical
+  // PostHog analytics tracking state
+  analytics: {
+    sessionStartTime: null,
+    currentPage: null,
+    pageStartTime: null,
+    timeTrackingIntervals: {}, // Track intervals for each page/modal
+    sessionId: null
+  }
 };
 
 // PostHog tracking helper - safely tracks events even if PostHog isn't loaded yet
@@ -129,20 +137,11 @@ function trackPostHogEvent(eventName, properties = {}) {
   const posthog = window.posthog;
   const hasPostHog = !!posthog;
   const hasCapture = posthog && typeof posthog.capture === 'function';
-  
-  console.log('📊 PostHog debug:', {
-    hasPostHog,
-    hasCapture,
-    posthogType: typeof posthog,
-    posthogKeys: posthog ? Object.keys(posthog).slice(0, 10) : null,
-    eventName
-  });
 
   // Try to capture immediately if PostHog is ready
   if (hasPostHog && hasCapture) {
     try {
       posthog.capture(eventName, properties);
-      console.log('✅ PostHog captured:', eventName, properties);
       return true;
     } catch (e) {
       console.error('❌ PostHog capture error:', e);
@@ -155,7 +154,6 @@ function trackPostHogEvent(eventName, properties = {}) {
     window._posthogQueue = [];
   }
   window._posthogQueue.push({ eventName, properties });
-  console.log('⏳ PostHog queued (not ready):', eventName, properties);
   
   return false;
 }
@@ -194,6 +192,244 @@ if (typeof window !== 'undefined') {
   
   // Stop checking after 10 seconds
   setTimeout(() => clearInterval(checkPostHogReady), 10000);
+}
+
+// ============================================================================
+// PostHog Analytics Tracking System
+// ============================================================================
+
+// Track time spent on pages/tabs/modals
+function startPageTimeTracking(pageName, properties = {}) {
+  if (!pageName) return;
+  
+  // Stop tracking previous page if exists
+  stopPageTimeTracking();
+  
+  const startTime = Date.now();
+  state.analytics.currentPage = pageName;
+  state.analytics.pageStartTime = startTime;
+  
+  // Track page view
+  trackPostHogEvent('page_viewed', {
+    page: pageName,
+    ...properties
+  });
+  
+  // Set up visibility change handler to pause/resume tracking
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      // Page hidden - pause tracking
+      if (state.analytics.pageStartTime) {
+        const timeSpent = Date.now() - state.analytics.pageStartTime;
+        if (timeSpent > 0) {
+          // Store partial time
+          if (!state.analytics.timeTrackingIntervals[pageName]) {
+            state.analytics.timeTrackingIntervals[pageName] = 0;
+          }
+          state.analytics.timeTrackingIntervals[pageName] += timeSpent;
+        }
+        state.analytics.pageStartTime = null;
+      }
+    } else {
+      // Page visible - resume tracking
+      if (state.analytics.currentPage === pageName) {
+        state.analytics.pageStartTime = Date.now();
+      }
+    }
+  };
+  
+  // Store handler for cleanup
+  state.analytics.visibilityHandler = handleVisibilityChange;
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
+function stopPageTimeTracking() {
+  if (!state.analytics.currentPage || !state.analytics.pageStartTime) return;
+  
+  const pageName = state.analytics.currentPage;
+  const timeSpent = Date.now() - state.analytics.pageStartTime;
+  
+  // Add to accumulated time
+  if (!state.analytics.timeTrackingIntervals[pageName]) {
+    state.analytics.timeTrackingIntervals[pageName] = 0;
+  }
+  state.analytics.timeTrackingIntervals[pageName] += timeSpent;
+  
+  // Send time spent event
+  const totalTime = state.analytics.timeTrackingIntervals[pageName];
+  trackPostHogEvent('time_on_page', {
+    page: pageName,
+    time_seconds: Math.round(totalTime / 1000),
+    time_ms: totalTime
+  });
+  
+  // Clean up
+  if (state.analytics.visibilityHandler) {
+    document.removeEventListener('visibilitychange', state.analytics.visibilityHandler);
+    state.analytics.visibilityHandler = null;
+  }
+  
+  state.analytics.currentPage = null;
+  state.analytics.pageStartTime = null;
+}
+
+// Track session start
+function trackSessionStart() {
+  const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  state.analytics.sessionId = sessionId;
+  state.analytics.sessionStartTime = Date.now();
+  
+  trackPostHogEvent('session_started', {
+    session_id: sessionId,
+    team_id: state.currentTeamId,
+    user_id: state.session?.user?.id
+  });
+  
+  // Track session end on page unload
+  window.addEventListener('beforeunload', trackSessionEnd);
+}
+
+// Track session end
+function trackSessionEnd() {
+  if (!state.analytics.sessionStartTime) return;
+  
+  const sessionDuration = Date.now() - state.analytics.sessionStartTime;
+  
+  // Stop any active page tracking
+  stopPageTimeTracking();
+  
+  trackPostHogEvent('session_ended', {
+    session_id: state.analytics.sessionId,
+    duration_seconds: Math.round(sessionDuration / 1000),
+    duration_ms: sessionDuration,
+    team_id: state.currentTeamId,
+    user_id: state.session?.user?.id
+  });
+  
+  // Use sendBeacon for reliable delivery on page unload
+  if (navigator.sendBeacon && window.posthog) {
+    try {
+      const event = {
+        event: 'session_ended',
+        properties: {
+          session_id: state.analytics.sessionId,
+          duration_seconds: Math.round(sessionDuration / 1000),
+          duration_ms: sessionDuration,
+          team_id: state.currentTeamId,
+          user_id: state.session?.user?.id
+        }
+      };
+      // PostHog uses /batch/ endpoint, but sendBeacon needs full URL
+      const url = 'https://us.i.posthog.com/batch/';
+      const data = JSON.stringify([event]);
+      navigator.sendBeacon(url, data);
+    } catch (e) {
+      console.warn('Failed to send session_end via sendBeacon:', e);
+    }
+  }
+}
+
+// Calculate and send aggregate metrics from Supabase data
+async function sendAggregateMetrics() {
+  if (!state.currentTeamId || !state.session?.user?.id) return;
+  
+  try {
+    // Get all sets for current team (use left join for optional relations)
+    const { data: sets, error: setsError } = await supabase
+      .from('sets')
+      .select(`
+        id,
+        is_published,
+        service_times(id),
+        rehearsal_times(id),
+        set_songs(id),
+        set_assignments(id),
+        set_time_alerts(id)
+      `)
+      .eq('team_id', state.currentTeamId);
+    
+    if (setsError) {
+      console.warn('Error fetching sets for aggregate metrics:', setsError);
+      return;
+    }
+    
+    // Get all songs for current team
+    const { data: songs, error: songsError } = await supabase
+      .from('songs')
+      .select('id, song_keys(id)')
+      .eq('team_id', state.currentTeamId);
+    
+    if (songsError) {
+      console.warn('Error fetching songs for aggregate metrics:', songsError);
+      return;
+    }
+    
+    // Get all users with pinned sets for this team
+    // First get all set IDs for this team, then check pinned_sets
+    const setIds = sets?.map(s => s.id) || [];
+    let uniquePinnedUsers = 0;
+    if (setIds.length > 0) {
+      const { data: pinnedSets, error: pinnedError } = await supabase
+        .from('pinned_sets')
+        .select('user_id, set_id')
+        .in('set_id', setIds);
+      
+      if (!pinnedError && pinnedSets) {
+        uniquePinnedUsers = new Set(pinnedSets.map(p => p.user_id)).size;
+      }
+    }
+    
+    // Calculate metrics
+    const totalSets = sets?.length || 0;
+    const setsWithServiceTime = sets?.filter(s => s.service_times && s.service_times.length > 0).length || 0;
+    const setsWithRehearsals = sets?.filter(s => s.rehearsal_times && s.rehearsal_times.length > 0).length || 0;
+    const publishedSets = sets?.filter(s => s.is_published).length || 0;
+    
+    const totalSongs = songs?.length || 0;
+    const totalKeys = songs?.reduce((sum, s) => sum + (s.song_keys?.length || 0), 0) || 0;
+    
+    const totalUsers = state.people?.length || 0;
+    
+    // Calculate averages
+    const avgSongsPerSet = totalSets > 0 
+      ? sets.reduce((sum, s) => sum + (s.set_songs?.length || 0), 0) / totalSets 
+      : 0;
+    
+    const avgRehearsalsPerSet = totalSets > 0
+      ? sets.reduce((sum, s) => sum + (s.rehearsal_times?.length || 0), 0) / totalSets
+      : 0;
+    
+    // For assignments, we need to get song assignments from set_songs
+    // This is complex, so let's get a simpler count
+    const totalSetAssignments = sets?.reduce((sum, s) => sum + (s.set_assignments?.length || 0), 0) || 0;
+    const avgAssignmentsPerSet = totalSets > 0 ? totalSetAssignments / totalSets : 0;
+    
+    const avgAlertsPerSet = totalSets > 0
+      ? sets.reduce((sum, s) => sum + (s.set_time_alerts?.length || 0), 0) / totalSets
+      : 0;
+    
+    // Send aggregate metrics as a single event
+    trackPostHogEvent('team_aggregate_metrics', {
+      team_id: state.currentTeamId,
+      total_sets: totalSets,
+      published_sets: publishedSets,
+      sets_with_service_time: setsWithServiceTime,
+      sets_with_service_time_pct: totalSets > 0 ? parseFloat((setsWithServiceTime / totalSets * 100).toFixed(2)) : 0,
+      sets_with_rehearsals: setsWithRehearsals,
+      sets_with_rehearsals_pct: totalSets > 0 ? parseFloat((setsWithRehearsals / totalSets * 100).toFixed(2)) : 0,
+      users_with_pinned_sets: uniquePinnedUsers,
+      users_with_pinned_sets_pct: totalUsers > 0 ? parseFloat((uniquePinnedUsers / totalUsers * 100).toFixed(2)) : 0,
+      avg_songs_per_set: parseFloat(avgSongsPerSet.toFixed(2)),
+      avg_rehearsals_per_set: parseFloat(avgRehearsalsPerSet.toFixed(2)),
+      avg_assignments_per_set: parseFloat(avgAssignmentsPerSet.toFixed(2)),
+      avg_alerts_per_set: parseFloat(avgAlertsPerSet.toFixed(2)),
+      total_songs: totalSongs,
+      avg_keys_per_song: totalSongs > 0 ? parseFloat((totalKeys / totalSongs).toFixed(2)) : 0
+    });
+    
+  } catch (error) {
+    console.error('Error calculating aggregate metrics:', error);
+  }
 }
 
 const el = (id) => document.getElementById(id);
@@ -321,6 +557,12 @@ function showDatabaseError() {
 // Helper to close modal with animation
 function closeModalWithAnimation(modalElement, onHidden) {
   if (!modalElement) return;
+
+  // Stop tracking time on modal if it was being tracked
+  const modalId = modalElement.id;
+  if (modalId && state.analytics.currentPage?.startsWith('modal_')) {
+    stopPageTimeTracking();
+  }
 
   // Add closing class to trigger exit animation
   modalElement.classList.add('closing');
@@ -1418,6 +1660,9 @@ function bindEvents() {
   });
 
   el("btn-logout-menu")?.addEventListener("click", () => {
+    // Track session end before logout
+    trackSessionEnd();
+    
     // Clear theme usage cookies
     document.cookie = 'theme_preference=; path=/; max-age=0';
     document.cookie = 'theme_picker_enabled=; path=/; max-age=0';
@@ -2583,6 +2828,23 @@ async function loadDataAndShowApp(session) {
 
     if (typeof authForm !== 'undefined') authForm?.reset();
     toggleAuthButton(false);
+    
+    // Track session start
+    trackSessionStart();
+    
+    // Start tracking time on initial tab
+    const savedTab = localStorage.getItem('cadence-active-tab') || 'sets';
+    const pageNameMap = {
+      'sets': 'Sets',
+      'songs': 'Songs',
+      'people': 'People'
+    };
+    if (pageNameMap[savedTab]) {
+      startPageTimeTracking(pageNameMap[savedTab], { team_id: state.currentTeamId });
+    }
+    
+    // Send initial aggregate metrics
+    sendAggregateMetrics();
 
   } catch (err) {
     console.error("Error loading app data:", err);
@@ -4036,7 +4298,8 @@ async function loadSets() {
 
   state.sets = data ?? [];
 
-  // Load pinned sets for the current user (even if not in current team)
+  // Load pinned sets for the current user, scoped to the current team.
+  // IMPORTANT: Do NOT merge cross-team pinned sets into state.sets.
   if (state.profile?.id) {
     try {
       const { data: pinnedData, error: pinnedError } = await supabase
@@ -4044,6 +4307,7 @@ async function loadSets() {
         .select(`
           set_id,
           set:set_id (
+            team_id,
             *,
             service_times (
               id,
@@ -4133,27 +4397,21 @@ async function loadSets() {
         .eq("user_id", state.profile.id);
 
       if (!pinnedError && pinnedData) {
-        // Extract the set objects and mark them as pinned
-        const pinnedSets = pinnedData
-          .map(item => item.set)
-          .filter(set => set !== null)
-          .map(set => ({ ...set, is_pinned: true }));
+        // Only consider pins for the active team.
+        const pinnedSetIdsForTeam = new Set(
+          pinnedData
+            .map(item => item.set)
+            .filter(set => set !== null && set.team_id === state.currentTeamId)
+            .map(set => set.id)
+        );
 
-        // Merge pinned sets into state.sets, avoiding duplicates
-        const existingSetIds = new Set(state.sets.map(s => s.id));
-        pinnedSets.forEach(pinnedSet => {
-          if (!existingSetIds.has(pinnedSet.id)) {
-            state.sets.push(pinnedSet);
-          } else {
-            // Mark existing set as pinned
-            const existingSet = state.sets.find(s => s.id === pinnedSet.id);
-            if (existingSet) {
-              existingSet.is_pinned = true;
-            }
-          }
+        // Mark pins on sets that are actually in this team's list.
+        // Also clear stale pin flags when switching teams.
+        state.sets.forEach(set => {
+          set.is_pinned = pinnedSetIdsForTeam.has(set.id);
         });
 
-        console.log('  - ✅ Pinned sets loaded:', pinnedSets.length, 'sets');
+        console.log('  - ✅ Pinned sets loaded (team-scoped):', pinnedSetIdsForTeam.size, 'sets');
       } else if (pinnedError && pinnedError.code !== 'PGRST116' && pinnedError.code !== '42P01') {
         console.warn('  - ⚠️ Error loading pinned sets (table may not exist yet):', pinnedError.message);
       }
@@ -4266,40 +4524,108 @@ async function loadPendingRequests() {
   }
 
   // Get pending set assignments
-  const { data: pendingSetAssignments } = await supabase
-    .from("set_assignments")
-    .select(`
-      id,
-      role,
-      set_id,
-      set:set_id (
+  // NOTE: Some deployments may not have created_at on these tables/embeds.
+  // We try to fetch created_at for response-time analytics, but gracefully fall back if PostgREST rejects the select.
+  let pendingSetAssignments = null;
+  {
+    // First attempt: include assignment.created_at (but NOT set.created_at)
+    let res = await supabase
+      .from("set_assignments")
+      .select(`
         id,
-        title,
-        scheduled_date
-      )
-    `)
-    .eq("person_id", currentUserId)
-    .eq("status", "pending");
-
-  // Get pending song assignments grouped by set
-  const { data: pendingSongAssignments } = await supabase
-    .from("song_assignments")
-    .select(`
-      id,
-      role,
-      set_song_id,
-      set_song:set_song_id (
-        id,
+        role,
         set_id,
+        created_at,
         set:set_id (
           id,
           title,
           scheduled_date
         )
-      )
-    `)
-    .eq("person_id", currentUserId)
-    .eq("status", "pending");
+      `)
+      .eq("person_id", currentUserId)
+      .eq("status", "pending");
+
+    if (res.error) {
+      // Fallback: drop created_at
+      const fallback = await supabase
+        .from("set_assignments")
+        .select(`
+          id,
+          role,
+          set_id,
+          set:set_id (
+            id,
+            title,
+            scheduled_date
+          )
+        `)
+        .eq("person_id", currentUserId)
+        .eq("status", "pending");
+
+      if (fallback.error) {
+        console.warn("Error fetching pending set assignments:", fallback.error);
+      } else {
+        pendingSetAssignments = fallback.data;
+      }
+    } else {
+      pendingSetAssignments = res.data;
+    }
+  }
+
+  // Get pending song assignments grouped by set
+  let pendingSongAssignments = null;
+  {
+    // First attempt: include assignment.created_at (but NOT embedded set.created_at)
+    let res = await supabase
+      .from("song_assignments")
+      .select(`
+        id,
+        role,
+        set_song_id,
+        created_at,
+        set_song:set_song_id (
+          id,
+          set_id,
+          set:set_id (
+            id,
+            title,
+            scheduled_date
+          )
+        )
+      `)
+      .eq("person_id", currentUserId)
+      .eq("status", "pending");
+
+    if (res.error) {
+      // Fallback: drop created_at
+      const fallback = await supabase
+        .from("song_assignments")
+        .select(`
+          id,
+          role,
+          set_song_id,
+          set_song:set_song_id (
+            id,
+            set_id,
+            set:set_id (
+              id,
+              title,
+              scheduled_date
+            )
+          )
+        `)
+        .eq("person_id", currentUserId)
+        .eq("status", "pending");
+
+      if (fallback.error) {
+        console.warn("Error fetching pending song assignments:", fallback.error);
+      } else {
+        pendingSongAssignments = fallback.data;
+      }
+    } else {
+      pendingSongAssignments = res.data;
+    }
+  }
 
   // Group song assignments by set
   const songAssignmentsBySet = {};
@@ -4328,7 +4654,8 @@ async function loadPendingRequests() {
         assignmentId: assignment.id,
         setId: assignment.set_id,
         set: assignment.set,
-        role: assignment.role
+        role: assignment.role,
+        created_at: assignment.created_at || assignment.set?.created_at
       });
     });
   }
@@ -4336,13 +4663,23 @@ async function loadPendingRequests() {
   // Add song-level pending requests (one per set)
   Object.keys(songAssignmentsBySet).forEach(setId => {
     const { set, assignments } = songAssignmentsBySet[setId];
+    // Get earliest created_at from assignments
+    const earliestCreated = assignments.reduce((earliest, a) => {
+      const createdAt = a.created_at || a.set_song?.set?.created_at;
+      if (!earliest || (createdAt && new Date(createdAt) < new Date(earliest))) {
+        return createdAt;
+      }
+      return earliest;
+    }, null);
+    
     pendingRequests.push({
       type: 'song',
       assignmentIds: assignments.map(a => a.id),
       setId: setId,
       set: set,
       roles: [...new Set(assignments.map(a => a.role))],
-      assignmentCount: assignments.length
+      assignmentCount: assignments.length,
+      created_at: earliestCreated || set?.created_at
     });
   });
 
@@ -4470,6 +4807,13 @@ async function handleAcceptRequest(request) {
   const currentUserId = state.profile?.id;
   if (!currentUserId) return;
 
+  // Track time from assignment creation to acceptance
+  const assignmentCreatedAt = request.created_at || request.set?.created_at;
+  let timeToAccept = null;
+  if (assignmentCreatedAt) {
+    timeToAccept = Math.round((Date.now() - new Date(assignmentCreatedAt).getTime()) / 1000); // seconds
+  }
+
   try {
     if (request.type === 'set') {
       // Accept set-level assignment
@@ -4572,6 +4916,19 @@ async function handleAcceptRequest(request) {
     }
 
     toastSuccess("Assignment accepted!");
+    
+    // Track assignment accepted
+    trackPostHogEvent('assignment_accepted', {
+      assignment_type: request.type,
+      set_id: request.setId || request.set?.id,
+      team_id: state.currentTeamId,
+      time_to_accept_seconds: timeToAccept,
+      assignment_count: request.type === 'song' ? request.assignmentCount : 1
+    });
+    
+    // Update aggregate metrics
+    sendAggregateMetrics();
+    
     await loadSets(); // Reload to refresh UI
     await loadPendingRequests(); // Refresh pending requests list
   } catch (error) {
@@ -4582,6 +4939,13 @@ async function handleAcceptRequest(request) {
 
 // Handle declining an assignment request
 async function handleDeclineRequest(request) {
+  // Track time from assignment creation to decline
+  const assignmentCreatedAt = request.created_at || request.set?.created_at;
+  let timeToDecline = null;
+  if (assignmentCreatedAt) {
+    timeToDecline = Math.round((Date.now() - new Date(assignmentCreatedAt).getTime()) / 1000); // seconds
+  }
+
   try {
     if (request.type === 'set') {
       const { error } = await supabase
@@ -4600,6 +4964,19 @@ async function handleDeclineRequest(request) {
     }
 
     toastSuccess("Assignment declined.");
+    
+    // Track assignment declined
+    trackPostHogEvent('assignment_declined', {
+      assignment_type: request.type,
+      set_id: request.setId || request.set?.id,
+      team_id: state.currentTeamId,
+      time_to_decline_seconds: timeToDecline,
+      assignment_count: request.type === 'song' ? request.assignmentCount : 1
+    });
+    
+    // Update aggregate metrics
+    sendAggregateMetrics();
+    
     await loadSets(); // Reload to refresh UI
     await loadPendingRequests(); // Refresh pending requests list
   } catch (error) {
@@ -5653,11 +6030,23 @@ function renderSets(animate = true) {
 }
 
 function switchTab(tabName) {
+  // Stop tracking time on previous tab
+  stopPageTimeTracking();
+  
   // Save the current tab to localStorage
   localStorage.setItem('cadence-active-tab', tabName);
 
   // Always hide set details when switching tabs - set details should only be visible when explicitly viewing a set
   hideSetDetail();
+  
+  // Track tab switch
+  trackPostHogEvent('tab_switched', {
+    tab: tabName,
+    team_id: state.currentTeamId
+  });
+  
+  // Start tracking time on new tab
+  startPageTimeTracking(tabName, { team_id: state.currentTeamId });
 
   // Update tab buttons
   document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -5709,6 +6098,18 @@ function switchTab(tabName) {
   el("sets-tab").classList.toggle("hidden", tabName !== "sets");
   el("songs-tab").classList.toggle("hidden", tabName !== "songs");
   el("people-tab").classList.toggle("hidden", tabName !== "people");
+  
+  // Map tab names to page names for tracking
+  const pageNameMap = {
+    'sets': 'Sets',
+    'songs': 'Songs',
+    'people': 'People'
+  };
+  
+  // Start tracking time on new tab (will stop previous tab automatically)
+  if (pageNameMap[tabName]) {
+    startPageTimeTracking(pageNameMap[tabName], { team_id: state.currentTeamId });
+  }
 
   // Load data if switching to tabs
   if (tabName === "songs") {
@@ -6740,6 +7141,9 @@ function getDaysUntil(dateString) {
 }
 
 function showSetDetail(set) {
+  // Stop tracking time on previous page
+  stopPageTimeTracking();
+  
   state.selectedSet = set;
   // Save selected set ID to localStorage so it persists across page reloads
   if (set?.id) {
@@ -6750,6 +7154,19 @@ function showSetDetail(set) {
 
   dashboard.classList.add("hidden");
   detailView.classList.remove("hidden");
+  
+  // Track set detail view
+  trackPostHogEvent('set_viewed', {
+    set_id: set.id,
+    team_id: state.currentTeamId,
+    is_published: set.is_published || false
+  });
+  
+  // Start tracking time on set detail page
+  startPageTimeTracking('set_detail', {
+    set_id: set.id,
+    team_id: state.currentTeamId
+  });
 
   // Populate detail view
   el("detail-set-title").textContent = set.title;
@@ -7573,6 +7990,9 @@ function renderSetDetailSongs(set) {
 }
 
 function hideSetDetail() {
+  // Stop tracking time on set detail
+  stopPageTimeTracking();
+  
   closeHeaderDropdown();
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
@@ -8425,6 +8845,7 @@ async function saveAllLinkOrder() {
 
 function openSetModal(set = null) {
   if (!isManager()) return;
+  const prevSelectedSetId = state.selectedSet?.id ?? null;
   state.selectedSet = set;
   setModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -8435,8 +8856,22 @@ function openSetModal(set = null) {
     modal_type: set ? 'edit_set' : 'new_set',
     team_id: state.currentTeamId
   });
+  
+  // Start tracking time on modal
+  startPageTimeTracking('modal_edit_set', {
+    modal_type: set ? 'edit_set' : 'new_set',
+    set_id: set?.id,
+    team_id: state.currentTeamId
+  });
   el("set-title").value = set?.title ?? "";
-  el("set-date").value = set?.scheduled_date ?? "";
+  // Normalize scheduled_date to YYYY-MM-DD for <input type="date">.
+  // Supabase may return a timestamp/ISO string (e.g. 2026-01-18T00:00:00Z) which the date input won't accept.
+  const rawScheduledDate = set?.scheduled_date ?? "";
+  const normalizedScheduledDate =
+    rawScheduledDate instanceof Date
+      ? rawScheduledDate.toISOString().slice(0, 10)
+      : (rawScheduledDate ? String(rawScheduledDate).slice(0, 10) : "");
+  el("set-date").value = normalizedScheduledDate;
   el("set-description").value = set?.description ?? "";
 
   // Show assignment mode section only for managers
@@ -8450,7 +8885,7 @@ function openSetModal(set = null) {
   // Also reset if opening for the same set (to start fresh)
   if (!set) {
     state.pendingSetChanges = null;
-  } else if (state.selectedSet && set.id !== state.selectedSet.id) {
+  } else if (prevSelectedSetId && set.id !== prevSelectedSetId) {
     state.pendingSetChanges = null;
   } else {
     // For the same set, preserve pending changes (user might want to continue editing)
@@ -9535,6 +9970,9 @@ async function handleSetSubmit(event) {
   const editingSetId = state.selectedSet?.id || null;
   const isEditing = !!editingSetId;
 
+  // Capture this once so it's available throughout the function (including analytics)
+  const overrideCheckbox = el("set-override-assignment-mode");
+
   const payload = {
     title: el("set-title").value,
     scheduled_date: el("set-date").value,
@@ -9546,7 +9984,6 @@ async function handleSetSubmit(event) {
   let newAssignmentMode = null;
   let oldAssignmentMode = null;
   try {
-    const overrideCheckbox = el("set-override-assignment-mode");
     if (overrideCheckbox) {
       const teamMode = state.teamAssignmentMode || 'per_set';
       if (isEditing) {
@@ -9618,6 +10055,27 @@ async function handleSetSubmit(event) {
     team_id: state.currentTeamId,
     set_id: isEditing ? editingSetId : response.data.id
   });
+  
+  // Track set unpublished if it was unpublished
+  if (isEditing && state.pendingSetChanges?.is_published === false && response.data.is_published === false) {
+    trackPostHogEvent('set_unpublished', {
+      set_id: editingSetId,
+      team_id: state.currentTeamId
+    });
+  }
+  
+  // Track assignment mode if set was created/edited
+  if (newAssignmentMode) {
+    trackPostHogEvent('assignment_mode_used', {
+      mode: newAssignmentMode,
+      team_id: state.currentTeamId,
+      set_id: isEditing ? editingSetId : response.data.id,
+      is_override: overrideCheckbox?.checked || false
+    });
+  }
+  
+  // Update aggregate metrics after set creation/update (debounced)
+  setTimeout(() => sendAggregateMetrics(), 1000);
 
   const finalSetId = response.data.id;
 
@@ -9913,6 +10371,15 @@ async function publishSetFromDetail(set) {
 
   // Send notifications for all assignments when set is published
   await sendNotificationsForPublishedSet(set.id, state.currentTeamId);
+
+  // Track set published
+  trackPostHogEvent('set_published', {
+    set_id: set.id,
+    team_id: state.currentTeamId
+  });
+  
+  // Update aggregate metrics (debounced)
+  setTimeout(() => sendAggregateMetrics(), 1000);
 
   toastSuccess("Set published successfully.");
 
@@ -12224,6 +12691,13 @@ async function togglePinSet(set, pinBtn) {
         pinBtn.title = "Pin set";
         pinBtn.classList.remove("pinned");
       }
+      
+      // Track unpin
+      trackPostHogEvent('set_unpinned', {
+        set_id: set.id,
+        team_id: state.currentTeamId
+      });
+      
       toastSuccess("Set unpinned");
     } else {
       // Pin: insert into pinned_sets
@@ -12253,6 +12727,16 @@ async function togglePinSet(set, pinBtn) {
         pinBtn.title = "Unpin set";
         pinBtn.classList.add("pinned");
       }
+      
+      // Track pin
+      trackPostHogEvent('set_pinned', {
+        set_id: set.id,
+        team_id: state.currentTeamId
+      });
+      
+      // Update aggregate metrics
+      setTimeout(() => sendAggregateMetrics(), 1000);
+      
       toastSuccess("Set pinned");
     }
 
@@ -12372,6 +12856,11 @@ function openInviteModal(prefilledName = null) {
   // PostHog: Track modal open
   trackPostHogEvent('modal_opened', {
     modal_type: 'add_person_to_team',
+    team_id: state.currentTeamId
+  });
+  
+  // Start tracking time on modal
+  startPageTimeTracking('modal_add_person', {
     team_id: state.currentTeamId
   });
 
@@ -14082,6 +14571,13 @@ async function openSongEditModal(songId = null) {
   // PostHog: Track modal open
   trackPostHogEvent('modal_opened', {
     modal_type: songId ? 'edit_song' : 'new_song',
+    team_id: state.currentTeamId
+  });
+  
+  // Start tracking time on modal
+  startPageTimeTracking('modal_edit_song', {
+    modal_type: songId ? 'edit_song' : 'new_song',
+    song_id: songId,
     team_id: state.currentTeamId
   });
   // Only set body overflow if song modal isn't already open
@@ -18144,6 +18640,12 @@ function openPrintSet(set) {
   renderSetPrintPreview(set);
   // Keep it visually hidden on screen; print styles will reveal it
   wrapper.setAttribute("aria-hidden", "false");
+  
+  // Track print usage
+  trackPostHogEvent('set_printed', {
+    set_id: set.id,
+    team_id: state.currentTeamId
+  });
 
   const afterPrint = () => {
     wrapper.setAttribute("aria-hidden", "true");
@@ -19356,6 +19858,11 @@ function openEditAccountModal() {
   // PostHog: Track modal open
   trackPostHogEvent('modal_opened', {
     modal_type: 'edit_account',
+    team_id: state.currentTeamId
+  });
+  
+  // Start tracking time on modal
+  startPageTimeTracking('modal_edit_account', {
     team_id: state.currentTeamId
   });
 
