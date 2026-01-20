@@ -85,6 +85,14 @@ const state = {
   creatingSongFromModal: false,
   expandedSets: new Set(),
   currentSongDetailsId: null, // Track which song is open in details modal
+  // iTunes indexing refresh (only used while songs are awaiting background iTunes metadata indexing)
+  itunesIndexRefresh: {
+    isRunning: false,
+    timeoutId: null,
+    attempts: 0,
+    inFlight: false,
+    teamId: null,
+  },
   isPasswordSetup: isInviteLink, // Set flag immediately if this is an invite link
   isPasswordReset: isRecovery, // Set flag immediately if this is a password reset link
   isMemberView: false, // Track if manager is viewing as member
@@ -15301,10 +15309,210 @@ const itunesMetadataCache = new Map();
 // Server-side iTunes indexing - client just checks for unindexed songs
 // No client-side indexing queue needed anymore
 
+// When waiting on iTunes metadata, poll for updates (songs index ~every minute)
+const ITUNES_INDEX_REFRESH_INTERVAL_MS = 20000; // 20s
+const ITUNES_INDEX_REFRESH_MAX_CHECKS = 4; // 4 checks max (no infinite polling)
+
+function stopItunesIndexRefreshPolling(resetAttempts = true) {
+  const poll = state.itunesIndexRefresh;
+  if (!poll) return;
+
+  poll.isRunning = false;
+  poll.inFlight = false;
+  poll.teamId = null;
+
+  if (poll.timeoutId) {
+    window.clearTimeout(poll.timeoutId);
+    poll.timeoutId = null;
+  }
+
+  if (resetAttempts) {
+    poll.attempts = 0;
+  }
+}
+
+function scheduleNextItunesIndexRefresh() {
+  const poll = state.itunesIndexRefresh;
+  if (!poll?.isRunning) return;
+
+  // Team changed; stop (caller may restart for new team)
+  if (poll.teamId && poll.teamId !== state.currentTeamId) {
+    stopItunesIndexRefreshPolling(false);
+    return;
+  }
+
+  if (poll.attempts >= ITUNES_INDEX_REFRESH_MAX_CHECKS) {
+    // Give up quietly; indicator stays until next manual reload or loadSongs()
+    stopItunesIndexRefreshPolling(false);
+    return;
+  }
+
+  if (poll.timeoutId) {
+    window.clearTimeout(poll.timeoutId);
+    poll.timeoutId = null;
+  }
+
+  poll.timeoutId = window.setTimeout(async () => {
+    await runItunesIndexRefreshOnce();
+    scheduleNextItunesIndexRefresh();
+  }, ITUNES_INDEX_REFRESH_INTERVAL_MS);
+}
+
+function startItunesIndexRefreshPolling() {
+  const poll = state.itunesIndexRefresh;
+  if (!poll) return;
+  if (!state.currentTeamId) return;
+
+  // Already polling for this team
+  if (poll.isRunning && poll.teamId === state.currentTeamId) return;
+
+  // Restart cleanly
+  stopItunesIndexRefreshPolling(true);
+  poll.isRunning = true;
+  poll.teamId = state.currentTeamId;
+  poll.attempts = 0;
+  poll.inFlight = false;
+
+  scheduleNextItunesIndexRefresh();
+}
+
+function handleItunesIndexRefreshPolling(unindexedCount) {
+  if (unindexedCount > 0) {
+    // If team changed, restart for current team
+    if (state.itunesIndexRefresh?.isRunning && state.itunesIndexRefresh.teamId !== state.currentTeamId) {
+      stopItunesIndexRefreshPolling(true);
+    }
+    startItunesIndexRefreshPolling();
+  } else {
+    stopItunesIndexRefreshPolling(true);
+  }
+}
+
+async function runItunesIndexRefreshOnce() {
+  const poll = state.itunesIndexRefresh;
+  if (!poll?.isRunning) return;
+  if (!state.currentTeamId) return;
+  if (poll.teamId && poll.teamId !== state.currentTeamId) {
+    stopItunesIndexRefreshPolling(false);
+    return;
+  }
+  if (poll.inFlight) return;
+  if (poll.attempts >= ITUNES_INDEX_REFRESH_MAX_CHECKS) {
+    stopItunesIndexRefreshPolling(false);
+    return;
+  }
+
+  // Only run if we’re still waiting on iTunes metadata (unindexed songs exist)
+  const waitingSongs = (state.songs || []).filter(song => song?.title && song.title.trim() && !song.itunes_indexed_at);
+  if (waitingSongs.length === 0) {
+    updateIndexingUI(0);
+    stopItunesIndexRefreshPolling(true);
+    return;
+  }
+
+  poll.inFlight = true;
+  poll.attempts += 1;
+
+  try {
+    const waitingIds = waitingSongs.map(s => s.id).filter(Boolean);
+    if (waitingIds.length === 0) return;
+
+    const { data, error } = await safeSupabaseOperation(async () => {
+      return await supabase
+        .from("songs")
+        .select("id, itunes_indexed_at, itunes_metadata, album_art_small_url, album_art_large_url")
+        .eq("team_id", state.currentTeamId)
+        .in("id", waitingIds);
+    });
+
+    if (error) {
+      console.warn('⚠️ iTunes indexing refresh poll failed:', error);
+      return;
+    }
+
+    const rows = data || [];
+    const byId = new Map(rows.map(r => [r.id, r]));
+    const fields = ["itunes_indexed_at", "itunes_metadata", "album_art_small_url", "album_art_large_url"];
+
+    let didChange = false;
+
+    // Merge updates into existing in-memory songs (do NOT add new songs)
+    state.songs = (state.songs || []).map(song => {
+      const upd = byId.get(song?.id);
+      if (!upd) return song;
+
+      let changed = false;
+      const next = { ...song };
+      for (const f of fields) {
+        if (upd[f] !== undefined && upd[f] !== song[f]) {
+          next[f] = upd[f];
+          changed = true;
+        }
+      }
+      if (changed) didChange = true;
+      return changed ? next : song;
+    });
+
+    // Also merge into set song nested references if present (so set detail view can update without reload)
+    if (Array.isArray(state.sets) && state.sets.length > 0) {
+      state.sets = state.sets.map(set => {
+        if (!set || !Array.isArray(set.set_songs)) return set;
+        let setChanged = false;
+        const nextSetSongs = set.set_songs.map(setSong => {
+          const songObj = setSong?.song;
+          const upd = songObj?.id ? byId.get(songObj.id) : null;
+          if (!upd) return setSong;
+
+          let changed = false;
+          const nextSong = { ...songObj };
+          for (const f of fields) {
+            if (upd[f] !== undefined && upd[f] !== songObj[f]) {
+              nextSong[f] = upd[f];
+              changed = true;
+            }
+          }
+          if (!changed) return setSong;
+          setChanged = true;
+          didChange = true;
+          return { ...setSong, song: nextSong };
+        });
+        return setChanged ? { ...set, set_songs: nextSetSongs } : set;
+      });
+
+      if (state.selectedSet?.id) {
+        const updatedSelected = state.sets.find(s => s?.id === state.selectedSet.id);
+        if (updatedSelected) {
+          state.selectedSet = updatedSelected;
+        }
+      }
+    }
+
+    // Update indexing UI & polling gate based on latest state
+    checkUnindexedSongs();
+
+    // Re-render visible views only if we actually got new metadata/art
+    if (didChange) {
+      if (!el("songs-tab")?.classList.contains("hidden")) {
+        await renderSongCatalog(false);
+      }
+      if (state.selectedSet) {
+        try {
+          renderSetDetailSongs(state.selectedSet);
+        } catch (e) {
+          // Non-fatal if set detail view isn't active
+        }
+      }
+    }
+  } finally {
+    poll.inFlight = false;
+  }
+}
+
 // Check for unindexed songs and update UI
 function checkUnindexedSongs() {
   if (!state.songs || state.songs.length === 0) {
     updateIndexingUI(0);
+    handleItunesIndexRefreshPolling(0);
     return;
   }
   
@@ -15314,6 +15522,7 @@ function checkUnindexedSongs() {
   }).length;
   
   updateIndexingUI(unindexedCount);
+  handleItunesIndexRefreshPolling(unindexedCount);
 }
 
 // Simple UI update for server-side indexing status
