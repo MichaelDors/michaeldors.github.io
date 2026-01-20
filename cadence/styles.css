@@ -1991,6 +1991,8 @@ textarea {
 
 .song-album-art-container:hover .album-art-overlay-controls {
   opacity: 1 !important;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 @keyframes fadeIn {
@@ -2013,6 +2015,30 @@ textarea {
   position: relative;
   transform-style: preserve-3d;
   z-index: 0;
+}
+
+.song-album-art-no-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom right, color-mix(in srgb, var(--bg-tertiary) 70%, transparent), transparent);
+  border: 1px dashed var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.song-itunes-warning {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: -0.75rem;
+  margin-bottom: 1rem;
 }
 
 .song-album-art-container::after {
@@ -2050,7 +2076,9 @@ textarea {
 
 .album-art-overlay-controls {
   z-index: 100;
-  pointer-events: auto;
+  opacity: 0 !important;
+  visibility: hidden;
+  pointer-events: none;
   transform: translateZ(10px);
   transform-style: preserve-3d;
 }

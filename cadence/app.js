@@ -3604,7 +3604,7 @@ async function fetchUserTeams() {
 
   try {
     // Fetch all teams the user is a member of
-    const { data: teamMembers, error } = await supabase
+    let { data: teamMembers, error } = await supabase
       .from("team_members")
       .select(`
         team_id,
@@ -3618,11 +3618,38 @@ async function fetchUserTeams() {
           assignment_mode,
           daily_reminder_time,
           timezone,
-          require_publish
+          require_publish,
+          itunes_indexing_enabled
         )
       `)
       .eq("user_id", state.session.user.id)
       .order("joined_at", { ascending: true });
+
+    // Backward compatibility if migrations haven't been applied yet
+    if (error && error.message?.includes("itunes_indexing_enabled")) {
+      console.warn('Team iTunes indexing column may not exist yet, retrying without it');
+      const retry = await supabase
+        .from("team_members")
+        .select(`
+          team_id,
+          role,
+          is_owner,
+          can_manage,
+          team:team_id (
+            id,
+            name,
+            owner_id,
+            assignment_mode,
+            daily_reminder_time,
+            timezone,
+            require_publish
+          )
+        `)
+        .eq("user_id", state.session.user.id)
+        .order("joined_at", { ascending: true });
+      teamMembers = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       console.error('  - ❌ Error fetching user teams:', error);
@@ -3657,6 +3684,7 @@ async function fetchUserTeams() {
       daily_reminder_time: tm.team?.daily_reminder_time,
       timezone: tm.team?.timezone,
       require_publish: tm.team?.require_publish !== false, // Default to true
+      itunes_indexing_enabled: tm.team?.itunes_indexing_enabled !== false, // Default to true
     }));
 
     console.log('  - ✅ Found', state.userTeams.length, 'teams');
@@ -14896,6 +14924,7 @@ async function displayAlbumArt(content, albumArtData, song) {
 
   const placeholder = content.querySelector("#song-album-art-placeholder");
   const img = content.querySelector("#song-album-art-img");
+  const noImage = content.querySelector("#song-album-art-no-image");
   if (!placeholder || !img) {
     console.warn('⚠️ displayAlbumArt: placeholder or img not found');
     return;
@@ -14913,6 +14942,10 @@ async function displayAlbumArt(content, albumArtData, song) {
   }
 
   console.log('🎨 displayAlbumArt called for song:', songId, 'has small:', !!albumArtData.small, 'has large:', !!albumArtData.large);
+
+  // Ensure container is visible and hide "no image" placeholder when we have an albumArtData attempt
+  placeholder.style.display = "flex";
+  if (noImage) noImage.classList.add("hidden");
 
   // Function to extract and apply color
   const applyColorToShadow = async () => {
@@ -14942,6 +14975,13 @@ async function displayAlbumArt(content, albumArtData, song) {
 
   // Progressive loading: load small image first, then swap to large when ready
   const loadProgressiveImage = async () => {
+    const done = () => {
+      // Remove from loading set when done
+      if (songId) {
+        loadingAlbumArt.delete(songId);
+      }
+    };
+
     // Set referrerPolicy to ensure image loads on mobile browsers
     img.referrerPolicy = 'no-referrer-when-downgrade';
 
@@ -14949,17 +14989,20 @@ async function displayAlbumArt(content, albumArtData, song) {
     if (albumArtData.isOverride) {
       img.crossOrigin = null;
       img.src = albumArtData.small;
-      placeholder.style.display = "flex";
-      img.addEventListener('load', applyColorToShadow, { once: true });
+      img.style.display = "";
+      img.addEventListener('load', async () => { await applyColorToShadow(); done(); }, { once: true });
       img.addEventListener('error', async () => {
         console.warn('Failed to load album art override image directly, trying fallback');
         // Try via edge function as fallback
         const fallbackUrl = await loadImageWithFallback(albumArtData.small);
         if (fallbackUrl) {
           img.src = fallbackUrl;
-          img.addEventListener('load', applyColorToShadow, { once: true });
+          img.style.display = "";
+          img.addEventListener('load', async () => { await applyColorToShadow(); done(); }, { once: true });
         } else {
-          placeholder.style.display = "flex";
+          img.style.display = "none";
+          if (noImage) noImage.classList.remove("hidden");
+          done();
         }
       }, { once: true });
     } else {
@@ -14973,7 +15016,7 @@ async function displayAlbumArt(content, albumArtData, song) {
         if (smallBlobUrl) {
           img.crossOrigin = null; // Blob URLs don't need CORS
           img.src = smallBlobUrl;
-          placeholder.style.display = "flex";
+          img.style.display = "";
           applyColorToShadow();
           
           // On desktop, preload the large image in the background
@@ -14997,16 +15040,15 @@ async function displayAlbumArt(content, albumArtData, song) {
           }
         } else {
           console.warn('Failed to load album art image');
-          placeholder.style.display = "flex";
+          img.style.display = "none";
+          if (noImage) noImage.classList.remove("hidden");
         }
       } catch (error) {
         console.error('Error loading album art:', error);
-        placeholder.style.display = "flex";
+        img.style.display = "none";
+        if (noImage) noImage.classList.remove("hidden");
       } finally {
-        // Remove from loading set when done
-        if (songId) {
-          loadingAlbumArt.delete(songId);
-        }
+        done();
       }
     }
   };
@@ -15250,7 +15292,7 @@ function setupAlbumArtTilt(container) {
  * @param {string} songTitle - The title of the song (for iTunes fallback)
  * @returns {Promise<{small: string, large: string, isOverride: boolean}|null>} - URLs of the album art images, or null if not found
  */
-async function getAlbumArt(song, songTitle) {
+async function getAlbumArt(song, songTitle, options = {}) {
   console.log('🎵 getAlbumArt called for song:', song?.id, 'title:', songTitle);
   
   // Check for override first
@@ -15279,6 +15321,13 @@ async function getAlbumArt(song, songTitle) {
       large: song.album_art_large_url, 
       isOverride: false 
     };
+  }
+
+  // If iTunes is unavailable for this song in this context (per-song disabled or team-wide disabled),
+  // do not keep trying to fetch client-side album art.
+  if (song?.itunes_fetch_disabled || options?.disableItunesFallback) {
+    console.log('🎵 iTunes fetch disabled for this song; skipping iTunes API fallback');
+    return null;
   }
 
   // Fall back to iTunes API (for songs not yet indexed)
@@ -15392,6 +15441,15 @@ async function runItunesIndexRefreshOnce() {
   const poll = state.itunesIndexRefresh;
   if (!poll?.isRunning) return;
   if (!state.currentTeamId) return;
+
+  const currentTeam = state.userTeams?.find?.(t => t.id === state.currentTeamId);
+  if (currentTeam?.itunes_indexing_enabled === false) {
+    // Team has disabled iTunes indexing; don't poll.
+    updateIndexingUI(0);
+    stopItunesIndexRefreshPolling(true);
+    return;
+  }
+
   if (poll.teamId && poll.teamId !== state.currentTeamId) {
     stopItunesIndexRefreshPolling(false);
     return;
@@ -15403,7 +15461,12 @@ async function runItunesIndexRefreshOnce() {
   }
 
   // Only run if we’re still waiting on iTunes metadata (unindexed songs exist)
-  const waitingSongs = (state.songs || []).filter(song => song?.title && song.title.trim() && !song.itunes_indexed_at);
+  const waitingSongs = (state.songs || []).filter(song =>
+    song?.title &&
+    song.title.trim() &&
+    !song.itunes_indexed_at &&
+    !song.itunes_fetch_disabled
+  );
   if (waitingSongs.length === 0) {
     updateIndexingUI(0);
     stopItunesIndexRefreshPolling(true);
@@ -15420,7 +15483,7 @@ async function runItunesIndexRefreshOnce() {
     const { data, error } = await safeSupabaseOperation(async () => {
       return await supabase
         .from("songs")
-        .select("id, itunes_indexed_at, itunes_metadata, album_art_small_url, album_art_large_url")
+        .select("id, itunes_indexed_at, itunes_metadata, album_art_small_url, album_art_large_url, itunes_fetch_disabled, itunes_fetch_failure_count")
         .eq("team_id", state.currentTeamId)
         .in("id", waitingIds);
     });
@@ -15432,7 +15495,7 @@ async function runItunesIndexRefreshOnce() {
 
     const rows = data || [];
     const byId = new Map(rows.map(r => [r.id, r]));
-    const fields = ["itunes_indexed_at", "itunes_metadata", "album_art_small_url", "album_art_large_url"];
+    const fields = ["itunes_indexed_at", "itunes_metadata", "album_art_small_url", "album_art_large_url", "itunes_fetch_disabled", "itunes_fetch_failure_count"];
 
     let didChange = false;
 
@@ -15515,10 +15578,17 @@ function checkUnindexedSongs() {
     handleItunesIndexRefreshPolling(0);
     return;
   }
+
+  const currentTeam = state.userTeams?.find?.(t => t.id === state.currentTeamId);
+  if (currentTeam?.itunes_indexing_enabled === false) {
+    updateIndexingUI(0);
+    handleItunesIndexRefreshPolling(0);
+    return;
+  }
   
   // Count songs that don't have itunes_indexed_at timestamp
   const unindexedCount = state.songs.filter(song => {
-    return song.title && song.title.trim() && !song.itunes_indexed_at;
+    return song.title && song.title.trim() && !song.itunes_indexed_at && !song.itunes_fetch_disabled;
   }).length;
   
   updateIndexingUI(unindexedCount);
@@ -16347,14 +16417,19 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   const keysArray = songWithLinks.song_keys || [];
   const singleKey = keysArray.length === 1 ? keysArray[0].key : null;
   const isSingleKeyMatch = singleKey && selectedKey && singleKey === selectedKey;
+  const itunesFetchDisabled = !!songWithLinks.itunes_fetch_disabled;
+  const teamItunesDisabled = (state.userTeams?.find?.(t => t.id === state.currentTeamId)?.itunes_indexing_enabled === false);
+  const itunesUnavailable = itunesFetchDisabled || teamItunesDisabled;
+  const canUploadAlbumArt = isManager() && (!!songWithLinks.itunes_indexed_at || itunesUnavailable || !!songWithLinks.album_art_override_path);
 
   // Render all song information in an expanded view
   content.innerHTML = `
   <div class="song-details-section">
         <div class="song-details-header-wrapper">
-          <div id="song-album-art-placeholder" class="song-album-art-container">
-            <img id="song-album-art-img" src="" alt="Album art for ${escapeHtml(songWithLinks.title || 'song')}" class="song-album-art" onerror="this.parentElement.style.display='none';" loading="lazy" />
-            ${isManager() ? `
+          <div id="song-album-art-placeholder" class="song-album-art-container" style="display:none;">
+            <img id="song-album-art-img" src="" alt="Album art for ${escapeHtml(songWithLinks.title || 'song')}" class="song-album-art" style="display:none;" loading="lazy" />
+            <div id="song-album-art-no-image" class="song-album-art-no-image hidden">No image</div>
+            ${canUploadAlbumArt ? `
             <div class="album-art-overlay-controls" id="album-art-overlay-controls" style="position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.5rem; opacity: 0; transition: opacity 0.2s;">
               <label for="album-art-upload-input" class="btn small secondary" style="cursor: pointer; margin: 0; padding: 0.4rem 0.6rem;" title="Upload album art">
                 <i class="fa-solid fa-upload"></i>
@@ -16398,6 +16473,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
               </div>
               ` : ''}
             </div>
+            ${itunesFetchDisabled ? `<div class="song-itunes-warning"><i class="fa-brands fa-itunes-note"></i> Some additional metadata for this song could not be found</div>` : ''}
             <div class="song-details-meta">
           ${songWithLinks.bpm ? `<div class="detail-item">
             <span class="detail-label">BPM</span>
@@ -16581,17 +16657,11 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 
   updateClickTrackButtons();
 
-  // Setup album art overlay controls hover effect
+  // Album art overlay controls are shown/hidden via CSS :hover.
+  // Here we only prevent clicks on controls from opening the full-screen modal.
   const albumArtContainer = content.querySelector("#song-album-art-placeholder");
   const overlayControls = content.querySelector("#album-art-overlay-controls");
   if (albumArtContainer && overlayControls && isManager()) {
-    albumArtContainer.addEventListener("mouseenter", () => {
-      overlayControls.style.opacity = "1";
-    });
-    albumArtContainer.addEventListener("mouseleave", () => {
-      overlayControls.style.opacity = "0";
-    });
-    
     // Stop event propagation on overlay controls to prevent opening modal
     overlayControls.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -16604,6 +16674,21 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         e.stopPropagation();
       });
     });
+  }
+
+  // If iTunes indexing is disabled for this song, show a "no image" placeholder
+  // and allow managers to upload album art manually.
+  if (
+    albumArtContainer &&
+    itunesUnavailable &&
+    !songWithLinks.album_art_override_path &&
+    !(songWithLinks.album_art_small_url && songWithLinks.album_art_large_url)
+  ) {
+    albumArtContainer.style.display = "flex";
+    const imgEl = content.querySelector("#song-album-art-img");
+    const noImageEl = content.querySelector("#song-album-art-no-image");
+    if (imgEl) imgEl.style.display = "none";
+    if (noImageEl) noImageEl.classList.remove("hidden");
   }
 
   // Setup album art upload handler
@@ -16661,7 +16746,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         songWithLinks.album_art_override_path = uploadResult.filePath;
 
         // Reload album art
-        const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title);
+        const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
         if (albumArtData) {
           displayAlbumArt(content, albumArtData, songWithLinks);
         }
@@ -16686,9 +16771,11 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             songWithLinks.album_art_override_path = null;
             removeBtn.remove();
             // Reload album art from iTunes
-            const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title);
+            const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
             if (albumArtData) {
               displayAlbumArt(content, albumArtData, songWithLinks);
+            } else if (itunesUnavailable) {
+              showSongAlbumArtNoImagePlaceholder(content);
             }
           });
             overlayControls.appendChild(removeBtn);
@@ -16713,17 +16800,21 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
       songWithLinks.album_art_override_path = null;
       removeBtn.remove();
       // Reload album art from iTunes
-      const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title);
+      const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
       if (albumArtData) {
         displayAlbumArt(content, albumArtData, songWithLinks);
+      } else if (itunesUnavailable) {
+        showSongAlbumArtNoImagePlaceholder(content);
       }
     });
   }
 
   // Fetch and display album art asynchronously (don't block modal opening)
-  getAlbumArt(songWithLinks, songWithLinks.title).then(albumArtData => {
+  getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled }).then(albumArtData => {
     if (albumArtData) {
       displayAlbumArt(content, albumArtData, songWithLinks);
+    } else if (itunesUnavailable) {
+      showSongAlbumArtNoImagePlaceholder(content);
     }
   }).catch(err => {
     console.warn('Failed to load album art:', err);
@@ -16784,9 +16875,11 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         resetAlbumArtBtn.remove();
         
         // Reload album art from iTunes
-        const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title);
+        const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
         if (albumArtData) {
           displayAlbumArt(content, albumArtData, songWithLinks);
+        } else if (itunesUnavailable) {
+          showSongAlbumArtNoImagePlaceholder(content);
         }
       });
     }
@@ -16828,6 +16921,15 @@ function closeSongDetailsModal() {
       state.currentSongDetailsId = null;
     });
   }
+}
+
+function showSongAlbumArtNoImagePlaceholder(content) {
+  const container = content?.querySelector?.("#song-album-art-placeholder");
+  const imgEl = content?.querySelector?.("#song-album-art-img");
+  const noImageEl = content?.querySelector?.("#song-album-art-no-image");
+  if (container) container.style.display = "flex";
+  if (imgEl) imgEl.style.display = "none";
+  if (noImageEl) noImageEl.classList.remove("hidden");
 }
 
 async function openSectionDetailsModal(setSong) {
@@ -20758,6 +20860,7 @@ async function openTeamSettingsModal() {
   const alertTimeContainer = el("team-alert-time-container");
   const timezoneContainer = el("team-timezone-container");
   const requirePublishCheckbox = el("team-require-publish");
+  const itunesIndexingEnabledCheckbox = el("team-itunes-indexing-enabled");
 
   if (!modal || !nameInput || !assignmentModeContainer) return;
 
@@ -20767,7 +20870,8 @@ async function openTeamSettingsModal() {
     assignment_mode: state.teamAssignmentMode || 'per_set',
     daily_reminder_time: '06:00:00',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    require_publish: true
+    require_publish: true,
+    itunes_indexing_enabled: true
   };
 
   const render = (data) => {
@@ -20848,6 +20952,11 @@ async function openTeamSettingsModal() {
     if (requirePublishCheckbox) {
       requirePublishCheckbox.checked = data.require_publish !== false; // Default to true if not set
     }
+
+    // iTunes indexing enabled
+    if (itunesIndexingEnabledCheckbox) {
+      itunesIndexingEnabledCheckbox.checked = data.itunes_indexing_enabled !== false; // Default to true if not set
+    }
   };
 
   // Render immediately with local data
@@ -20859,15 +20968,28 @@ async function openTeamSettingsModal() {
 
   // Fetch fresh data in background
   try {
-    const { data: freshData, error } = await supabase
+    let { data: freshData, error } = await supabase
       .from("teams")
-      .select("id, name, assignment_mode, daily_reminder_time, timezone, require_publish")
+      .select("id, name, assignment_mode, daily_reminder_time, timezone, require_publish, itunes_indexing_enabled")
       .eq("id", state.currentTeamId)
       .single();
 
     if (error) {
-      console.error("Error refreshing team details:", error);
-      return;
+      // Backward compatibility if migrations haven't been applied yet
+      if (error.message?.includes("itunes_indexing_enabled")) {
+        console.warn('Team iTunes indexing column may not exist yet; retrying without it');
+        const retry = await supabase
+          .from("teams")
+          .select("id, name, assignment_mode, daily_reminder_time, timezone, require_publish")
+          .eq("id", state.currentTeamId)
+          .single();
+        freshData = retry.data;
+        error = retry.error;
+      }
+      if (error) {
+        console.error("Error refreshing team details:", error);
+        return;
+      }
     }
 
     if (freshData) {
@@ -20879,7 +21001,8 @@ async function openTeamSettingsModal() {
         (freshData.assignment_mode !== teamData.assignment_mode) ||
         (freshData.daily_reminder_time !== teamData.daily_reminder_time) ||
         (freshData.timezone !== teamData.timezone) ||
-        (freshData.require_publish !== teamData.require_publish);
+        (freshData.require_publish !== teamData.require_publish) ||
+        (freshData.itunes_indexing_enabled !== teamData.itunes_indexing_enabled);
 
       // Update local state
       const stateTeam = state.userTeams.find(t => t.id === state.currentTeamId);
@@ -20911,6 +21034,8 @@ async function handleTeamSettingsSubmit(e) {
 
   const modal = el("team-settings-modal");
   const nameInput = el("team-settings-name-input");
+  const requirePublishCheckbox = el("team-require-publish");
+  const itunesIndexingEnabledCheckbox = el("team-itunes-indexing-enabled");
 
   if (!nameInput || !teamAssignmentModeDropdown) return;
 
@@ -20923,6 +21048,7 @@ async function handleTeamSettingsSubmit(e) {
   const newAlertTime = teamAlertTimeDropdown?.getValue() || teamAlertTimeSelectedValue;
   const newTimezone = teamTimezoneDropdown?.getValue() || teamTimezoneSelectedValue;
   const newRequirePublish = requirePublishCheckbox?.checked !== false; // Default to true
+  const newItunesIndexingEnabled = itunesIndexingEnabledCheckbox?.checked !== false; // Default to true
 
   if (!newName) {
     toastError("Team name cannot be empty.");
@@ -20957,16 +21083,32 @@ async function handleTeamSettingsSubmit(e) {
     hasChanges = true;
   }
 
+  if (newItunesIndexingEnabled !== (currentTeam?.itunes_indexing_enabled !== false)) {
+    updates.itunes_indexing_enabled = newItunesIndexingEnabled;
+    hasChanges = true;
+  }
+
   if (!hasChanges) {
     // No changes, just close modal
     closeTeamSettingsModal();
     return;
   }
 
-  const { error } = await supabase
+  let { error } = await supabase
     .from("teams")
     .update(updates)
     .eq("id", state.currentTeamId);
+
+  // Backward compatibility if migrations haven't been applied yet
+  if (error && error.message?.includes("itunes_indexing_enabled") && updates.itunes_indexing_enabled !== undefined) {
+    console.warn('teams.itunes_indexing_enabled column may not exist yet; retrying save without it');
+    const { itunes_indexing_enabled, ...retryUpdates } = updates;
+    const retry = await supabase
+      .from("teams")
+      .update(retryUpdates)
+      .eq("id", state.currentTeamId);
+    error = retry.error;
+  }
 
   if (error) {
     console.error("Error updating team settings:", error);
@@ -20980,6 +21122,7 @@ async function handleTeamSettingsSubmit(e) {
     if (updates.daily_reminder_time) currentTeam.daily_reminder_time = updates.daily_reminder_time;
     if (updates.timezone) currentTeam.timezone = updates.timezone;
     if (updates.require_publish !== undefined) currentTeam.require_publish = updates.require_publish;
+    if (updates.itunes_indexing_enabled !== undefined) currentTeam.itunes_indexing_enabled = updates.itunes_indexing_enabled;
   }
 
   if (state.profile?.team && updates.name) {
