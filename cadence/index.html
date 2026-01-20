@@ -622,10 +622,6 @@
           <input type="text" id="song-service-duration" placeholder="e.g., 3:45" />
           <p class="muted small-text">Overrides the song length for this set only.</p>
         </label>
-        <div class="modal-actions">
-          <button type="button" class="btn ghost" id="cancel-song">Cancel</button>
-          <button type="submit" class="btn primary">Add</button>
-        </div>
       </form>
       <div class="assignment-section">
         <div class="section-header">
@@ -638,6 +634,10 @@
           </div>
         </div>
         <div id="assignments-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="cancel-song">Cancel</button>
+        <button type="submit" class="btn primary" form="song-form">Add</button>
       </div>
     </div>
   </div>
@@ -707,10 +707,6 @@
           <h4>Links & Resources</h4>
         </div>
         <div id="section-links-list"></div>
-        <div class="modal-actions">
-          <button type="button" class="btn ghost" id="cancel-section">Cancel</button>
-          <button type="submit" class="btn primary">Add</button>
-        </div>
       </form>
       <div class="assignment-section">
         <div class="section-header">
@@ -724,6 +720,10 @@
           </div>
         </div>
         <div id="section-assignments-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="cancel-section">Cancel</button>
+        <button type="submit" class="btn primary" form="section-form">Add</button>
       </div>
     </div>
   </div>
@@ -792,10 +792,6 @@
           </div>
           <div id="edit-section-links-list"></div>
         </div>
-        <div class="modal-actions">
-          <button type="button" class="btn ghost" id="cancel-edit-set-song">Cancel</button>
-          <button type="submit" class="btn primary">Save</button>
-        </div>
       </form>
       <div class="assignment-section">
         <div class="section-header">
@@ -808,6 +804,10 @@
           </div>
         </div>
         <div id="edit-assignments-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="cancel-edit-set-song">Cancel</button>
+        <button type="submit" class="btn primary" form="edit-set-song-form">Save</button>
       </div>
     </div>
   </div>
@@ -935,12 +935,12 @@
           <input type="text" id="invite-name" placeholder="John Doe" />
           <p class="muted small-text">They'll receive an email invite to create their account and join the team.</p>
         </label>
+        <p class="muted small-text" id="invite-message"></p>
         <div class="modal-actions">
           <button type="button" class="btn ghost" id="cancel-invite">Cancel</button>
           <button type="submit" class="btn primary">Send Invite</button>
         </div>
       </form>
-      <p class="muted small-text" id="invite-message"></p>
     </div>
   </div>
 
@@ -954,12 +954,12 @@
       </header>
       <div>
         <p id="in-app-invite-message"></p>
+        <p class="muted small-text" id="in-app-invite-status"></p>
         <div class="modal-actions" style="margin-top: 1.5rem;">
           <button type="button" class="btn ghost" id="cancel-in-app-invite">Cancel</button>
           <button type="button" class="btn primary" id="confirm-in-app-invite">Send Invite</button>
         </div>
       </div>
-      <p class="muted small-text" id="in-app-invite-status"></p>
     </div>
   </div>
 
@@ -1043,15 +1043,15 @@
           <span>Enable iTunes indexing for song metadata</span>
         </label>
         <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">When disabled, background iTunes metadata indexing will not run for this team.</p>
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn ghost" id="btn-delete-team-settings"
+            style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Team</button>
+        </div>
         <div class="modal-actions">
           <button type="button" class="btn ghost" id="cancel-team-settings">Cancel</button>
           <button type="submit" class="btn primary">Save</button>
         </div>
       </form>
-      <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
-        <button type="button" class="btn ghost" id="btn-delete-team-settings"
-          style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Team</button>
-      </div>
     </div>
   </div>
 
@@ -1133,7 +1133,7 @@
             style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Account</button>
         </div>
         </div>
-        <div class="modal-actions" style="position: sticky; bottom: 0; background: var(--bg-card); padding-top: 1.5rem; margin-top: 1.5rem; border-top: 1px solid var(--border-color); margin-left: -2rem; margin-right: -2rem; margin-bottom: -2rem; padding-left: 2rem; padding-right: 2rem; padding-bottom: 2rem;">
+        <div class="modal-actions">
           <button type="button" class="btn ghost" id="cancel-edit-account">Cancel</button>
           <button type="submit" class="btn primary">Save</button>
         </div>
@@ -1174,12 +1174,12 @@
           <input type="text" id="create-team-input" placeholder="Enter team name" required autocomplete="off" />
         </label>
         <p class="muted small-text">You'll be the owner of this team and can invite members.</p>
+        <p class="muted small-text" id="create-team-message"></p>
         <div class="modal-actions">
           <button type="button" class="btn ghost" id="cancel-create-team">Cancel</button>
           <button type="submit" class="btn primary">Create Team</button>
         </div>
       </form>
-      <p class="muted small-text" id="create-team-message"></p>
     </div>
   </div>
 

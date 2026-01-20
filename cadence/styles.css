@@ -1707,10 +1707,28 @@ textarea {
   resize: vertical;
 }
 
-.modal-actions {
+.modal .modal-content .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+}
+
+/* Sticky Save/Cancel footer for overflowing modals */
+.modal .modal-content .modal-actions {
+  position: sticky;
+  /* modal-content has 2rem padding; stick to actual bottom edge */
+  bottom: -2rem;
+  z-index: 5;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.5rem;
+  padding-bottom: 2rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  margin-top: 1.5rem;
+  margin-left: -2rem;
+  margin-right: -2rem;
+  margin-bottom: 0;
 }
 
 .song-key-row {
