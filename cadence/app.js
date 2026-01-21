@@ -2187,8 +2187,20 @@ function bindEvents() {
     const lyricsInput = el("chart-lyrics-input");
     if (!lyricsInput) return;
     // Best-effort formatting: normalize newlines and trim trailing whitespace
-    lyricsInput.value = normalizeLyricsLinesFromText(lyricsInput.value).join("\n");
-    active.chart.doc.lyricsLines = normalizeLyricsLinesFromText(lyricsInput.value);
+    const oldLines = active.chart.doc.lyricsLines || [];
+    const normalized = normalizeLyricsLinesFromText(lyricsInput.value);
+    lyricsInput.value = normalized.join("\n");
+    active.chart.doc.lyricsLines = normalized;
+    
+    // Adjust placements to match new line indices
+    if (oldLines.length !== normalized.length || !oldLines.every((line, idx) => line === normalized[idx])) {
+      active.chart.doc.placements = adjustPlacementsForLyricsChange(
+        oldLines,
+        normalized,
+        active.chart.doc.placements || []
+      );
+    }
+    
     const wrapEl = el("chart-editor-page");
     if (wrapEl) {
       renderChartDocIntoPage(wrapEl, active.chart.doc, {
@@ -2269,16 +2281,74 @@ function bindEvents() {
     if (!value) return;
 
     const kind = active.chart.chartType === "number" ? "number" : "chord";
+    const lyricsLines = active.chart.doc.lyricsLines || [];
+    const placements = active.chart.doc.placements || [];
+    const charWidth = measureMonoCharWidthPx();
+    
+    // Find a good position: use cursor if valid, otherwise find first visible line with space
+    let lineIndex = state.chordCharts.editorCursor?.lineIndex ?? 0;
+    let charIndex = state.chordCharts.editorCursor?.charIndex ?? 0;
+    
+    // If cursor is out of bounds or on a section header, find a better position
+    if (lineIndex >= lyricsLines.length) {
+      lineIndex = Math.max(0, lyricsLines.length - 1);
+      charIndex = 0;
+    }
+    
+    const lineText = lyricsLines[lineIndex] || "";
+    // Check if this is a section header
+    if (lineText.trim().match(/^\[([^\]]+)\]$/)) {
+      // Skip section headers, find next regular line
+      for (let i = lineIndex + 1; i < lyricsLines.length; i++) {
+        if (!lyricsLines[i].trim().match(/^\[([^\]]+)\]$/)) {
+          lineIndex = i;
+          charIndex = 0;
+          break;
+        }
+      }
+    }
+    
+    // Find a position that doesn't overlap with existing chords on this line
+    const linePlacements = placements.filter(p => p.lineIndex === lineIndex);
+    const estimatedChordWidth = (value.length + 2) * charWidth; // rough estimate
+    
+    // Try to find a gap or position at the end
+    let foundPosition = false;
+    for (let testCharIndex = 0; testCharIndex < (lineText.length || 20); testCharIndex += 2) {
+      const testLeft = testCharIndex * charWidth;
+      const overlaps = linePlacements.some(p => {
+        const pLeft = (p.charIndex || 0) * charWidth;
+        const pRight = pLeft + estimatedChordWidth;
+        const testRight = testLeft + estimatedChordWidth;
+        return (testLeft < pRight && testRight > pLeft);
+      });
+      
+      if (!overlaps) {
+        charIndex = testCharIndex;
+        foundPosition = true;
+        break;
+      }
+    }
+    
+    // If no gap found, place at end of line
+    if (!foundPosition) {
+      charIndex = Math.max(0, (lineText.length || 0) * charWidth / charWidth);
+    }
+    
     const placement = {
       id: genPlacementId(),
-      lineIndex: state.chordCharts.editorCursor.lineIndex || 0,
-      charIndex: state.chordCharts.editorCursor.charIndex || 0,
+      lineIndex,
+      charIndex,
       kind,
       value,
     };
+    
     if (!Array.isArray(active.chart.doc.placements)) active.chart.doc.placements = [];
     active.chart.doc.placements.push(placement);
     input.value = "";
+    
+    // Update cursor to the new position
+    state.chordCharts.editorCursor = { lineIndex, charIndex };
 
     renderChartDocIntoPage(wrapEl, active.chart.doc, {
       songTitle: active.songTitle || active.chart.doc.title || "Chord Chart",
@@ -2303,7 +2373,20 @@ function bindEvents() {
     const lyricsInput = el("chart-lyrics-input");
     const wrapEl = el("chart-editor-page");
     if (!lyricsInput || !wrapEl) return;
-    active.chart.doc.lyricsLines = normalizeLyricsLinesFromText(lyricsInput.value);
+    
+    const oldLines = active.chart.doc.lyricsLines || [];
+    const newLines = normalizeLyricsLinesFromText(lyricsInput.value);
+    active.chart.doc.lyricsLines = newLines;
+    
+    // Adjust placements to match new line indices
+    if (oldLines.length !== newLines.length || !oldLines.every((line, idx) => line === newLines[idx])) {
+      active.chart.doc.placements = adjustPlacementsForLyricsChange(
+        oldLines,
+        newLines,
+        active.chart.doc.placements || []
+      );
+    }
+    
     renderChartDocIntoPage(wrapEl, active.chart.doc, {
       songTitle: active.songTitle || active.chart.doc.title || "Chord Chart",
       subtitle: active.scope === "key" ? `Key: ${active.songKey}` : (active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
@@ -8900,35 +8983,59 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
 }
 
 function setupLinkDragAndDrop(item, container) {
+  // Clean up existing handlers if they exist
+  if (item._linkDragHandlers) {
+    const dragHandle = item.querySelector(".drag-handle");
+    if (dragHandle && item._linkDragHandlers.dragHandleMousedown) {
+      dragHandle.removeEventListener("mousedown", item._linkDragHandlers.dragHandleMousedown);
+      dragHandle.removeEventListener("selectstart", item._linkDragHandlers.dragHandleSelectstart);
+    }
+    if (item._linkDragHandlers.dragstart) {
+      item.removeEventListener("dragstart", item._linkDragHandlers.dragstart);
+    }
+    if (item._linkDragHandlers.dragend) {
+      item.removeEventListener("dragend", item._linkDragHandlers.dragend);
+    }
+    if (item._linkDragHandlers.dragover) {
+      item.removeEventListener("dragover", item._linkDragHandlers.dragover);
+    }
+    if (item._linkDragHandlers.drop) {
+      item.removeEventListener("drop", item._linkDragHandlers.drop);
+    }
+  }
+
   // Only allow dragging from the drag handle
   const dragHandle = item.querySelector(".drag-handle");
+  const dragHandleMousedown = (e) => {
+    item.draggable = true;
+  };
+  const dragHandleSelectstart = (e) => {
+    e.preventDefault();
+  };
+
   if (dragHandle) {
-    dragHandle.addEventListener("mousedown", (e) => {
-      item.draggable = true;
-    });
+    dragHandle.addEventListener("mousedown", dragHandleMousedown);
     // Prevent text selection on the drag handle
-    dragHandle.addEventListener("selectstart", (e) => {
-      e.preventDefault();
-    });
+    dragHandle.addEventListener("selectstart", dragHandleSelectstart);
     dragHandle.style.userSelect = "none";
   }
 
-  item.addEventListener("dragstart", (e) => {
+  const handleDragStart = (e) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", item.dataset.linkId);
     item.classList.add("dragging");
     item.style.opacity = "0.5";
-  });
+  };
 
-  item.addEventListener("dragend", (e) => {
+  const handleDragEnd = (e) => {
     item.classList.remove("dragging");
     item.style.opacity = "";
     item.draggable = false;
     // Remove all drop indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-  });
+  };
 
-  item.addEventListener("dragover", (e) => {
+  const handleDragOver = (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
 
@@ -8954,9 +9061,9 @@ function setupLinkDragAndDrop(item, container) {
       indicator.className = "drop-indicator";
       container.insertBefore(indicator, afterElement);
     }
-  });
+  };
 
-  item.addEventListener("drop", async (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     // Update the order in the DOM (global across all link sections)
@@ -8965,7 +9072,22 @@ function setupLinkDragAndDrop(item, container) {
     await saveAllResourceOrder();
     // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
-  });
+  };
+
+  item.addEventListener("dragstart", handleDragStart);
+  item.addEventListener("dragend", handleDragEnd);
+  item.addEventListener("dragover", handleDragOver);
+  item.addEventListener("drop", handleDrop);
+
+  // Store handlers for cleanup
+  item._linkDragHandlers = {
+    dragHandleMousedown,
+    dragHandleSelectstart,
+    dragstart: handleDragStart,
+    dragend: handleDragEnd,
+    dragover: handleDragOver,
+    drop: handleDrop
+  };
 
   // Also handle dragover on container for end-of-list drops
   if (!container.dataset.linkDragSetup) {
@@ -9123,11 +9245,27 @@ function getOrderedExistingResourcesFromDom() {
     if (!sectionContent) return;
     const items = Array.from(sectionContent.querySelectorAll(".song-link-row.draggable-item"));
     items.forEach((item) => {
-      const linkId = item.querySelector(".song-link-id")?.value || null;
-      const chartId = item.querySelector(".song-chart-id")?.value || item.dataset.chartId || null;
-      if (linkId) orderedLinks.push({ id: linkId, display_order: globalOrder });
-      if (chartId) orderedCharts.push({ id: chartId, display_order: globalOrder });
-      globalOrder += 1;
+      // Skip readonly/generated chart rows (they don't have database IDs and shouldn't be reordered)
+      const isReadonlyChart = item.classList.contains("song-chart-row") && 
+                              (item.classList.contains("readonly") || item.querySelector(".view-generated-chart"));
+      if (isReadonlyChart) {
+        return; // Don't include in ordering, don't increment order
+      }
+
+      const linkId = item.querySelector(".song-link-id")?.value?.trim() || null;
+      const chartId = item.querySelector(".song-chart-id")?.value?.trim() || 
+                      item.dataset.chartId?.trim() || null;
+      
+      // Items should be either a link OR a chart, not both
+      // Only include valid IDs (non-empty strings) and increment order for each item
+      if (linkId && linkId !== '') {
+        orderedLinks.push({ id: linkId, display_order: globalOrder });
+        globalOrder += 1;
+      } else if (chartId && chartId !== '') {
+        orderedCharts.push({ id: chartId, display_order: globalOrder });
+        globalOrder += 1;
+      }
+      // If neither linkId nor chartId exists, skip this item (don't increment order)
     });
   });
   return { orderedLinks, orderedCharts };
@@ -9136,38 +9274,104 @@ function getOrderedExistingResourcesFromDom() {
 async function reorderSongCharts(orderedCharts, songId) {
   if (!songId || !Array.isArray(orderedCharts) || orderedCharts.length === 0) return;
 
+  // Filter out any invalid chart IDs (empty, null, or undefined)
+  const validCharts = orderedCharts.filter(({ id }) => id && typeof id === 'string' && id.trim() !== '');
+  if (validCharts.length === 0) {
+    console.warn("No valid chart IDs to reorder");
+    return;
+  }
+
+  // Verify all chart IDs exist and belong to this song and team before attempting to update
+  const chartIds = validCharts.map(({ id }) => id);
+  const { data: existingCharts, error: fetchError } = await supabase
+    .from(SONG_CHARTS_TABLE)
+    .select("id")
+    .eq("song_id", songId)
+    .eq("team_id", state.currentTeamId)
+    .in("id", chartIds);
+
+  if (fetchError) {
+    console.error("Failed to verify chart IDs:", fetchError);
+    toastError("Failed to verify charts. Please refresh and try again.");
+    return;
+  }
+
+  const existingChartIds = new Set((existingCharts || []).map(c => String(c.id)));
+  const invalidChartIds = chartIds.filter(id => !existingChartIds.has(String(id)));
+
+  if (invalidChartIds.length > 0) {
+    console.warn("Some chart IDs don't exist or don't belong to this song:", invalidChartIds);
+    // Filter out invalid charts and continue with valid ones
+    const validChartsFiltered = validCharts.filter(({ id }) => existingChartIds.has(String(id)));
+    if (validChartsFiltered.length === 0) {
+      toastError("No valid charts to reorder. Please refresh and try again.");
+      return;
+    }
+    // Update the array to only include valid charts
+    validCharts.length = 0;
+    validCharts.push(...validChartsFiltered);
+  }
+
   const errors = [];
   const tempBase = -2000000;
 
-  const phase1 = orderedCharts.map(async ({ id }, idx) => {
+  const phase1 = validCharts.map(async ({ id }, idx) => {
     const tempValue = tempBase - idx;
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from(SONG_CHARTS_TABLE)
       .update({ display_order: tempValue })
       .eq("id", id)
-      .eq("song_id", songId);
-    if (error) errors.push({ phase: "temporary", id, error });
+      .eq("song_id", songId)
+      .eq("team_id", state.currentTeamId)
+      .select("id"); // Select to verify the update affected a row
+    
+    if (error) {
+      console.error(`Failed to update chart ${id} with temp value ${tempValue}:`, error);
+      errors.push({ phase: "temporary", id, error, tempValue });
+    } else if (!data || data.length === 0) {
+      // No rows were updated - chart might have been deleted or doesn't match filters
+      console.warn(`No rows updated for chart ${id} - chart may have been deleted or doesn't belong to song ${songId}`);
+      errors.push({ phase: "temporary", id, error: { message: "No rows updated", code: "PGRST116" }, tempValue });
+    }
   });
   await Promise.all(phase1);
 
   if (errors.length > 0) {
     console.error("Failed to set temporary display_order values for song_charts:", errors);
+    // Log full error details for debugging
+    errors.forEach(({ id, error, tempValue }) => {
+      console.error(`Chart ID: ${id}, Temp Value: ${tempValue}, Error:`, JSON.stringify(error, null, 2));
+    });
     toastError("Failed to reorder charts. Check console for details.");
     return;
   }
 
-  const phase2 = orderedCharts.map(async ({ id, display_order }) => {
-    const { error } = await supabase
+  const phase2 = validCharts.map(async ({ id, display_order }) => {
+    const { error, data } = await supabase
       .from(SONG_CHARTS_TABLE)
       .update({ display_order })
       .eq("id", id)
-      .eq("song_id", songId);
-    if (error) errors.push({ phase: "final", id, display_order, error });
+      .eq("song_id", songId)
+      .eq("team_id", state.currentTeamId)
+      .select("id"); // Select to verify the update affected a row
+    
+    if (error) {
+      console.error(`Failed to update chart ${id} with display_order ${display_order}:`, error);
+      errors.push({ phase: "final", id, display_order, error });
+    } else if (!data || data.length === 0) {
+      // No rows were updated - chart might have been deleted or doesn't match filters
+      console.warn(`No rows updated for chart ${id} with display_order ${display_order} - chart may have been deleted`);
+      errors.push({ phase: "final", id, display_order, error: { message: "No rows updated", code: "PGRST116" } });
+    }
   });
   await Promise.all(phase2);
 
   if (errors.length > 0) {
     console.error("Failed to set final display_order values for song_charts:", errors);
+    // Log full error details for debugging
+    errors.forEach(({ id, display_order, error }) => {
+      console.error(`Chart ID: ${id}, Display Order: ${display_order}, Error:`, JSON.stringify(error, null, 2));
+    });
     toastError("Some charts could not be reordered. Check console for details.");
   }
 }
@@ -9177,8 +9381,81 @@ async function saveAllResourceOrder() {
   const songId = form?.dataset.songId;
   if (!songId) return;
   const { orderedLinks, orderedCharts } = getOrderedExistingResourcesFromDom();
-  if (orderedLinks.length > 0) await reorderSongLinks(orderedLinks, songId);
-  if (orderedCharts.length > 0) await reorderSongCharts(orderedCharts, songId);
+  
+  // If we have both links and charts, we need to update them together in a coordinated way
+  // since they share the same display_order space
+  if (orderedLinks.length > 0 && orderedCharts.length > 0) {
+    await reorderAllResourcesTogether(orderedLinks, orderedCharts, songId);
+  } else {
+    // If only one type exists, use the individual functions
+    if (orderedLinks.length > 0) await reorderSongLinks(orderedLinks, songId);
+    if (orderedCharts.length > 0) await reorderSongCharts(orderedCharts, songId);
+  }
+}
+
+async function reorderAllResourcesTogether(orderedLinks, orderedCharts, songId) {
+  if (!songId) return;
+  
+  const errors = [];
+  const tempBase = -2000000;
+  
+  // Phase 1: Move ALL resources (links + charts) to temporary values
+  // This ensures we free up all the display_order positions before setting final values
+  const phase1Links = orderedLinks.map(async ({ id }, idx) => {
+    const tempValue = tempBase - idx;
+    const { error } = await supabase
+      .from("song_links")
+      .update({ display_order: tempValue })
+      .eq("id", id)
+      .eq("song_id", songId);
+    if (error) errors.push({ type: "link", phase: "temporary", id, error });
+  });
+  
+  const phase1Charts = orderedCharts.map(async ({ id }, idx) => {
+    const tempValue = tempBase - orderedLinks.length - idx;
+    const { error } = await supabase
+      .from(SONG_CHARTS_TABLE)
+      .update({ display_order: tempValue })
+      .eq("id", id)
+      .eq("song_id", songId)
+      .eq("team_id", state.currentTeamId);
+    if (error) errors.push({ type: "chart", phase: "temporary", id, error });
+  });
+  
+  await Promise.all([...phase1Links, ...phase1Charts]);
+  
+  if (errors.length > 0) {
+    console.error("Failed to set temporary display_order values:", errors);
+    toastError("Failed to reorder resources. Check console for details.");
+    return;
+  }
+  
+  // Phase 2: Set final display_order values for ALL resources
+  const phase2Links = orderedLinks.map(async ({ id, display_order }) => {
+    const { error } = await supabase
+      .from("song_links")
+      .update({ display_order })
+      .eq("id", id)
+      .eq("song_id", songId);
+    if (error) errors.push({ type: "link", phase: "final", id, display_order, error });
+  });
+  
+  const phase2Charts = orderedCharts.map(async ({ id, display_order }) => {
+    const { error } = await supabase
+      .from(SONG_CHARTS_TABLE)
+      .update({ display_order })
+      .eq("id", id)
+      .eq("song_id", songId)
+      .eq("team_id", state.currentTeamId);
+    if (error) errors.push({ type: "chart", phase: "final", id, display_order, error });
+  });
+  
+  await Promise.all([...phase2Links, ...phase2Charts]);
+  
+  if (errors.length > 0) {
+    console.error("Failed to set final display_order values:", errors);
+    toastError("Some resources could not be reordered. Check console for details.");
+  }
 }
 
 async function saveAllLinkOrder() {
@@ -16811,11 +17088,18 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 
   // Load chord charts (stored separately from song_links)
   const songCharts = await fetchSongCharts(songWithLinks.id);
-  const generalChart = songCharts.find(c => c.scope === "general") || null;
+  // Get all general charts (number + chord charts) and sort by display_order
+  const allGeneralCharts = songCharts.filter(c => c.scope === "general").sort((a, b) => {
+    const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+    const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+    return ao - bo;
+  });
+  const generalChart = allGeneralCharts.find(c => c.chart_type === "number") || allGeneralCharts[0] || null;
+  const generalChordCharts = allGeneralCharts.filter(c => c.chart_type === "chord");
   const keyCharts = songCharts.filter(c => c.scope === "key") || [];
   const keyChartByKey = new Map(keyCharts.map(c => [normalizeKeyLabel(c.song_key), c]));
   const hasGeneratedKeyCharts = !!(generalChart && generalChart.chart_type === "number" && hasKeys);
-  const hasAnyCharts = !!(generalChart || keyCharts.length > 0 || hasGeneratedKeyCharts);
+  const hasAnyCharts = !!(allGeneralCharts.length > 0 || keyCharts.length > 0 || hasGeneratedKeyCharts);
   const hasResources = hasLinks || hasAnyCharts;
   const itunesFetchDisabled = !!songWithLinks.itunes_fetch_disabled;
   const teamItunesDisabled = (state.userTeams?.find?.(t => t.id === state.currentTeamId)?.itunes_indexing_enabled === false);
@@ -16967,7 +17251,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
     const linksContainer = content.querySelector(".song-details-links");
     if (linksContainer) {
       // Render general links
-      if (generalLinks.length > 0 || generalChart) {
+      if (generalLinks.length > 0 || allGeneralCharts.length > 0) {
         const generalSection = document.createElement("div");
         generalSection.style.marginBottom = "1.5rem";
         const generalTitle = document.createElement("h4");
@@ -16977,22 +17261,37 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         generalSection.appendChild(generalTitle);
         const generalLinksContainer = document.createElement("div");
         const generalChartItems = [];
-        if (generalChart) {
+        // Add all general charts (number + chord charts) in display_order
+        allGeneralCharts.forEach(chart => {
           generalChartItems.push({
             __resourceType: "chart",
-            title: generalChart.chart_type === "number" ? "Number Chart" : "Chord Chart",
-            subtitle: generalChart.chart_type === "number" ? "General • Number chart" : "General • Chord chart",
+            title: chart.chart_type === "number" ? "Number Chart" : "Chord Chart",
+            subtitle: chart.chart_type === "number" ? "General • Number chart" : "General • Chord chart",
             songId: songWithLinks.id,
             songTitle: songWithLinks.title || "",
             scope: "general",
             songKey: null,
-            chartType: generalChart.chart_type,
-            layout: generalChart.layout,
-            doc: generalChart.doc,
+            chartType: chart.chart_type,
+            layout: chart.layout,
+            doc: chart.doc,
             readOnly: false,
+            display_order: chart.display_order ?? Number.POSITIVE_INFINITY,
           });
-        }
-        renderSongLinksDisplay([...generalChartItems, ...generalLinks], generalLinksContainer);
+        });
+        // Merge charts and links, then sort by display_order to maintain correct interleaved order
+        const allGeneralResources = [...generalChartItems, ...generalLinks].sort((a, b) => {
+          const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+          const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+          if (ao !== bo) return ao - bo;
+          // If display_order is the same, sort by type (charts first, then links)
+          if (a.__resourceType === 'chart' && b.__resourceType !== 'chart') return -1;
+          if (a.__resourceType !== 'chart' && b.__resourceType === 'chart') return 1;
+          // If both are same type, sort by title
+          const at = (a?.title || "").toLowerCase();
+          const bt = (b?.title || "").toLowerCase();
+          return at.localeCompare(bt);
+        });
+        renderSongLinksDisplay(allGeneralResources, generalLinksContainer);
         generalSection.appendChild(generalLinksContainer);
         linksContainer.appendChild(generalSection);
       }
@@ -17022,6 +17321,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             layout: existingKeyChart.layout,
             doc: existingKeyChart.doc,
             readOnly: false,
+            display_order: existingKeyChart.display_order ?? Number.POSITIVE_INFINITY,
           });
         } else if (generalChart && generalChart.chart_type === "number") {
           selectedChartItems.push({
@@ -17037,9 +17337,23 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             generatedFromNumber: true,
             sourceDoc: generalChart.doc,
             targetKey: selectedKey,
+            display_order: Number.POSITIVE_INFINITY, // Generated charts go to end
           });
         }
-        renderSongLinksDisplay([...selectedChartItems, ...selectedKeyLinks], selectedLinksContainer);
+        // Merge charts and links, then sort by display_order to maintain correct interleaved order
+        const allSelectedResources = [...selectedChartItems, ...selectedKeyLinks].sort((a, b) => {
+          const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+          const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+          if (ao !== bo) return ao - bo;
+          // If display_order is the same, sort by type (charts first, then links)
+          if (a.__resourceType === 'chart' && b.__resourceType !== 'chart') return -1;
+          if (a.__resourceType !== 'chart' && b.__resourceType === 'chart') return 1;
+          // If both are same type, sort by title
+          const at = (a?.title || "").toLowerCase();
+          const bt = (b?.title || "").toLowerCase();
+          return at.localeCompare(bt);
+        });
+        renderSongLinksDisplay(allSelectedResources, selectedLinksContainer);
         selectedSection.appendChild(selectedLinksContainer);
         linksContainer.appendChild(selectedSection);
       }
@@ -17116,6 +17430,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
               layout: existingKeyChart.layout,
               doc: existingKeyChart.doc,
               readOnly: false,
+              display_order: existingKeyChart.display_order ?? Number.POSITIVE_INFINITY,
             });
           } else if (generalChart && generalChart.chart_type === "number") {
             keyChartItems.push({
@@ -17131,9 +17446,22 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
               generatedFromNumber: true,
               sourceDoc: generalChart.doc,
               targetKey: key,
+              display_order: Number.POSITIVE_INFINITY, // Generated charts go to end
             });
           }
-          const combined = [...keyChartItems, ...(Array.isArray(keyLinks) ? keyLinks : [])];
+          // Merge charts and links, then sort by display_order to maintain correct interleaved order
+          const combined = [...keyChartItems, ...(Array.isArray(keyLinks) ? keyLinks : [])].sort((a, b) => {
+            const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+            const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+            if (ao !== bo) return ao - bo;
+            // If display_order is the same, sort by type (charts first, then links)
+            if (a.__resourceType === 'chart' && b.__resourceType !== 'chart') return -1;
+            if (a.__resourceType !== 'chart' && b.__resourceType === 'chart') return 1;
+            // If both are same type, sort by title
+            const at = (a?.title || "").toLowerCase();
+            const bt = (b?.title || "").toLowerCase();
+            return at.localeCompare(bt);
+          });
           if (combined.length > 0) {
             renderSongLinksDisplay(combined, keyLinksContainer);
           }
@@ -20233,18 +20561,70 @@ function injectSongChartsIntoSongLinksList({ songId, songTitle, charts, keys }) 
     const section = linksRoot.querySelector(`.song-links-section[data-key="${CSS.escape(sectionKey)}"]`);
     const sectionContent = section?.querySelector?.(".song-links-section-content");
     if (!sectionContent) return;
-    rows.forEach(row => {
-      sectionContent.insertBefore(row, sectionContent.firstChild);
-      if (isManager()) setupLinkDragAndDrop(row, sectionContent);
+    
+    // Get all existing items (links) in this section with their display_order
+    const existingItems = Array.from(sectionContent.querySelectorAll(".song-link-row.draggable-item:not(.song-chart-row)"));
+    const itemsWithOrder = existingItems.map(item => {
+      const linkId = item.querySelector(".song-link-id")?.value?.trim();
+      // Get display_order from dataset (set by createLinkRow or updateAllLinkOrderInDom)
+      // If not in dataset, try to parse from the link data, otherwise use a high number
+      let displayOrder = Number.POSITIVE_INFINITY;
+      if (item.dataset.displayOrder) {
+        displayOrder = parseInt(item.dataset.displayOrder, 10);
+      } else {
+        // Fallback: try to get from the hidden input or data attribute
+        // This handles cases where the order hasn't been set yet
+        const orderAttr = item.getAttribute("data-display-order");
+        if (orderAttr) {
+          displayOrder = parseInt(orderAttr, 10);
+        }
+      }
+      return { element: item, displayOrder, linkId };
+    }).sort((a, b) => a.displayOrder - b.displayOrder); // Sort existing items by order
+    
+    // Sort charts by display_order before inserting
+    const chartsWithOrder = rows.map(row => {
+      const chartId = row.querySelector(".song-chart-id")?.value?.trim() || row.dataset.chartId?.trim();
+      // Find the chart's display_order from the charts array
+      const chart = allCharts.find(c => c.id === chartId);
+      const displayOrder = chart?.display_order ?? Number.POSITIVE_INFINITY;
+      return { element: row, displayOrder, chartId };
+    }).sort((a, b) => a.displayOrder - b.displayOrder);
+    
+    // Insert each chart in the correct position based on display_order
+    chartsWithOrder.forEach(({ element: chartRow, displayOrder: chartOrder }) => {
+      // Find the first existing item with a higher display_order
+      const insertBefore = itemsWithOrder.find(({ displayOrder }) => displayOrder > chartOrder);
+      
+      if (insertBefore) {
+        sectionContent.insertBefore(chartRow, insertBefore.element);
+      } else {
+        // If no item has higher order, append to the end (but before any "add" buttons)
+        const addCard = sectionContent.querySelector(".add-link-card, .add-file-upload-card");
+        if (addCard) {
+          sectionContent.insertBefore(chartRow, addCard);
+        } else {
+          sectionContent.appendChild(chartRow);
+        }
+      }
+      
+      if (isManager()) setupLinkDragAndDrop(chartRow, sectionContent);
     });
   };
 
   // General section rows: number chart (at top), then chord charts
+  // Sort charts by display_order to maintain correct ordering
   const generalRows = [];
   if (generalNumber) {
     generalRows.push(buildChartRow(generalNumber, { songId, songTitle }));
   }
-  generalChords.forEach(ch => {
+  // Sort chord charts by display_order before building rows
+  const sortedGeneralChords = [...generalChords].sort((a, b) => {
+    const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+    const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+    return ao - bo;
+  });
+  sortedGeneralChords.forEach(ch => {
     generalRows.push(buildChartRow(ch, { songId, songTitle }));
   });
   placeRowsInSection("", generalRows);
@@ -20258,7 +20638,15 @@ function injectSongChartsIntoSongLinksList({ songId, songTitle, charts, keys }) 
         { songId, songTitle, readOnly: true, generated: true, numberSourceDoc: generalNumber.doc, targetKey: k }
       ));
     }
-    keyCharts.filter(c => normalizeKeyLabel(c.song_key) === normalizeKeyLabel(k)).forEach(c => {
+    // Sort key charts by display_order before building rows
+    const keyChartsForThisKey = keyCharts
+      .filter(c => normalizeKeyLabel(c.song_key) === normalizeKeyLabel(k))
+      .sort((a, b) => {
+        const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
+        const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+        return ao - bo;
+      });
+    keyChartsForThisKey.forEach(c => {
       rows.push(buildChartRow(c, { songId, songTitle }));
     });
     placeRowsInSection(k, rows);
@@ -20290,6 +20678,69 @@ function normalizeLyricsLinesFromText(text) {
   const raw = (text ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const lines = raw.split("\n").map(l => l.replace(/\s+$/g, "")); // trim right
   return lines.length ? lines : [""];
+}
+
+function adjustPlacementsForLyricsChange(oldLines, newLines, placements) {
+  if (!Array.isArray(placements) || !Array.isArray(oldLines) || !Array.isArray(newLines)) {
+    return placements || [];
+  }
+
+  // If lines are identical, no adjustment needed
+  if (oldLines.length === newLines.length && oldLines.every((line, idx) => line === newLines[idx])) {
+    return placements;
+  }
+
+  // Create a mapping: try to match old lines to new lines by content
+  // This helps preserve placements when lines are added/removed
+  const adjustedPlacements = [];
+  const newLineToIndexMap = new Map();
+  newLines.forEach((line, idx) => {
+    const key = line.trim();
+    if (!newLineToIndexMap.has(key)) {
+      newLineToIndexMap.set(key, []);
+    }
+    newLineToIndexMap.get(key).push(idx);
+  });
+
+  placements.forEach(placement => {
+    const oldLineIndex = Number(placement.lineIndex) || 0;
+    
+    // If placement is out of bounds, remove it
+    if (oldLineIndex >= newLines.length) {
+      return; // Skip this placement
+    }
+
+    // Try to find the same line content in the new lyrics
+    const oldLine = oldLines[oldLineIndex] || "";
+    const oldLineKey = oldLine.trim();
+    const matchingIndices = newLineToIndexMap.get(oldLineKey) || [];
+
+    if (matchingIndices.length > 0) {
+      // Find the closest matching index (prefer same position, then nearest)
+      let bestIndex = matchingIndices[0];
+      let bestDistance = Math.abs(bestIndex - oldLineIndex);
+      for (const idx of matchingIndices) {
+        const distance = Math.abs(idx - oldLineIndex);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = idx;
+        }
+      }
+      
+      adjustedPlacements.push({
+        ...placement,
+        lineIndex: bestIndex,
+      });
+    } else if (oldLineIndex < newLines.length) {
+      // Line content changed but index is still valid - keep placement at same index
+      adjustedPlacements.push({
+        ...placement,
+        lineIndex: oldLineIndex,
+      });
+    }
+  });
+
+  return adjustedPlacements;
 }
 
 function genPlacementId() {
@@ -20406,6 +20857,18 @@ function renderChartDocIntoPage(targetEl, doc, options = {}) {
   const ESTIMATED_LINES_PER_COLUMN = 20;
 
   const makeLineHtml = (lineText, absoluteLineIndex) => {
+    // Check if this is a section header: [SectionName]
+    const sectionHeaderMatch = String(lineText || "").trim().match(/^\[([^\]]+)\]$/);
+    if (sectionHeaderMatch) {
+      const sectionName = sectionHeaderMatch[1];
+      return `
+        <div class="chart-section-header" data-line-index="${absoluteLineIndex}">
+          ${escapeHtml(sectionName)}
+        </div>
+      `;
+    }
+
+    // Regular line with chords
     const linePlacements = placements.filter(p => p && p.lineIndex === absoluteLineIndex);
     const chordLayer = linePlacements.map(p => {
       const leftPx = (Number(p.charIndex) || 0) * charWidth;
@@ -20456,31 +20919,27 @@ function renderChartDocIntoPage(targetEl, doc, options = {}) {
       `);
     }
   } else {
-    // Two columns: treat content as continuous stream
-    // Split content into left/right halves for display, but paginate continuously
-    const split = chooseTwoColumnSplit(bodyLines);
-    const colLeft = split.left;
-    const colRight = split.right;
+    // Two columns: flow continuously left-right-left-right across pages
+    // Each page: left column gets first N lines, right column gets next N lines
+    // Then next page continues from where we left off
+    const totalLines = bodyLines.length;
+    const linesPerPage = 2 * ESTIMATED_LINES_PER_COLUMN; // Each page has 2 columns
+    const totalPages = Math.max(1, Math.ceil(totalLines / linesPerPage));
     
-    // Calculate total lines across both columns
-    const totalLeftLines = colLeft.length;
-    const totalRightLines = colRight.length;
-    const totalColumns = Math.ceil(Math.max(totalLeftLines, totalRightLines) / ESTIMATED_LINES_PER_COLUMN);
-    
-    let pageIdx = 0;
-    for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
-      // Left column: lines for this page
-      const leftStart = colIdx * ESTIMATED_LINES_PER_COLUMN;
-      const leftEnd = Math.min(leftStart + ESTIMATED_LINES_PER_COLUMN, totalLeftLines);
-      const leftPageLines = colLeft.slice(leftStart, leftEnd);
+    for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+      const pageStartLine = pageIdx * linesPerPage;
+      
+      // Left column: first ESTIMATED_LINES_PER_COLUMN lines of this page
+      const leftStart = pageStartLine;
+      const leftEnd = Math.min(leftStart + ESTIMATED_LINES_PER_COLUMN, totalLines);
+      const leftPageLines = bodyLines.slice(leftStart, leftEnd);
       const leftHtml = leftPageLines.map((line, idx) => makeLineHtml(line, leftStart + idx)).join("");
       
-      // Right column: lines for this page (same column index)
-      const rightStart = colIdx * ESTIMATED_LINES_PER_COLUMN;
-      const rightEnd = Math.min(rightStart + ESTIMATED_LINES_PER_COLUMN, totalRightLines);
-      const rightPageLines = colRight.slice(rightStart, rightEnd);
-      const rightOffset = totalLeftLines;
-      const rightHtml = rightPageLines.map((line, idx) => makeLineHtml(line, rightOffset + rightStart + idx)).join("");
+      // Right column: next ESTIMATED_LINES_PER_COLUMN lines of this page
+      const rightStart = leftEnd;
+      const rightEnd = Math.min(rightStart + ESTIMATED_LINES_PER_COLUMN, totalLines);
+      const rightPageLines = bodyLines.slice(rightStart, rightEnd);
+      const rightHtml = rightPageLines.map((line, idx) => makeLineHtml(line, rightStart + idx)).join("");
 
       const headerHtml = pageIdx === 0
         ? `
@@ -20502,8 +20961,6 @@ function renderChartDocIntoPage(targetEl, doc, options = {}) {
           </div>
         </div>
       `);
-
-      pageIdx++;
     }
   }
 
@@ -20939,7 +21396,7 @@ function wireChordChartEditorInteractions() {
     if (!outerEl) return;
     const scale = parseFloat(outerEl.dataset.scale || "1") || 1;
 
-    // Click to set cursor position
+    // Click to set cursor position (only on regular lines, not section headers)
     pageEl.querySelectorAll(".chart-line").forEach(lineEl => {
       lineEl.addEventListener("click", (e) => {
         const lineIndex = parseInt(lineEl.dataset.lineIndex, 10) || 0;
@@ -20951,11 +21408,15 @@ function wireChordChartEditorInteractions() {
         state.chordCharts.editorCursor = { lineIndex, charIndex };
       });
     });
+    
+    // Section headers are not clickable for cursor placement
 
-    // Drag placements (pointer events)
+    // Drag placements (pointer events) with double-tap to delete
+    // Track taps for double-tap detection (shared across all placements on this page)
+    const tapState = { lastTapTime: 0, lastTapId: null, dragTimeout: null };
+    
     pageEl.querySelectorAll(".chart-placement").forEach(plEl => {
     plEl.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
       const placementId = plEl.dataset.placementId;
       if (!placementId) return;
       const doc = state.chordCharts.active?.chart?.doc;
@@ -20964,22 +21425,113 @@ function wireChordChartEditorInteractions() {
       const currentPlacement = (doc.placements || []).find(p => String(p.id) === String(placementId));
       if (!currentPlacement) return;
 
-      const startRect = plEl.getBoundingClientRect();
-      state.chordCharts.drag = {
-        placementId,
-        startX: e.clientX,
-        startY: e.clientY,
-        startLeft: startRect.left,
-        startTop: startRect.top,
-        currentLeftPx: parseFloat(plEl.style.left || "0") || 0,
-        lineIndex: currentPlacement.lineIndex ?? 0,
-      };
-      plEl.classList.add("dragging");
-      plEl.setPointerCapture(e.pointerId);
+      // Check for double-tap (within 300ms, same element)
+      const now = Date.now();
+      const timeSinceLastTap = now - tapState.lastTapTime;
+      const isDoubleTap = timeSinceLastTap < 300 && 
+                         timeSinceLastTap > 0 && 
+                         tapState.lastTapId === placementId;
 
+      // Clear any pending drag timeout
+      if (tapState.dragTimeout) {
+        clearTimeout(tapState.dragTimeout);
+        tapState.dragTimeout = null;
+      }
+
+      if (isDoubleTap) {
+        // Double-tap detected - delete the placement
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Reset tap tracking
+        tapState.lastTapTime = 0;
+        tapState.lastTapId = null;
+
+        // Remove placement from document
+        if (Array.isArray(doc.placements)) {
+          doc.placements = doc.placements.filter(p => String(p.id) !== String(placementId));
+        }
+
+        // Re-render to update display
+        const wrapEl2 = el("chart-editor-page");
+        if (wrapEl2) {
+          renderChartDocIntoPage(wrapEl2, doc, {
+            songTitle: state.chordCharts.active.songTitle || doc.title || "Chord Chart",
+            subtitle: state.chordCharts.active.scope === "key" ? `Key: ${state.chordCharts.active.songKey}` : (state.chordCharts.active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
+            layout: state.chordCharts.active.chart.layout || doc?.settings?.layout,
+            readOnly: false,
+          });
+          wireChordChartEditorInteractions();
+          requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl2));
+        }
+        return;
+      }
+
+      // Record this tap
+      tapState.lastTapTime = now;
+      tapState.lastTapId = placementId;
+
+      // Track initial position for movement detection
+      const startX = e.clientX;
+      const startY = e.clientY;
+      let hasMoved = false;
+      let dragStarted = false;
+
+      // Delay drag start to allow for double-tap detection
+      tapState.dragTimeout = setTimeout(() => {
+        if (dragStarted) return; // Already started or cancelled
+        
+        // Start drag tracking
+        const startRect = plEl.getBoundingClientRect();
+        state.chordCharts.drag = {
+          placementId,
+          startX: e.clientX,
+          startY: e.clientY,
+          startLeft: startRect.left,
+          startTop: startRect.top,
+          currentLeftPx: parseFloat(plEl.style.left || "0") || 0,
+          lineIndex: currentPlacement.lineIndex ?? 0,
+        };
+        plEl.classList.add("dragging");
+        plEl.setPointerCapture(e.pointerId);
+        dragStarted = true;
+      }, 200); // 200ms delay to allow double-tap
+
+      // Start drag immediately if user moves pointer (no delay for actual dragging)
       const onMove = (ev) => {
+        // If we haven't started dragging yet, check if we should start now
+        if (!dragStarted) {
+          const moveDistance = Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY);
+          if (moveDistance > 3) {
+            // User is dragging - start immediately
+            if (tapState.dragTimeout) {
+              clearTimeout(tapState.dragTimeout);
+              tapState.dragTimeout = null;
+            }
+            const startRect = plEl.getBoundingClientRect();
+            state.chordCharts.drag = {
+              placementId,
+              startX: e.clientX,
+              startY: e.clientY,
+              startLeft: startRect.left,
+              startTop: startRect.top,
+              currentLeftPx: parseFloat(plEl.style.left || "0") || 0,
+              lineIndex: currentPlacement.lineIndex ?? 0,
+            };
+            plEl.classList.add("dragging");
+            plEl.setPointerCapture(e.pointerId);
+            dragStarted = true;
+            hasMoved = true;
+            // Cancel double-tap if we've moved
+            tapState.lastTapTime = 0;
+          } else {
+            return; // Not enough movement yet, wait
+          }
+        }
+        
         const drag = state.chordCharts.drag;
         if (!drag) return;
+        
         const dxScaled = ev.clientX - drag.startX;
         const dx = dxScaled / scale;
         const newLeft = (parseFloat(plEl.style.left || "0") || 0) + dx;
@@ -20994,18 +21546,52 @@ function wireChordChartEditorInteractions() {
           if (newLineIndex !== drag.lineIndex) {
             const newLayer = line.querySelector(".chart-chord-layer");
             if (newLayer) {
+              // Calculate the correct left position relative to the new layer
+              const lyricsEl = line.querySelector(".chart-lyrics-layer");
+              const newLayerRect = (lyricsEl || line).getBoundingClientRect();
+              const pointerX = ev.clientX;
+              const relativeX = (pointerX - newLayerRect.left) / scale;
+              const newCharIndex = clampInt(relativeX / charWidth, 0, 10_000);
+              const newLeftPx = newCharIndex * charWidth;
+              
               newLayer.appendChild(plEl);
+              plEl.style.left = `${newLeftPx}px`;
               drag.lineIndex = newLineIndex;
+              drag.currentLeftPx = newLeftPx;
             }
+          } else {
+            // Update position within the same line based on pointer position
+            const lyricsEl = line.querySelector(".chart-lyrics-layer");
+            const lineRect = (lyricsEl || line).getBoundingClientRect();
+            const relativeX = (ev.clientX - lineRect.left) / scale;
+            const newCharIndex = clampInt(relativeX / charWidth, 0, 10_000);
+            const newLeftPx = newCharIndex * charWidth;
+            plEl.style.left = `${newLeftPx}px`;
+            drag.currentLeftPx = newLeftPx;
           }
         }
       };
 
       const onUp = (ev) => {
+        // Clear drag timeout if it exists
+        if (tapState.dragTimeout) {
+          clearTimeout(tapState.dragTimeout);
+          tapState.dragTimeout = null;
+        }
+        
+        // If we never started dragging and didn't move, it was just a tap
+        if (!dragStarted && !hasMoved) {
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onUp);
+          return; // Just a tap, let double-tap detection handle it
+        }
+        
         const drag = state.chordCharts.drag;
-        state.chordCharts.drag = null;
-        plEl.classList.remove("dragging");
-        plEl.releasePointerCapture(ev.pointerId);
+        if (drag) {
+          state.chordCharts.drag = null;
+          plEl.classList.remove("dragging");
+          plEl.releasePointerCapture(ev.pointerId);
+        }
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
 
@@ -21014,6 +21600,7 @@ function wireChordChartEditorInteractions() {
         const p = (doc2.placements || []).find(pp => String(pp.id) === String(placementId));
         if (!p) return;
 
+        // Get the final position from the element's style (which was updated during drag)
         const leftPx = parseFloat(plEl.style.left || "0") || 0;
         p.charIndex = clampInt(leftPx / charWidth, 0, 10_000);
         p.lineIndex = drag?.lineIndex ?? p.lineIndex ?? 0;

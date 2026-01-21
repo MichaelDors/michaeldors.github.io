@@ -1786,6 +1786,11 @@ textarea {
   border-radius: 0.375rem;
   border: 1px solid var(--border-color);
   flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.song-link-row.song-chart-row {
+  margin-bottom: 0;
 }
 
 .song-link-row>label {
@@ -3766,6 +3771,32 @@ i {
 .chart-line {
   position: relative;
   padding: 0.12rem 0;
+}
+
+.chart-page-body .chart-section-header {
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  color: #6b7280 !important;
+  margin-top: 1rem !important;
+  margin-bottom: 0.5rem !important;
+  padding-top: 0.6rem !important;
+  padding-bottom: 0.2rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  font-family: "Google Sans Flex", system-ui, -apple-system, "Segoe UI", sans-serif !important;
+  display: block !important;
+  white-space: normal !important;
+  line-height: 1.2 !important;
+}
+
+.chart-page-body .chart-section-header:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.chart-section-header:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
 }
 
 .chart-chord-layer {
