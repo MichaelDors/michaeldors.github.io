@@ -543,6 +543,103 @@
     <div id="print-set-content" class="print-set-content"></div>
   </div>
 
+  <div id="print-chart-container" class="print-chart-container hidden" aria-hidden="true">
+    <div id="print-chart-content" class="print-chart-content"></div>
+  </div>
+
+  <!-- Chord Chart Viewer (read-only) -->
+  <div id="chart-viewer-modal" class="chart-modal hidden" aria-hidden="true">
+    <div class="chart-modal-shell" role="dialog" aria-modal="true" aria-label="Chord chart viewer">
+      <header class="chart-modal-header">
+        <div class="chart-modal-header-left">
+          <button type="button" class="icon-btn" id="close-chart-viewer" aria-label="Close chord chart viewer">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+          <div class="chart-modal-title-wrap">
+            <div id="chart-viewer-title" class="chart-modal-title">Chord Chart</div>
+            <div id="chart-viewer-subtitle" class="chart-modal-subtitle muted small-text"></div>
+          </div>
+        </div>
+        <div class="chart-modal-header-right">
+          <button type="button" id="btn-chart-viewer-export" class="btn secondary small">
+            <i class="fa-solid fa-print"></i> Print / Export PDF
+          </button>
+        </div>
+      </header>
+      <div class="chart-modal-body">
+        <div id="chart-viewer-page" class="chart-page-wrap" aria-label="Chord chart page"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chord Chart Editor -->
+  <div id="chart-editor-modal" class="chart-modal hidden" aria-hidden="true">
+    <div class="chart-modal-shell" role="dialog" aria-modal="true" aria-label="Chord chart editor">
+      <header class="chart-modal-header">
+        <div class="chart-modal-header-left">
+          <button type="button" class="icon-btn" id="close-chart-editor" aria-label="Close chord chart editor">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+          <div class="chart-modal-title-wrap">
+            <div id="chart-editor-title" class="chart-modal-title">Chord Chart Editor</div>
+            <div id="chart-editor-subtitle" class="chart-modal-subtitle muted small-text"></div>
+          </div>
+        </div>
+        <div class="chart-modal-header-right">
+          <div class="chart-toolbar-group">
+            <label class="muted small-text" style="margin:0;">
+              Layout
+              <select id="chart-editor-layout" class="chart-toolbar-select">
+                <option value="one_column">1 column</option>
+                <option value="two_column">2 columns</option>
+              </select>
+            </label>
+          </div>
+          <div class="chart-toolbar-group">
+            <label class="muted small-text" style="margin:0;">
+              Type
+              <select id="chart-editor-type" class="chart-toolbar-select">
+                <option value="chord">Chord chart</option>
+                <option value="number">Number chart</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" id="btn-chart-editor-format" class="btn secondary small">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Format
+          </button>
+          <button type="button" id="btn-chart-editor-export" class="btn secondary small">
+            <i class="fa-solid fa-print"></i> Print / Export PDF
+          </button>
+          <button type="button" id="btn-chart-editor-save" class="btn primary small">
+            <i class="fa-solid fa-floppy-disk"></i> Save
+          </button>
+        </div>
+      </header>
+      <div class="chart-modal-body chart-editor-body">
+        <aside class="chart-editor-sidebar">
+          <div class="chart-sidebar-section">
+            <div class="chart-sidebar-title">Insert</div>
+            <div class="chart-insert-row">
+              <input type="text" id="chart-insert-value" class="chart-insert-input" placeholder="C, Dm7, 6m, b7..." />
+              <button type="button" id="btn-chart-insert" class="btn secondary small">Add</button>
+            </div>
+            <div class="muted small-text" style="margin-top:0.5rem;">
+              Tip: click a lyric line to place the value; drag to reposition.
+            </div>
+          </div>
+          <div class="chart-sidebar-section">
+            <div class="chart-sidebar-title">Lyrics</div>
+            <textarea id="chart-lyrics-input" class="chart-lyrics-textarea" rows="16"
+              placeholder="Paste lyrics here…"></textarea>
+          </div>
+        </aside>
+        <main class="chart-editor-canvas">
+          <div id="chart-editor-page" class="chart-page-wrap" aria-label="Chord chart page"></div>
+        </main>
+      </div>
+    </div>
+  </div>
+
   <div id="set-modal" class="modal hidden">
     <div class="modal-content">
       <header>

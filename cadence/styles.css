@@ -3125,11 +3125,34 @@ i {
   z-index: 2000;
 }
 
+.print-chart-container {
+  position: fixed;
+  inset: 0;
+  padding: 2rem;
+  overflow: auto;
+  background: var(--bg-primary);
+  z-index: 2000;
+}
+
 .print-set-container.hidden {
   display: none !important;
 }
 
+.print-chart-container.hidden {
+  display: none !important;
+}
+
 .print-set-content {
+  max-width: 960px;
+  margin: 0 auto;
+  background: white;
+  color: #111;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  font-family: "Google Sans Flex", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.print-chart-content {
   max-width: 960px;
   margin: 0 auto;
   background: white;
@@ -3290,15 +3313,23 @@ i {
 @media print {
 
   /* Hide everything except the print container */
-  body>*:not(#print-set-container),
-  body>*:not(#print-set-container) * {
+  body>*:not(#print-set-container):not(#print-chart-container),
+  body>*:not(#print-set-container):not(#print-chart-container) * {
     display: none !important;
     visibility: hidden !important;
   }
 
   /* Ensure print container is visible and properly styled */
+  #print-set-container[aria-hidden="true"],
+  #print-chart-container[aria-hidden="true"] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
   #print-set-container.hidden,
-  #print-set-container {
+  #print-set-container,
+  #print-chart-container.hidden,
+  #print-chart-container {
     display: block !important;
     visibility: visible !important;
     position: static !important;
@@ -3317,6 +3348,37 @@ i {
     border-radius: 0 !important;
     background: white !important;
     color: #000 !important;
+  }
+
+  .print-chart-content {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: white !important;
+    color: #000 !important;
+  }
+
+  /* Ensure the chart prints without the on-screen "card" look */
+  #print-chart-container .chart-page {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 0.4in !important;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  #print-chart-container .chart-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  #print-chart-container .chart-page-outer {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   .print-set-header {
@@ -3345,7 +3407,8 @@ i {
   }
 
   /* Ensure all print content is visible */
-  #print-set-container * {
+  #print-set-container *,
+  #print-chart-container * {
     visibility: visible !important;
   }
 
@@ -3419,6 +3482,326 @@ i {
   .btn {
     display: none !important;
   }
+}
+
+/* Song links: shared section action row (adds Create/Edit Chart) */
+.song-links-section-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.song-links-section-header .song-links-chart-note {
+  margin-top: 0.25rem;
+}
+
+/* ============================================================================
+   Chart viewer/editor modals
+   ========================================================================== */
+.chart-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 2300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.chart-modal.hidden {
+  display: none !important;
+}
+
+.chart-modal-shell {
+  width: min(1400px, calc(100% - 2.5rem));
+  height: min(900px, calc(100% - 2.5rem));
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-primary) 80%, transparent);
+}
+
+.chart-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.chart-modal-title-wrap {
+  min-width: 0;
+}
+
+.chart-modal-title {
+  font-weight: 800;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chart-modal-subtitle {
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chart-modal-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.chart-toolbar-select {
+  margin-left: 0.5rem;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.6rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.chart-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem;
+  background: var(--bg-secondary);
+}
+
+.chart-editor-body {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chart-editor-sidebar {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  padding: 0.9rem;
+  min-height: 0;
+  overflow: auto;
+}
+
+.chart-editor-canvas {
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.chart-sidebar-section + .chart-sidebar-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.chart-sidebar-title {
+  font-weight: 800;
+  margin-bottom: 0.6rem;
+}
+
+.chart-insert-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chart-insert-input {
+  flex: 1;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.7rem;
+}
+
+.chart-lyrics-textarea {
+  width: 100%;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.chart-page-wrap {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0.5rem;
+  gap: 1rem;
+  box-sizing: border-box;
+}
+
+.chart-page-outer {
+  display: block;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.chart-page {
+  width: 8.5in; /* Letter page */
+  height: 11in; /* Letter page */
+  margin: 0;
+  background: white;
+  color: #111;
+  border-radius: 0.9rem;
+  padding: 0.55in 0.55in 0.6in;
+  position: relative;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-page::after {
+  content: "Cadence";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: rgba(0, 0, 0, 0.06);
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+
+.chart-page-header {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 0.35in;
+  flex-shrink: 0;
+}
+
+.chart-page-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-family: "Google Sans Flex", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.chart-page-subtitle {
+  margin: 0.2rem 0 0;
+  color: #6b7280;
+  font-size: 0.95rem;
+  font-family: "Google Sans Flex", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.chart-page-body {
+  position: relative;
+  z-index: 2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.chart-columns {
+  display: grid;
+  gap: 0.4in;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.chart-columns.one_column {
+  grid-template-columns: 1fr;
+}
+
+.chart-columns.two_column {
+  grid-template-columns: 1fr 1fr;
+  max-width: 100%;
+  width: 100%;
+}
+
+.chart-col {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chart-line {
+  position: relative;
+  padding: 0.12rem 0;
+}
+
+.chart-chord-layer {
+  position: relative;
+  height: 1.2em;
+}
+
+.chart-lyrics-layer {
+  white-space: pre;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.chart-placement {
+  position: absolute;
+  top: 0;
+  padding: 0 0.25rem;
+  border-radius: 0.35rem;
+  background: rgba(255, 123, 81, 0.12);
+  color: #111;
+  border: 1px solid rgba(255, 123, 81, 0.25);
+  font-weight: 700;
+  cursor: grab;
+  user-select: none;
+}
+
+.chart-placement.readonly {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.chart-placement.dragging {
+  cursor: grabbing;
+  opacity: 0.9;
 }
 
 /* Resource Search Styles */

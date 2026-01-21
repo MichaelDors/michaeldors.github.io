@@ -131,6 +131,14 @@ const state = {
     pageStartTime: null,
     timeTrackingIntervals: {}, // Track intervals for each page/modal
     sessionId: null
+  },
+  chordCharts: {
+    // songId -> { loadedAt: number, charts: any[] }
+    cache: new Map(),
+    // Active modal context
+    active: null, // { mode: 'viewer'|'editor', songId, scope, songKey, readOnly, chart, songTitle }
+    editorCursor: { lineIndex: 0, charIndex: 0 },
+    drag: null, // internal drag state
   }
 };
 
@@ -2127,7 +2135,233 @@ function bindEvents() {
   });
   el("song-edit-form")?.addEventListener("submit", handleSongEditSubmit);
   el("btn-add-song-key")?.addEventListener("click", () => addSongKeyInput());
+  // Charts are rendered as rows in the resources list; keep generated rows in sync with key edits
+  el("song-keys-list")?.addEventListener("input", () => {
+    const form = el("song-edit-form");
+    const songId = form?.dataset?.songId || null;
+    if (!songId) return;
+    fetchSongCharts(songId, { useCache: false }).then(charts => {
+      injectSongChartsIntoSongLinksList({
+        songId,
+        songTitle: el("song-edit-title")?.value?.trim?.() || "",
+        charts,
+        keys: collectSongKeys().map(k => k?.key).filter(Boolean),
+      });
+    }).catch(() => { });
+  });
   el("close-song-details-modal")?.addEventListener("click", () => closeSongDetailsModal());
+
+  // Chord chart viewer/editor
+  el("close-chart-viewer")?.addEventListener("click", () => closeChordChartViewer());
+  el("close-chart-editor")?.addEventListener("click", () => closeChordChartEditor());
+  el("btn-chart-viewer-export")?.addEventListener("click", () => openPrintChartFromActive());
+  el("btn-chart-editor-export")?.addEventListener("click", () => openPrintChartFromActive());
+  el("chart-viewer-modal")?.addEventListener("click", (e) => {
+    if (e.target === el("chart-viewer-modal")) closeChordChartViewer();
+  });
+  el("chart-editor-modal")?.addEventListener("click", (e) => {
+    if (e.target === el("chart-editor-modal")) closeChordChartEditor();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const viewer = el("chart-viewer-modal");
+    const editor = el("chart-editor-modal");
+    if (viewer && !viewer.classList.contains("hidden")) closeChordChartViewer();
+    if (editor && !editor.classList.contains("hidden")) closeChordChartEditor();
+  });
+
+  // Keep the PDF pages fitted as viewport changes
+  window.addEventListener("resize", () => {
+    const viewerWrap = el("chart-viewer-page");
+    if (viewerWrap && !el("chart-viewer-modal")?.classList.contains("hidden")) {
+      fitAllChartPagesToContainer(viewerWrap);
+    }
+    const editorWrap = el("chart-editor-page");
+    if (editorWrap && !el("chart-editor-modal")?.classList.contains("hidden")) {
+      fitAllChartPagesToContainer(editorWrap);
+    }
+  });
+  el("btn-chart-editor-format")?.addEventListener("click", () => {
+    const active = state.chordCharts.active;
+    if (!active || active.mode !== "editor") return;
+    const lyricsInput = el("chart-lyrics-input");
+    if (!lyricsInput) return;
+    // Best-effort formatting: normalize newlines and trim trailing whitespace
+    lyricsInput.value = normalizeLyricsLinesFromText(lyricsInput.value).join("\n");
+    active.chart.doc.lyricsLines = normalizeLyricsLinesFromText(lyricsInput.value);
+    const wrapEl = el("chart-editor-page");
+    if (wrapEl) {
+      renderChartDocIntoPage(wrapEl, active.chart.doc, {
+        songTitle: active.songTitle || active.chart.doc.title || "Chord Chart",
+        subtitle: active.scope === "key" ? `Key: ${active.songKey}` : (active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
+        layout: active.chart.layout,
+        readOnly: false,
+      });
+      wireChordChartEditorInteractions();
+      requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl));
+    }
+  });
+  el("btn-chart-editor-save")?.addEventListener("click", async () => {
+    const active = state.chordCharts.active;
+    if (!active || active.mode !== "editor") return;
+    const lyricsInput = el("chart-lyrics-input");
+    if (lyricsInput) {
+      active.chart.doc.lyricsLines = normalizeLyricsLinesFromText(lyricsInput.value);
+    }
+
+    try {
+      // Enforce: only one general number chart per song
+      if (active.scope === "general" && (active.chart.chartType || "chord") === "number") {
+        const charts = await fetchSongCharts(active.songId, { useCache: false });
+        const otherNumber = (charts || []).find(c =>
+          c.scope === "general" &&
+          c.chart_type === "number" &&
+          String(c.id) !== String(active.chart.id || "")
+        );
+        if (otherNumber) {
+          toastError("Only one Number Chart is allowed in General resources.");
+          return;
+        }
+      }
+      const saved = await saveSongChart({
+        id: active.chart.id,
+        songId: active.songId,
+        scope: active.scope,
+        chartType: active.scope === "key" ? "chord" : (active.chart.chartType || "chord"),
+        layout: active.chart.layout || active.chart.doc?.settings?.layout || "one_column",
+        songKey: active.scope === "key" ? normalizeKeyLabel(active.songKey) : null,
+        doc: active.chart.doc,
+      });
+      active.chart.id = saved.id;
+      toastSuccess("Chord chart saved.");
+      trackPostHogEvent("chart_saved", {
+        team_id: state.currentTeamId,
+        song_id: active.songId,
+        scope: active.scope,
+        song_key: active.songKey || null,
+        chart_type: saved.chart_type,
+      });
+
+      // If song edit modal is open, refresh chart rows in the resources list
+      const songEditOpen = !!el("song-edit-modal") && !el("song-edit-modal").classList.contains("hidden");
+      if (songEditOpen) {
+        const charts = await fetchSongCharts(active.songId, { useCache: false });
+        injectSongChartsIntoSongLinksList({
+          songId: active.songId,
+          songTitle: el("song-edit-title")?.value?.trim?.() || active.songTitle || "",
+          charts,
+          keys: collectSongKeys().map(k => k?.key).filter(Boolean),
+        });
+      }
+    } catch (err) {
+      console.error("Failed to save chart:", err);
+      toastError("Failed to save chord chart. Check console.");
+    }
+  });
+
+  el("btn-chart-insert")?.addEventListener("click", () => {
+    const active = state.chordCharts.active;
+    if (!active || active.mode !== "editor") return;
+    const input = el("chart-insert-value");
+    const wrapEl = el("chart-editor-page");
+    if (!input || !wrapEl) return;
+    const value = input.value.trim();
+    if (!value) return;
+
+    const kind = active.chart.chartType === "number" ? "number" : "chord";
+    const placement = {
+      id: genPlacementId(),
+      lineIndex: state.chordCharts.editorCursor.lineIndex || 0,
+      charIndex: state.chordCharts.editorCursor.charIndex || 0,
+      kind,
+      value,
+    };
+    if (!Array.isArray(active.chart.doc.placements)) active.chart.doc.placements = [];
+    active.chart.doc.placements.push(placement);
+    input.value = "";
+
+    renderChartDocIntoPage(wrapEl, active.chart.doc, {
+      songTitle: active.songTitle || active.chart.doc.title || "Chord Chart",
+      subtitle: active.scope === "key" ? `Key: ${active.songKey}` : (active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
+      layout: active.chart.layout,
+      readOnly: false,
+    });
+    wireChordChartEditorInteractions();
+    requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl));
+  });
+
+  el("chart-insert-value")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      el("btn-chart-insert")?.click();
+    }
+  });
+
+  el("chart-lyrics-input")?.addEventListener("input", () => {
+    const active = state.chordCharts.active;
+    if (!active || active.mode !== "editor") return;
+    const lyricsInput = el("chart-lyrics-input");
+    const wrapEl = el("chart-editor-page");
+    if (!lyricsInput || !wrapEl) return;
+    active.chart.doc.lyricsLines = normalizeLyricsLinesFromText(lyricsInput.value);
+    renderChartDocIntoPage(wrapEl, active.chart.doc, {
+      songTitle: active.songTitle || active.chart.doc.title || "Chord Chart",
+      subtitle: active.scope === "key" ? `Key: ${active.songKey}` : (active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
+      layout: active.chart.layout,
+      readOnly: false,
+    });
+    wireChordChartEditorInteractions();
+    requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl));
+  });
+
+  el("chart-editor-layout")?.addEventListener("change", () => {
+    const active = state.chordCharts.active;
+    if (!active || active.mode !== "editor") return;
+    const sel = el("chart-editor-layout");
+    const wrapEl = el("chart-editor-page");
+    if (!sel || !wrapEl) return;
+    active.chart.layout = sel.value || "one_column";
+    if (!active.chart.doc.settings) active.chart.doc.settings = {};
+    active.chart.doc.settings.layout = active.chart.layout;
+    renderChartDocIntoPage(wrapEl, active.chart.doc, {
+      songTitle: active.songTitle || active.chart.doc.title || "Chord Chart",
+      subtitle: active.scope === "key" ? `Key: ${active.songKey}` : (active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
+      layout: active.chart.layout,
+      readOnly: false,
+    });
+    wireChordChartEditorInteractions();
+    requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl));
+  });
+
+  el("chart-editor-type")?.addEventListener("change", () => {
+    const active = state.chordCharts.active;
+    if (!active || active.mode !== "editor") return;
+    if (active.scope === "key") return; // key charts are chord-only
+    const sel = el("chart-editor-type");
+    const wrapEl = el("chart-editor-page");
+    if (!sel || !wrapEl) return;
+    active.chart.chartType = sel.value || "chord";
+    
+    // Update insert input placeholder based on chart type
+    const insertInput = el("chart-insert-value");
+    if (insertInput) {
+      insertInput.placeholder = active.chart.chartType === "number" 
+        ? "1, 4, 6m, b7, #4dim, 5sus..." 
+        : "C, Dm7, F#m, Bb, Gsus4...";
+    }
+    
+    // Update placement kind labels best-effort (keep values)
+    const kind = active.chart.chartType === "number" ? "number" : "chord";
+    (active.chart.doc.placements || []).forEach(p => { p.kind = kind; });
+    renderChartDocIntoPage(wrapEl, active.chart.doc, {
+      songTitle: active.songTitle || active.chart.doc.title || "Chord Chart",
+      subtitle: active.chart.chartType === "number" ? "Number chart" : "Chord chart",
+      layout: active.chart.layout,
+      readOnly: false,
+    });
+    wireChordChartEditorInteractions();
+    requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl));
+  });
 
   // Format duration input to help with MM:SS entry
   const durationInput = el("song-edit-duration");
@@ -8728,7 +8962,7 @@ function setupLinkDragAndDrop(item, container) {
     // Update the order in the DOM (global across all link sections)
     updateAllLinkOrderInDom();
     // Save the order to the database immediately (like song/section reorder)
-    await saveAllLinkOrder();
+    await saveAllResourceOrder();
     // Remove indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
   });
@@ -8768,7 +9002,7 @@ function setupLinkDragAndDrop(item, container) {
       // Update the order in the DOM (global across all link sections)
       updateAllLinkOrderInDom();
       // Save the order to the database immediately (like song/section reorder)
-      await saveAllLinkOrder();
+      await saveAllResourceOrder();
       // Remove indicators
       container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
     });
@@ -8875,6 +9109,76 @@ async function reorderSongLinks(orderedLinks, songId) {
     console.error("Failed to set final display_order values for song_links:", errors);
     toastError("Some links could not be reordered. Check console for details.");
   }
+}
+
+function getOrderedExistingResourcesFromDom() {
+  const linksRoot = el("song-links-list");
+  if (!linksRoot) return { orderedLinks: [], orderedCharts: [] };
+  const orderedLinks = [];
+  const orderedCharts = [];
+  let globalOrder = 0;
+  const sections = Array.from(linksRoot.querySelectorAll(".song-links-section"));
+  sections.forEach(section => {
+    const sectionContent = section.querySelector(".song-links-section-content");
+    if (!sectionContent) return;
+    const items = Array.from(sectionContent.querySelectorAll(".song-link-row.draggable-item"));
+    items.forEach((item) => {
+      const linkId = item.querySelector(".song-link-id")?.value || null;
+      const chartId = item.querySelector(".song-chart-id")?.value || item.dataset.chartId || null;
+      if (linkId) orderedLinks.push({ id: linkId, display_order: globalOrder });
+      if (chartId) orderedCharts.push({ id: chartId, display_order: globalOrder });
+      globalOrder += 1;
+    });
+  });
+  return { orderedLinks, orderedCharts };
+}
+
+async function reorderSongCharts(orderedCharts, songId) {
+  if (!songId || !Array.isArray(orderedCharts) || orderedCharts.length === 0) return;
+
+  const errors = [];
+  const tempBase = -2000000;
+
+  const phase1 = orderedCharts.map(async ({ id }, idx) => {
+    const tempValue = tempBase - idx;
+    const { error } = await supabase
+      .from(SONG_CHARTS_TABLE)
+      .update({ display_order: tempValue })
+      .eq("id", id)
+      .eq("song_id", songId);
+    if (error) errors.push({ phase: "temporary", id, error });
+  });
+  await Promise.all(phase1);
+
+  if (errors.length > 0) {
+    console.error("Failed to set temporary display_order values for song_charts:", errors);
+    toastError("Failed to reorder charts. Check console for details.");
+    return;
+  }
+
+  const phase2 = orderedCharts.map(async ({ id, display_order }) => {
+    const { error } = await supabase
+      .from(SONG_CHARTS_TABLE)
+      .update({ display_order })
+      .eq("id", id)
+      .eq("song_id", songId);
+    if (error) errors.push({ phase: "final", id, display_order, error });
+  });
+  await Promise.all(phase2);
+
+  if (errors.length > 0) {
+    console.error("Failed to set final display_order values for song_charts:", errors);
+    toastError("Some charts could not be reordered. Check console for details.");
+  }
+}
+
+async function saveAllResourceOrder() {
+  const form = el("song-edit-form");
+  const songId = form?.dataset.songId;
+  if (!songId) return;
+  const { orderedLinks, orderedCharts } = getOrderedExistingResourcesFromDom();
+  if (orderedLinks.length > 0) await reorderSongLinks(orderedLinks, songId);
+  if (orderedCharts.length > 0) await reorderSongCharts(orderedCharts, songId);
 }
 
 async function saveAllLinkOrder() {
@@ -14695,6 +14999,19 @@ async function openSongEditModal(songId = null) {
 
         renderSongKeys(songData.song_keys || []);
         renderSongLinks(songData.song_links || []);
+
+        // Inject charts into the resources list (inline, reorderable rows)
+        try {
+          const charts = await fetchSongCharts(songId, { useCache: false });
+          injectSongChartsIntoSongLinksList({
+            songId,
+            songTitle: songData.title || "",
+            charts,
+            keys: (songData.song_keys || []).map(k => k?.key).filter(Boolean),
+          });
+        } catch (e) {
+          // Non-blocking
+        }
       } else {
         if (!song) {
           renderSongKeys([]);
@@ -16491,6 +16808,15 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   const keysArray = songWithLinks.song_keys || [];
   const singleKey = keysArray.length === 1 ? keysArray[0].key : null;
   const isSingleKeyMatch = singleKey && selectedKey && singleKey === selectedKey;
+
+  // Load chord charts (stored separately from song_links)
+  const songCharts = await fetchSongCharts(songWithLinks.id);
+  const generalChart = songCharts.find(c => c.scope === "general") || null;
+  const keyCharts = songCharts.filter(c => c.scope === "key") || [];
+  const keyChartByKey = new Map(keyCharts.map(c => [normalizeKeyLabel(c.song_key), c]));
+  const hasGeneratedKeyCharts = !!(generalChart && generalChart.chart_type === "number" && hasKeys);
+  const hasAnyCharts = !!(generalChart || keyCharts.length > 0 || hasGeneratedKeyCharts);
+  const hasResources = hasLinks || hasAnyCharts;
   const itunesFetchDisabled = !!songWithLinks.itunes_fetch_disabled;
   const teamItunesDisabled = (state.userTeams?.find?.(t => t.id === state.currentTeamId)?.itunes_indexing_enabled === false);
   const itunesUnavailable = itunesFetchDisabled || teamItunesDisabled;
@@ -16607,7 +16933,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         ` : ''
     }
         
-        ${hasLinks ? `
+        ${hasResources ? `
         <div class="resources-section-wrapper">
           <div class="resources-wave-divider">
             <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
@@ -16637,11 +16963,11 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   `;
 
   // Render links organized by key
-  if (hasLinks) {
+  if (hasResources) {
     const linksContainer = content.querySelector(".song-details-links");
     if (linksContainer) {
       // Render general links
-      if (generalLinks.length > 0) {
+      if (generalLinks.length > 0 || generalChart) {
         const generalSection = document.createElement("div");
         generalSection.style.marginBottom = "1.5rem";
         const generalTitle = document.createElement("h4");
@@ -16650,13 +16976,29 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         generalTitle.style.marginBottom = "0.5rem";
         generalSection.appendChild(generalTitle);
         const generalLinksContainer = document.createElement("div");
-        renderSongLinksDisplay(generalLinks, generalLinksContainer);
+        const generalChartItems = [];
+        if (generalChart) {
+          generalChartItems.push({
+            __resourceType: "chart",
+            title: generalChart.chart_type === "number" ? "Number Chart" : "Chord Chart",
+            subtitle: generalChart.chart_type === "number" ? "General • Number chart" : "General • Chord chart",
+            songId: songWithLinks.id,
+            songTitle: songWithLinks.title || "",
+            scope: "general",
+            songKey: null,
+            chartType: generalChart.chart_type,
+            layout: generalChart.layout,
+            doc: generalChart.doc,
+            readOnly: false,
+          });
+        }
+        renderSongLinksDisplay([...generalChartItems, ...generalLinks], generalLinksContainer);
         generalSection.appendChild(generalLinksContainer);
         linksContainer.appendChild(generalSection);
       }
 
       // Render selected key links
-      if (selectedKey && selectedKeyLinks.length > 0) {
+      if (selectedKey && (selectedKeyLinks.length > 0 || keyChartByKey.has(normalizeKeyLabel(selectedKey)) || (generalChart && generalChart.chart_type === "number"))) {
         const selectedSection = document.createElement("div");
         selectedSection.style.marginBottom = "1.5rem";
         const selectedTitle = document.createElement("h4");
@@ -16665,13 +17007,49 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         selectedTitle.style.marginBottom = "0.5rem";
         selectedSection.appendChild(selectedTitle);
         const selectedLinksContainer = document.createElement("div");
-        renderSongLinksDisplay(selectedKeyLinks, selectedLinksContainer);
+        const selectedChartItems = [];
+        const existingKeyChart = keyChartByKey.get(normalizeKeyLabel(selectedKey));
+        if (existingKeyChart) {
+          selectedChartItems.push({
+            __resourceType: "chart",
+            title: "Chord Chart",
+            subtitle: `Key: ${selectedKey}`,
+            songId: songWithLinks.id,
+            songTitle: songWithLinks.title || "",
+            scope: "key",
+            songKey: selectedKey,
+            chartType: "chord",
+            layout: existingKeyChart.layout,
+            doc: existingKeyChart.doc,
+            readOnly: false,
+          });
+        } else if (generalChart && generalChart.chart_type === "number") {
+          selectedChartItems.push({
+            __resourceType: "chart",
+            title: "Chord Chart",
+            subtitle: `Key: ${selectedKey} • Read-only (auto-generated)`,
+            songId: songWithLinks.id,
+            songTitle: songWithLinks.title || "",
+            scope: "key",
+            songKey: selectedKey,
+            layout: generalChart.layout || "one_column",
+            readOnly: true,
+            generatedFromNumber: true,
+            sourceDoc: generalChart.doc,
+            targetKey: selectedKey,
+          });
+        }
+        renderSongLinksDisplay([...selectedChartItems, ...selectedKeyLinks], selectedLinksContainer);
         selectedSection.appendChild(selectedLinksContainer);
         linksContainer.appendChild(selectedSection);
       }
 
       // Render other keys links
-      if (Object.keys(linksByKey).length > 0) {
+      const shouldShowOtherKeys =
+        Object.keys(linksByKey).length > 0 ||
+        (hasKeys && (keyCharts.length > 0 || (generalChart && generalChart.chart_type === "number")));
+
+      if (shouldShowOtherKeys) {
         const otherKeysSection = document.createElement("div");
         const otherKeysHeader = document.createElement("div");
         otherKeysHeader.style.display = "flex";
@@ -16698,8 +17076,21 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
           toggleIcon.style.transform = "rotate(-90deg)";
         }
 
-        // Render links for each key
-        Object.keys(linksByKey).sort().forEach(key => {
+        // Render links/charts for each key
+        const keysToRender = new Set();
+        Object.keys(linksByKey).forEach(k => keysToRender.add(k));
+        (keysArray || []).forEach(kObj => {
+          const k = normalizeKeyLabel(kObj?.key);
+          if (k) keysToRender.add(k);
+        });
+
+        // Include keys from existing key charts even if song keys were removed/renamed
+        keyChartByKey.forEach((_chart, k) => {
+          const kk = normalizeKeyLabel(k);
+          if (kk) keysToRender.add(kk);
+        });
+
+        Array.from(keysToRender).sort().forEach(key => {
           const keySection = document.createElement("div");
           keySection.style.marginBottom = "1rem";
           const keyTitle = document.createElement("h5");
@@ -16709,7 +17100,43 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
           keyTitle.style.fontSize = "0.9rem";
           keySection.appendChild(keyTitle);
           const keyLinksContainer = document.createElement("div");
-          renderSongLinksDisplay(linksByKey[key], keyLinksContainer);
+          const keyLinks = linksByKey[key] || [];
+          const keyChartItems = [];
+          const existingKeyChart = keyChartByKey.get(normalizeKeyLabel(key));
+          if (existingKeyChart) {
+            keyChartItems.push({
+              __resourceType: "chart",
+              title: "Chord Chart",
+              subtitle: `Key: ${key}`,
+              songId: songWithLinks.id,
+              songTitle: songWithLinks.title || "",
+              scope: "key",
+              songKey: key,
+              chartType: "chord",
+              layout: existingKeyChart.layout,
+              doc: existingKeyChart.doc,
+              readOnly: false,
+            });
+          } else if (generalChart && generalChart.chart_type === "number") {
+            keyChartItems.push({
+              __resourceType: "chart",
+              title: "Chord Chart",
+              subtitle: `Key: ${key} • Read-only (auto-generated)`,
+              songId: songWithLinks.id,
+              songTitle: songWithLinks.title || "",
+              scope: "key",
+              songKey: key,
+              layout: generalChart.layout || "one_column",
+              readOnly: true,
+              generatedFromNumber: true,
+              sourceDoc: generalChart.doc,
+              targetKey: key,
+            });
+          }
+          const combined = [...keyChartItems, ...(Array.isArray(keyLinks) ? keyLinks : [])];
+          if (combined.length > 0) {
+            renderSongLinksDisplay(combined, keyLinksContainer);
+          }
           keySection.appendChild(keyLinksContainer);
           otherKeysContent.appendChild(keySection);
         });
@@ -17685,17 +18112,18 @@ function renderSongLinks(links) {
     }
   });
 
-  // Render General Links section
+  // Render General section
   const generalSection = document.createElement("div");
   generalSection.className = "song-links-section";
   generalSection.dataset.key = "";
   const generalHeader = document.createElement("div");
   generalHeader.className = "song-links-section-header";
   generalHeader.innerHTML = `
-    <h4>General Links</h4>
-    <div style="display: flex; gap: 0.5rem;">
+    <h4>General Resources</h4>
+    <div class="song-links-section-actions">
       <button type="button" class="btn small secondary add-link-to-section" data-key="">Add Link</button>
       <button type="button" class="btn small secondary add-file-upload-to-section" data-key="">Upload</button>
+      <button type="button" class="btn small secondary create-chart-to-section" data-key="">Create Chart</button>
     </div>
   `;
   generalSection.appendChild(generalHeader);
@@ -17721,9 +18149,10 @@ function renderSongLinks(links) {
     keyHeader.className = "song-links-section-header";
     keyHeader.innerHTML = `
       <h4>Key: ${escapeHtml(key)}</h4>
-      <div style="display: flex; gap: 0.5rem;">
+      <div class="song-links-section-actions">
         <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
         <button type="button" class="btn small secondary add-file-upload-to-section" data-key="${escapeHtml(key)}">Upload</button>
+        <button type="button" class="btn small secondary create-chart-to-section" data-key="${escapeHtml(key)}">Create Chart</button>
       </div>
     `;
     keySection.appendChild(keyHeader);
@@ -17751,6 +18180,28 @@ function renderSongLinks(links) {
     btn.addEventListener("click", () => {
       const key = btn.dataset.key || "";
       addFileUploadToSection(key);
+    });
+  });
+
+  // Create chart action (type is chosen in editor)
+  container.querySelectorAll(".create-chart-to-section").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const key = btn.dataset.key || "";
+      const form = el("song-edit-form");
+      const songId = form?.dataset?.songId || null;
+      const songTitle = el("song-edit-title")?.value?.trim?.() || "";
+      if (!songId) {
+        toastInfo("Save the song first to create charts.");
+        return;
+      }
+      openChordChartEditor({
+        songId,
+        songTitle,
+        scope: key ? "key" : "general",
+        songKey: key || null,
+        existingChart: null,
+        forceType: key ? "chord" : null, // key charts are chord-only; general can choose
+      });
     });
   });
 
@@ -17892,12 +18343,13 @@ function addSongLinkToSection(key) {
     section.dataset.key = key;
     const sectionHeader = document.createElement("div");
     sectionHeader.className = "song-links-section-header";
-    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Links";
+    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Resources";
     sectionHeader.innerHTML = `
       <h4>${sectionTitle}</h4>
-      <div style="display: flex; gap: 0.5rem;">
+      <div class="song-links-section-actions">
         <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
         <button type="button" class="btn small secondary add-file-upload-to-section" data-key="${escapeHtml(key)}">Upload</button>
+        <button type="button" class="btn small secondary create-chart-to-section" data-key="${escapeHtml(key)}">Create Chart</button>
       </div>
     `;
     section.appendChild(sectionHeader);
@@ -17949,12 +18401,13 @@ function addFileUploadToSection(key) {
     section.dataset.key = key;
     const sectionHeader = document.createElement("div");
     sectionHeader.className = "song-links-section-header";
-    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Links";
+    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Resources";
     sectionHeader.innerHTML = `
       <h4>${sectionTitle}</h4>
-      <div style="display: flex; gap: 0.5rem;">
+      <div class="song-links-section-actions">
         <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
         <button type="button" class="btn small secondary add-file-upload-to-section" data-key="${escapeHtml(key)}">Upload</button>
+        <button type="button" class="btn small secondary create-chart-to-section" data-key="${escapeHtml(key)}">Create Chart</button>
       </div>
     `;
     section.appendChild(sectionHeader);
@@ -18016,7 +18469,8 @@ function collectSongLinks() {
     const sectionContent = section.querySelector(".song-links-section-content");
     if (!sectionContent) return;
 
-    const rows = Array.from(sectionContent.querySelectorAll(".song-link-row"));
+    // Only collect actual links (ignore chord chart rows)
+    const rows = Array.from(sectionContent.querySelectorAll(".song-link-row:not(.song-chart-row)"));
     rows.forEach((row) => {
       const titleInput = row.querySelector(".song-link-title-input");
       const urlInput = row.querySelector(".song-link-url-input");
@@ -18123,7 +18577,7 @@ function renderSectionLinks(links, containerId = "section-links-list") {
   const generalHeader = document.createElement("div");
   generalHeader.className = "song-links-section-header";
   generalHeader.innerHTML = `
-    <h4>General Links</h4>
+    <h4>General Resources</h4>
     <div style="display: flex; gap: 0.5rem;">
       <button type="button" class="btn small secondary add-section-link-to-section" data-key="">Add Link</button>
       <button type="button" class="btn small secondary add-section-file-upload-to-section" data-key="">Upload</button>
@@ -18280,7 +18734,7 @@ function addSectionLinkToSection(key, containerId = "section-links-list") {
     section.dataset.key = key;
     const sectionHeader = document.createElement("div");
     sectionHeader.className = "song-links-section-header";
-    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Links";
+    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Resources";
     sectionHeader.innerHTML = `
       <h4>${sectionTitle}</h4>
       <div style="display: flex; gap: 0.5rem;">
@@ -18337,7 +18791,7 @@ function addSectionFileUploadToSection(key, containerId = "section-links-list") 
     section.dataset.key = key;
     const sectionHeader = document.createElement("div");
     sectionHeader.className = "song-links-section-header";
-    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Links";
+    const sectionTitle = key ? `Key: ${escapeHtml(key)}` : "General Resources";
     sectionHeader.innerHTML = `
       <h4>${sectionTitle}</h4>
       <div style="display: flex; gap: 0.5rem;">
@@ -19383,6 +19837,48 @@ async function renderSongLinksDisplay(links, container) {
   linksContainer.style.gap = "0.5rem";
 
   for (const link of links) {
+    // Chord chart resource tiles (inline with links/resources)
+    if (link && link.__resourceType === 'chart') {
+      const tile = document.createElement("a");
+      tile.className = "song-link-display";
+      tile.href = "#";
+      tile.style.cursor = "pointer";
+
+      const icon = document.createElement("div");
+      icon.className = "song-link-favicon";
+      icon.innerHTML = '<i class="fa-solid fa-music" style="font-size: 1.2rem; color: var(--accent-color);"></i>';
+
+      const content = document.createElement("div");
+      content.className = "song-link-content";
+
+      const title = document.createElement("div");
+      title.className = "song-link-title";
+      title.textContent = link.title || "Chord Chart";
+
+      const subtitle = document.createElement("div");
+      subtitle.className = "song-link-url";
+      subtitle.textContent = link.subtitle || (link.readOnly ? "Read-only (auto-generated)" : "View");
+
+      content.appendChild(title);
+      content.appendChild(subtitle);
+
+      tile.appendChild(icon);
+      tile.appendChild(content);
+
+      tile.addEventListener("click", (e) => {
+        e.preventDefault();
+        try {
+          openChordChartViewerFromResource(link);
+        } catch (err) {
+          console.error("Failed to open chart viewer:", err);
+          toastError("Unable to open chord chart. Check console.");
+        }
+      });
+
+      linksContainer.appendChild(tile);
+      continue;
+    }
+
     const linkEl = document.createElement("a");
     linkEl.className = "song-link-display";
 
@@ -19592,6 +20088,956 @@ async function renderSongLinksDisplay(links, container) {
   }
 
   container.appendChild(linksContainer);
+}
+
+// ============================================================================
+// Chord charts (DB-backed, rendered inline as resources)
+// ============================================================================
+
+const SONG_CHARTS_TABLE = "song_charts";
+
+function chartDisplayLabel(chart) {
+  if (!chart) return "Chart";
+  if (chart.chart_type === "number") return "Number Chart";
+  return "Chord Chart";
+}
+
+function chartScopeLabel(chart) {
+  if (!chart) return "";
+  if (chart.scope === "key" && chart.song_key) return `Key: ${chart.song_key}`;
+  return "General";
+}
+
+function buildChartRow(chart, { songId, songTitle, readOnly = false, generated = false, numberSourceDoc = null, targetKey = null } = {}) {
+  const div = document.createElement("div");
+  div.className = `song-link-row song-chart-row ${readOnly ? "readonly" : ""} draggable-item`;
+  div.draggable = false;
+  div.dataset.linkId = chart?.id ? `chart-${chart.id}` : `chart-new-${Date.now()}`;
+  if (chart?.id) div.dataset.chartId = chart.id;
+
+  const label = generated ? "Generated Chord Chart" : chartDisplayLabel(chart);
+  const subtitle = generated
+    ? `Key: ${targetKey} • Auto-generated (read-only)`
+    : `${chartScopeLabel(chart)} • ${chart.chart_type === "number" ? "Number chart" : "Chord chart"}`;
+
+  const canDrag = isManager() && !readOnly && !generated;
+
+  div.innerHTML = `
+    ${canDrag ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
+    <div style="display:flex; align-items:center; gap:0.75rem; flex:1; min-width:0;">
+      <div class="song-link-favicon" aria-hidden="true">
+        <i class="fa-solid fa-music" style="font-size: 1.1rem; color: var(--accent-color);"></i>
+      </div>
+      <div class="song-link-content" style="min-width:0;">
+        <div class="song-link-title">${escapeHtml(label)}</div>
+        <div class="song-link-url">${escapeHtml(subtitle)}</div>
+      </div>
+    </div>
+    ${chart?.id ? `<input type="hidden" class="song-chart-id" value="${escapeHtml(chart.id)}" />` : ""}
+    <div style="display:flex; gap:0.5rem; align-items:center;">
+      <button type="button" class="btn small secondary ${generated ? "view-generated-chart" : "edit-song-chart"}" ${readOnly && !generated ? "disabled" : ""}>
+        ${generated ? "View" : "Edit"}
+      </button>
+      ${(!generated && !readOnly) ? `<button type="button" class="btn small ghost remove-song-chart">Delete</button>` : ""}
+    </div>
+  `;
+
+  if (canDrag) {
+    div.classList.add("draggable-item");
+  } else {
+    div.classList.remove("draggable-item");
+  }
+
+  // Wire buttons
+  const editBtn = div.querySelector(".edit-song-chart");
+  if (editBtn && chart?.id) {
+    editBtn.addEventListener("click", async () => {
+      openChordChartEditor({
+        songId,
+        songTitle,
+        scope: chart.scope,
+        songKey: chart.song_key || null,
+        existingChart: chart,
+        forceType: chart.chart_type,
+      });
+    });
+  }
+
+  const viewBtn = div.querySelector(".view-generated-chart");
+  if (viewBtn && generated && numberSourceDoc && targetKey) {
+    viewBtn.addEventListener("click", () => {
+      openChordChartViewerFromResource({
+        __resourceType: "chart",
+        title: "Chord Chart",
+        subtitle: `Key: ${targetKey} • Auto-generated (read-only)`,
+        songId,
+        songTitle,
+        scope: "key",
+        songKey: targetKey,
+        layout: chart?.layout || "one_column",
+        readOnly: true,
+        generatedFromNumber: true,
+        sourceDoc: numberSourceDoc,
+        targetKey: targetKey,
+      });
+    });
+  }
+
+  const deleteBtn = div.querySelector(".remove-song-chart");
+  if (deleteBtn && chart?.id) {
+    deleteBtn.addEventListener("click", async () => {
+      const ok = confirm("Delete this chart? This cannot be undone.");
+      if (!ok) return;
+      try {
+        const { error } = await supabase
+          .from(SONG_CHARTS_TABLE)
+          .delete()
+          .eq("id", chart.id)
+          .eq("song_id", songId);
+        if (error) throw error;
+        toastSuccess("Chart deleted.");
+        // Refresh chart rows without disturbing link edits
+        const charts = await fetchSongCharts(songId, { useCache: false });
+        injectSongChartsIntoSongLinksList({
+          songId,
+          songTitle,
+          charts,
+          keys: collectSongKeys().map(k => k?.key).filter(Boolean),
+        });
+      } catch (err) {
+        console.error("Failed to delete chart:", err);
+        toastError("Failed to delete chart. Check console.");
+      }
+    });
+  }
+
+  return div;
+}
+
+function injectSongChartsIntoSongLinksList({ songId, songTitle, charts, keys }) {
+  const linksRoot = el("song-links-list");
+  if (!linksRoot) return;
+
+  const allCharts = Array.isArray(charts) ? charts : [];
+  const generalCharts = allCharts.filter(c => c.scope === "general");
+  const generalNumber = generalCharts.find(c => c.chart_type === "number") || null;
+  const generalChords = generalCharts.filter(c => c.chart_type === "chord");
+  const keyCharts = allCharts.filter(c => c.scope === "key");
+
+  // Remove old chart rows first
+  linksRoot.querySelectorAll(".song-chart-row").forEach(el => el.remove());
+
+  const keysToRender = (keys || collectSongKeys().map(k => k?.key)).map(normalizeKeyLabel).filter(Boolean);
+
+  const placeRowsInSection = (sectionKey, rows) => {
+    const section = linksRoot.querySelector(`.song-links-section[data-key="${CSS.escape(sectionKey)}"]`);
+    const sectionContent = section?.querySelector?.(".song-links-section-content");
+    if (!sectionContent) return;
+    rows.forEach(row => {
+      sectionContent.insertBefore(row, sectionContent.firstChild);
+      if (isManager()) setupLinkDragAndDrop(row, sectionContent);
+    });
+  };
+
+  // General section rows: number chart (at top), then chord charts
+  const generalRows = [];
+  if (generalNumber) {
+    generalRows.push(buildChartRow(generalNumber, { songId, songTitle }));
+  }
+  generalChords.forEach(ch => {
+    generalRows.push(buildChartRow(ch, { songId, songTitle }));
+  });
+  placeRowsInSection("", generalRows);
+
+  // Key sections: show generated read-only row if number chart exists, plus editable key charts
+  keysToRender.forEach(k => {
+    const rows = [];
+    if (generalNumber?.doc) {
+      rows.push(buildChartRow(
+        { scope: "key", chart_type: "chord", song_key: k, layout: generalNumber.layout || "one_column" },
+        { songId, songTitle, readOnly: true, generated: true, numberSourceDoc: generalNumber.doc, targetKey: k }
+      ));
+    }
+    keyCharts.filter(c => normalizeKeyLabel(c.song_key) === normalizeKeyLabel(k)).forEach(c => {
+      rows.push(buildChartRow(c, { songId, songTitle }));
+    });
+    placeRowsInSection(k, rows);
+  });
+
+  // Normalize display order tags and persist if user re-ordered
+  updateAllLinkOrderInDom();
+}
+
+function normalizeKeyLabel(key) {
+  return (key || "").trim();
+}
+
+function createEmptyChartDoc(songTitle = "") {
+  return {
+    version: 1,
+    title: songTitle || "",
+    lyricsLines: [""],
+    placements: [],
+    settings: {
+      layout: "one_column", // one_column | two_column
+      fontSize: 14,
+      lineHeight: 1.4,
+    },
+  };
+}
+
+function normalizeLyricsLinesFromText(text) {
+  const raw = (text ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = raw.split("\n").map(l => l.replace(/\s+$/g, "")); // trim right
+  return lines.length ? lines : [""];
+}
+
+function genPlacementId() {
+  return `pl-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function clampInt(n, min, max) {
+  const v = Number.isFinite(n) ? Math.round(n) : min;
+  return Math.max(min, Math.min(max, v));
+}
+
+function chooseTwoColumnSplit(lines) {
+  if (!Array.isArray(lines) || lines.length < 6) return { left: lines, right: [] };
+  const mid = Math.floor(lines.length / 2);
+  // Prefer splitting at a blank line near the midpoint
+  let best = mid;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (let i = Math.max(0, mid - 6); i <= Math.min(lines.length - 1, mid + 6); i++) {
+    if ((lines[i] || "").trim() === "") {
+      const dist = Math.abs(i - mid);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+  }
+  const left = lines.slice(0, best);
+  const right = lines.slice(best);
+  return { left, right };
+}
+
+function measureMonoCharWidthPx(fontSizePx = 14) {
+  const probe = document.createElement("span");
+  probe.style.visibility = "hidden";
+  probe.style.position = "fixed";
+  probe.style.left = "-9999px";
+  probe.style.top = "-9999px";
+  probe.style.whiteSpace = "pre";
+  probe.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+  probe.style.fontSize = `${fontSizePx}px`;
+  probe.textContent = "MMMMMMMMMM";
+  document.body.appendChild(probe);
+  const width = probe.getBoundingClientRect().width / 10;
+  probe.remove();
+  return width || 8;
+}
+
+function fitChartPageToContainer(wrapEl, outerEl, pageEl) {
+  if (!wrapEl || !outerEl || !pageEl) return;
+  // Reset transform to measure the true page size
+  pageEl.style.transform = "";
+  pageEl.style.transformOrigin = "";
+  outerEl.style.width = "";
+  outerEl.style.height = "";
+
+  const wrapRect = wrapEl.getBoundingClientRect();
+  const pageRect = pageEl.getBoundingClientRect();
+  
+  // Account for padding in wrapEl (0.5rem on all sides)
+  const wrapPadding = 16; // 0.5rem = 8px, but we have padding on both sides
+  const availableW = Math.max(1, wrapRect.width - wrapPadding);
+  const availableH = Math.max(1, wrapRect.height);
+  
+  const baseW = Math.max(1, pageRect.width);
+  const baseH = Math.max(1, pageRect.height);
+
+  // Scale to fit both dimensions, ensuring we never exceed available space
+  const scaleW = availableW / baseW;
+  const scaleH = availableH / baseH;
+  const scale = Math.max(0.1, Math.min(1, scaleW, scaleH));
+
+  outerEl.dataset.scale = String(scale);
+
+  // Use an outer box with scaled dimensions so the layout matches the scaled page (no "scroll box" feel).
+  outerEl.style.width = `${baseW * scale}px`;
+  outerEl.style.height = `${baseH * scale}px`;
+  outerEl.style.margin = "0 auto";
+
+  pageEl.style.transformOrigin = "top left";
+  pageEl.style.transform = `scale(${scale})`;
+}
+
+function fitAllChartPagesToContainer(wrapEl) {
+  if (!wrapEl) return;
+  const outerEls = wrapEl.querySelectorAll(".chart-page-outer");
+  outerEls.forEach(outerEl => {
+    const pageEl = outerEl.querySelector(".chart-page");
+    if (pageEl) fitChartPageToContainer(wrapEl, outerEl, pageEl);
+  });
+}
+
+function renderChartDocIntoPage(targetEl, doc, options = {}) {
+  if (!targetEl) return;
+  const songTitle = options.songTitle || doc?.title || "Chord Chart";
+  const subtitle = options.subtitle || "";
+  const layout = options.layout || doc?.settings?.layout || "one_column";
+  const readOnly = !!options.readOnly;
+
+  const lyricsLines = Array.isArray(doc?.lyricsLines) ? doc.lyricsLines : [""];
+  const placements = Array.isArray(doc?.placements) ? doc.placements : [];
+
+  const bodyLines = lyricsLines;
+  const columns = layout === "two_column" ? 2 : 1;
+  const charWidth = measureMonoCharWidthPx();
+
+  // Calculate available space for content
+  // Page: 11in = 1056px at 96dpi
+  // Padding: 0.55in top + 0.6in bottom = 1.15in = ~110px
+  // Header: ~108px (title + margin)
+  // Available height: 1056 - 110 - 108 = ~838px
+  // Line height: ~20px (14px font * 1.4 line-height)
+  // Account for line padding (0.12rem top/bottom = ~3px per line)
+  // Conservative estimate: ~20 lines per column to ensure no overflow
+  const ESTIMATED_LINES_PER_COLUMN = 20;
+
+  const makeLineHtml = (lineText, absoluteLineIndex) => {
+    const linePlacements = placements.filter(p => p && p.lineIndex === absoluteLineIndex);
+    const chordLayer = linePlacements.map(p => {
+      const leftPx = (Number(p.charIndex) || 0) * charWidth;
+      const cls = `chart-placement${readOnly ? " readonly" : ""}`;
+      return `<div class="${cls}" data-placement-id="${escapeHtml(String(p.id || ""))}" style="left:${leftPx}px;">${escapeHtml(String(p.value || ""))}</div>`;
+    }).join("");
+
+    return `
+      <div class="chart-line" data-line-index="${absoluteLineIndex}">
+        <div class="chart-chord-layer">${chordLayer}</div>
+        <div class="chart-lyrics-layer">${escapeHtml(lineText ?? "")}</div>
+      </div>
+    `;
+  };
+
+  // Split content across pages, filling columns left-to-right
+  const pages = [];
+  
+  if (columns === 1) {
+    // One column: simple pagination down the page
+    const totalLines = bodyLines.length;
+    const pagesNeeded = Math.max(1, Math.ceil(totalLines / ESTIMATED_LINES_PER_COLUMN));
+    
+    for (let pageIdx = 0; pageIdx < pagesNeeded; pageIdx++) {
+      const startLine = pageIdx * ESTIMATED_LINES_PER_COLUMN;
+      const endLine = Math.min(startLine + ESTIMATED_LINES_PER_COLUMN, totalLines);
+      const pageLines = bodyLines.slice(startLine, endLine);
+      const leftHtml = pageLines.map((line, idx) => makeLineHtml(line, startLine + idx)).join("");
+
+      const headerHtml = pageIdx === 0
+        ? `
+          <div class="chart-page-header">
+            <h1 class="chart-page-title">${escapeHtml(songTitle)}</h1>
+            ${subtitle ? `<p class="chart-page-subtitle">${escapeHtml(subtitle)}</p>` : ""}
+          </div>
+        `
+        : `<div class="chart-page-header"><h1 class="chart-page-title">${escapeHtml(songTitle)}</h1></div>`;
+
+      pages.push(`
+        <div class="chart-page">
+          ${headerHtml}
+          <div class="chart-page-body">
+            <div class="chart-columns ${layout}">
+              <div class="chart-col chart-col-left">${leftHtml}</div>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+  } else {
+    // Two columns: treat content as continuous stream
+    // Split content into left/right halves for display, but paginate continuously
+    const split = chooseTwoColumnSplit(bodyLines);
+    const colLeft = split.left;
+    const colRight = split.right;
+    
+    // Calculate total lines across both columns
+    const totalLeftLines = colLeft.length;
+    const totalRightLines = colRight.length;
+    const totalColumns = Math.ceil(Math.max(totalLeftLines, totalRightLines) / ESTIMATED_LINES_PER_COLUMN);
+    
+    let pageIdx = 0;
+    for (let colIdx = 0; colIdx < totalColumns; colIdx++) {
+      // Left column: lines for this page
+      const leftStart = colIdx * ESTIMATED_LINES_PER_COLUMN;
+      const leftEnd = Math.min(leftStart + ESTIMATED_LINES_PER_COLUMN, totalLeftLines);
+      const leftPageLines = colLeft.slice(leftStart, leftEnd);
+      const leftHtml = leftPageLines.map((line, idx) => makeLineHtml(line, leftStart + idx)).join("");
+      
+      // Right column: lines for this page (same column index)
+      const rightStart = colIdx * ESTIMATED_LINES_PER_COLUMN;
+      const rightEnd = Math.min(rightStart + ESTIMATED_LINES_PER_COLUMN, totalRightLines);
+      const rightPageLines = colRight.slice(rightStart, rightEnd);
+      const rightOffset = totalLeftLines;
+      const rightHtml = rightPageLines.map((line, idx) => makeLineHtml(line, rightOffset + rightStart + idx)).join("");
+
+      const headerHtml = pageIdx === 0
+        ? `
+          <div class="chart-page-header">
+            <h1 class="chart-page-title">${escapeHtml(songTitle)}</h1>
+            ${subtitle ? `<p class="chart-page-subtitle">${escapeHtml(subtitle)}</p>` : ""}
+          </div>
+        `
+        : `<div class="chart-page-header"><h1 class="chart-page-title">${escapeHtml(songTitle)}</h1></div>`;
+
+      pages.push(`
+        <div class="chart-page">
+          ${headerHtml}
+          <div class="chart-page-body">
+            <div class="chart-columns ${layout}">
+              <div class="chart-col chart-col-left">${leftHtml}</div>
+              <div class="chart-col chart-col-right">${rightHtml}</div>
+            </div>
+          </div>
+        </div>
+      `);
+
+      pageIdx++;
+    }
+  }
+
+  // If targetEl is inside a wrapper (viewer/editor), render pages into wrapper; otherwise render for print
+  const isWrapper = targetEl.classList.contains("chart-page-wrap");
+  if (isWrapper) {
+    targetEl.innerHTML = pages.map((pageHtml, idx) => `<div class="chart-page-outer" data-page-index="${idx}">${pageHtml}</div>`).join("");
+  } else {
+    // Print container: render pages directly (print CSS handles page breaks)
+    targetEl.innerHTML = pages.map((pageHtml, idx) => `<div class="chart-page-outer" data-page-index="${idx}">${pageHtml}</div>`).join("");
+  }
+}
+
+async function fetchSongCharts(songId, { useCache = true } = {}) {
+  if (!songId) return [];
+  const cached = state.chordCharts.cache.get(songId);
+  if (useCache && cached && (Date.now() - cached.loadedAt < 15_000)) {
+    return cached.charts || [];
+  }
+  try {
+    const { data, error } = await supabase
+      .from(SONG_CHARTS_TABLE)
+      .select("*")
+      .eq("song_id", songId)
+      .eq("team_id", state.currentTeamId);
+    if (error) throw error;
+    const charts = Array.isArray(data) ? data : [];
+    state.chordCharts.cache.set(songId, { loadedAt: Date.now(), charts });
+    return charts;
+  } catch (err) {
+    console.warn("fetchSongCharts failed (missing table or RLS?)", err);
+    return [];
+  }
+}
+
+async function saveSongChart({
+  id = null,
+  songId,
+  scope,
+  chartType,
+  layout,
+  songKey = null,
+  doc,
+}) {
+  if (!songId) throw new Error("Missing songId");
+  if (!scope) throw new Error("Missing scope");
+  if (!chartType) throw new Error("Missing chartType");
+  if (!layout) throw new Error("Missing layout");
+  if (!doc) throw new Error("Missing doc");
+
+  const payload = {
+    team_id: state.currentTeamId,
+    song_id: songId,
+    scope,
+    chart_type: chartType,
+    layout,
+    song_key: songKey,
+    doc,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (!id) {
+    payload.created_by = state.session?.user?.id || null;
+  }
+
+  const query = id
+    ? supabase.from(SONG_CHARTS_TABLE).update(payload).eq("id", id).select().single()
+    : supabase.from(SONG_CHARTS_TABLE).insert(payload).select().single();
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  // Refresh cache
+  state.chordCharts.cache.delete(songId);
+  return data;
+}
+
+function parseKeyToPitchClass(keyStr) {
+  const k = (keyStr || "").trim();
+  if (!k) return null;
+  // Basic forms: C, C#, Db, Am, F#m, Bb
+  const m = k.match(/^([A-Ga-g])([#b]?)(m)?/);
+  if (!m) return null;
+  const letter = m[1].toUpperCase();
+  const accidental = m[2] || "";
+  const isMinor = !!m[3];
+  const base = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[letter];
+  let pc = base;
+  if (accidental === "#") pc += 1;
+  if (accidental === "b") pc -= 1;
+  pc = (pc + 12) % 12;
+  return { pc, isMinor, preferFlats: accidental === "b" || ["F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb"].includes(letter + accidental) };
+}
+
+function pitchClassToNoteName(pc, preferFlats) {
+  const sharps = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const flats = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+  const list = preferFlats ? flats : sharps;
+  return list[(pc + 12) % 12];
+}
+
+function parseNashvilleNumberToken(token) {
+  const raw = String(token || "").trim();
+  if (!raw) return null;
+  // Support: b7, #4dim, 6m7, 5sus, 1/3, b7/1
+  const parts = raw.split("/");
+  const head = parts[0];
+  const bass = parts[1] || null;
+
+  const m = head.match(/^([b#]?)([1-7])(.+)?$/);
+  if (!m) return { raw };
+  const acc = m[1] || "";
+  const degree = parseInt(m[2], 10);
+  const tail = m[3] || "";
+
+  // Heuristic quality parsing
+  const tailLower = tail.toLowerCase();
+  const quality =
+    tailLower.includes("dim") ? "dim" :
+      tailLower.includes("aug") ? "aug" :
+        (tailLower.startsWith("m") && !tailLower.startsWith("maj")) ? "m" :
+          (tailLower.includes("sus") ? "sus" : "");
+  const explicitMinor = tailLower.startsWith("m") && !tailLower.startsWith("maj");
+
+  return {
+    raw,
+    degree,
+    accidental: acc, // b | # | ''
+    tail,
+    quality,
+    explicitMinor,
+    bass: bass ? parseNashvilleNumberToken(bass) : null,
+  };
+}
+
+function nashvilleNumberToChord(token, targetKey) {
+  const k = parseKeyToPitchClass(targetKey);
+  if (!k) return String(token || "").trim();
+
+  // Relative major behavior for minor keys: use tonic + 3 semitones
+  const tonicPc = k.isMinor ? (k.pc + 3) % 12 : k.pc;
+  const preferFlats = k.preferFlats;
+  const parsed = parseNashvilleNumberToken(token);
+  if (!parsed || !parsed.degree) return String(token || "").trim();
+
+  const majorScaleOffsets = [0, 2, 4, 5, 7, 9, 11];
+  const baseOffset = majorScaleOffsets[parsed.degree - 1] ?? 0;
+  const accOffset = parsed.accidental === "b" ? -1 : (parsed.accidental === "#" ? 1 : 0);
+  const rootPc = (tonicPc + baseOffset + accOffset + 120) % 12;
+  const rootName = pitchClassToNoteName(rootPc, preferFlats);
+
+  // Diatonic default qualities in major
+  const diatonicQualityByDegree = { 1: "", 2: "m", 3: "m", 4: "", 5: "", 6: "m", 7: "dim" };
+  let quality = "";
+  if (parsed.quality === "dim") quality = "dim";
+  else if (parsed.quality === "aug") quality = "aug";
+  else if (parsed.quality === "sus") quality = "sus";
+  else if (parsed.explicitMinor) quality = "m";
+  else quality = diatonicQualityByDegree[parsed.degree] || "";
+
+  // Preserve tail extensions (minus the quality token when possible)
+  let ext = parsed.tail || "";
+  // Strip leading quality markers to avoid duplication (best effort)
+  ext = ext.replace(/^dim/i, "").replace(/^aug/i, "");
+  if (quality === "m") {
+    ext = ext.replace(/^m(?!aj)/i, "");
+  }
+
+  const chord = `${rootName}${quality}${ext}`;
+  if (parsed.bass && parsed.bass.degree) {
+    const bassChord = nashvilleNumberToChord(parsed.bass.raw, targetKey);
+    // bassChord may include quality/ext; keep just the note name before any letters/symbols
+    const bassNote = bassChord.match(/^([A-G][b#]?)/)?.[1] || bassChord;
+    return `${chord}/${bassNote}`;
+  }
+  return chord;
+}
+
+function generateChordDocFromNumberDoc(numberDoc, targetKey, { songTitle = "", layout = "one_column" } = {}) {
+  const base = numberDoc || createEmptyChartDoc(songTitle);
+  const lyricsLines = Array.isArray(base.lyricsLines) ? base.lyricsLines : [""];
+  const placements = Array.isArray(base.placements) ? base.placements : [];
+
+  const convertedPlacements = placements.map(p => {
+    const value = String(p?.value || "").trim();
+    const chordValue = nashvilleNumberToChord(value, targetKey);
+    return {
+      id: p?.id || genPlacementId(),
+      lineIndex: p?.lineIndex ?? 0,
+      charIndex: p?.charIndex ?? 0,
+      kind: "chord",
+      value: chordValue,
+    };
+  });
+
+  return {
+    ...base,
+    title: songTitle || base.title || "",
+    lyricsLines,
+    placements: convertedPlacements,
+    settings: {
+      ...(base.settings || {}),
+      layout: layout || base?.settings?.layout || "one_column",
+    }
+  };
+}
+
+function openChordChartViewerFromResource(resource) {
+  const modal = el("chart-viewer-modal");
+  const titleEl = el("chart-viewer-title");
+  const subtitleEl = el("chart-viewer-subtitle");
+  const wrapEl = el("chart-viewer-page");
+  if (!modal || !wrapEl) return;
+
+  const songTitle = resource.songTitle || resource.song_title || resource._songTitle || "";
+  const subtitle = resource.subtitle || "";
+  let doc = resource.doc || null;
+  let readOnly = !!resource.readOnly;
+
+  // Generated-from-number charts: build chord doc on demand
+  if (resource.generatedFromNumber && resource.sourceDoc && resource.targetKey) {
+    doc = generateChordDocFromNumberDoc(resource.sourceDoc, resource.targetKey, {
+      songTitle: songTitle,
+      layout: resource.layout || resource.sourceDoc?.settings?.layout || "one_column",
+    });
+    readOnly = true;
+  }
+
+  if (!doc) {
+    toastError("Chord chart is missing data.");
+    return;
+  }
+
+  if (titleEl) titleEl.textContent = resource.title || "Chord Chart";
+  if (subtitleEl) subtitleEl.textContent = subtitle;
+
+  state.chordCharts.active = {
+    mode: "viewer",
+    songId: resource.songId || null,
+    scope: resource.scope || null,
+    songKey: resource.songKey || resource.targetKey || null,
+    readOnly,
+    chart: { ...resource, doc },
+    songTitle,
+  };
+
+  // Build pages inside wrapper (renderChartDocIntoPage handles pagination)
+  wrapEl.innerHTML = "";
+  renderChartDocIntoPage(wrapEl, doc, {
+    songTitle: songTitle || doc.title || "Chord Chart",
+    subtitle,
+    layout: resource.layout || doc?.settings?.layout,
+    readOnly: true,
+  });
+
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+
+  requestAnimationFrame(() => {
+    fitAllChartPagesToContainer(wrapEl);
+  });
+}
+
+function closeChordChartViewer() {
+  const modal = el("chart-viewer-modal");
+  if (!modal) return;
+  closeModalWithAnimation(modal, () => {
+    modal.setAttribute("aria-hidden", "true");
+    if (state.chordCharts.active?.mode === "viewer") state.chordCharts.active = null;
+    // Preserve scroll lock if another modal is still open behind this one
+    const songDetailsModal = el("song-details-modal");
+    const songEditModal = el("song-edit-modal");
+    const songDetailsOpen = !!songDetailsModal && !songDetailsModal.classList.contains("hidden");
+    const songEditOpen = !!songEditModal && !songEditModal.classList.contains("hidden");
+    if (songDetailsOpen || songEditOpen) {
+      document.body.style.overflow = "hidden";
+    }
+  });
+}
+
+function closeChordChartEditor() {
+  const modal = el("chart-editor-modal");
+  if (!modal) return;
+  closeModalWithAnimation(modal, () => {
+    modal.setAttribute("aria-hidden", "true");
+    if (state.chordCharts.active?.mode === "editor") state.chordCharts.active = null;
+    // Preserve scroll lock if another modal is still open behind this one
+    const songDetailsModal = el("song-details-modal");
+    const songEditModal = el("song-edit-modal");
+    const songDetailsOpen = !!songDetailsModal && !songDetailsModal.classList.contains("hidden");
+    const songEditOpen = !!songEditModal && !songEditModal.classList.contains("hidden");
+    if (songDetailsOpen || songEditOpen) {
+      document.body.style.overflow = "hidden";
+    }
+  });
+}
+
+function renderChartToPrintContainer({ songTitle, subtitle, doc, layout }) {
+  const wrapper = el("print-chart-container");
+  const content = el("print-chart-content");
+  if (!wrapper || !content) return false;
+
+  // Ensure the set print container won't show during chart printing
+  const setWrapper = el("print-set-container");
+  if (setWrapper) setWrapper.setAttribute("aria-hidden", "true");
+
+  // renderChartDocIntoPage handles pagination and renders pages directly into content
+  content.innerHTML = "";
+  renderChartDocIntoPage(content, doc, { songTitle, subtitle, layout, readOnly: true });
+  wrapper.setAttribute("aria-hidden", "false");
+  return true;
+}
+
+function openPrintChartFromActive() {
+  const active = state.chordCharts.active;
+  if (!active?.chart?.doc) return;
+
+  const wrapper = el("print-chart-container");
+  if (!wrapper) return;
+
+  const ok = renderChartToPrintContainer({
+    songTitle: active.songTitle || active.chart?.doc?.title || "Chord Chart",
+    subtitle: active.chart?.subtitle || "",
+    doc: active.chart.doc,
+    layout: active.chart.layout || active.chart?.doc?.settings?.layout || "one_column",
+  });
+  if (!ok) return;
+
+  const afterPrint = () => {
+    wrapper.setAttribute("aria-hidden", "true");
+    window.removeEventListener("afterprint", afterPrint);
+  };
+  window.addEventListener("afterprint", afterPrint);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.print();
+    });
+  });
+
+  setTimeout(afterPrint, 3000);
+}
+
+function openChordChartEditor({ songId, songTitle, scope, songKey = null, existingChart = null, forceType = null }) {
+  const modal = el("chart-editor-modal");
+  const wrapEl = el("chart-editor-page");
+  const subtitleEl = el("chart-editor-subtitle");
+  const titleEl = el("chart-editor-title");
+  const lyricsInput = el("chart-lyrics-input");
+  const typeSelect = el("chart-editor-type");
+  const layoutSelect = el("chart-editor-layout");
+
+  if (!modal || !wrapEl || !lyricsInput || !typeSelect || !layoutSelect) return;
+
+  const isKeyScope = scope === "key";
+  const doc = existingChart?.doc || createEmptyChartDoc(songTitle || "");
+  const chartType = forceType || existingChart?.chart_type || (isKeyScope ? "chord" : "chord");
+  const layout = existingChart?.layout || doc?.settings?.layout || "one_column";
+
+  state.chordCharts.active = {
+    mode: "editor",
+    songId,
+    scope,
+    songKey,
+    readOnly: false,
+    chart: {
+      id: existingChart?.id || null,
+      title: existingChart?.title || (isKeyScope ? `Key: ${songKey}` : "General"),
+      scope,
+      songKey,
+      chartType,
+      layout,
+      doc: (typeof structuredClone !== "undefined") ? structuredClone(doc) : JSON.parse(JSON.stringify(doc)),
+    },
+    songTitle: songTitle || "",
+  };
+
+  if (titleEl) titleEl.textContent = isKeyScope ? `Edit Chord Chart — ${songKey}` : "Edit Chart";
+  if (subtitleEl) subtitleEl.textContent = isKeyScope ? "Key-specific chord chart" : "General chart";
+
+  // Populate controls
+  layoutSelect.value = layout;
+  typeSelect.value = chartType;
+  typeSelect.disabled = isKeyScope; // key-specific charts are chord-only
+  typeSelect.parentElement?.classList?.toggle("hidden", isKeyScope);
+
+  // Update insert input placeholder based on chart type
+  const insertInput = el("chart-insert-value");
+  if (insertInput) {
+    insertInput.placeholder = chartType === "number" 
+      ? "1, 4, 6m, b7, #4dim, 5sus..." 
+      : "C, Dm7, F#m, Bb, Gsus4...";
+  }
+
+  lyricsInput.value = (state.chordCharts.active.chart.doc.lyricsLines || []).join("\n");
+
+  // Initial render (renderChartDocIntoPage handles pagination)
+  wrapEl.innerHTML = "";
+  renderChartDocIntoPage(wrapEl, state.chordCharts.active.chart.doc, {
+    songTitle: songTitle || state.chordCharts.active.chart.doc.title || "Chord Chart",
+    subtitle: isKeyScope ? `Key: ${songKey}` : (chartType === "number" ? "Number chart" : "Chord chart"),
+    layout,
+    readOnly: false,
+  });
+
+  wireChordChartEditorInteractions();
+
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+
+  requestAnimationFrame(() => {
+    fitAllChartPagesToContainer(wrapEl);
+  });
+}
+
+// (Removed) refreshSongEditChartButtons: charts are edited/deleted from list rows now.
+
+function wireChordChartEditorInteractions() {
+  const wrapEl = el("chart-editor-page");
+  if (!wrapEl) return;
+
+  const active = state.chordCharts.active;
+  if (!active || active.mode !== "editor") return;
+
+  const charWidth = measureMonoCharWidthPx();
+
+  // Process all pages
+  const pageEls = wrapEl.querySelectorAll(".chart-page");
+  pageEls.forEach(pageEl => {
+    const outerEl = pageEl.closest(".chart-page-outer");
+    if (!outerEl) return;
+    const scale = parseFloat(outerEl.dataset.scale || "1") || 1;
+
+    // Click to set cursor position
+    pageEl.querySelectorAll(".chart-line").forEach(lineEl => {
+      lineEl.addEventListener("click", (e) => {
+        const lineIndex = parseInt(lineEl.dataset.lineIndex, 10) || 0;
+        const lyricsEl = lineEl.querySelector(".chart-lyrics-layer");
+        const rect = (lyricsEl || lineEl).getBoundingClientRect();
+        const xScaled = e.clientX - rect.left;
+        const x = xScaled / scale;
+        const charIndex = clampInt(x / charWidth, 0, 10_000);
+        state.chordCharts.editorCursor = { lineIndex, charIndex };
+      });
+    });
+
+    // Drag placements (pointer events)
+    pageEl.querySelectorAll(".chart-placement").forEach(plEl => {
+    plEl.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      const placementId = plEl.dataset.placementId;
+      if (!placementId) return;
+      const doc = state.chordCharts.active?.chart?.doc;
+      if (!doc) return;
+
+      const currentPlacement = (doc.placements || []).find(p => String(p.id) === String(placementId));
+      if (!currentPlacement) return;
+
+      const startRect = plEl.getBoundingClientRect();
+      state.chordCharts.drag = {
+        placementId,
+        startX: e.clientX,
+        startY: e.clientY,
+        startLeft: startRect.left,
+        startTop: startRect.top,
+        currentLeftPx: parseFloat(plEl.style.left || "0") || 0,
+        lineIndex: currentPlacement.lineIndex ?? 0,
+      };
+      plEl.classList.add("dragging");
+      plEl.setPointerCapture(e.pointerId);
+
+      const onMove = (ev) => {
+        const drag = state.chordCharts.drag;
+        if (!drag) return;
+        const dxScaled = ev.clientX - drag.startX;
+        const dx = dxScaled / scale;
+        const newLeft = (parseFloat(plEl.style.left || "0") || 0) + dx;
+        plEl.style.left = `${Math.max(0, newLeft)}px`;
+        drag.startX = ev.clientX;
+
+        // Snap between lines by moving element to the nearest line under pointer
+        const elAt = document.elementFromPoint(ev.clientX, ev.clientY);
+        const line = elAt?.closest?.(".chart-line");
+        if (line && line.dataset?.lineIndex) {
+          const newLineIndex = parseInt(line.dataset.lineIndex, 10) || 0;
+          if (newLineIndex !== drag.lineIndex) {
+            const newLayer = line.querySelector(".chart-chord-layer");
+            if (newLayer) {
+              newLayer.appendChild(plEl);
+              drag.lineIndex = newLineIndex;
+            }
+          }
+        }
+      };
+
+      const onUp = (ev) => {
+        const drag = state.chordCharts.drag;
+        state.chordCharts.drag = null;
+        plEl.classList.remove("dragging");
+        plEl.releasePointerCapture(ev.pointerId);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+
+        const doc2 = state.chordCharts.active?.chart?.doc;
+        if (!doc2) return;
+        const p = (doc2.placements || []).find(pp => String(pp.id) === String(placementId));
+        if (!p) return;
+
+        const leftPx = parseFloat(plEl.style.left || "0") || 0;
+        p.charIndex = clampInt(leftPx / charWidth, 0, 10_000);
+        p.lineIndex = drag?.lineIndex ?? p.lineIndex ?? 0;
+        state.chordCharts.editorCursor = { lineIndex: p.lineIndex, charIndex: p.charIndex };
+
+        // Re-render to snap to grid
+        const wrapEl2 = el("chart-editor-page");
+        if (wrapEl2) {
+          renderChartDocIntoPage(wrapEl2, doc2, {
+            songTitle: state.chordCharts.active.songTitle || doc2.title || "Chord Chart",
+            subtitle: state.chordCharts.active.scope === "key" ? `Key: ${state.chordCharts.active.songKey}` : (state.chordCharts.active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
+            layout: state.chordCharts.active.chart.layout || doc2?.settings?.layout,
+            readOnly: false,
+          });
+          wireChordChartEditorInteractions();
+          requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl2));
+        }
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    });
+    });
+  });
 }
 
 // Parse date string as local date (not UTC) to avoid timezone issues
