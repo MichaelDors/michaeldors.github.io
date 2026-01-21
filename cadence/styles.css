@@ -22,6 +22,10 @@
   --secondary-btn-bg: var(--bg-tertiary);
   --secondary-btn-bg-hover: var(--bg-secondary);
 
+  --chart-accepted-color: #10b981;
+  --chart-declined-color: #ef4444;
+  --chart-pending-color: #f59e0b;
+
   --starburst-accent-color: #000000;
 
   /* Allow native controls to adapt */
@@ -2003,14 +2007,55 @@ textarea {
   height: fit-content;
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-  will-change: transform;
+  transition:
+    width 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
+    max-width 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
+    max-height 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.24s ease,
+    transform 0.3s cubic-bezier(0.23, 1, 0.32, 1),
+    margin 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform, width, height, opacity;
+  width: 120px;
+  height: 120px;
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 1rem;
+  overflow: visible;
 }
 
 .song-album-art-container:hover .album-art-overlay-controls {
   opacity: 1 !important;
   visibility: visible;
   pointer-events: auto;
+}
+
+.song-album-art-container.album-art-collapsed {
+  width: 0;
+  height: 0;
+  max-width: 0;
+  max-height: 0;
+  opacity: 0;
+  transform: scale(0.96);
+  pointer-events: none;
+  /* Parent uses gap; negative margin cancels the reserved gap space */
+  margin-right: -1.5rem;
+  margin-bottom: -1.5rem;
+  overflow: hidden;
+}
+
+.album-art-skeleton {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.song-album-art-container.album-art-loading .album-art-skeleton {
+  opacity: 1;
 }
 
 @keyframes fadeIn {
@@ -2033,6 +2078,24 @@ textarea {
   position: relative;
   transform-style: preserve-3d;
   z-index: 0;
+  opacity: 0;
+  transform: scale(0.98);
+  filter: blur(10px);
+  transition:
+    opacity 0.35s ease,
+    transform 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+    filter 0.35s ease;
+}
+
+.song-album-art-container.album-art-loaded .song-album-art {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+}
+
+.song-album-art-container.album-art-loading .song-album-art {
+  opacity: 0;
+  filter: blur(10px);
 }
 
 .song-album-art-no-image {
@@ -2050,6 +2113,15 @@ textarea {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .song-album-art-container,
+  .song-album-art,
+  .album-art-skeleton {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 .song-itunes-warning {
@@ -3979,15 +4051,15 @@ i {
 }
 
 .stat-legend-color.accepted {
-  background: #10b981;
+  background: var(--chart-accepted-color);
 }
 
 .stat-legend-color.declined {
-  background: #ef4444;
+  background: var(--chart-declined-color);
 }
 
 .stat-legend-color.pending {
-  background: #f59e0b;
+  background: var(--chart-pending-color);
 }
 
 .stat-legend-info {

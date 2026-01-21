@@ -2073,10 +2073,12 @@ function bindEvents() {
     }
   });
   el("close-person-details-modal")?.addEventListener("click", () => {
-    const modal = el("person-details-modal");
-    if (modal) {
-      modal.classList.add("hidden");
-      document.body.style.overflow = "";
+    closePersonDetailsModal();
+  });
+  // Close person details when clicking backdrop
+  el("person-details-modal")?.addEventListener("click", (e) => {
+    if (e.target === el("person-details-modal")) {
+      closePersonDetailsModal();
     }
   });
   el("btn-add-set-assignment")?.addEventListener("click", () => addSetAssignmentInput());
@@ -5621,6 +5623,15 @@ async function openPersonDetailsModal(person) {
       });
     }
   }
+}
+
+// Close + reset person details modal so it doesn't persist
+function closePersonDetailsModal() {
+  const modal = el("person-details-modal");
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+  document.body.style.overflow = "";
 }
 
 function isUserAssignedToSet(set, userId) {
@@ -14946,6 +14957,11 @@ async function displayAlbumArt(content, albumArtData, song) {
   // Ensure container is visible and hide "no image" placeholder when we have an albumArtData attempt
   placeholder.style.display = "flex";
   if (noImage) noImage.classList.add("hidden");
+  placeholder.dataset.collapseToken = "";
+  placeholder.classList.remove("album-art-collapsed", "album-art-loaded");
+  placeholder.classList.add("album-art-loading");
+  // Hide the image while loading so we don't flash stale content
+  img.style.display = "none";
 
   // Function to extract and apply color
   const applyColorToShadow = async () => {
@@ -14987,10 +15003,21 @@ async function displayAlbumArt(content, albumArtData, song) {
 
     // For override images, try direct load first (they're from Supabase storage)
     if (albumArtData.isOverride) {
+      const canUpload = placeholder?.dataset?.canUpload === "1";
       img.crossOrigin = null;
       img.src = albumArtData.small;
       img.style.display = "";
-      img.addEventListener('load', async () => { await applyColorToShadow(); done(); }, { once: true });
+      img.addEventListener('load', async () => {
+        try {
+          placeholder.classList.add("album-art-loaded");
+          placeholder.classList.remove("album-art-loading");
+          await applyColorToShadow();
+        } catch (err) {
+          console.warn("Error applying album art shadow color:", err);
+        } finally {
+          done();
+        }
+      }, { once: true });
       img.addEventListener('error', async () => {
         console.warn('Failed to load album art override image directly, trying fallback');
         // Try via edge function as fallback
@@ -14998,10 +15025,23 @@ async function displayAlbumArt(content, albumArtData, song) {
         if (fallbackUrl) {
           img.src = fallbackUrl;
           img.style.display = "";
-          img.addEventListener('load', async () => { await applyColorToShadow(); done(); }, { once: true });
+          img.addEventListener('load', async () => {
+            try {
+              placeholder.classList.add("album-art-loaded");
+              placeholder.classList.remove("album-art-loading");
+              await applyColorToShadow();
+            } catch (err) {
+              console.warn("Error applying album art shadow color:", err);
+            } finally {
+              done();
+            }
+          }, { once: true });
         } else {
-          img.style.display = "none";
-          if (noImage) noImage.classList.remove("hidden");
+          if (canUpload) {
+            showSongAlbumArtNoImagePlaceholder(content);
+          } else {
+            collapseSongAlbumArt(content);
+          }
           done();
         }
       }, { once: true });
@@ -15009,15 +15049,40 @@ async function displayAlbumArt(content, albumArtData, song) {
       // For iTunes images, use loadImageWithFallback which handles desktop/mobile logic
       try {
         console.log('🎨 Starting to load iTunes album art - small:', albumArtData.small, 'large:', albumArtData.large);
+        const canUpload = placeholder?.dataset?.canUpload === "1";
         // Load small image first for fast display
         const smallBlobUrl = await loadImageWithFallback(albumArtData.small);
         console.log('🎨 Small image load result:', smallBlobUrl ? 'success' : 'failed');
         
         if (smallBlobUrl) {
           img.crossOrigin = null; // Blob URLs don't need CORS
-          img.src = smallBlobUrl;
           img.style.display = "";
-          applyColorToShadow();
+          placeholder.classList.remove("album-art-loaded", "album-art-collapsed");
+          placeholder.classList.add("album-art-loading");
+
+          const reveal = () => {
+            placeholder.classList.add("album-art-loaded");
+            placeholder.classList.remove("album-art-loading");
+            applyColorToShadow().catch(err => {
+              console.warn("Error applying album art shadow color:", err);
+            });
+          };
+
+          img.addEventListener("load", reveal, { once: true });
+          img.addEventListener("error", () => {
+            if (canUpload) {
+              showSongAlbumArtNoImagePlaceholder(content);
+            } else {
+              collapseSongAlbumArt(content);
+            }
+          }, { once: true });
+
+          img.src = smallBlobUrl;
+
+          // If it was already cached/decoded, reveal immediately.
+          if (img.complete && img.naturalWidth > 0) {
+            reveal();
+          }
           
           // On desktop, preload the large image in the background
           // On mobile, only load large image when user clicks to expand (saves bandwidth)
@@ -15040,13 +15105,20 @@ async function displayAlbumArt(content, albumArtData, song) {
           }
         } else {
           console.warn('Failed to load album art image');
-          img.style.display = "none";
-          if (noImage) noImage.classList.remove("hidden");
+          if (canUpload) {
+            showSongAlbumArtNoImagePlaceholder(content);
+          } else {
+            collapseSongAlbumArt(content);
+          }
         }
       } catch (error) {
         console.error('Error loading album art:', error);
-        img.style.display = "none";
-        if (noImage) noImage.classList.remove("hidden");
+        const canUpload = placeholder?.dataset?.canUpload === "1";
+        if (canUpload) {
+          showSongAlbumArtNoImagePlaceholder(content);
+        } else {
+          collapseSongAlbumArt(content);
+        }
       } finally {
         done();
       }
@@ -15565,6 +15637,8 @@ async function runItunesIndexRefreshOnce() {
           // Non-fatal if set detail view isn't active
         }
       }
+      // If song details is open for a song we're polling, refresh its album art too.
+      await refreshOpenSongDetailsAlbumArtFromIndexRefresh(byId);
     }
   } finally {
     poll.inFlight = false;
@@ -16421,12 +16495,19 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   const teamItunesDisabled = (state.userTeams?.find?.(t => t.id === state.currentTeamId)?.itunes_indexing_enabled === false);
   const itunesUnavailable = itunesFetchDisabled || teamItunesDisabled;
   const canUploadAlbumArt = isManager() && (!!songWithLinks.itunes_indexed_at || itunesUnavailable || !!songWithLinks.album_art_override_path);
+  const isWaitingOnItunesIndex =
+    !!songWithLinks?.title &&
+    songWithLinks.title.trim() &&
+    !songWithLinks.itunes_indexed_at &&
+    !songWithLinks.itunes_fetch_disabled &&
+    !teamItunesDisabled;
 
   // Render all song information in an expanded view
   content.innerHTML = `
   <div class="song-details-section">
         <div class="song-details-header-wrapper">
-          <div id="song-album-art-placeholder" class="song-album-art-container" style="display:none;">
+          <div id="song-album-art-placeholder" class="song-album-art-container" data-can-upload="${canUploadAlbumArt ? '1' : '0'}" style="display:none;">
+            <div class="album-art-skeleton skeleton" aria-hidden="true"></div>
             <img id="song-album-art-img" src="" alt="Album art for ${escapeHtml(songWithLinks.title || 'song')}" class="song-album-art" style="display:none;" loading="lazy" />
             <div id="song-album-art-no-image" class="song-album-art-no-image hidden">No image</div>
             ${canUploadAlbumArt ? `
@@ -16676,20 +16757,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
     });
   }
 
-  // If iTunes indexing is disabled for this song, show a "no image" placeholder
-  // and allow managers to upload album art manually.
-  if (
-    albumArtContainer &&
-    itunesUnavailable &&
-    !songWithLinks.album_art_override_path &&
-    !(songWithLinks.album_art_small_url && songWithLinks.album_art_large_url)
-  ) {
-    albumArtContainer.style.display = "flex";
-    const imgEl = content.querySelector("#song-album-art-img");
-    const noImageEl = content.querySelector("#song-album-art-no-image");
-    if (imgEl) imgEl.style.display = "none";
-    if (noImageEl) noImageEl.classList.remove("hidden");
-  }
+  // Album art is handled asynchronously below (loading → loaded or collapse/no-image).
 
   // Setup album art upload handler
   const uploadInput = content.querySelector("#album-art-upload-input");
@@ -16774,8 +16842,10 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
             if (albumArtData) {
               displayAlbumArt(content, albumArtData, songWithLinks);
-            } else if (itunesUnavailable) {
+            } else if (canUploadAlbumArt) {
               showSongAlbumArtNoImagePlaceholder(content);
+            } else {
+              collapseSongAlbumArt(content);
             }
           });
             overlayControls.appendChild(removeBtn);
@@ -16803,21 +16873,36 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
       const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
       if (albumArtData) {
         displayAlbumArt(content, albumArtData, songWithLinks);
-      } else if (itunesUnavailable) {
+      } else if (canUploadAlbumArt) {
         showSongAlbumArtNoImagePlaceholder(content);
+      } else {
+        collapseSongAlbumArt(content);
       }
     });
   }
 
   // Fetch and display album art asynchronously (don't block modal opening)
-  getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled }).then(albumArtData => {
+  showSongAlbumArtLoadingPlaceholder(content);
+  getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled || isWaitingOnItunesIndex }).then(albumArtData => {
     if (albumArtData) {
       displayAlbumArt(content, albumArtData, songWithLinks);
-    } else if (itunesUnavailable) {
+    } else if (canUploadAlbumArt) {
       showSongAlbumArtNoImagePlaceholder(content);
+    } else if (isWaitingOnItunesIndex) {
+      // Keep shimmer visible while server-side iTunes indexing is pending.
+      showSongAlbumArtLoadingPlaceholder(content);
+    } else {
+      collapseSongAlbumArt(content);
     }
   }).catch(err => {
     console.warn('Failed to load album art:', err);
+    if (canUploadAlbumArt) {
+      showSongAlbumArtNoImagePlaceholder(content);
+    } else if (isWaitingOnItunesIndex) {
+      showSongAlbumArtLoadingPlaceholder(content);
+    } else {
+      collapseSongAlbumArt(content);
+    }
   });
 
   // Logic for Edit Dropdown
@@ -16878,8 +16963,10 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
         if (albumArtData) {
           displayAlbumArt(content, albumArtData, songWithLinks);
-        } else if (itunesUnavailable) {
+        } else if (canUploadAlbumArt) {
           showSongAlbumArtNoImagePlaceholder(content);
+        } else {
+          collapseSongAlbumArt(content);
         }
       });
     }
@@ -16923,11 +17010,93 @@ function closeSongDetailsModal() {
   }
 }
 
+function showSongAlbumArtLoadingPlaceholder(content) {
+  const container = content?.querySelector?.("#song-album-art-placeholder");
+  const imgEl = content?.querySelector?.("#song-album-art-img");
+  const noImageEl = content?.querySelector?.("#song-album-art-no-image");
+  if (!container) return;
+
+  container.style.display = "flex";
+  container.dataset.collapseToken = "";
+  container.classList.remove("album-art-collapsed", "album-art-loaded");
+  container.classList.add("album-art-loading");
+
+  if (imgEl) imgEl.style.display = "none";
+  if (noImageEl) noImageEl.classList.add("hidden");
+}
+
+function collapseSongAlbumArt(content) {
+  const container = content?.querySelector?.("#song-album-art-placeholder");
+  const imgEl = content?.querySelector?.("#song-album-art-img");
+  const noImageEl = content?.querySelector?.("#song-album-art-no-image");
+  if (!container) return;
+
+  // Ensure it's in the layout so the collapse can animate.
+  container.style.display = "flex";
+  container.classList.remove("album-art-loading", "album-art-loaded");
+  container.classList.add("album-art-collapsed");
+
+  if (imgEl) imgEl.style.display = "none";
+  if (noImageEl) noImageEl.classList.add("hidden");
+
+  const token = String(Date.now());
+  container.dataset.collapseToken = token;
+  setTimeout(() => {
+    if (container.dataset.collapseToken === token && container.classList.contains("album-art-collapsed")) {
+      container.style.display = "none";
+    }
+  }, 380);
+}
+
+async function refreshOpenSongDetailsAlbumArtFromIndexRefresh(updatedRowsById) {
+  const songId = state.currentSongDetailsId;
+  if (!songId) return;
+
+  const modal = el("song-details-modal");
+  const content = el("song-details-content");
+  if (!modal || !content) return;
+  if (modal.classList.contains("hidden")) return;
+
+  const baseSong = (state.songs || []).find(s => s?.id === songId);
+  const upd = updatedRowsById?.get?.(songId);
+  const songForArt = baseSong ? { ...baseSong, ...(upd || {}) } : (upd || null);
+  if (!songForArt) return;
+
+  const teamItunesDisabled = (state.userTeams?.find?.(t => t.id === state.currentTeamId)?.itunes_indexing_enabled === false);
+  const isWaitingOnItunesIndex =
+    !!songForArt?.title &&
+    songForArt.title.trim() &&
+    !songForArt.itunes_indexed_at &&
+    !songForArt.itunes_fetch_disabled &&
+    !teamItunesDisabled;
+
+  // If we're still waiting, keep the shimmer visible between refreshes.
+  if (isWaitingOnItunesIndex) {
+    showSongAlbumArtLoadingPlaceholder(content);
+  }
+
+  const canUploadAlbumArt = !!content.querySelector("#album-art-overlay-controls");
+  const albumArtData = await getAlbumArt(songForArt, songForArt.title, { disableItunesFallback: teamItunesDisabled || isWaitingOnItunesIndex });
+  if (albumArtData) {
+    displayAlbumArt(content, albumArtData, songForArt);
+  } else if (canUploadAlbumArt) {
+    showSongAlbumArtNoImagePlaceholder(content);
+  } else if (!isWaitingOnItunesIndex) {
+    collapseSongAlbumArt(content);
+  } else {
+    showSongAlbumArtLoadingPlaceholder(content);
+  }
+}
+
 function showSongAlbumArtNoImagePlaceholder(content) {
   const container = content?.querySelector?.("#song-album-art-placeholder");
   const imgEl = content?.querySelector?.("#song-album-art-img");
   const noImageEl = content?.querySelector?.("#song-album-art-no-image");
-  if (container) container.style.display = "flex";
+  if (container) {
+    container.style.display = "flex";
+    container.dataset.collapseToken = "";
+    container.classList.remove("album-art-loading", "album-art-loaded", "album-art-collapsed");
+  }
   if (imgEl) imgEl.style.display = "none";
   if (noImageEl) noImageEl.classList.remove("hidden");
 }
@@ -19013,7 +19182,11 @@ const THEMES = {
     "--glass-border": "rgba(255, 255, 255, 0.1)",
     "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
     "--glass-backdrop": "blur(12px)",
-    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)"
+    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)",
+
+    "--chart-accepted-color": "#dcff51",
+    "--chart-declined-color": "rgb(255, 96, 33)",
+    "--chart-pending-color": "rgb(255, 180, 59)"
   },
 
   ocean: {
@@ -19033,8 +19206,11 @@ const THEMES = {
     "--glass-border": "rgba(255, 255, 255, 0.1)",
     "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
     "--glass-backdrop": "blur(12px)",
-    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)"
+    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)",
 
+    "--chart-accepted-color": "rgb(16, 185, 171)",
+    "--chart-declined-color": "rgb(239, 111, 68)",
+    "--chart-pending-color": "rgb(255, 239, 59)"
   },
 
   sunset: {
@@ -19054,8 +19230,11 @@ const THEMES = {
     "--glass-border": "rgba(255, 255, 255, 0.1)",
     "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
     "--glass-backdrop": "blur(12px)",
-    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)"
+    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)",
 
+    "--chart-accepted-color": "rgb(147, 255, 97)",
+    "--chart-declined-color": "rgb(255, 33, 136)",
+    "--chart-pending-color": "rgb(255, 190, 59)"
   },
 
   forest: {
@@ -19075,7 +19254,11 @@ const THEMES = {
     "--glass-border": "rgba(255, 255, 255, 0.1)",
     "--glass-shadow": "0 4px 20px rgba(0, 0, 0, 0.4)",
     "--glass-backdrop": "blur(12px)",
-    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)"
+    "--songlink-shadow": "inset 0 1.54px 0 rgba(255, 255, 255, 0.059), inset 0 0 18px rgba(255, 255, 255, 0.063)",
+
+    "--chart-accepted-color": "rgb(64, 171, 15)",
+    "--chart-declined-color": "rgb(255, 96, 33)",
+    "--chart-pending-color": "rgb(255, 219, 59)"
 
   },
 
@@ -20362,6 +20545,25 @@ function renderPieChart(accepted, declined, pending, total) {
   existingPaths.forEach(p => p.remove());
   const existingCircles = pieChartEl.querySelectorAll('circle:not(#pie-background)');
   existingCircles.forEach(c => c.remove());
+
+  // Donut chart geometry (SVG viewBox is 0..100)
+  const centerX = 50;
+  const centerY = 50;
+  const radius = 45;
+  // Thickness ~17 (not super thin) with outer radius 45
+  const holeRadius = 34;
+
+  function addDonutHole() {
+    // The hole circle sits on top of segments to "cut out" the center,
+    // improving text contrast without changing segment math.
+    const hole = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    hole.setAttribute('id', 'pie-hole');
+    hole.setAttribute('cx', centerX);
+    hole.setAttribute('cy', centerY);
+    hole.setAttribute('r', holeRadius);
+    hole.setAttribute('fill', 'var(--bg-card)');
+    pieChartEl.appendChild(hole);
+  }
   
   // If no assignments, show grey background
   if (total === 0) {
@@ -20371,6 +20573,7 @@ function renderPieChart(accepted, declined, pending, total) {
       const greyColor = isDark ? '#36393d' : '#d9d9d9'; // Medium grey for light mode, darker grey for dark mode
       pieBackgroundEl.style.fill = greyColor;
     }
+    addDonutHole();
     return;
   }
   
@@ -20379,15 +20582,11 @@ function renderPieChart(accepted, declined, pending, total) {
     pieBackgroundEl.style.fill = 'transparent';
   }
   
-  const centerX = 50;
-  const centerY = 50;
-  const radius = 45;
-  
   // Color scheme
   const colors = {
-    accepted: '#10b981', // green
-    declined: '#ef4444', // red
-    pending: '#f59e0b'  // amber
+    accepted: getComputedStyle(document.documentElement).getPropertyValue('--chart-accepted-color').trim() || '#10b981', // green
+    declined: getComputedStyle(document.documentElement).getPropertyValue('--chart-declined-color').trim() || '#ef4444', // red
+    pending: getComputedStyle(document.documentElement).getPropertyValue('--chart-pending-color').trim() || '#f59e0b'  // amber
   };
   
   const data = [
@@ -20452,6 +20651,9 @@ function renderPieChart(accepted, declined, pending, total) {
     
     currentAngle = endAngle;
   });
+
+  // Cut out the center to make a donut chart.
+  addDonutHole();
 }
 
 // Update user profile picture in header
