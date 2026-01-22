@@ -164,13 +164,13 @@ function trackPostHogEvent(eventName, properties = {}) {
       return false;
     }
   }
-  
+
   // If PostHog isn't ready, queue the event
   if (!window._posthogQueue) {
     window._posthogQueue = [];
   }
   window._posthogQueue.push({ eventName, properties });
-  
+
   return false;
 }
 
@@ -205,7 +205,7 @@ if (typeof window !== 'undefined') {
       flushPostHogQueue();
     }
   }, 100);
-  
+
   // Stop checking after 10 seconds
   setTimeout(() => clearInterval(checkPostHogReady), 10000);
 }
@@ -217,20 +217,20 @@ if (typeof window !== 'undefined') {
 // Track time spent on pages/tabs/modals
 function startPageTimeTracking(pageName, properties = {}) {
   if (!pageName) return;
-  
+
   // Stop tracking previous page if exists
   stopPageTimeTracking();
-  
+
   const startTime = Date.now();
   state.analytics.currentPage = pageName;
   state.analytics.pageStartTime = startTime;
-  
+
   // Track page view
   trackPostHogEvent('page_viewed', {
     page: pageName,
     ...properties
   });
-  
+
   // Set up visibility change handler to pause/resume tracking
   const handleVisibilityChange = () => {
     if (document.hidden) {
@@ -253,7 +253,7 @@ function startPageTimeTracking(pageName, properties = {}) {
       }
     }
   };
-  
+
   // Store handler for cleanup
   state.analytics.visibilityHandler = handleVisibilityChange;
   document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -261,16 +261,16 @@ function startPageTimeTracking(pageName, properties = {}) {
 
 function stopPageTimeTracking() {
   if (!state.analytics.currentPage || !state.analytics.pageStartTime) return;
-  
+
   const pageName = state.analytics.currentPage;
   const timeSpent = Date.now() - state.analytics.pageStartTime;
-  
+
   // Add to accumulated time
   if (!state.analytics.timeTrackingIntervals[pageName]) {
     state.analytics.timeTrackingIntervals[pageName] = 0;
   }
   state.analytics.timeTrackingIntervals[pageName] += timeSpent;
-  
+
   // Send time spent event
   const totalTime = state.analytics.timeTrackingIntervals[pageName];
   trackPostHogEvent('time_on_page', {
@@ -278,13 +278,13 @@ function stopPageTimeTracking() {
     time_seconds: Math.round(totalTime / 1000),
     time_ms: totalTime
   });
-  
+
   // Clean up
   if (state.analytics.visibilityHandler) {
     document.removeEventListener('visibilitychange', state.analytics.visibilityHandler);
     state.analytics.visibilityHandler = null;
   }
-  
+
   state.analytics.currentPage = null;
   state.analytics.pageStartTime = null;
 }
@@ -294,13 +294,13 @@ function trackSessionStart() {
   const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   state.analytics.sessionId = sessionId;
   state.analytics.sessionStartTime = Date.now();
-  
+
   trackPostHogEvent('session_started', {
     session_id: sessionId,
     team_id: state.currentTeamId,
     user_id: state.session?.user?.id
   });
-  
+
   // Track session end on page unload
   window.addEventListener('beforeunload', trackSessionEnd);
 }
@@ -308,12 +308,12 @@ function trackSessionStart() {
 // Track session end
 function trackSessionEnd() {
   if (!state.analytics.sessionStartTime) return;
-  
+
   const sessionDuration = Date.now() - state.analytics.sessionStartTime;
-  
+
   // Stop any active page tracking
   stopPageTimeTracking();
-  
+
   trackPostHogEvent('session_ended', {
     session_id: state.analytics.sessionId,
     duration_seconds: Math.round(sessionDuration / 1000),
@@ -321,7 +321,7 @@ function trackSessionEnd() {
     team_id: state.currentTeamId,
     user_id: state.session?.user?.id
   });
-  
+
   // Use sendBeacon for reliable delivery on page unload
   if (navigator.sendBeacon && window.posthog) {
     try {
@@ -348,7 +348,7 @@ function trackSessionEnd() {
 // Calculate and send aggregate metrics from Supabase data
 async function sendAggregateMetrics() {
   if (!state.currentTeamId || !state.session?.user?.id) return;
-  
+
   try {
     // Get all sets for current team (use left join for optional relations)
     const { data: sets, error: setsError } = await supabase
@@ -363,23 +363,23 @@ async function sendAggregateMetrics() {
         set_time_alerts(id)
       `)
       .eq('team_id', state.currentTeamId);
-    
+
     if (setsError) {
       console.warn('Error fetching sets for aggregate metrics:', setsError);
       return;
     }
-    
+
     // Get all songs for current team
     const { data: songs, error: songsError } = await supabase
       .from('songs')
       .select('id, song_keys(id)')
       .eq('team_id', state.currentTeamId);
-    
+
     if (songsError) {
       console.warn('Error fetching songs for aggregate metrics:', songsError);
       return;
     }
-    
+
     // Get all users with pinned sets for this team
     // First get all set IDs for this team, then check pinned_sets
     const setIds = sets?.map(s => s.id) || [];
@@ -389,41 +389,41 @@ async function sendAggregateMetrics() {
         .from('pinned_sets')
         .select('user_id, set_id')
         .in('set_id', setIds);
-      
+
       if (!pinnedError && pinnedSets) {
         uniquePinnedUsers = new Set(pinnedSets.map(p => p.user_id)).size;
       }
     }
-    
+
     // Calculate metrics
     const totalSets = sets?.length || 0;
     const setsWithServiceTime = sets?.filter(s => s.service_times && s.service_times.length > 0).length || 0;
     const setsWithRehearsals = sets?.filter(s => s.rehearsal_times && s.rehearsal_times.length > 0).length || 0;
     const publishedSets = sets?.filter(s => s.is_published).length || 0;
-    
+
     const totalSongs = songs?.length || 0;
     const totalKeys = songs?.reduce((sum, s) => sum + (s.song_keys?.length || 0), 0) || 0;
-    
+
     const totalUsers = state.people?.length || 0;
-    
+
     // Calculate averages
-    const avgSongsPerSet = totalSets > 0 
-      ? sets.reduce((sum, s) => sum + (s.set_songs?.length || 0), 0) / totalSets 
+    const avgSongsPerSet = totalSets > 0
+      ? sets.reduce((sum, s) => sum + (s.set_songs?.length || 0), 0) / totalSets
       : 0;
-    
+
     const avgRehearsalsPerSet = totalSets > 0
       ? sets.reduce((sum, s) => sum + (s.rehearsal_times?.length || 0), 0) / totalSets
       : 0;
-    
+
     // For assignments, we need to get song assignments from set_songs
     // This is complex, so let's get a simpler count
     const totalSetAssignments = sets?.reduce((sum, s) => sum + (s.set_assignments?.length || 0), 0) || 0;
     const avgAssignmentsPerSet = totalSets > 0 ? totalSetAssignments / totalSets : 0;
-    
+
     const avgAlertsPerSet = totalSets > 0
       ? sets.reduce((sum, s) => sum + (s.set_time_alerts?.length || 0), 0) / totalSets
       : 0;
-    
+
     // Send aggregate metrics as a single event
     trackPostHogEvent('team_aggregate_metrics', {
       team_id: state.currentTeamId,
@@ -442,7 +442,7 @@ async function sendAggregateMetrics() {
       total_songs: totalSongs,
       avg_keys_per_song: totalSongs > 0 ? parseFloat((totalKeys / totalSongs).toFixed(2)) : 0
     });
-    
+
   } catch (error) {
     console.error('Error calculating aggregate metrics:', error);
   }
@@ -863,7 +863,7 @@ function loadAppDataFromCache(session) {
     // Populate state
     state.profile = data.profile;
     state.sets = data.sets || [];
-    
+
     // Deduplicate songs by ID (keep first occurrence) before storing in state
     const seenSongIds = new Set();
     const uniqueSongsFromCache = (data.songs || []).filter(song => {
@@ -874,7 +874,7 @@ function loadAppDataFromCache(session) {
       return true;
     });
     state.songs = uniqueSongsFromCache;
-    
+
     state.people = data.people || [];
     state.userTeams = data.userTeams || [];
     state.currentTeamId = data.currentTeamId;
@@ -1550,7 +1550,7 @@ function bindEvents() {
         picker.classList.remove("hidden");
         // Save unlocked state
         document.cookie = "theme_picker_enabled=true; path=/; max-age=31536000"; // 1 year
-        
+
         // PostHog: Track theme Easter egg discovery
         trackPostHogEvent('theme_easter_egg_discovered', {
           team_id: state.currentTeamId
@@ -1678,7 +1678,7 @@ function bindEvents() {
   el("btn-logout-menu")?.addEventListener("click", () => {
     // Track session end before logout
     trackSessionEnd();
-    
+
     // Clear theme usage cookies
     document.cookie = 'theme_preference=; path=/; max-age=0';
     document.cookie = 'theme_picker_enabled=; path=/; max-age=0';
@@ -1786,13 +1786,13 @@ function bindEvents() {
       }
     });
   };
-  
+
   document.querySelectorAll("#songs-sort-dropdown-menu .header-dropdown-item").forEach(item => {
     item.addEventListener("click", (e) => {
       e.stopPropagation();
       const sortOption = item.dataset.sort;
       state.songSortOption = sortOption;
-      
+
       // Update label
       const labelMap = {
         relevancy: "Relevancy",
@@ -1804,25 +1804,25 @@ function bindEvents() {
       if (labelEl) {
         labelEl.textContent = `Sort: ${labelMap[sortOption]}`;
       }
-      
+
       // Update selection visual
       updateSortSelection();
-      
+
       // Close dropdown
       const menu = el("songs-sort-dropdown-menu");
       if (menu) {
         menu.classList.add("hidden");
         menu.classList.remove("animate-out");
       }
-      
+
       // Re-render songs
       renderSongCatalog(false);
     });
   });
-  
+
   // Initialize selection visual
   updateSortSelection();
-  
+
   // Close sort dropdown when clicking outside
   document.addEventListener("click", (e) => {
     const container = el("songs-sort-dropdown-container");
@@ -1832,7 +1832,7 @@ function bindEvents() {
       menu.classList.remove("animate-out");
     }
   });
-  
+
   // Initialize sort label
   const updateSortLabel = () => {
     const labelMap = {
@@ -2191,7 +2191,7 @@ function bindEvents() {
     const normalized = normalizeLyricsLinesFromText(lyricsInput.value);
     lyricsInput.value = normalized.join("\n");
     active.chart.doc.lyricsLines = normalized;
-    
+
     // Adjust placements to match new line indices
     if (oldLines.length !== normalized.length || !oldLines.every((line, idx) => line === normalized[idx])) {
       active.chart.doc.placements = adjustPlacementsForLyricsChange(
@@ -2200,7 +2200,7 @@ function bindEvents() {
         active.chart.doc.placements || []
       );
     }
-    
+
     const wrapEl = el("chart-editor-page");
     if (wrapEl) {
       renderChartDocIntoPage(wrapEl, active.chart.doc, {
@@ -2284,17 +2284,17 @@ function bindEvents() {
     const lyricsLines = active.chart.doc.lyricsLines || [];
     const placements = active.chart.doc.placements || [];
     const charWidth = measureMonoCharWidthPx();
-    
+
     // Find a good position: use cursor if valid, otherwise find first visible line with space
     let lineIndex = state.chordCharts.editorCursor?.lineIndex ?? 0;
     let charIndex = state.chordCharts.editorCursor?.charIndex ?? 0;
-    
+
     // If cursor is out of bounds or on a section header, find a better position
     if (lineIndex >= lyricsLines.length) {
       lineIndex = Math.max(0, lyricsLines.length - 1);
       charIndex = 0;
     }
-    
+
     const lineText = lyricsLines[lineIndex] || "";
     // Check if this is a section header
     if (lineText.trim().match(/^\[([^\]]+)\]$/)) {
@@ -2307,11 +2307,11 @@ function bindEvents() {
         }
       }
     }
-    
+
     // Find a position that doesn't overlap with existing chords on this line
     const linePlacements = placements.filter(p => p.lineIndex === lineIndex);
     const estimatedChordWidth = (value.length + 2) * charWidth; // rough estimate
-    
+
     // Try to find a gap or position at the end
     let foundPosition = false;
     for (let testCharIndex = 0; testCharIndex < (lineText.length || 20); testCharIndex += 2) {
@@ -2322,19 +2322,19 @@ function bindEvents() {
         const testRight = testLeft + estimatedChordWidth;
         return (testLeft < pRight && testRight > pLeft);
       });
-      
+
       if (!overlaps) {
         charIndex = testCharIndex;
         foundPosition = true;
         break;
       }
     }
-    
+
     // If no gap found, place at end of line
     if (!foundPosition) {
       charIndex = Math.max(0, (lineText.length || 0) * charWidth / charWidth);
     }
-    
+
     const placement = {
       id: genPlacementId(),
       lineIndex,
@@ -2342,11 +2342,11 @@ function bindEvents() {
       kind,
       value,
     };
-    
+
     if (!Array.isArray(active.chart.doc.placements)) active.chart.doc.placements = [];
     active.chart.doc.placements.push(placement);
     input.value = "";
-    
+
     // Update cursor to the new position
     state.chordCharts.editorCursor = { lineIndex, charIndex };
 
@@ -2373,11 +2373,11 @@ function bindEvents() {
     const lyricsInput = el("chart-lyrics-input");
     const wrapEl = el("chart-editor-page");
     if (!lyricsInput || !wrapEl) return;
-    
+
     const oldLines = active.chart.doc.lyricsLines || [];
     const newLines = normalizeLyricsLinesFromText(lyricsInput.value);
     active.chart.doc.lyricsLines = newLines;
-    
+
     // Adjust placements to match new line indices
     if (oldLines.length !== newLines.length || !oldLines.every((line, idx) => line === newLines[idx])) {
       active.chart.doc.placements = adjustPlacementsForLyricsChange(
@@ -2386,7 +2386,7 @@ function bindEvents() {
         active.chart.doc.placements || []
       );
     }
-    
+
     renderChartDocIntoPage(wrapEl, active.chart.doc, {
       songTitle: active.songTitle || active.chart.doc.title || "Chord Chart",
       subtitle: active.scope === "key" ? `Key: ${active.songKey}` : (active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
@@ -2424,15 +2424,15 @@ function bindEvents() {
     const wrapEl = el("chart-editor-page");
     if (!sel || !wrapEl) return;
     active.chart.chartType = sel.value || "chord";
-    
+
     // Update insert input placeholder based on chart type
     const insertInput = el("chart-insert-value");
     if (insertInput) {
-      insertInput.placeholder = active.chart.chartType === "number" 
-        ? "1, 4, 6m, b7, #4dim, 5sus..." 
+      insertInput.placeholder = active.chart.chartType === "number"
+        ? "1, 4, 6m, b7, #4dim, 5sus..."
         : "C, Dm7, F#m, Bb, Gsus4...";
     }
-    
+
     // Update placement kind labels best-effort (keep values)
     const kind = active.chart.chartType === "number" ? "number" : "chord";
     (active.chart.doc.placements || []).forEach(p => { p.kind = kind; });
@@ -3128,7 +3128,7 @@ async function loadDataAndShowApp(session) {
     renderPeople();
 
     showApp();
-    
+
     // Check for unindexed songs (server-side indexing)
     checkUnindexedSongs();
   }
@@ -3142,7 +3142,7 @@ async function loadDataAndShowApp(session) {
 
     // Save fresh data to cache
     saveAppDataToCache(session);
-    
+
     // Check for unindexed songs (server-side indexing)
     checkUnindexedSongs();
 
@@ -3155,10 +3155,10 @@ async function loadDataAndShowApp(session) {
 
     if (typeof authForm !== 'undefined') authForm?.reset();
     toggleAuthButton(false);
-    
+
     // Track session start
     trackSessionStart();
-    
+
     // Start tracking time on initial tab
     const savedTab = localStorage.getItem('cadence-active-tab') || 'sets';
     const pageNameMap = {
@@ -3169,7 +3169,7 @@ async function loadDataAndShowApp(session) {
     if (pageNameMap[savedTab]) {
       startPageTimeTracking(pageNameMap[savedTab], { team_id: state.currentTeamId });
     }
-    
+
     // Send initial aggregate metrics
     sendAggregateMetrics();
 
@@ -4008,7 +4008,7 @@ async function fetchUserTeams() {
 
     console.log('  - ✅ Found', state.userTeams.length, 'teams');
     console.log('  - Teams Data:', JSON.stringify(state.userTeams, null, 2));
-    
+
     // PostHog: Track number of teams per user
     if (state.userTeams.length > 0) {
       trackPostHogEvent('user_teams_count', {
@@ -4303,15 +4303,19 @@ async function loadSongs() {
           id,
           key
         ),
-        song_links (
+        song_resources (
           id,
+          team_id,
+          type,
           title,
           url,
-          key,
           file_path,
           file_name,
           file_type,
-          is_file_upload
+          key,
+          display_order,
+          chart_content,
+          created_at
         )
       `)
       // Include iTunes metadata fields in the query
@@ -4342,7 +4346,7 @@ async function loadSongs() {
     console.warn('    2. RLS policies are blocking access');
     console.warn('    3. team_id mismatch');
   }
-  
+
   // Deduplicate songs by ID (keep first occurrence) before storing in state
   const seenIds = new Set();
   const uniqueSongs = (data || []).filter(song => {
@@ -4352,11 +4356,11 @@ async function loadSongs() {
     seenIds.add(song.id);
     return true;
   });
-  
+
   state.songs = uniqueSongs;
   state.isLoadingSongs = false;
   await renderSongCatalog(false);
-  
+
   // Check for unindexed songs after loading
   checkUnindexedSongs();
 }
@@ -4400,7 +4404,7 @@ async function loadSets() {
 
     // Get require_publish setting (default to true if not set)
     teamRequirePublish = teamData?.require_publish !== false;
-    
+
     // Update local team data
     const stateTeam = state.userTeams.find(t => t.id === state.currentTeamId);
     if (stateTeam) {
@@ -4706,27 +4710,34 @@ async function loadSets() {
                   id,
                   key
                 ),
-                song_links (
+                song_resources (
                   id,
+                  team_id,
+                  type,
                   title,
                   url,
-                  key,
                   file_path,
                   file_name,
                   file_type,
-                  is_file_upload
+                  key,
+                  display_order,
+                  chart_content,
+                  created_at
                 )
               ),
-              song_links (
+              song_resources (
                 id,
+                team_id,
+                type,
                 title,
                 url,
-                key,
-                display_order,
                 file_path,
                 file_name,
                 file_type,
-                is_file_upload
+                key,
+                display_order,
+                chart_content,
+                created_at
               ),
               song_assignments (
                 id,
@@ -5026,7 +5037,7 @@ async function loadPendingRequests() {
       }
       return earliest;
     }, null);
-    
+
     pendingRequests.push({
       type: 'song',
       assignmentIds: assignments.map(a => a.id),
@@ -5271,7 +5282,7 @@ async function handleAcceptRequest(request) {
     }
 
     toastSuccess("Assignment accepted!");
-    
+
     // Track assignment accepted
     trackPostHogEvent('assignment_accepted', {
       assignment_type: request.type,
@@ -5280,10 +5291,10 @@ async function handleAcceptRequest(request) {
       time_to_accept_seconds: timeToAccept,
       assignment_count: request.type === 'song' ? request.assignmentCount : 1
     });
-    
+
     // Update aggregate metrics
     sendAggregateMetrics();
-    
+
     await loadSets(); // Reload to refresh UI
     await loadPendingRequests(); // Refresh pending requests list
   } catch (error) {
@@ -5319,7 +5330,7 @@ async function handleDeclineRequest(request) {
     }
 
     toastSuccess("Assignment declined.");
-    
+
     // Track assignment declined
     trackPostHogEvent('assignment_declined', {
       assignment_type: request.type,
@@ -5328,10 +5339,10 @@ async function handleDeclineRequest(request) {
       time_to_decline_seconds: timeToDecline,
       assignment_count: request.type === 'song' ? request.assignmentCount : 1
     });
-    
+
     // Update aggregate metrics
     sendAggregateMetrics();
-    
+
     await loadSets(); // Reload to refresh UI
     await loadPendingRequests(); // Refresh pending requests list
   } catch (error) {
@@ -5377,7 +5388,7 @@ async function showAssignmentDetailsModal(assignment) {
     // Try to get profile picture from person data
     // First, we need to fetch the person's profile to get their picture
     let personProfilePicturePath = null;
-    
+
     // If we have person_id, fetch their profile
     if (assignment.personId) {
       const { data: personProfile } = await supabase
@@ -5385,7 +5396,7 @@ async function showAssignmentDetailsModal(assignment) {
         .select("profile_picture_path")
         .eq("id", assignment.personId)
         .maybeSingle();
-      
+
       if (personProfile?.profile_picture_path) {
         personProfilePicturePath = personProfile.profile_picture_path;
       }
@@ -5679,7 +5690,7 @@ async function openPersonDetailsModal(person) {
   if (!isManager() && !isOwner()) {
     return;
   }
-  
+
   const modal = el("person-details-modal");
   if (!modal || !person) return;
 
@@ -5728,7 +5739,7 @@ async function openPersonDetailsModal(person) {
         .select("profile_picture_path")
         .eq("id", person.id)
         .maybeSingle();
-      
+
       if (personProfile?.profile_picture_path) {
         profilePicturePath = personProfile.profile_picture_path;
       }
@@ -5793,10 +5804,10 @@ async function openPersonDetailsModal(person) {
 
   // Filter assignments to current team only
   const currentTeamId = state.currentTeamId;
-  const setAssignments = (setAssignmentsResult.data || []).filter(a => 
+  const setAssignments = (setAssignmentsResult.data || []).filter(a =>
     a.set?.team_id === currentTeamId
   );
-  const songAssignments = (songAssignmentsResult.data || []).filter(a => 
+  const songAssignments = (songAssignmentsResult.data || []).filter(a =>
     a.set_song?.set?.team_id === currentTeamId
   );
 
@@ -5819,11 +5830,11 @@ async function openPersonDetailsModal(person) {
   const acceptedPercent = total > 0 ? Math.round((accepted / total) * 100) : 0;
   const declinedPercent = total > 0 ? Math.round((declined / total) * 100) : 0;
   const pendingPercent = total > 0 ? Math.round((pending / total) * 100) : 0;
-  
+
   if (acceptedPercentEl) acceptedPercentEl.textContent = `${acceptedPercent}%`;
   if (declinedPercentEl) declinedPercentEl.textContent = `${declinedPercent}%`;
   if (pendingPercentEl) pendingPercentEl.textContent = `${pendingPercent}%`;
-  
+
   // Render pie chart
   renderPieChart(accepted, declined, pending, total);
 
@@ -6337,7 +6348,7 @@ function renderSets(animate = true) {
   state.sets.forEach((set) => {
     const isAssigned = currentUserId && isUserAssignedToSet(set, currentUserId);
     const isPinned = set.is_pinned === true;
-    
+
     // Include in "Your Sets" if assigned OR pinned
     if (isAssigned || isPinned) {
       yourSets.push(set);
@@ -6396,19 +6407,19 @@ function renderSets(animate = true) {
 function switchTab(tabName) {
   // Stop tracking time on previous tab
   stopPageTimeTracking();
-  
+
   // Save the current tab to localStorage
   localStorage.setItem('cadence-active-tab', tabName);
 
   // Always hide set details when switching tabs - set details should only be visible when explicitly viewing a set
   hideSetDetail();
-  
+
   // Track tab switch
   trackPostHogEvent('tab_switched', {
     tab: tabName,
     team_id: state.currentTeamId
   });
-  
+
   // Start tracking time on new tab
   startPageTimeTracking(tabName, { team_id: state.currentTeamId });
 
@@ -6462,14 +6473,14 @@ function switchTab(tabName) {
   el("sets-tab").classList.toggle("hidden", tabName !== "sets");
   el("songs-tab").classList.toggle("hidden", tabName !== "songs");
   el("people-tab").classList.toggle("hidden", tabName !== "people");
-  
+
   // Map tab names to page names for tracking
   const pageNameMap = {
     'sets': 'Sets',
     'songs': 'Songs',
     'people': 'People'
   };
-  
+
   // Start tracking time on new tab (will stop previous tab automatically)
   if (pageNameMap[tabName]) {
     startPageTimeTracking(pageNameMap[tabName], { team_id: state.currentTeamId });
@@ -6989,10 +7000,10 @@ function renderPeople(animate = true) {
       div.style.cursor = "pointer";
       div.addEventListener("click", (e) => {
         // Don't open modal if clicking on interactive elements
-        if (e.target.closest(".person-menu-btn") || 
-            e.target.closest(".person-menu") ||
-            e.target.closest("button") ||
-            e.target.closest("a")) {
+        if (e.target.closest(".person-menu-btn") ||
+          e.target.closest(".person-menu") ||
+          e.target.closest("button") ||
+          e.target.closest("a")) {
           return;
         }
         openPersonDetailsModal(person);
@@ -7507,7 +7518,7 @@ function getDaysUntil(dateString) {
 function showSetDetail(set) {
   // Stop tracking time on previous page
   stopPageTimeTracking();
-  
+
   state.selectedSet = set;
   // Save selected set ID to localStorage so it persists across page reloads
   if (set?.id) {
@@ -7518,14 +7529,14 @@ function showSetDetail(set) {
 
   dashboard.classList.add("hidden");
   detailView.classList.remove("hidden");
-  
+
   // Track set detail view
   trackPostHogEvent('set_viewed', {
     set_id: set.id,
     team_id: state.currentTeamId,
     is_published: set.is_published || false
   });
-  
+
   // Start tracking time on set detail page
   startPageTimeTracking('set_detail', {
     set_id: set.id,
@@ -7614,7 +7625,7 @@ function showSetDetail(set) {
   if (pinBtn) {
     const isPinned = set.is_pinned === true;
     const icon = pinBtn.querySelector("i");
-    
+
     // Update initial button state
     if (icon) {
       if (isPinned) {
@@ -7629,7 +7640,7 @@ function showSetDetail(set) {
         pinBtn.classList.remove("pinned");
       }
     }
-    
+
     // Remove existing event listeners by cloning the button
     const newPinBtn = pinBtn.cloneNode(true);
     pinBtn.parentNode.replaceChild(newPinBtn, pinBtn);
@@ -7653,7 +7664,7 @@ function showSetDetail(set) {
     const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
     const teamRequiresPublish = currentTeam?.require_publish !== false;
     const isPublished = set.is_published === true;
-    
+
     // Show publish button if: user is manager, set is unpublished, and team requires publishing
     const shouldShowPublish = isMgr && !isPublished && teamRequiresPublish;
     publishBtn.classList.toggle("hidden", !shouldShowPublish);
@@ -7955,16 +7966,15 @@ function renderSetDetailSongs(set) {
           // View Details button will be set up later in the code
 
           // Display section links if they exist
-          const sectionLinks = setSong.song_links || [];
+          const sectionResources = setSong.song_resources || [];
+          const sectionLinks = sectionResources.filter(r => r.type === 'link' || r.type === 'file');
+
           if (sectionLinks.length > 0) {
             // Sort links by display_order
             const sortedLinks = [...sectionLinks].sort((a, b) => {
               const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
               const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
-              if (ao !== bo) return ao - bo;
-              const at = (a?.title || "").toLowerCase();
-              const bt = (b?.title || "").toLowerCase();
-              return at.localeCompare(bt);
+              return ao - bo;
             });
 
             // Create links container after notes
@@ -8356,7 +8366,7 @@ function renderSetDetailSongs(set) {
 function hideSetDetail() {
   // Stop tracking time on set detail
   stopPageTimeTracking();
-  
+
   closeHeaderDropdown();
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
@@ -8990,6 +9000,9 @@ function setupLinkDragAndDrop(item, container) {
       dragHandle.removeEventListener("mousedown", item._linkDragHandlers.dragHandleMousedown);
       dragHandle.removeEventListener("selectstart", item._linkDragHandlers.dragHandleSelectstart);
     }
+    if (item._linkDragHandlers.selectstart) {
+      item.removeEventListener("selectstart", item._linkDragHandlers.selectstart);
+    }
     if (item._linkDragHandlers.dragstart) {
       item.removeEventListener("dragstart", item._linkDragHandlers.dragstart);
     }
@@ -9020,17 +9033,42 @@ function setupLinkDragAndDrop(item, container) {
     dragHandle.style.userSelect = "none";
   }
 
+  const handleSelectStart = (e) => {
+    // Prevent text selection during drag operations
+    if (item.classList.contains("dragging")) {
+      e.preventDefault();
+      return false;
+    }
+  };
+
   const handleDragStart = (e) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", item.dataset.linkId);
     item.classList.add("dragging");
     item.style.opacity = "0.5";
+    // Prevent text selection during drag
+    item.style.userSelect = "none";
+    item.style.webkitUserSelect = "none";
+    item.style.mozUserSelect = "none";
+    item.style.msUserSelect = "none";
+    // Also prevent selection on all child elements
+    item.querySelectorAll("*").forEach(el => {
+      el.style.userSelect = "none";
+      el.style.webkitUserSelect = "none";
+      el.style.mozUserSelect = "none";
+      el.style.msUserSelect = "none";
+    });
   };
 
   const handleDragEnd = (e) => {
     item.classList.remove("dragging");
     item.style.opacity = "";
+    item.style.userSelect = "";
     item.draggable = false;
+    // Restore text selection on all child elements
+    item.querySelectorAll("*").forEach(el => {
+      el.style.userSelect = "";
+    });
     // Remove all drop indicators
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
   };
@@ -9074,6 +9112,8 @@ function setupLinkDragAndDrop(item, container) {
     container.querySelectorAll(".drop-indicator").forEach(el => el.remove());
   };
 
+  // Prevent text selection on the entire item during drag
+  item.addEventListener("selectstart", handleSelectStart);
   item.addEventListener("dragstart", handleDragStart);
   item.addEventListener("dragend", handleDragEnd);
   item.addEventListener("dragover", handleDragOver);
@@ -9083,6 +9123,7 @@ function setupLinkDragAndDrop(item, container) {
   item._linkDragHandlers = {
     dragHandleMousedown,
     dragHandleSelectstart,
+    selectstart: handleSelectStart,
     dragstart: handleDragStart,
     dragend: handleDragEnd,
     dragover: handleDragOver,
@@ -9168,76 +9209,13 @@ function updateAllLinkOrderInDom() {
   });
 }
 
-function getOrderedExistingSongLinksFromDom() {
-  const linksRoot = el("song-links-list");
-  if (!linksRoot) return [];
-  const orderedLinks = [];
-  let globalOrder = 0;
-  const sections = Array.from(linksRoot.querySelectorAll(".song-links-section"));
-  sections.forEach(section => {
-    const sectionContent = section.querySelector(".song-links-section-content");
-    if (!sectionContent) return;
-    const items = Array.from(sectionContent.querySelectorAll(".song-link-row.draggable-item"));
-    items.forEach((item) => {
-      const idInput = item.querySelector(".song-link-id");
-      const linkId = idInput?.value;
-      if (linkId) {
-        orderedLinks.push({ id: linkId, display_order: globalOrder });
-      }
-      globalOrder += 1;
-    });
-  });
-  return orderedLinks;
-}
+// Deprecated functions removed
 
-async function reorderSongLinks(orderedLinks, songId) {
-  if (!songId || !Array.isArray(orderedLinks) || orderedLinks.length === 0) return;
-
-  // Two-phase update, matching the set song/section reorder strategy.
-  // This avoids unique constraint collisions on (song_id, display_order).
-  const errors = [];
-
-  // Phase 1: move everything to unique temporary values
-  const tempBase = -1000000;
-  const phase1 = orderedLinks.map(async ({ id }, idx) => {
-    const tempValue = tempBase - idx;
-    const { error } = await supabase
-      .from("song_links")
-      .update({ display_order: tempValue })
-      .eq("id", id)
-      .eq("song_id", songId);
-    if (error) errors.push({ phase: "temporary", id, error });
-  });
-  await Promise.all(phase1);
-
-  if (errors.length > 0) {
-    console.error("Failed to set temporary display_order values for song_links:", errors);
-    toastError("Failed to reorder links. Check console for details.");
-    return;
-  }
-
-  // Phase 2: set final display_order values
-  const phase2 = orderedLinks.map(async ({ id, display_order }) => {
-    const { error } = await supabase
-      .from("song_links")
-      .update({ display_order })
-      .eq("id", id)
-      .eq("song_id", songId);
-    if (error) errors.push({ phase: "final", id, display_order, error });
-  });
-  await Promise.all(phase2);
-
-  if (errors.length > 0) {
-    console.error("Failed to set final display_order values for song_links:", errors);
-    toastError("Some links could not be reordered. Check console for details.");
-  }
-}
 
 function getOrderedExistingResourcesFromDom() {
   const linksRoot = el("song-links-list");
-  if (!linksRoot) return { orderedLinks: [], orderedCharts: [] };
-  const orderedLinks = [];
-  const orderedCharts = [];
+  if (!linksRoot) return [];
+  const orderedResources = [];
   let globalOrder = 0;
   const sections = Array.from(linksRoot.querySelectorAll(".song-links-section"));
   sections.forEach(section => {
@@ -9246,212 +9224,85 @@ function getOrderedExistingResourcesFromDom() {
     const items = Array.from(sectionContent.querySelectorAll(".song-link-row.draggable-item"));
     items.forEach((item) => {
       // Skip readonly/generated chart rows (they don't have database IDs and shouldn't be reordered)
-      const isReadonlyChart = item.classList.contains("song-chart-row") && 
-                              (item.classList.contains("readonly") || item.querySelector(".view-generated-chart"));
+      const isReadonlyChart = item.classList.contains("song-chart-row") &&
+        (item.classList.contains("readonly") || item.querySelector(".view-generated-chart"));
       if (isReadonlyChart) {
         return; // Don't include in ordering, don't increment order
       }
 
-      const linkId = item.querySelector(".song-link-id")?.value?.trim() || null;
-      const chartId = item.querySelector(".song-chart-id")?.value?.trim() || 
-                      item.dataset.chartId?.trim() || null;
-      
-      // Items should be either a link OR a chart, not both
+      const resourceId = item.dataset.resourceId || item.dataset.linkId || item.dataset.chartId; // Fallbacks for safety
+
       // Only include valid IDs (non-empty strings) and increment order for each item
-      if (linkId && linkId !== '') {
-        orderedLinks.push({ id: linkId, display_order: globalOrder });
-        globalOrder += 1;
-      } else if (chartId && chartId !== '') {
-        orderedCharts.push({ id: chartId, display_order: globalOrder });
+      if (resourceId && resourceId !== '' && !resourceId.startsWith('new-')) {
+        // If it starts with 'chart-', strip prefix if it was added (but we store raw ID in dataset.resourceId usually)
+        // Check if resourceId is UUID
+        orderedResources.push({ id: resourceId, display_order: globalOrder });
         globalOrder += 1;
       }
-      // If neither linkId nor chartId exists, skip this item (don't increment order)
     });
   });
-  return { orderedLinks, orderedCharts };
+  return orderedResources;
 }
 
-async function reorderSongCharts(orderedCharts, songId) {
-  if (!songId || !Array.isArray(orderedCharts) || orderedCharts.length === 0) return;
-
-  // Filter out any invalid chart IDs (empty, null, or undefined)
-  const validCharts = orderedCharts.filter(({ id }) => id && typeof id === 'string' && id.trim() !== '');
-  if (validCharts.length === 0) {
-    console.warn("No valid chart IDs to reorder");
-    return;
-  }
-
-  // Verify all chart IDs exist and belong to this song and team before attempting to update
-  const chartIds = validCharts.map(({ id }) => id);
-  const { data: existingCharts, error: fetchError } = await supabase
-    .from(SONG_CHARTS_TABLE)
-    .select("id")
-    .eq("song_id", songId)
-    .eq("team_id", state.currentTeamId)
-    .in("id", chartIds);
-
-  if (fetchError) {
-    console.error("Failed to verify chart IDs:", fetchError);
-    toastError("Failed to verify charts. Please refresh and try again.");
-    return;
-  }
-
-  const existingChartIds = new Set((existingCharts || []).map(c => String(c.id)));
-  const invalidChartIds = chartIds.filter(id => !existingChartIds.has(String(id)));
-
-  if (invalidChartIds.length > 0) {
-    console.warn("Some chart IDs don't exist or don't belong to this song:", invalidChartIds);
-    // Filter out invalid charts and continue with valid ones
-    const validChartsFiltered = validCharts.filter(({ id }) => existingChartIds.has(String(id)));
-    if (validChartsFiltered.length === 0) {
-      toastError("No valid charts to reorder. Please refresh and try again.");
-      return;
-    }
-    // Update the array to only include valid charts
-    validCharts.length = 0;
-    validCharts.push(...validChartsFiltered);
-  }
-
-  const errors = [];
-  const tempBase = -2000000;
-
-  const phase1 = validCharts.map(async ({ id }, idx) => {
-    const tempValue = tempBase - idx;
-    const { error, data } = await supabase
-      .from(SONG_CHARTS_TABLE)
-      .update({ display_order: tempValue })
-      .eq("id", id)
-      .eq("song_id", songId)
-      .eq("team_id", state.currentTeamId)
-      .select("id"); // Select to verify the update affected a row
-    
-    if (error) {
-      console.error(`Failed to update chart ${id} with temp value ${tempValue}:`, error);
-      errors.push({ phase: "temporary", id, error, tempValue });
-    } else if (!data || data.length === 0) {
-      // No rows were updated - chart might have been deleted or doesn't match filters
-      console.warn(`No rows updated for chart ${id} - chart may have been deleted or doesn't belong to song ${songId}`);
-      errors.push({ phase: "temporary", id, error: { message: "No rows updated", code: "PGRST116" }, tempValue });
-    }
-  });
-  await Promise.all(phase1);
-
-  if (errors.length > 0) {
-    console.error("Failed to set temporary display_order values for song_charts:", errors);
-    // Log full error details for debugging
-    errors.forEach(({ id, error, tempValue }) => {
-      console.error(`Chart ID: ${id}, Temp Value: ${tempValue}, Error:`, JSON.stringify(error, null, 2));
-    });
-    toastError("Failed to reorder charts. Check console for details.");
-    return;
-  }
-
-  const phase2 = validCharts.map(async ({ id, display_order }) => {
-    const { error, data } = await supabase
-      .from(SONG_CHARTS_TABLE)
-      .update({ display_order })
-      .eq("id", id)
-      .eq("song_id", songId)
-      .eq("team_id", state.currentTeamId)
-      .select("id"); // Select to verify the update affected a row
-    
-    if (error) {
-      console.error(`Failed to update chart ${id} with display_order ${display_order}:`, error);
-      errors.push({ phase: "final", id, display_order, error });
-    } else if (!data || data.length === 0) {
-      // No rows were updated - chart might have been deleted or doesn't match filters
-      console.warn(`No rows updated for chart ${id} with display_order ${display_order} - chart may have been deleted`);
-      errors.push({ phase: "final", id, display_order, error: { message: "No rows updated", code: "PGRST116" } });
-    }
-  });
-  await Promise.all(phase2);
-
-  if (errors.length > 0) {
-    console.error("Failed to set final display_order values for song_charts:", errors);
-    // Log full error details for debugging
-    errors.forEach(({ id, display_order, error }) => {
-      console.error(`Chart ID: ${id}, Display Order: ${display_order}, Error:`, JSON.stringify(error, null, 2));
-    });
-    toastError("Some charts could not be reordered. Check console for details.");
-  }
-}
+// Deprecated individual reorder functions
+async function reorderSongLinks(orderedLinks, songId) { console.warn("reorderSongLinks deprecated"); }
+async function reorderSongCharts(orderedCharts, songId) { console.warn("reorderSongCharts deprecated"); }
 
 async function saveAllResourceOrder() {
   const form = el("song-edit-form");
   const songId = form?.dataset.songId;
   if (!songId) return;
-  const { orderedLinks, orderedCharts } = getOrderedExistingResourcesFromDom();
-  
-  // If we have both links and charts, we need to update them together in a coordinated way
-  // since they share the same display_order space
-  if (orderedLinks.length > 0 && orderedCharts.length > 0) {
-    await reorderAllResourcesTogether(orderedLinks, orderedCharts, songId);
-  } else {
-    // If only one type exists, use the individual functions
-    if (orderedLinks.length > 0) await reorderSongLinks(orderedLinks, songId);
-    if (orderedCharts.length > 0) await reorderSongCharts(orderedCharts, songId);
+  const orderedResources = getOrderedExistingResourcesFromDom();
+
+  if (orderedResources.length > 0) {
+    await reorderSongResources(orderedResources, songId);
   }
 }
 
-async function reorderAllResourcesTogether(orderedLinks, orderedCharts, songId) {
+async function reorderSongResources(orderedResources, songId) {
   if (!songId) return;
-  
+
   const errors = [];
   const tempBase = -2000000;
-  
-  // Phase 1: Move ALL resources (links + charts) to temporary values
-  // This ensures we free up all the display_order positions before setting final values
-  const phase1Links = orderedLinks.map(async ({ id }, idx) => {
+
+  // Phase 1: Move ALL to temporary values to avoid unique constraint collisions
+  const phase1 = orderedResources.map(async ({ id }, idx) => {
     const tempValue = tempBase - idx;
     const { error } = await supabase
-      .from("song_links")
-      .update({ display_order: tempValue })
-      .eq("id", id)
-      .eq("song_id", songId);
-    if (error) errors.push({ type: "link", phase: "temporary", id, error });
-  });
-  
-  const phase1Charts = orderedCharts.map(async ({ id }, idx) => {
-    const tempValue = tempBase - orderedLinks.length - idx;
-    const { error } = await supabase
-      .from(SONG_CHARTS_TABLE)
+      .from(SONG_RESOURCES_TABLE)
       .update({ display_order: tempValue })
       .eq("id", id)
       .eq("song_id", songId)
       .eq("team_id", state.currentTeamId);
-    if (error) errors.push({ type: "chart", phase: "temporary", id, error });
+    if (error) errors.push({ phase: "temporary", id, error });
   });
-  
-  await Promise.all([...phase1Links, ...phase1Charts]);
-  
+
+  await Promise.all(phase1);
+
   if (errors.length > 0) {
     console.error("Failed to set temporary display_order values:", errors);
     toastError("Failed to reorder resources. Check console for details.");
     return;
   }
-  
-  // Phase 2: Set final display_order values for ALL resources
-  const phase2Links = orderedLinks.map(async ({ id, display_order }) => {
+
+  // Phase 2: Set final display_order values
+  const phase2 = orderedResources.map(async ({ id, display_order }) => {
     const { error } = await supabase
-      .from("song_links")
-      .update({ display_order })
-      .eq("id", id)
-      .eq("song_id", songId);
-    if (error) errors.push({ type: "link", phase: "final", id, display_order, error });
-  });
-  
-  const phase2Charts = orderedCharts.map(async ({ id, display_order }) => {
-    const { error } = await supabase
-      .from(SONG_CHARTS_TABLE)
+      .from(SONG_RESOURCES_TABLE)
       .update({ display_order })
       .eq("id", id)
       .eq("song_id", songId)
       .eq("team_id", state.currentTeamId);
-    if (error) errors.push({ type: "chart", phase: "final", id, display_order, error });
+    if (error) errors.push({ phase: "final", id, display_order, error });
   });
-  
-  await Promise.all([...phase2Links, ...phase2Charts]);
-  
+
+  await Promise.all(phase2);
+
+  // Invalidate chart cache to ensure new order is reflected in view mode
+  if (state.chordCharts && state.chordCharts.cache) {
+    state.chordCharts.cache.delete(songId);
+  }
+
   if (errors.length > 0) {
     console.error("Failed to set final display_order values:", errors);
     toastError("Some resources could not be reordered. Check console for details.");
@@ -9478,13 +9329,13 @@ function openSetModal(set = null) {
   setModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   el("set-modal-title").textContent = set ? "Edit Set" : "New Set";
-  
+
   // PostHog: Track modal open
   trackPostHogEvent('modal_opened', {
     modal_type: set ? 'edit_set' : 'new_set',
     team_id: state.currentTeamId
   });
-  
+
   // Start tracking time on modal
   startPageTimeTracking('modal_edit_set', {
     modal_type: set ? 'edit_set' : 'new_set',
@@ -9524,25 +9375,25 @@ function openSetModal(set = null) {
   const publishBtn = el("btn-publish-set");
   const publishBtnText = el("btn-publish-set-text");
   const publishStatus = el("set-publish-status");
-  
+
   if (publishSection && publishBtn && publishBtnText && publishStatus) {
     if (set) {
       // Show publish section for existing sets
       publishSection.classList.remove("hidden");
-      
+
       // Check if team requires publishing
       const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
       const teamRequiresPublish = currentTeam?.require_publish !== false;
-      
+
       if (teamRequiresPublish) {
         // Check if there's a pending change, otherwise use current status
         const pendingPublishStatus = state.pendingSetChanges?.is_published;
-        const isPublished = pendingPublishStatus !== undefined 
-          ? pendingPublishStatus 
+        const isPublished = pendingPublishStatus !== undefined
+          ? pendingPublishStatus
           : (set.is_published === true);
-        
+
         if (isPublished) {
-          const statusText = pendingPublishStatus !== undefined 
+          const statusText = pendingPublishStatus !== undefined
             ? "This set will be published when you save."
             : "This set is published and visible to all team members.";
           publishStatus.textContent = statusText;
@@ -9554,7 +9405,7 @@ function openSetModal(set = null) {
           publishBtn.classList.remove("secondary");
           publishBtn.classList.add("ghost");
         } else {
-          const statusText = pendingPublishStatus !== undefined 
+          const statusText = pendingPublishStatus !== undefined
             ? "This set will be unpublished when you save."
             : "This set is unpublished and only visible to owners and managers.";
           publishStatus.textContent = statusText;
@@ -9621,7 +9472,7 @@ function openSetModal(set = null) {
 function closeSetModal() {
   closeModalWithAnimation(setModal, () => {
     el("set-form").reset();
-    
+
     // Reset pending changes when closing modal without saving
     state.pendingSetChanges = null;
 
@@ -10683,7 +10534,7 @@ async function handleSetSubmit(event) {
     team_id: state.currentTeamId,
     set_id: isEditing ? editingSetId : response.data.id
   });
-  
+
   // Track set unpublished if it was unpublished
   if (isEditing && state.pendingSetChanges?.is_published === false && response.data.is_published === false) {
     trackPostHogEvent('set_unpublished', {
@@ -10691,7 +10542,7 @@ async function handleSetSubmit(event) {
       team_id: state.currentTeamId
     });
   }
-  
+
   // Track assignment mode if set was created/edited
   if (newAssignmentMode) {
     trackPostHogEvent('assignment_mode_used', {
@@ -10701,7 +10552,7 @@ async function handleSetSubmit(event) {
       is_override: overrideCheckbox?.checked || false
     });
   }
-  
+
   // Update aggregate metrics after set creation/update (debounced)
   setTimeout(() => sendAggregateMetrics(), 1000);
 
@@ -10808,26 +10659,26 @@ function startPublishCountdown(set) {
   publishBtn.classList.add("publish-countdown-active");
   publishBtn.classList.remove("hidden");
   publishBtn.disabled = false; // Keep enabled so it's clickable for cancel
-  
+
   // Create progress bar element
   const progressBar = document.createElement("div");
   progressBar.className = "publish-progress-bar";
-  
+
   // Build button structure
   const icon = document.createElement("i");
   icon.className = "fa-solid fa-clock";
-  
+
   // Create text container
   const textContainer = document.createElement("span");
   textContainer.className = "publish-countdown-text";
   textContainer.textContent = `Cancel... (${timeRemaining})`;
-  
+
   // Clear and rebuild button content
   publishBtn.innerHTML = '';
   publishBtn.appendChild(icon);
   publishBtn.appendChild(textContainer);
   publishBtn.appendChild(progressBar);
-  
+
   // Force a reflow to ensure button updates
   publishBtn.offsetHeight;
 
@@ -10848,7 +10699,7 @@ function startPublishCountdown(set) {
     e.preventDefault();
     cancelPublishCountdown();
   };
-  
+
   // Remove any existing handlers by cloning
   const newBtn = publishBtn.cloneNode(false);
   newBtn.className = publishBtn.className;
@@ -10857,7 +10708,7 @@ function startPublishCountdown(set) {
   newBtn.classList.add("publish-countdown-active");
   newBtn.classList.remove("hidden");
   newBtn.disabled = false;
-  
+
   const newIcon = document.createElement("i");
   newIcon.className = "fa-solid fa-clock";
   const newTextContainer = document.createElement("span");
@@ -10865,11 +10716,11 @@ function startPublishCountdown(set) {
   newTextContainer.textContent = `Cancel... (${timeRemaining})`;
   const newProgressBar = document.createElement("div");
   newProgressBar.className = "publish-progress-bar";
-  
+
   newBtn.appendChild(newIcon);
   newBtn.appendChild(newTextContainer);
   newBtn.appendChild(newProgressBar);
-  
+
   // Replace button
   publishBtn.parentNode.replaceChild(newBtn, publishBtn);
 
@@ -10924,12 +10775,12 @@ function startPublishCountdown(set) {
 
 function cancelPublishCountdown() {
   const publishBtn = el("btn-publish-set-detail");
-  
+
   if (publishCountdownTimer) {
     clearTimeout(publishCountdownTimer);
     publishCountdownTimer = null;
   }
-  
+
   if (publishCountdownInterval) {
     clearInterval(publishCountdownInterval);
     publishCountdownInterval = null;
@@ -10946,15 +10797,15 @@ function cancelPublishCountdown() {
     newBtn.className = publishBtn.className;
     newBtn.id = publishBtn.id;
     publishBtn.parentNode.replaceChild(newBtn, publishBtn);
-    
+
     // Restore button state
     newBtn.classList.remove("publish-countdown-active");
     newBtn.disabled = false;
     newBtn.classList.remove("hidden");
-    
+
     // Restore original button content
     newBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Publish';
-    
+
     // Re-attach original handler
     newBtn.addEventListener("click", async () => {
       if (state.selectedSet && isManager()) {
@@ -10967,7 +10818,7 @@ function cancelPublishCountdown() {
 async function completePublishCountdown(set) {
   // Clean up countdown UI
   cancelPublishCountdown();
-  
+
   // Actually publish the set
   await publishSetFromDetail(set);
 }
@@ -10990,7 +10841,7 @@ async function publishSetFromDetail(set) {
 
   // Update local state
   set.is_published = true;
-  
+
   // Update state.sets
   const setInState = state.sets.find(s => s.id === set.id);
   if (setInState) {
@@ -11005,7 +10856,7 @@ async function publishSetFromDetail(set) {
     set_id: set.id,
     team_id: state.currentTeamId
   });
-  
+
   // Update aggregate metrics (debounced)
   setTimeout(() => sendAggregateMetrics(), 1000);
 
@@ -11077,7 +10928,7 @@ async function loadSetSongs(setId) {
       song:song_id (
         *,
         song_keys (*),
-        song_links (*)
+        song_resources (*)
       ),
       song_assignments (*)
     `
@@ -11701,7 +11552,7 @@ async function openSectionHeaderModal() {
   if (sectionHeaderModal) {
     sectionHeaderModal.classList.remove("hidden");
     document.body.style.overflow = "hidden";
-    
+
     // Focus on first input field for keyboard navigation
     const titleInput = el("section-header-title");
     if (titleInput) {
@@ -12179,7 +12030,7 @@ async function handleAddSectionToSet(event) {
   const links = collectSectionLinks("section-links-list");
   if (links.length > 0) {
     const { error: linksError } = await supabase
-      .from("song_links")
+      .from(SONG_RESOURCES_TABLE)
       .insert(
         links.map(link => ({
           set_song_id: setSong.id,
@@ -12189,6 +12040,8 @@ async function handleAddSectionToSet(event) {
           key: link.key || null,
           display_order: link.display_order,
           team_id: state.currentTeamId,
+          type: 'link' // Section links are always type='link' (unless we support files? collectSectionLinks doesn't handle files yet maybe?)
+          // Wait, collectSectionLinks collects text inputs. Usually plain links.
         }))
       );
 
@@ -12523,14 +12376,16 @@ async function openEditSetSongModal(setSong) {
   const editSectionLinksList = el("edit-section-links-list");
   if (isSection && editSectionLinksContainer && editSectionLinksList) {
     editSectionLinksContainer.classList.remove("hidden");
-    // Fetch section links
+    // Fetch section resources
     const { data: sectionLinksData } = await supabase
-      .from("song_links")
+      .from(SONG_RESOURCES_TABLE)
       .select("*")
       .eq("set_song_id", setSong.id)
       .order("display_order", { ascending: true });
 
-    renderSectionLinks(sectionLinksData || [], "edit-section-links-list");
+    // Filter mainly links/files (just in case charts got in there)
+    const filteredSectionLinks = (sectionLinksData || []).filter(r => r.type === 'link' || r.type === 'file');
+    renderSectionLinks(filteredSectionLinks, "edit-section-links-list");
   } else if (editSectionLinksContainer) {
     editSectionLinksContainer.classList.add("hidden");
   }
@@ -13085,11 +12940,15 @@ async function handleEditSetSongSubmit(event) {
   if (isSection && !isSectionHeader) {
     const links = collectSectionLinks("edit-section-links-list");
 
-    // Get existing links
-    const { data: existingLinks } = await supabase
-      .from("song_links")
+    // Get existing resources for this section
+    const { data: existingResources } = await supabase
+      .from(SONG_RESOURCES_TABLE)
       .select("*")
       .eq("set_song_id", setSongId);
+
+    // Determine which to delete, update, and insert
+    // Considering only links/files
+    const existingLinks = (existingResources || []).filter(r => r.type === 'link' || r.type === 'file');
 
     // Determine which to delete, update, and insert
     const existingIds = new Set(existingLinks?.map(l => l.id) || []);
@@ -13110,7 +12969,7 @@ async function handleEditSetSongSubmit(event) {
       }
 
       await supabase
-        .from("song_links")
+        .from(SONG_RESOURCES_TABLE)
         .delete()
         .in("id", deletedIds);
     }
@@ -13146,14 +13005,19 @@ async function handleEditSetSongSubmit(event) {
       }
 
       await supabase
-        .from("song_links")
+        .from(SONG_RESOURCES_TABLE)
         .update({
           title: link.title,
           url: link.is_file_upload ? null : link.url,
           file_path: link.is_file_upload ? filePath : null,
           file_name: link.is_file_upload ? fileName : null,
           file_type: link.is_file_upload ? fileType : null,
-          is_file_upload: link.is_file_upload,
+          // type: 'link' or 'file'?
+          /* Wait, existingLink has type. If we switch from link to file upload?
+             Logic above sets filePath/fileName.
+             If link.is_file_upload, type should be 'file'. Else 'link'.
+          */
+          type: link.is_file_upload ? 'file' : 'link',
           key: link.key || null,
           display_order: link.display_order,
         })
@@ -13184,21 +13048,23 @@ async function handleEditSetSongSubmit(event) {
         linksToInsert.push({
           set_song_id: setSongId,
           song_id: null,
+          team_id: state.currentTeamId,
+          type: link.is_file_upload ? 'file' : 'link',
           title: link.title,
           url: link.is_file_upload ? null : link.url,
           file_path: link.is_file_upload ? filePath : null,
           file_name: link.is_file_upload ? fileName : null,
           file_type: link.is_file_upload ? fileType : null,
-          is_file_upload: link.is_file_upload,
+          is_file_upload: link.is_file_upload, // Note: new table doesn't have is_file_upload column, remove it?
+          // We use type='file'/'link'. remove is_file_upload from insert.
           key: link.key || null,
           display_order: link.display_order,
-          team_id: state.currentTeamId,
         });
       }
 
       if (linksToInsert.length > 0) {
         const { error: insertError } = await supabase
-          .from("song_links")
+          .from(SONG_RESOURCES_TABLE)
           .insert(linksToInsert);
 
         if (insertError) {
@@ -13319,13 +13185,13 @@ async function togglePinSet(set, pinBtn) {
         pinBtn.title = "Pin set";
         pinBtn.classList.remove("pinned");
       }
-      
+
       // Track unpin
       trackPostHogEvent('set_unpinned', {
         set_id: set.id,
         team_id: state.currentTeamId
       });
-      
+
       toastSuccess("Set unpinned");
     } else {
       // Pin: insert into pinned_sets
@@ -13355,16 +13221,16 @@ async function togglePinSet(set, pinBtn) {
         pinBtn.title = "Unpin set";
         pinBtn.classList.add("pinned");
       }
-      
+
       // Track pin
       trackPostHogEvent('set_pinned', {
         set_id: set.id,
         team_id: state.currentTeamId
       });
-      
+
       // Update aggregate metrics
       setTimeout(() => sendAggregateMetrics(), 1000);
-      
+
       toastSuccess("Set pinned");
     }
 
@@ -13420,11 +13286,11 @@ async function deleteSong(songId) {
         await deleteFileFromSupabase(song.album_art_override_path);
       }
 
-      // Delete all song link files
-      if (song?.song_links) {
-        for (const link of song.song_links) {
-          if (link.is_file_upload && link.file_path) {
-            await deleteFileFromSupabase(link.file_path);
+      // Delete all song resource files
+      if (song?.song_resources) {
+        for (const res of song.song_resources) {
+          if (res.type === 'file' && res.file_path) {
+            await deleteFileFromSupabase(res.file_path);
           }
         }
       }
@@ -13480,13 +13346,13 @@ function openInviteModal(prefilledName = null) {
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
   el("invite-form").reset();
-  
+
   // PostHog: Track modal open
   trackPostHogEvent('modal_opened', {
     modal_type: 'add_person_to_team',
     team_id: state.currentTeamId
   });
-  
+
   // Start tracking time on modal
   startPageTimeTracking('modal_add_person', {
     team_id: state.currentTeamId
@@ -13719,21 +13585,21 @@ async function handleInviteSubmit(event) {
     messageEl.textContent = `${email} has been added to the team! They'll see this team in their account.`;
     messageEl.classList.remove("error-text");
     messageEl.classList.add("muted");
-    
+
     // PostHog: Track person added (preexisting account)
     trackPostHogEvent('person_added_to_team', {
       team_id: state.currentTeamId,
       user_type: 'preexisting_account',
       person_id: existingProfile.id
     });
-    
+
     // PostHog: Track modal conversion
     trackPostHogEvent('modal_converted', {
       modal_type: 'add_person_to_team',
       team_id: state.currentTeamId,
       user_type: 'preexisting_account'
     });
-    
+
     el("invite-form").reset();
     return;
   }
@@ -13768,21 +13634,21 @@ async function handleInviteSubmit(event) {
   messageEl.textContent = `Invite sent to ${email}! They'll receive an email to create their account and join the team.`;
   messageEl.classList.remove("error-text");
   messageEl.classList.add("muted");
-  
+
   // PostHog: Track person added (invite)
   trackPostHogEvent('person_added_to_team', {
     team_id: state.currentTeamId,
     user_type: 'invite',
     email: normalizedEmail
   });
-  
+
   // PostHog: Track modal conversion
   trackPostHogEvent('modal_converted', {
     modal_type: 'add_person_to_team',
     team_id: state.currentTeamId,
     user_type: 'invite'
   });
-  
+
   el("invite-form").reset();
 
   // Optionally store the invite info for profile creation
@@ -14205,11 +14071,11 @@ async function searchSongResources(searchTerm, existingResults) {
     activeResourceSearchAbortController.abort();
     activeResourceSearchAbortController = null;
   }
-  
+
   // Increment search ID to invalidate any previous searches
   currentSearchId++;
   const thisSearchId = currentSearchId;
-  
+
   // Create new abort controller for this search
   const abortController = new AbortController();
   activeResourceSearchAbortController = abortController;
@@ -14217,22 +14083,22 @@ async function searchSongResources(searchTerm, existingResults) {
   // Update active search term IMMEDIATELY to prevent race conditions
   const currentSearchTerm = searchTerm;
   activeResourceSearchTerm = currentSearchTerm;
-  
+
   console.log(`🔍 Starting search #${thisSearchId} for: "${searchTerm}"`);
-  
+
   // Clear any existing loading indicators from previous searches
   const existingLoadingIndicator = el("resource-search-loading");
   if (existingLoadingIndicator) {
     existingLoadingIndicator.remove();
   }
-  
+
   console.log(`🔍 Starting resource search for: "${searchTerm}"`);
-  
+
   // Helper to check if search was aborted or superseded
   const checkAborted = () => {
-    if (abortController.signal.aborted || 
-        activeResourceSearchTerm !== currentSearchTerm || 
-        currentSearchId !== thisSearchId) {
+    if (abortController.signal.aborted ||
+      activeResourceSearchTerm !== currentSearchTerm ||
+      currentSearchId !== thisSearchId) {
       throw new Error('Search aborted');
     }
   };
@@ -14262,34 +14128,34 @@ async function searchSongResources(searchTerm, existingResults) {
   const existingIds = new Set(existingResults.map(s => s.id));
   const candidateSongs = state.songs.filter(song => {
     if (existingIds.has(song.id)) return false;
-    const links = song.song_links || [];
-    return links.length > 0;
+    const resources = song.song_resources || [];
+    return resources.length > 0;
   });
 
   console.log(`🔍 Deep search: Checking ${candidateSongs.length} candidate songs for "${searchTerm}"`);
-  
+
   // Track songs that matched via iTunes metadata search
   const itunesMatchedSongIds = new Set();
-  
+
   // Track songs already added to prevent duplicates when typing fast
   const addedSongIds = new Set();
-  
+
   // Helper to check if song is already in the list
   const isSongAlreadyAdded = (songId) => {
     // Check if already tracked in this search session
     if (addedSongIds.has(songId)) return true;
-    
+
     // Check if already in the DOM
     const existingCard = Array.from(list.children).find(child => {
       const viewBtn = child.querySelector(`[data-song-id="${songId}"]`);
       return viewBtn !== null;
     });
-    
+
     if (existingCard) {
       addedSongIds.add(songId);
       return true;
     }
-    
+
     return false;
   };
 
@@ -14313,23 +14179,23 @@ async function searchSongResources(searchTerm, existingResults) {
     let itunesMatchContext = "";
     let isLinkTitleMatch = false;
 
-    const links = song.song_links || [];
+    const resources = song.song_resources || [];
 
-    // 1. Check Link Titles
-    for (const link of links) {
-      if ((link.title || "").toLowerCase().includes(searchTextForResources.toLowerCase())) {
+    // 1. Check Link Titles (charts, files, links)
+    for (const res of resources) {
+      if ((res.title || "").toLowerCase().includes(searchTextForResources.toLowerCase())) {
         matchFound = true;
         isLinkTitleMatch = true;
-        resourceMatchContext = `Link: ${highlightMatch(link.title, searchTextForResources)}`;
+        resourceMatchContext = `${res.type === 'chart' ? 'Chart' : 'Link'}: ${highlightMatch(res.title, searchTextForResources)}`;
         break;
       }
     }
 
     // 2. Check PDF Content (if no title match yet)
     if (!matchFound) {
-      const pdfLinks = links.filter(link =>
-        (link.file_type === 'application/pdf' || link.url?.toLowerCase().endsWith('.pdf')) &&
-        link.url
+      const pdfLinks = resources.filter(res =>
+        (res.type === 'file' && res.file_type === 'application/pdf') ||
+        (res.url?.toLowerCase().endsWith('.pdf') && res.type === 'link')
       );
 
       for (const link of pdfLinks) {
@@ -14350,7 +14216,7 @@ async function searchSongResources(searchTerm, existingResults) {
         }
       }
     }
-    
+
     // 3. Check iTunes Metadata (always check if we have iTunes filters or search text, even if resource match found)
     if ((hasItunesFilters || searchTextForResources)) {
       // Stop if search was aborted
@@ -14360,31 +14226,31 @@ async function searchSongResources(searchTerm, existingResults) {
         console.log('🛑 iTunes check aborted: search cancelled');
         return;
       }
-      
+
       try {
         // Get iTunes metadata from database (or fall back to API if not indexed)
         const itunesItem = await getItunesMetadataForSong(song);
-        
+
         if (itunesItem) {
           // Check if this result matches our search filters (if any)
           let matchesFilters = true;
-          
+
           if (itunesMetadata.filters.genre) {
             const genreMatch = (itunesItem.primaryGenreName || '').toLowerCase().includes(itunesMetadata.filters.genre.toLowerCase()) ||
-                             (itunesItem.genres || []).some(g => g.toLowerCase().includes(itunesMetadata.filters.genre.toLowerCase()));
+              (itunesItem.genres || []).some(g => g.toLowerCase().includes(itunesMetadata.filters.genre.toLowerCase()));
             if (!genreMatch) matchesFilters = false;
           }
-          
+
           if (itunesMetadata.filters.album && matchesFilters) {
             const albumMatch = (itunesItem.collectionName || '').toLowerCase().includes(itunesMetadata.filters.album.toLowerCase());
             if (!albumMatch) matchesFilters = false;
           }
-          
+
           if (itunesMetadata.filters.artist && matchesFilters) {
             const artistMatch = (itunesItem.artistName || '').toLowerCase().includes(itunesMetadata.filters.artist.toLowerCase());
             if (!artistMatch) matchesFilters = false;
           }
-          
+
           if (itunesMetadata.filters.releaseDate && matchesFilters) {
             const targetYear = itunesMetadata.filters.releaseDate.split('-')[0];
             if (itunesItem.releaseDate) {
@@ -14395,7 +14261,7 @@ async function searchSongResources(searchTerm, existingResults) {
               matchesFilters = false;
             }
           }
-          
+
           // Also check if search text matches (if no specific filters)
           // Always check if iTunes actually matches, regardless of whether we have a resource match
           if (matchesFilters && (!hasItunesFilters || searchTextForResources)) {
@@ -14404,7 +14270,7 @@ async function searchSongResources(searchTerm, existingResults) {
             // Always check this, even if we already have a resource match
             if (!hasItunesFilters && searchTextForResources) {
               const searchLower = searchTextForResources.toLowerCase();
-              const matchesText = 
+              const matchesText =
                 (itunesItem.trackName || '').toLowerCase().includes(searchLower) ||
                 (itunesItem.artistName || '').toLowerCase().includes(searchLower) ||
                 (itunesItem.collectionName || '').toLowerCase().includes(searchLower) ||
@@ -14412,12 +14278,12 @@ async function searchSongResources(searchTerm, existingResults) {
               if (!matchesText) matchesFilters = false;
             }
           }
-          
+
           // Only show iTunes metadata if iTunes actually matched
           if (matchesFilters) {
             // Mark as iTunes match
             itunesMatchedSongIds.add(song.id);
-            
+
             // Build iTunes match context
             const contextParts = [];
             if (itunesItem.artistName) {
@@ -14433,11 +14299,11 @@ async function searchSongResources(searchTerm, existingResults) {
               const releaseDate = new Date(itunesItem.releaseDate).getFullYear();
               contextParts.push(`Released: ${releaseDate}`);
             }
-            
-            itunesMatchContext = contextParts.length > 0 
+
+            itunesMatchContext = contextParts.length > 0
               ? `iTunes: ${contextParts.join(', ')}`
               : 'iTunes metadata match';
-            
+
             // If no resource match yet, mark as found
             if (!matchFound) {
               matchFound = true;
@@ -14453,13 +14319,13 @@ async function searchSongResources(searchTerm, existingResults) {
     // Display match if found (from PDFs, links, or iTunes)
     if (matchFound) {
       // Final check: verify this search is still current before adding to DOM
-      if (currentSearchId !== thisSearchId || 
-          activeResourceSearchTerm !== currentSearchTerm ||
-          abortController.signal.aborted) {
+      if (currentSearchId !== thisSearchId ||
+        activeResourceSearchTerm !== currentSearchTerm ||
+        abortController.signal.aborted) {
         console.log(`🛑 Skipping match display - search #${thisSearchId} is no longer current (current: #${currentSearchId})`);
         continue; // Skip this song, continue to next
       }
-      
+
       // Double-check for duplicates (in case async operations completed in parallel)
       if (isSongAlreadyAdded(song.id)) {
         console.log(`⏭️ Skipping duplicate song: ${song.title} (${song.id})`);
@@ -14492,7 +14358,7 @@ async function searchSongResources(searchTerm, existingResults) {
       const isItunesMatch = itunesMatchedSongIds.has(song.id);
       // Check if there's a resource match (link title or PDF content)
       const hasResourceMatch = isLinkTitleMatch || !!resourceMatchContext;
-      
+
       // Determine badge - prioritize resource matches, but show both if applicable
       let badgeIcon, badgeText;
       if (isLinkTitleMatch) {
@@ -14594,10 +14460,10 @@ async function searchSongResources(searchTerm, existingResults) {
   // For each song, get iTunes metadata by song title, then filter by search term
   // Always run iTunes search if we have search text
   // Double-check this search is still current before starting iTunes search
-  if (activeResourceSearchTerm === currentSearchTerm && 
-      currentSearchId === thisSearchId &&
-      searchTextForResources && 
-      searchTextForResources.trim()) {
+  if (activeResourceSearchTerm === currentSearchTerm &&
+    currentSearchId === thisSearchId &&
+    searchTextForResources &&
+    searchTextForResources.trim()) {
     console.log(`🎵 Starting iTunes metadata search (#${thisSearchId}) for: "${searchTextForResources}"`);
     // Get all songs that haven't been matched yet (both with and without links)
     const unmatchedSongs = state.songs.filter(song => {
@@ -14606,9 +14472,9 @@ async function searchSongResources(searchTerm, existingResults) {
       if (addedSongIds.has(song.id)) return false;
       return song.title; // Only songs with titles
     });
-    
+
     console.log(`🎵 Checking iTunes metadata for ${unmatchedSongs.length} unmatched songs with search: "${searchTextForResources}"`);
-    
+
     // For each unmatched song, get iTunes metadata by song title, then filter by search term
     for (const song of unmatchedSongs) {
       // Stop if search was aborted
@@ -14618,35 +14484,35 @@ async function searchSongResources(searchTerm, existingResults) {
         console.log('🛑 iTunes metadata search aborted: search cancelled');
         break;
       }
-      
+
       try {
         // Get iTunes metadata from database (or fall back to API if not indexed)
         const itunesItem = await getItunesMetadataForSong(song);
-        
+
         if (itunesItem) {
           // Now filter by search term - check if search text matches iTunes metadata
           let matchesSearch = false;
-          
+
           // Check explicit filters first
           if (hasItunesFilters) {
             let matchesFilters = true;
-            
+
             if (itunesMetadata.filters.genre) {
               const genreMatch = (itunesItem.primaryGenreName || '').toLowerCase().includes(itunesMetadata.filters.genre.toLowerCase()) ||
-                               (itunesItem.genres || []).some(g => g.toLowerCase().includes(itunesMetadata.filters.genre.toLowerCase()));
+                (itunesItem.genres || []).some(g => g.toLowerCase().includes(itunesMetadata.filters.genre.toLowerCase()));
               if (!genreMatch) matchesFilters = false;
             }
-            
+
             if (itunesMetadata.filters.album && matchesFilters) {
               const albumMatch = (itunesItem.collectionName || '').toLowerCase().includes(itunesMetadata.filters.album.toLowerCase());
               if (!albumMatch) matchesFilters = false;
             }
-            
+
             if (itunesMetadata.filters.artist && matchesFilters) {
               const artistMatch = (itunesItem.artistName || '').toLowerCase().includes(itunesMetadata.filters.artist.toLowerCase());
               if (!artistMatch) matchesFilters = false;
             }
-            
+
             if (itunesMetadata.filters.releaseDate && matchesFilters) {
               const targetYear = itunesMetadata.filters.releaseDate.split('-')[0];
               if (itunesItem.releaseDate) {
@@ -14657,10 +14523,10 @@ async function searchSongResources(searchTerm, existingResults) {
                 matchesFilters = false;
               }
             }
-            
+
             matchesSearch = matchesFilters;
           }
-          
+
           // If no explicit filters, check if search text matches any metadata field
           // This is the key: we search iTunes by song title, then filter by checking if
           // the user's search term matches the album, artist, genre, etc. from iTunes metadata
@@ -14670,22 +14536,22 @@ async function searchSongResources(searchTerm, existingResults) {
             const artistName = (itunesItem.artistName || '').toLowerCase();
             const genreName = (itunesItem.primaryGenreName || '').toLowerCase();
             const trackName = (itunesItem.trackName || '').toLowerCase();
-            
+
             // Check if search text matches album name (most common case - searching for album)
             // Also check artist and genre
-            matchesSearch = 
+            matchesSearch =
               albumName.includes(searchLower) ||
               artistName.includes(searchLower) ||
               genreName.includes(searchLower) ||
               trackName.includes(searchLower);
-            
+
             console.log(`🎵 Checking "${song.title}": album="${albumName}", search="${searchLower}", match=${matchesSearch}`);
           }
-          
+
           if (matchesSearch) {
             // Mark as iTunes match
             itunesMatchedSongIds.add(song.id);
-            
+
             // Build match context
             const contextParts = [];
             if (itunesItem.artistName) {
@@ -14701,39 +14567,39 @@ async function searchSongResources(searchTerm, existingResults) {
               const releaseDate = new Date(itunesItem.releaseDate).getFullYear();
               contextParts.push(`Released: ${releaseDate}`);
             }
-            
-            const matchContext = contextParts.length > 0 
+
+            const matchContext = contextParts.length > 0
               ? `iTunes: ${contextParts.join(', ')}`
               : 'iTunes metadata match';
-            
+
             // Final check: verify this search is still current before adding to DOM
             // This prevents old searches from adding results even if they complete late
-            if (currentSearchId !== thisSearchId || 
-                activeResourceSearchTerm !== currentSearchTerm ||
-                abortController.signal.aborted) {
+            if (currentSearchId !== thisSearchId ||
+              activeResourceSearchTerm !== currentSearchTerm ||
+              abortController.signal.aborted) {
               console.log(`🛑 Skipping song addition - search #${thisSearchId} is no longer current (current: #${currentSearchId})`);
               break;
             }
-            
+
             // Check for duplicates
             if (isSongAlreadyAdded(song.id)) {
               console.log(`⏭️ Skipping duplicate song (iTunes match): ${song.title} (${song.id})`);
               continue;
             }
-            
+
             // Mark as added BEFORE adding to DOM to prevent race conditions
             addedSongIds.add(song.id);
-            
+
             // Remove "No songs match" message if it exists
             const noSongsMsg = Array.from(list.children).find(child => child.tagName === 'P' && child.textContent.includes("No songs match"));
             if (noSongsMsg) {
               noSongsMsg.remove();
             }
-            
+
             // Create and append song card
             const div = document.createElement("div");
             div.className = "card set-song-card fade-in";
-            
+
             const highlightedTitle = escapeHtml(song.title || "");
             const highlightedBpm = song.bpm ? `<span>BPM: ${song.bpm}</span>` : '';
             const keysSet = new Set((song.song_keys || []).map(k => k.key).filter(Boolean));
@@ -14742,7 +14608,7 @@ async function searchSongResources(searchTerm, existingResults) {
             const highlightedTime = song.time_signature ? `<span>Time: ${escapeHtml(song.time_signature)}</span>` : '';
             const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
             const highlightedDuration = durationStr ? `<span>Duration: ${durationStr}</span>` : '';
-            
+
             div.innerHTML = `
               <div class="set-song-header song-card-header">
                 <div class="set-song-info">
@@ -14769,7 +14635,7 @@ async function searchSongResources(searchTerm, existingResults) {
                 </div>
               </div>
             `;
-            
+
             // Attach event listeners
             const viewDetailsBtn = div.querySelector(".view-song-details-catalog-btn");
             if (viewDetailsBtn) {
@@ -14777,7 +14643,7 @@ async function searchSongResources(searchTerm, existingResults) {
                 openSongDetailsModal(song);
               });
             }
-            
+
             const editBtn = div.querySelector(".edit-song-btn");
             if (editBtn) {
               editBtn.addEventListener("click", () => {
@@ -14785,14 +14651,14 @@ async function searchSongResources(searchTerm, existingResults) {
                 openSongEditModal(song.id);
               });
             }
-            
+
             const deleteBtn = div.querySelector(".delete-song-btn");
             if (deleteBtn) {
               deleteBtn.addEventListener("click", () => {
                 deleteSong(song.id);
               });
             }
-            
+
             // Insert before loading indicator
             list.insertBefore(div, loadingIndicator);
           }
@@ -14952,10 +14818,10 @@ async function renderSongCatalog(animate = true) {
     seenSongIds.add(song.id);
     return true;
   });
-  
+
   // Update state immediately with deduplicated songs
   state.songs = deduplicatedSongs;
-  
+
   // Create a snapshot of songs to work with (prevents race conditions during async operations)
   const songsSnapshot = [...deduplicatedSongs];
 
@@ -15010,7 +14876,7 @@ async function renderSongCatalog(animate = true) {
 
   // Sort based on selected option
   const sortOption = state.songSortOption || "relevancy";
-  
+
   if (sortOption === "relevancy") {
     // Get weeks offset to sort by most recently scheduled
     // Pass the deduplicated snapshot to ensure we don't query for duplicates
@@ -15158,13 +15024,13 @@ async function renderSongCatalog(animate = true) {
     clearTimeout(resourceSearchTimeout);
     resourceSearchTimeout = null;
   }
-  
+
   // Cancel any active search immediately
   if (activeResourceSearchAbortController) {
     activeResourceSearchAbortController.abort();
     activeResourceSearchAbortController = null;
   }
-  
+
   // Also cancel any active search by updating the active term
   // This prevents old searches from completing and adding results
   activeResourceSearchTerm = null;
@@ -15195,13 +15061,13 @@ async function openSongEditModal(songId = null) {
 
   // Show modal immediately to ensure responsiveness
   modal.classList.remove("hidden");
-  
+
   // PostHog: Track modal open
   trackPostHogEvent('modal_opened', {
     modal_type: songId ? 'edit_song' : 'new_song',
     team_id: state.currentTeamId
   });
-  
+
   // Start tracking time on modal
   startPageTimeTracking('modal_edit_song', {
     modal_type: songId ? 'edit_song' : 'new_song',
@@ -15251,16 +15117,19 @@ async function openSongEditModal(songId = null) {
       id,
       key
     ),
-    song_links(
+    song_resources(
       id,
+      team_id,
+      type,
       title,
       url,
-      key,
-      display_order,
       file_path,
       file_name,
       file_type,
-      is_file_upload
+      key,
+      display_order,
+      chart_content,
+      created_at
     )
       `)
         .eq("id", songId)
@@ -15275,7 +15144,7 @@ async function openSongEditModal(songId = null) {
         el("song-edit-description").value = songData.description || "";
 
         renderSongKeys(songData.song_keys || []);
-        renderSongLinks(songData.song_links || []);
+        renderSongLinks(songData.song_resources || []);
 
         // Inject charts into the resources list (inline, reorderable rows)
         try {
@@ -15361,11 +15230,11 @@ function sampleImageRegion(img, x, y, width, height) {
   const ctx = canvas.getContext('2d');
   canvas.width = width;
   canvas.height = height;
-  
+
   ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
   const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
-  
+
   let r = 0, g = 0, b = 0, count = 0;
   for (let i = 0; i < data.length; i += 4) {
     r += data[i];
@@ -15373,7 +15242,7 @@ function sampleImageRegion(img, x, y, width, height) {
     b += data[i + 2];
     count++;
   }
-  
+
   return {
     r: Math.round(r / count),
     g: Math.round(g / count),
@@ -15393,7 +15262,7 @@ async function extractVibrantColor(img) {
 
     const width = img.naturalWidth;
     const height = img.naturalHeight;
-    
+
     // Sample multiple regions of the image to find vibrant colors
     // Include edge regions to catch borders, and center regions for main content
     const borderThickness = Math.max(5, Math.min(width, height) * 0.05); // At least 5px, or 5% of image
@@ -15431,18 +15300,18 @@ async function extractVibrantColor(img) {
         const r = rgb.r;
         const g = rgb.g;
         const b = rgb.b;
-        
+
         // Calculate brightness and saturation
         const brightness = (r * 299 + g * 587 + b * 114) / 1000;
         const max = Math.max(r, g, b);
         const min = Math.min(r, g, b);
         const saturation = max === 0 ? 0 : (max - min) / max;
-        
+
         const hex = `#${[r, g, b].map(x => {
           const hex = x.toString(16);
           return hex.length === 1 ? '0' + hex : hex;
         }).join('')}`;
-        
+
         allColors.push({ hex, r, g, b, brightness, saturation, isEdge: region.isEdge });
       } catch (err) {
         // Skip this region if sampling fails
@@ -15460,23 +15329,23 @@ async function extractVibrantColor(img) {
       const isBlack = color.brightness < 40;
       const isWhite = color.brightness > 220;
       const isBeige = color.brightness > 180 && color.saturation < 0.15;
-      
+
       if (isGrey || isBlack || isWhite || isBeige) {
         continue;
       }
-      
+
       // Require minimum saturation
       if (color.saturation < 0.15) {
         continue;
       }
-      
+
       // Score heavily favors saturation
       // Give bonus to edge samples (borders are often on edges)
       const edgeBonus = color.isEdge ? 0.15 : 0;
       const brightnessScore = Math.min(color.brightness / 255, 1);
       const brightnessPenalty = color.brightness > 200 ? 0.3 : 1;
       const score = color.saturation * 0.85 + (brightnessScore * brightnessPenalty) * 0.1 + edgeBonus;
-      
+
       if (score > bestScore) {
         bestScore = score;
         bestColor = color;
@@ -15498,7 +15367,7 @@ async function extractVibrantColor(img) {
           return !isGrey && !isBlack && !isWhite && !isBeige;
         })
         .sort((a, b) => b.saturation - a.saturation)[0];
-      
+
       if (fallbackColor) {
         console.log('Using fallback color (most saturated):', fallbackColor.hex, 'Saturation:', fallbackColor.saturation);
         return fallbackColor.hex;
@@ -15566,12 +15435,12 @@ async function displayAlbumArt(content, albumArtData, song) {
         const r = parseInt(vibrantColor.slice(1, 3), 16);
         const g = parseInt(vibrantColor.slice(3, 5), 16);
         const b = parseInt(vibrantColor.slice(5, 7), 16);
-        
+
         // Get opacity from CSS variables (changes automatically with theme)
         const root = document.documentElement;
         const mainOpacity = getComputedStyle(root).getPropertyValue('--album-art-shadow-opacity-main').trim() || '0.35';
         const secondaryOpacity = getComputedStyle(root).getPropertyValue('--album-art-shadow-opacity-secondary').trim() || '0.25';
-        
+
         // Use a more vibrant shadow with the extracted color
         img.style.boxShadow = `0 12px 80px rgba(${r}, ${g}, ${b}, ${mainOpacity}), 0 6px 80px rgba(${r}, ${g}, ${b}, ${secondaryOpacity})`;
         console.log('Applied vibrant color shadow:', vibrantColor);
@@ -15647,7 +15516,7 @@ async function displayAlbumArt(content, albumArtData, song) {
         // Load small image first for fast display
         const smallBlobUrl = await loadImageWithFallback(albumArtData.small);
         console.log('🎨 Small image load result:', smallBlobUrl ? 'success' : 'failed');
-        
+
         if (smallBlobUrl) {
           img.crossOrigin = null; // Blob URLs don't need CORS
           img.style.display = "";
@@ -15677,7 +15546,7 @@ async function displayAlbumArt(content, albumArtData, song) {
           if (img.complete && img.naturalWidth > 0) {
             reveal();
           }
-          
+
           // On desktop, preload the large image in the background
           // On mobile, only load large image when user clicks to expand (saves bandwidth)
           const isMobile = isMobileDevice();
@@ -15720,12 +15589,12 @@ async function displayAlbumArt(content, albumArtData, song) {
   };
 
   loadProgressiveImage();
-  
+
   // Add 3D tilt effect on hover (desktop only)
   if (window.matchMedia('(hover: hover)').matches) {
     setupAlbumArtTilt(placeholder);
   }
-  
+
   // Add click handler to open full-screen modal
   const openAlbumArtModal = (e) => {
     // Don't open modal if clicking on overlay controls (upload/remove buttons)
@@ -15739,19 +15608,19 @@ async function displayAlbumArt(content, albumArtData, song) {
         return;
       }
     }
-    
+
     if (!img.src) return;
-    
+
     const modal = el("album-art-modal");
     const modalImg = el("album-art-modal-img");
     const closeBtn = el("close-album-art-modal");
-    
+
     if (!modal || !modalImg) return;
-    
+
     // Reset any previously set dimensions
     modalImg.style.width = '';
     modalImg.style.height = '';
-    
+
     // Use the album art data that was passed to this function
     // For override, use the override URL; for iTunes, use large version
     if (albumArtData.isOverride) {
@@ -15760,7 +15629,7 @@ async function displayAlbumArt(content, albumArtData, song) {
     } else {
       // For iTunes, prefer large version
       modalImg.src = img.src; // Start with current for instant display
-      
+
       // Function to capture and lock the displayed size
       const lockImageSize = () => {
         // Use requestAnimationFrame to ensure the image has been rendered
@@ -15769,7 +15638,7 @@ async function displayAlbumArt(content, albumArtData, song) {
             // Capture the actual rendered size
             const renderedWidth = modalImg.offsetWidth;
             const renderedHeight = modalImg.offsetHeight;
-            
+
             // Set explicit dimensions to maintain size when high-res image loads
             modalImg.style.width = `${renderedWidth}px`;
             modalImg.style.height = `${renderedHeight}px`;
@@ -15777,7 +15646,7 @@ async function displayAlbumArt(content, albumArtData, song) {
           }
         });
       };
-      
+
       // Capture size once the initial image loads and is displayed
       if (modalImg.complete && modalImg.naturalWidth > 0) {
         // Image already loaded, wait a frame for rendering
@@ -15785,7 +15654,7 @@ async function displayAlbumArt(content, albumArtData, song) {
       } else {
         modalImg.addEventListener('load', lockImageSize, { once: true });
       }
-      
+
       if (albumArtData.large && albumArtData.large !== albumArtData.small) {
         // Load large image when modal opens (especially important on mobile where we skip preload)
         console.log('🖼️ Modal opened, loading large image:', albumArtData.large.substring(0, 50));
@@ -15796,7 +15665,7 @@ async function displayAlbumArt(content, albumArtData, song) {
               modalImg.style.width = `${modalImg.offsetWidth}px`;
               modalImg.style.height = `${modalImg.offsetHeight}px`;
             }
-            
+
             // Swap to high-res image while maintaining the locked size
             modalImg.src = largeBlobUrl;
             console.log('✅ Large image loaded in modal');
@@ -15808,18 +15677,18 @@ async function displayAlbumArt(content, albumArtData, song) {
         });
       }
     }
-    
+
     modalImg.alt = img.alt || "Album art";
-    
+
     // Show modal
     modal.classList.remove("hidden");
-    
+
     // Close handlers
     let isClosing = false;
     const closeModal = () => {
       if (isClosing) return;
       isClosing = true;
-      
+
       modal.classList.add("closing");
       setTimeout(() => {
         modal.classList.add("hidden");
@@ -15827,7 +15696,7 @@ async function displayAlbumArt(content, albumArtData, song) {
         isClosing = false;
       }, 300);
     };
-    
+
     // Close button handler
     const closeBtnHandler = () => {
       closeModal();
@@ -15835,7 +15704,7 @@ async function displayAlbumArt(content, albumArtData, song) {
       backdrop.removeEventListener("click", backdropClickHandler);
       document.removeEventListener("keydown", handleEsc);
     };
-    
+
     // Close on backdrop click
     const backdrop = modal.querySelector(".album-art-modal-backdrop");
     const backdropClickHandler = (e) => {
@@ -15846,7 +15715,7 @@ async function displayAlbumArt(content, albumArtData, song) {
         document.removeEventListener("keydown", handleEsc);
       }
     };
-    
+
     // Close on ESC key
     const handleEsc = (e) => {
       if (e.key === "Escape") {
@@ -15856,13 +15725,13 @@ async function displayAlbumArt(content, albumArtData, song) {
         document.removeEventListener("keydown", handleEsc);
       }
     };
-    
+
     // Attach all event listeners
     closeBtn.addEventListener("click", closeBtnHandler);
     backdrop.addEventListener("click", backdropClickHandler);
     document.addEventListener("keydown", handleEsc);
   };
-  
+
   // Add click handler to both container and image
   // Only open modal if clicking on the image/container itself, not on buttons
   placeholder.style.cursor = "pointer";
@@ -15929,18 +15798,18 @@ function setupAlbumArtTilt(container) {
   container.addEventListener('mousemove', (e) => {
     // Use requestAnimationFrame for smoother animation
     if (rafId) cancelAnimationFrame(rafId);
-    
+
     rafId = requestAnimationFrame(() => {
       const rect = container.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      
+
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
-      
+
       const rotateX = (y - centerY) / centerY * -10; // Max 10 degrees
       const rotateY = (x - centerX) / centerX * 10; // Max 10 degrees
-      
+
       // Apply transform to container so pseudo-elements move with it
       container.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
     });
@@ -15960,7 +15829,7 @@ function setupAlbumArtTilt(container) {
  */
 async function getAlbumArt(song, songTitle, options = {}) {
   console.log('🎵 getAlbumArt called for song:', song?.id, 'title:', songTitle);
-  
+
   // Check for override first
   if (song?.album_art_override_path) {
     console.log('🎵 Has override path:', song.album_art_override_path);
@@ -15982,10 +15851,10 @@ async function getAlbumArt(song, songTitle, options = {}) {
   // Check database for indexed iTunes album art
   if (song?.album_art_small_url && song?.album_art_large_url) {
     console.log('🎵 Using database-stored iTunes album art');
-    return { 
-      small: song.album_art_small_url, 
-      large: song.album_art_large_url, 
-      isOverride: false 
+    return {
+      small: song.album_art_small_url,
+      large: song.album_art_large_url,
+      isOverride: false
     };
   }
 
@@ -16253,12 +16122,12 @@ function checkUnindexedSongs() {
     handleItunesIndexRefreshPolling(0);
     return;
   }
-  
+
   // Count songs that don't have itunes_indexed_at timestamp
   const unindexedCount = state.songs.filter(song => {
     return song.title && song.title.trim() && !song.itunes_indexed_at && !song.itunes_fetch_disabled;
   }).length;
-  
+
   updateIndexingUI(unindexedCount);
   handleItunesIndexRefreshPolling(unindexedCount);
 }
@@ -16267,21 +16136,21 @@ function checkUnindexedSongs() {
 function updateIndexingUI(unindexedCount) {
   const indicator = el('itunes-indexing-indicator');
   if (!indicator) return;
-  
+
   const statusEl = indicator.querySelector('.indexing-status');
   const progressBar = indicator.querySelector('.indexing-progress-bar');
-  
+
   // Hide progress bar (server-side indexing is slower, no real-time progress)
   if (progressBar) {
     progressBar.style.display = 'none';
   }
-  
+
   // Hide indicator if all songs are indexed
   if (unindexedCount === 0) {
     indicator.classList.add('hidden');
     return;
   }
-  
+
   // Show simple message
   indicator.classList.remove('hidden');
   if (statusEl) {
@@ -16305,15 +16174,15 @@ const MOBILE_DEBOUNCE_DELAY = 1500; // Wait 1.5 seconds after user stops typing 
  */
 async function invokeEdgeFunctionDebounced(functionName, cacheKey, params, skipDebounce = false) {
   const isMobile = isMobileDevice();
-  
+
   // On desktop or if debouncing is skipped, call directly
   if (!isMobile || skipDebounce) {
     return await supabase.functions.invoke(functionName, { body: params });
   }
-  
+
   // On mobile, use debouncing
   const queueKey = `${functionName}:${cacheKey}`;
-  
+
   // Clear existing timeout if any
   if (mobileEdgeFunctionQueue.has(queueKey)) {
     const existing = mobileEdgeFunctionQueue.get(queueKey);
@@ -16323,14 +16192,14 @@ async function invokeEdgeFunctionDebounced(functionName, cacheKey, params, skipD
       existing.reject(new Error('Debounced: superseded by newer call'));
     }
   }
-  
+
   // Create new promise
   let resolve, reject;
   const promise = new Promise((res, rej) => {
     resolve = res;
     reject = rej;
   });
-  
+
   // Set up timeout
   const timeout = setTimeout(async () => {
     try {
@@ -16343,10 +16212,10 @@ async function invokeEdgeFunctionDebounced(functionName, cacheKey, params, skipD
       mobileEdgeFunctionQueue.delete(queueKey);
     }
   }, MOBILE_DEBOUNCE_DELAY);
-  
+
   // Store in queue
   mobileEdgeFunctionQueue.set(queueKey, { timeout, promise, resolve, reject, latestParams: params });
-  
+
   return promise;
 }
 
@@ -16356,7 +16225,7 @@ async function invokeEdgeFunctionDebounced(functionName, cacheKey, params, skipD
  */
 function isMobileDevice() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-         (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+    (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
 }
 
 /**
@@ -16388,7 +16257,7 @@ async function loadImageWithFallback(imageUrl) {
   console.log(`🔍 Device detection: isMobile=${isMobile}, userAgent=${navigator.userAgent.substring(0, 50)}...`);
   console.log(`🔍 Screen width: ${window.innerWidth}px`);
   console.log(`🔍 Loading image: ${imageUrl}`);
-  
+
   // On mobile, use edge function directly since direct fetch often fails
   if (isMobile) {
     console.log('📱 Mobile device detected, using edge function for image:', imageUrl);
@@ -16401,7 +16270,7 @@ async function loadImageWithFallback(imageUrl) {
         return result;
       }
       // Don't cache failures - allow retry on next attempt
-      
+
       // If edge function fails on mobile, try direct fetch as last resort
       console.log('📱 Edge function failed, trying direct fetch as last resort');
       try {
@@ -16432,7 +16301,7 @@ async function loadImageWithFallback(imageUrl) {
       mode: 'cors',
       credentials: 'omit'
     });
-    
+
     if (response.ok) {
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -16475,7 +16344,7 @@ async function loadImageViaEdgeFunction(imageUrl) {
     console.log('🌐 Fetching image via edge function:', imageUrl);
     console.log('🌐 Supabase client available:', !!supabase);
     console.log('🌐 Supabase functions available:', !!supabase?.functions);
-    
+
     if (!supabase || !supabase.functions) {
       console.error('❌ Supabase client or functions not available');
       return null;
@@ -16499,7 +16368,7 @@ async function loadImageViaEdgeFunction(imageUrl) {
     if (error) {
       console.error('❌ Edge function error:', error);
       console.error('❌ Error details:', JSON.stringify(error, null, 2));
-      
+
       // If it's a FunctionsHttpError, the function probably isn't deployed
       // Try direct fetch as fallback
       if (error.name === 'FunctionsHttpError' || error.message?.includes('404') || error.context?.status === 404) {
@@ -16556,15 +16425,15 @@ async function loadImageViaEdgeFunction(imageUrl) {
  */
 function convertDateToISO8601(dateStr) {
   if (!dateStr || typeof dateStr !== 'string') return null;
-  
+
   const trimmed = dateStr.trim();
   if (!trimmed) return null;
-  
+
   // Already in ISO8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss)
   if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?/.test(trimmed)) {
     return trimmed.split('T')[0]; // Return just the date part
   }
-  
+
   // Try parsing as Date object (handles many formats)
   const date = new Date(trimmed);
   if (!isNaN(date.getTime())) {
@@ -16573,7 +16442,7 @@ function convertDateToISO8601(dateStr) {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
-  
+
   // Try manual parsing for common formats
   // MM/DD/YYYY or DD/MM/YYYY
   const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -16587,27 +16456,27 @@ function convertDateToISO8601(dateStr) {
       return `${year}-${part1.padStart(2, '0')}-${part2.padStart(2, '0')}`;
     }
   }
-  
+
   // MM-DD-YYYY
   const dashMatch = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
   if (dashMatch) {
     const [, month, day, year] = dashMatch;
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
-  
+
   // YYYY only
   const yearOnly = trimmed.match(/^(\d{4})$/);
   if (yearOnly) {
     return `${yearOnly[1]}-01-01`; // Default to January 1st
   }
-  
+
   // YYYY/MM/DD
   const ymdMatch = trimmed.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
   if (ymdMatch) {
     const [, year, month, day] = ymdMatch;
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
-  
+
   return null;
 }
 
@@ -16619,15 +16488,15 @@ function convertDateToISO8601(dateStr) {
  */
 function parseItunesMetadataQuery(query) {
   const filters = {};
-  
+
   // Regex for extracting key:value pairs (supports quoted strings)
   const regex = /(\w+):(?:"([^"]+)"|'([^']+)'|([^\s]+))/g;
-  
+
   let match;
   while ((match = regex.exec(query)) !== null) {
     const key = match[1].toLowerCase();
     const value = match[2] || match[3] || match[4] || "";
-    
+
     switch (key) {
       case 'genre':
         filters.genre = value;
@@ -16648,10 +16517,10 @@ function parseItunesMetadataQuery(query) {
         break;
     }
   }
-  
+
   // Remove the matches from the text to get residual search terms
   const text = query.replace(regex, "").replace(/\s+/g, " ").trim();
-  
+
   return { filters, text };
 }
 
@@ -16672,7 +16541,7 @@ async function getItunesMetadataForSong(songOrTitle) {
     console.log('🎵 Using database-stored iTunes metadata for song:', songOrTitle.id);
     return songOrTitle.itunes_metadata;
   }
-  
+
   // Extract song title
   const songTitle = typeof songOrTitle === 'object' ? songOrTitle?.title : songOrTitle;
   if (!songTitle || !songTitle.trim()) {
@@ -16690,26 +16559,26 @@ async function getItunesMetadataForSong(songOrTitle) {
   // This should rarely happen now that we have server-side indexing
   console.log('🎵 No database metadata, fetching from iTunes API (song not yet indexed):', songTitle);
   const isMobile = isMobileDevice();
-  
+
   try {
     if (isMobile) {
       // Use debounced edge function for mobile
       const { data, error } = await invokeEdgeFunctionDebounced(
         'fetch-album-art',
         songTitle.toLowerCase().trim(),
-        { 
+        {
           searchQuery: songTitle.trim(),
           metadataSearch: true,
           exactMatch: true
         },
         false
       );
-      
+
       if (error) {
         console.error('❌ Edge function error for iTunes metadata:', error);
         return null;
       }
-      
+
       if (data?.success && data?.results && data.results.length > 0) {
         return data.results[0];
       }
@@ -16717,7 +16586,7 @@ async function getItunesMetadataForSong(songOrTitle) {
       // Direct API call for desktop
       const searchQuery = encodeURIComponent(songTitle.trim());
       const apiUrl = `https://itunes.apple.com/search?term=${searchQuery}&media=music&limit=1`;
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -16726,18 +16595,18 @@ async function getItunesMetadataForSong(songOrTitle) {
         mode: 'cors',
         credentials: 'omit'
       });
-      
+
       if (!response.ok) {
         console.warn('iTunes API request failed:', response.status, response.statusText);
         return null;
       }
-      
+
       const data = await response.json();
       if (data?.results && data.results.length > 0) {
         return data.results[0];
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error('❌ Error getting iTunes metadata for song:', error);
@@ -16758,24 +16627,24 @@ async function getItunesMetadataForSong(songOrTitle) {
  */
 async function searchItunesMetadata(params) {
   const { term, genre, album, artist, releaseDate } = params;
-  
+
   // Build search query - combine all terms
   const searchTerms = [];
   if (term) searchTerms.push(term);
   if (artist) searchTerms.push(artist);
   if (album) searchTerms.push(album);
   if (genre) searchTerms.push(genre);
-  
+
   const searchQuery = searchTerms.join(' ');
-  
+
   if (!searchQuery.trim()) {
     console.warn('🎵 searchItunesMetadata: no search terms provided');
     return [];
   }
-  
+
   const isMobile = isMobileDevice();
   let results = [];
-  
+
   try {
     if (isMobile) {
       // Use debounced edge function for mobile
@@ -16783,7 +16652,7 @@ async function searchItunesMetadata(params) {
       const { data, error } = await invokeEdgeFunctionDebounced(
         'fetch-album-art',
         cacheKey,
-        { 
+        {
           searchQuery: searchQuery.trim(),
           metadataSearch: true,
           genre,
@@ -16793,12 +16662,12 @@ async function searchItunesMetadata(params) {
         },
         false // Use debouncing for general searches
       );
-      
+
       if (error) {
         console.error('❌ Edge function error for iTunes metadata search:', error);
         return [];
       }
-      
+
       if (data?.success && data?.results) {
         results = data.results;
       }
@@ -16806,7 +16675,7 @@ async function searchItunesMetadata(params) {
       // Direct API call for desktop
       const encodedQuery = encodeURIComponent(searchQuery.trim());
       const apiUrl = `https://itunes.apple.com/search?term=${encodedQuery}&media=music&limit=50`;
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -16815,38 +16684,38 @@ async function searchItunesMetadata(params) {
         mode: 'cors',
         credentials: 'omit'
       });
-      
+
       if (!response.ok) {
         console.warn('iTunes API request failed:', response.status, response.statusText);
         return [];
       }
-      
+
       const data = await response.json();
       results = data?.results || [];
     }
-    
+
     // Filter results by metadata if provided
     let filteredResults = results;
-    
+
     if (genre) {
-      filteredResults = filteredResults.filter(item => 
+      filteredResults = filteredResults.filter(item =>
         (item.primaryGenreName || '').toLowerCase().includes(genre.toLowerCase()) ||
         (item.genres || []).some(g => g.toLowerCase().includes(genre.toLowerCase()))
       );
     }
-    
+
     if (album) {
-      filteredResults = filteredResults.filter(item => 
+      filteredResults = filteredResults.filter(item =>
         (item.collectionName || '').toLowerCase().includes(album.toLowerCase())
       );
     }
-    
+
     if (artist) {
-      filteredResults = filteredResults.filter(item => 
+      filteredResults = filteredResults.filter(item =>
         (item.artistName || '').toLowerCase().includes(artist.toLowerCase())
       );
     }
-    
+
     if (releaseDate) {
       // Filter by release date (allow matches within the same year for flexibility)
       const targetYear = releaseDate.split('-')[0];
@@ -16858,7 +16727,7 @@ async function searchItunesMetadata(params) {
         return item.releaseDate.startsWith(releaseDate) || itemYear === targetYear;
       });
     }
-    
+
     return filteredResults;
   } catch (error) {
     console.error('❌ Error searching iTunes metadata:', error);
@@ -16874,12 +16743,12 @@ async function searchItunesMetadata(params) {
 async function searchItunesViaEdgeFunction(songTitle) {
   try {
     console.log('🌐 Searching iTunes via edge function:', songTitle);
-    
+
     const functionCacheKey = songTitle.toLowerCase().trim();
     const { data, error } = await invokeEdgeFunctionDebounced(
       'fetch-album-art',
       functionCacheKey,
-      { 
+      {
         searchQuery: songTitle.trim(),
         metadataSearch: true,
         exactMatch: true // Get full result so we can cache it
@@ -16931,7 +16800,7 @@ async function fetchAlbumArt(songTitle) {
   }
 
   const isMobile = isMobileDevice();
-  
+
   // On mobile, use edge function to bypass CORS
   if (isMobile) {
     console.log('📱 Mobile: using edge function for iTunes search');
@@ -16946,9 +16815,9 @@ async function fetchAlbumArt(songTitle) {
     // iTunes Search API - completely free, no API key needed
     const searchQuery = encodeURIComponent(songTitle.trim());
     const apiUrl = `https://itunes.apple.com/search?term=${searchQuery}&media=music&limit=1`;
-    
+
     console.log('🎵 Calling iTunes API directly:', apiUrl);
-    
+
     // Add Accept header to ensure proper content negotiation
     // Note: User-Agent cannot be set in fetch (forbidden header), but Accept helps
     // ensure the API returns JSON properly on all browsers including mobile
@@ -16961,9 +16830,9 @@ async function fetchAlbumArt(songTitle) {
       mode: 'cors',
       credentials: 'omit'
     });
-    
+
     console.log('🎵 iTunes API response status:', response.status, 'ok:', response.ok);
-    
+
     if (!response.ok) {
       console.warn('iTunes API request failed:', response.status, response.statusText);
       return null;
@@ -16971,7 +16840,7 @@ async function fetchAlbumArt(songTitle) {
 
     const data = await response.json();
     console.log('🎵 iTunes API data:', data?.results?.length || 0, 'results');
-    
+
     // Extract album art URL from iTunes response
     if (data?.results?.[0]?.artworkUrl100) {
       // Cache the full iTunes result for this song title so we can use it for metadata later
@@ -16982,7 +16851,7 @@ async function fetchAlbumArt(songTitle) {
         saveItunesCacheToStorage();
         console.log('🎵 Cached iTunes metadata for:', cacheKey);
       }
-      
+
       // iTunes provides artworkUrl100 (100x100), artworkUrl60 (60x60), etc.
       // Return both medium (600x600) for fast initial load and large (10000x10000) for high quality
       const smallUrl = data.results[0].artworkUrl100.replace('100x100', '600x600');
@@ -17019,9 +16888,9 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 
   title.textContent = "Song Details";
 
-  // Fetch song with keys and links
-  let songWithLinks = song;
-  if (!song.song_links || !song.song_keys) {
+  // Fetch song with keys and resources
+  let songWithResources = song;
+  if (!song.song_resources || !song.song_keys) {
     const { data } = await supabase
       .from("songs")
       .select(`
@@ -17030,46 +16899,52 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
     id,
     key
   ),
-  song_links(
+  song_resources(
     id,
+    team_id,
+    type,
     title,
     url,
-    key,
-    display_order,
     file_path,
     file_name,
     file_type,
-    is_file_upload
+    key,
+    display_order,
+    chart_content,
+    created_at
   )
     `)
       .eq("id", song.id)
       .single();
 
     if (data) {
-      songWithLinks = data;
+      songWithResources = data;
     }
   }
 
-  // Ensure links are ordered by display_order for consistent rendering
-  if (songWithLinks && Array.isArray(songWithLinks.song_links)) {
-    songWithLinks.song_links = [...songWithLinks.song_links].sort((a, b) => {
+  // Ensure resources are ordered by display_order
+  if (songWithResources && Array.isArray(songWithResources.song_resources)) {
+    songWithResources.song_resources = [...songWithResources.song_resources].sort((a, b) => {
       const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
       const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
-      if (ao !== bo) return ao - bo;
-      const at = (a?.title || "").toLowerCase();
-      const bt = (b?.title || "").toLowerCase();
-      return at.localeCompare(bt);
+      return ao - bo;
     });
   }
 
+  // Split resources into links/files and charts
+  const allResources = songWithResources.song_resources || [];
+
+  // Backwards compatibility for rendering: treat 'link' and 'file' as links
+  const links = allResources.filter(r => r.type === 'link' || r.type === 'file');
+
   // Organize links by key
-  const generalLinks = (songWithLinks.song_links || []).filter(link => !link.key);
+  const generalLinks = links.filter(link => !link.key);
   const selectedKeyLinks = selectedKey
-    ? (songWithLinks.song_links || []).filter(link => link.key === selectedKey)
+    ? links.filter(link => link.key === selectedKey)
     : [];
   const otherKeysLinks = selectedKey
-    ? (songWithLinks.song_links || []).filter(link => link.key && link.key !== selectedKey)
-    : (songWithLinks.song_links || []).filter(link => link.key);
+    ? links.filter(link => link.key && link.key !== selectedKey)
+    : links.filter(link => link.key);
 
   // Group other keys links by key
   const linksByKey = {};
@@ -17080,37 +16955,45 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
     linksByKey[link.key].push(link);
   });
 
-  const hasLinks = (songWithLinks.song_links || []).length > 0;
-  const hasKeys = (songWithLinks.song_keys || []).length > 0;
-  const keysArray = songWithLinks.song_keys || [];
+  const hasLinks = links.length > 0;
+  const hasKeys = (songWithResources.song_keys || []).length > 0;
+  const keysArray = songWithResources.song_keys || [];
   const singleKey = keysArray.length === 1 ? keysArray[0].key : null;
   const isSingleKeyMatch = singleKey && selectedKey && singleKey === selectedKey;
 
-  // Load chord charts (stored separately from song_links)
-  const songCharts = await fetchSongCharts(songWithLinks.id);
-  // Get all general charts (number + chord charts) and sort by display_order
-  const allGeneralCharts = songCharts.filter(c => c.scope === "general").sort((a, b) => {
-    const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
-    const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
-    return ao - bo;
-  });
+  // Charts from resources
+  // Extract chart objects from resources using the adapter logic inline or just use the resource properties
+  // The 'chart_content' contains the doc, chart_type etc.
+  const allGeneralCharts = allResources
+    .filter(r => r.type === 'chart' && (!r.key || r.key === '')) // General scope (no key)
+    .map(r => ({ ...r.chart_content, id: r.id, display_order: r.display_order, song_key: null, scope: 'general' }))
+    .sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+
   const generalChart = allGeneralCharts.find(c => c.chart_type === "number") || allGeneralCharts[0] || null;
   const generalChordCharts = allGeneralCharts.filter(c => c.chart_type === "chord");
-  const keyCharts = songCharts.filter(c => c.scope === "key") || [];
+
+  const keyCharts = allResources
+    .filter(r => r.type === 'chart' && r.key) // Key scope
+    .map(r => ({ ...r.chart_content, id: r.id, display_order: r.display_order, song_key: r.key, scope: 'key' }));
+
   const keyChartByKey = new Map(keyCharts.map(c => [normalizeKeyLabel(c.song_key), c]));
   const hasGeneratedKeyCharts = !!(generalChart && generalChart.chart_type === "number" && hasKeys);
   const hasAnyCharts = !!(allGeneralCharts.length > 0 || keyCharts.length > 0 || hasGeneratedKeyCharts);
   const hasResources = hasLinks || hasAnyCharts;
-  const itunesFetchDisabled = !!songWithLinks.itunes_fetch_disabled;
+  const itunesFetchDisabled = !!songWithResources.itunes_fetch_disabled;
   const teamItunesDisabled = (state.userTeams?.find?.(t => t.id === state.currentTeamId)?.itunes_indexing_enabled === false);
   const itunesUnavailable = itunesFetchDisabled || teamItunesDisabled;
-  const canUploadAlbumArt = isManager() && (!!songWithLinks.itunes_indexed_at || itunesUnavailable || !!songWithLinks.album_art_override_path);
+  const canUploadAlbumArt = isManager() && (!!songWithResources.itunes_indexed_at || itunesUnavailable || !!songWithResources.album_art_override_path);
   const isWaitingOnItunesIndex =
-    !!songWithLinks?.title &&
-    songWithLinks.title.trim() &&
-    !songWithLinks.itunes_indexed_at &&
-    !songWithLinks.itunes_fetch_disabled &&
+    !!songWithResources?.title &&
+    songWithResources.title.trim() &&
+    !songWithResources.itunes_indexed_at &&
+    !songWithResources.itunes_fetch_disabled &&
     !teamItunesDisabled;
+
+  // Ref to song with resources for templates
+  // Ref to song with resources for templates
+  const songWithLinks = songWithResources; // Keep variable name for minimal diff in template sections
 
   // Render all song information in an expanded view
   content.innerHTML = `
@@ -17153,7 +17036,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
                     <span>Edit Song in Set</span>
                   </button>
                   ` : ''}
-                  ${songWithLinks.album_art_override_path ? `
+                  ${songWithResources.album_art_override_path ? `
                   <div class="header-dropdown-divider"></div>
                   <button type="button" class="header-dropdown-item" id="btn-song-details-reset-album-art">
                     <i class="fa-solid fa-image"></i>
@@ -17166,9 +17049,9 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             </div>
             ${itunesFetchDisabled ? `<div class="song-itunes-warning"><i class="fa-brands fa-itunes-note"></i> Some additional metadata for this song could not be found</div>` : ''}
             <div class="song-details-meta">
-          ${songWithLinks.bpm ? `<div class="detail-item">
+          ${songWithResources.bpm ? `<div class="detail-item">
             <span class="detail-label">BPM</span>
-            <span class="detail-value">${songWithLinks.bpm}</span>
+            <span class="detail-value">${songWithResources.bpm}</span>
           </div>` : ''}
           ${isSingleKeyMatch ? `<div class="detail-item">
             <span class="detail-label">Key</span>
@@ -17182,26 +17065,26 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             <span class="detail-label">Selected Key</span>
             <span class="detail-value">${escapeHtml(selectedKey)}</span>
           </div>` : ''}
-          ${songWithLinks.time_signature ? `<div class="detail-item">
+          ${songWithResources.time_signature ? `<div class="detail-item">
             <span class="detail-label">Time Signature</span>
-            <span class="detail-value">${escapeHtml(songWithLinks.time_signature)}</span>
+            <span class="detail-value">${escapeHtml(songWithResources.time_signature)}</span>
           </div>` : ''}
-          ${songWithLinks.duration_seconds ? `<div class="detail-item">
+          ${songWithResources.duration_seconds ? `<div class="detail-item">
             <span class="detail-label">Duration</span>
-            <span class="detail-value">${formatDuration(songWithLinks.duration_seconds)}</span>
+            <span class="detail-value">${formatDuration(songWithResources.duration_seconds)}</span>
           </div>` : ''}
             </div>
           </div>
         </div>
         
-        ${songWithLinks.bpm ? `
+        ${songWithResources.bpm ? `
         <div class="song-click-track">
           <div class="song-click-track-info">
             <p class="song-click-track-title"><i class="fa-solid fa-drum"></i> Click Track</p>
-            <p class="song-click-track-description">Set to ${songWithLinks.bpm} BPM</p>
+            <p class="song-click-track-description">Set to ${songWithResources.bpm} BPM</p>
           </div>
-          <button class="btn primary click-track-btn" data-bpm="${songWithLinks.bpm}" title="Click Track">
-            ${state.metronome.isPlaying && state.metronome.bpm === songWithLinks.bpm
+          <button class="btn primary click-track-btn" data-bpm="${songWithResources.bpm}" title="Click Track">
+            ${state.metronome.isPlaying && state.metronome.bpm === songWithResources.bpm
         ? `<i class="fa-solid fa-pause"></i> Stop`
         : `<i class="fa-solid fa-play"></i> Click`}
           </button>
@@ -17209,10 +17092,10 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         ` : ''
     }
         
-        ${songWithLinks.description ? `
+        ${songWithResources.description ? `
         <div class="song-details-section">
           <h3 class="section-title">Description</h3>
-          <p class="song-details-description">${escapeHtml(songWithLinks.description)}</p>
+          <p class="song-details-description">${escapeHtml(songWithResources.description)}</p>
         </div>
         ` : ''
     }
@@ -17278,10 +17161,24 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             display_order: chart.display_order ?? Number.POSITIVE_INFINITY,
           });
         });
+
+        // Debug: log what we have before sorting
+        console.log("Before sorting - Charts:", generalChartItems.map(c => ({ title: c.title, display_order: c.display_order })));
+        console.log("Before sorting - Links:", generalLinks.map(l => ({ title: l.title, display_order: l.display_order, id: l.id })));
         // Merge charts and links, then sort by display_order to maintain correct interleaved order
+        // Ensure display_order is a number (handle null, undefined, or string values)
         const allGeneralResources = [...generalChartItems, ...generalLinks].sort((a, b) => {
-          const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
-          const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+          const ao = typeof a?.display_order === 'number' ? a.display_order : (a?.display_order != null ? Number(a.display_order) : Number.POSITIVE_INFINITY);
+          const bo = typeof b?.display_order === 'number' ? b.display_order : (b?.display_order != null ? Number(b.display_order) : Number.POSITIVE_INFINITY);
+
+          // Debug logging
+          if (ao === Number.POSITIVE_INFINITY || bo === Number.POSITIVE_INFINITY || isNaN(ao) || isNaN(bo)) {
+            console.log("Sorting resources:", {
+              a: { type: a.__resourceType || 'link', title: a.title, display_order: a.display_order, ao },
+              b: { type: b.__resourceType || 'link', title: b.title, display_order: b.display_order, bo }
+            });
+          }
+
           if (ao !== bo) return ao - bo;
           // If display_order is the same, sort by type (charts first, then links)
           if (a.__resourceType === 'chart' && b.__resourceType !== 'chart') return -1;
@@ -17291,6 +17188,13 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
           const bt = (b?.title || "").toLowerCase();
           return at.localeCompare(bt);
         });
+
+        // Debug: log final order
+        console.log("General resources final order:", allGeneralResources.map(r => ({
+          type: r.__resourceType || 'link',
+          title: r.title,
+          display_order: r.display_order
+        })));
         renderSongLinksDisplay(allGeneralResources, generalLinksContainer);
         generalSection.appendChild(generalLinksContainer);
         linksContainer.appendChild(generalSection);
@@ -17341,9 +17245,10 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
           });
         }
         // Merge charts and links, then sort by display_order to maintain correct interleaved order
+        // Ensure display_order is a number (handle null, undefined, or string values)
         const allSelectedResources = [...selectedChartItems, ...selectedKeyLinks].sort((a, b) => {
-          const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
-          const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+          const ao = typeof a?.display_order === 'number' ? a.display_order : (a?.display_order != null ? Number(a.display_order) : Number.POSITIVE_INFINITY);
+          const bo = typeof b?.display_order === 'number' ? b.display_order : (b?.display_order != null ? Number(b.display_order) : Number.POSITIVE_INFINITY);
           if (ao !== bo) return ao - bo;
           // If display_order is the same, sort by type (charts first, then links)
           if (a.__resourceType === 'chart' && b.__resourceType !== 'chart') return -1;
@@ -17450,9 +17355,10 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             });
           }
           // Merge charts and links, then sort by display_order to maintain correct interleaved order
+          // Ensure display_order is a number (handle null, undefined, or string values)
           const combined = [...keyChartItems, ...(Array.isArray(keyLinks) ? keyLinks : [])].sort((a, b) => {
-            const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
-            const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
+            const ao = typeof a?.display_order === 'number' ? a.display_order : (a?.display_order != null ? Number(a.display_order) : Number.POSITIVE_INFINITY);
+            const bo = typeof b?.display_order === 'number' ? b.display_order : (b?.display_order != null ? Number(b.display_order) : Number.POSITIVE_INFINITY);
             if (ao !== bo) return ao - bo;
             // If display_order is the same, sort by type (charts first, then links)
             if (a.__resourceType === 'chart' && b.__resourceType !== 'chart') return -1;
@@ -17502,7 +17408,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
     overlayControls.addEventListener("click", (e) => {
       e.stopPropagation();
     });
-    
+
     // Also stop propagation on buttons and labels within overlay
     const buttons = overlayControls.querySelectorAll("button, label");
     buttons.forEach(btn => {
@@ -17590,19 +17496,19 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             removeBtn.title = "Remove custom album art";
             removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
             removeBtn.addEventListener("click", async () => {
-            await removeAlbumArtOverride(songWithLinks.id, songWithLinks.album_art_override_path);
-            songWithLinks.album_art_override_path = null;
-            removeBtn.remove();
-            // Reload album art from iTunes
-            const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
-            if (albumArtData) {
-              displayAlbumArt(content, albumArtData, songWithLinks);
-            } else if (canUploadAlbumArt) {
-              showSongAlbumArtNoImagePlaceholder(content);
-            } else {
-              collapseSongAlbumArt(content);
-            }
-          });
+              await removeAlbumArtOverride(songWithLinks.id, songWithLinks.album_art_override_path);
+              songWithLinks.album_art_override_path = null;
+              removeBtn.remove();
+              // Reload album art from iTunes
+              const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
+              if (albumArtData) {
+                displayAlbumArt(content, albumArtData, songWithLinks);
+              } else if (canUploadAlbumArt) {
+                showSongAlbumArtNoImagePlaceholder(content);
+              } else {
+                collapseSongAlbumArt(content);
+              }
+            });
             overlayControls.appendChild(removeBtn);
           }
         }
@@ -17704,16 +17610,16 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         menu.classList.add("hidden");
         await removeAlbumArtOverride(songWithLinks.id, songWithLinks.album_art_override_path);
         songWithLinks.album_art_override_path = null;
-        
+
         // Update remove button in overlay
         const overlayRemoveBtn = content.querySelector("#remove-album-art-btn");
         if (overlayRemoveBtn) {
           overlayRemoveBtn.remove();
         }
-        
+
         // Update dropdown menu - remove reset option
         resetAlbumArtBtn.remove();
-        
+
         // Reload album art from iTunes
         const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
         if (albumArtData) {
@@ -17869,21 +17775,22 @@ async function openSectionDetailsModal(setSong) {
 
   // Fetch section with links and assignments
   let sectionWithData = setSong;
-  if (!setSong.song_links || !setSong.song_assignments) {
+  if (!setSong.song_resources || !setSong.song_assignments) {
     const { data } = await supabase
       .from("set_songs")
       .select(`
   *,
-  song_links(
+  song_resources(
     id,
+    team_id,
+    type,
     title,
     url,
-    key,
-    display_order,
     file_path,
     file_name,
     file_type,
-    is_file_upload
+    key,
+    display_order
   ),
   song_assignments(
     id,
@@ -17912,24 +17819,32 @@ async function openSectionDetailsModal(setSong) {
     }
   }
 
-  // Ensure links are ordered by display_order
-  if (sectionWithData && Array.isArray(sectionWithData.song_links)) {
-    sectionWithData.song_links = [...sectionWithData.song_links].sort((a, b) => {
+  // Ensure resources are ordered by display_order
+  if (sectionWithData && Array.isArray(sectionWithData.song_resources)) {
+    sectionWithData.song_resources = [...sectionWithData.song_resources].sort((a, b) => {
       const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
       const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
-      if (ao !== bo) return ao - bo;
-      const at = (a?.title || "").toLowerCase();
-      const bt = (b?.title || "").toLowerCase();
-      return at.localeCompare(bt);
+      return ao - bo;
     });
   }
 
-  const hasLinks = (sectionWithData.song_links || []).length > 0;
+  // Filter for links/files only (conceptually section details might just show basic links unless we want charts too?)
+  // For now, let's treat resources as links if they are not charts, or just show all?
+  // Existing logic filtered song_links.
+  // Let's filter song_resources for type='link' or 'file'.
+  // Charts might be interesting to show too, but let's stick to links for now to match behavior.
+  const allResources = sectionWithData.song_resources || [];
+  const links = allResources.filter(r => r.type === 'link' || r.type === 'file');
+
+  const hasLinks = links.length > 0;
   const hasAssignments = (sectionWithData.song_assignments || []).length > 0;
   const plannedDurationSeconds = getSetSongDurationSeconds(sectionWithData);
   const durationLabel = plannedDurationSeconds !== undefined && plannedDurationSeconds !== null
     ? formatDuration(plannedDurationSeconds)
     : null;
+
+  // Keep variable name for compatibility with rendering logic below
+  sectionWithData.song_links = links;
 
   // Render all section information
   content.innerHTML = `
@@ -18057,8 +17972,8 @@ async function openSectionDetailsModal(setSong) {
 
 function updateLinkSections() {
   // Re-render links when keys change to show new key sections
-  const links = collectSongLinks();
-  renderSongLinks(links);
+  const resources = collectSongResources();
+  renderSongLinks(resources); // TODO: Rename to renderSongResources
 }
 
 function renderSongKeys(keys) {
@@ -18111,7 +18026,7 @@ function addSongKeyInput() {
 
   const div = document.createElement("div");
   div.className = "song-key-row";
-  div.dataset.keyId = `new- ${Date.now()} `;
+  div.dataset.keyId = `new-${Date.now()}`;
   div.innerHTML = `
       <input type="text" class="song-key-input" placeholder="C, Dm, G, etc" required />
     <button type="button" class="btn small ghost remove-song-key">Remove</button>
@@ -18400,102 +18315,112 @@ function isAudioFile(fileType, fileName) {
 // Song Links Functions
 // ============================================================================
 
-function renderSongLinks(links) {
+// Renamed logic (conceptually renderSongResources) but keeping name for compatibility for now
+function renderSongLinks(resources) {
   const container = el("song-links-list");
   if (!container) return;
 
   container.innerHTML = "";
 
-  // Ensure stable ordering (DB fetch does not order by display_order)
-  const sortedLinks = (Array.isArray(links) ? [...links] : []).sort((a, b) => {
+  // Ensure stable ordering by display_order
+  const sortedResources = (Array.isArray(resources) ? [...resources] : []).sort((a, b) => {
     const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
     const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
-    if (ao !== bo) return ao - bo;
-    const at = (a?.title || "").toLowerCase();
-    const bt = (b?.title || "").toLowerCase();
-    return at.localeCompare(bt);
+    return ao - bo;
   });
 
-  // Group links by key
-  const generalLinks = sortedLinks.filter(link => !link.key);
-  const linksByKey = {};
-  sortedLinks.forEach(link => {
-    if (link.key) {
-      if (!linksByKey[link.key]) {
-        linksByKey[link.key] = [];
-      }
-      linksByKey[link.key].push(link);
+  // Group by key
+  const resourcesByKey = {};
+  const generalResources = [];
+
+  sortedResources.forEach(res => {
+    const key = res.key || ""; // Treat null/undefined key as empty string (General)
+    if (!key) {
+      generalResources.push(res);
+    } else {
+      if (!resourcesByKey[key]) resourcesByKey[key] = [];
+      resourcesByKey[key].push(res);
     }
   });
 
   // Get available keys
   const keys = collectSongKeys();
+  const keyIdMap = new Map();
+  keys.forEach(k => {
+    if (k.key) keyIdMap.set(k.key, k.id);
+  });
 
-  // Add any keys that have links but aren't in the song's keys list (orphaned links)
-  // This ensures links are visible even if their key was deleted or renamed
+  // Add any keys that have resources but aren't in the song's keys list
+  // Add any keys that have resources but aren't in the song's keys list
   const existingKeyNames = new Set(keys.map(k => k.key));
-  Object.keys(linksByKey).forEach(linkKey => {
-    if (!existingKeyNames.has(linkKey)) {
-      keys.push({ id: null, key: linkKey });
+  Object.keys(resourcesByKey).forEach(resKey => {
+    if (!existingKeyNames.has(resKey)) {
+      keys.push({ id: null, key: resKey });
+    }
+  });
+
+  // Auto-generate virtual charts for keys if they don't exist
+  // Check for General Number Chart (handle both nested and flattened structure)
+  const generalNumberChart = generalResources.find(r => r.type === 'chart' && (r.chart_content?.chart_type === 'number' || r.chart_type === 'number'));
+  // Check for General Chord Chart
+  const generalChordChart = generalResources.find(r => r.type === 'chart' && (r.chart_content?.chart_type === 'chord' || r.chart_type === 'chord'));
+
+  keys.forEach(keyItem => {
+    const k = keyItem.key;
+    if (!k) return;
+
+    // Ensure array exists
+    if (!resourcesByKey[k]) resourcesByKey[k] = [];
+
+    // Check if we already have a chart
+    const hasChart = resourcesByKey[k].some(r => r.type === 'chart');
+    if (hasChart) return;
+
+    if (generalNumberChart) {
+      // Auto-generate "View Generated" tile derived from Number chart
+      const sourceDoc = generalNumberChart.chart_content?.doc || generalNumberChart.doc;
+      resourcesByKey[k].unshift({
+        id: null, // Virtual
+        type: 'chart',
+        display_order: -1, // Put at top
+        key: k,
+        generated: true,
+        numberSourceDoc: sourceDoc,
+        targetKey: k,
+        // Minimal content needed for renderer
+        chart_content: { chart_type: 'chord', scope: 'key', songKey: k, doc: null } // Renderer doesn't strictly need doc here if generated=true handled by buildChartRow
+      });
+    } else if (generalChordChart) {
+      // Auto-generate "Draft" chord chart (start with copy of general)
+      // When user clicks Edit, they will edit this copy.
+      // Saving it will create a real chart resource.
+      const sourceDoc = generalChordChart.chart_content?.doc || generalChordChart.doc;
+      const docClone = sourceDoc ? JSON.parse(JSON.stringify(sourceDoc)) : {};
+      resourcesByKey[k].unshift({
+        id: null,
+        type: 'chart',
+        display_order: -1,
+        key: k,
+        generated: false, // It's a draft, so editable
+        chart_content: {
+          chart_type: 'chord',
+          scope: 'key',
+          songKey: k,
+          doc: docClone
+        }
+      });
     }
   });
 
   // Render General section
-  const generalSection = document.createElement("div");
-  generalSection.className = "song-links-section";
-  generalSection.dataset.key = "";
-  const generalHeader = document.createElement("div");
-  generalHeader.className = "song-links-section-header";
-  generalHeader.innerHTML = `
-    <h4>General Resources</h4>
-    <div class="song-links-section-actions">
-      <button type="button" class="btn small secondary add-link-to-section" data-key="">Add Link</button>
-      <button type="button" class="btn small secondary add-file-upload-to-section" data-key="">Upload</button>
-      <button type="button" class="btn small secondary create-chart-to-section" data-key="">Create Chart</button>
-    </div>
-  `;
-  generalSection.appendChild(generalHeader);
-  const generalLinksContainer = document.createElement("div");
-  generalLinksContainer.className = "song-links-section-content";
-  generalLinks.forEach((link, index) => {
-    const linkRow = createLinkRow(link, index, "");
-    generalLinksContainer.appendChild(linkRow);
-    if (isManager()) setupLinkDragAndDrop(linkRow, generalLinksContainer);
-  });
-  generalSection.appendChild(generalLinksContainer);
-  container.appendChild(generalSection);
+  renderResourceSection(container, "", generalResources, null);
 
   // Render section for each key
   keys.forEach(keyItem => {
-    const key = keyItem.key;
-    const keyLinks = linksByKey[key] || [];
-
-    const keySection = document.createElement("div");
-    keySection.className = "song-links-section";
-    keySection.dataset.key = key;
-    const keyHeader = document.createElement("div");
-    keyHeader.className = "song-links-section-header";
-    keyHeader.innerHTML = `
-      <h4>Key: ${escapeHtml(key)}</h4>
-      <div class="song-links-section-actions">
-        <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
-        <button type="button" class="btn small secondary add-file-upload-to-section" data-key="${escapeHtml(key)}">Upload</button>
-        <button type="button" class="btn small secondary create-chart-to-section" data-key="${escapeHtml(key)}">Create Chart</button>
-      </div>
-    `;
-    keySection.appendChild(keyHeader);
-    const keyLinksContainer = document.createElement("div");
-    keyLinksContainer.className = "song-links-section-content";
-    keyLinks.forEach((link, index) => {
-      const linkRow = createLinkRow(link, index, key);
-      keyLinksContainer.appendChild(linkRow);
-      if (isManager()) setupLinkDragAndDrop(linkRow, keyLinksContainer);
-    });
-    keySection.appendChild(keyLinksContainer);
-    container.appendChild(keySection);
+    renderResourceSection(container, keyItem.key, resourcesByKey[keyItem.key] || [], keyItem.id);
   });
 
-  // Add event listeners for "Add Link" buttons
+  // Add event listeners (same as before)
   container.querySelectorAll(".add-link-to-section").forEach(btn => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.key || "";
@@ -18503,7 +18428,6 @@ function renderSongLinks(links) {
     });
   });
 
-  // Add event listeners for "Upload" buttons
   container.querySelectorAll(".add-file-upload-to-section").forEach(btn => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.key || "";
@@ -18511,7 +18435,6 @@ function renderSongLinks(links) {
     });
   });
 
-  // Create chart action (type is chosen in editor)
   container.querySelectorAll(".create-chart-to-section").forEach(btn => {
     btn.addEventListener("click", async () => {
       const key = btn.dataset.key || "";
@@ -18528,13 +18451,92 @@ function renderSongLinks(links) {
         scope: key ? "key" : "general",
         songKey: key || null,
         existingChart: null,
-        forceType: key ? "chord" : null, // key charts are chord-only; general can choose
       });
     });
   });
 
   // Normalize data-display-order across all sections after render
   updateAllLinkOrderInDom();
+}
+
+function renderResourceSection(container, key, resources, keyId = null) {
+  const section = document.createElement("div");
+  section.className = "song-links-section";
+  section.dataset.key = key;
+  if (keyId) section.dataset.keyId = keyId;
+
+  const header = document.createElement("div");
+  // ... (rest of function)
+  header.className = "song-links-section-header";
+  header.innerHTML = `
+      <h4>${key ? `Key: ${escapeHtml(key)}` : "General Resources"}</h4>
+      <div class="song-links-section-actions">
+        <button type="button" class="btn small secondary add-link-to-section" data-key="${escapeHtml(key)}">Add Link</button>
+        <button type="button" class="btn small secondary add-file-upload-to-section" data-key="${escapeHtml(key)}">Upload</button>
+        <button type="button" class="btn small secondary create-chart-to-section" data-key="${escapeHtml(key)}">Create Chart</button>
+      </div>
+    `;
+  section.appendChild(header);
+
+  const content = document.createElement("div");
+  content.className = "song-links-section-content";
+
+  resources.forEach((res, index) => {
+    let row;
+    if (res.type === 'chart') {
+      // Adapt resource to chart object structure for buildChartRow
+      const chartObj = {
+        id: res.id,
+        title: res.title,
+        key: res.key, // resource key
+        song_key: res.key, // chart expectations
+        type: 'chart', // CRITICAL: Ensure type is preserved for collectSongResources
+        chart_type: res.chart_content?.chart_type || res.chart_type || 'chord',
+        scope: res.chart_content?.scope || res.scope || (res.key ? 'key' : 'general'),
+        layout: res.chart_content?.layout || res.layout || 'one_column',
+        display_order: res.display_order,
+        doc: res.chart_content?.doc || res.doc,
+        // Persist auto-generation state
+        generated: res.generated,
+        numberSourceDoc: res.numberSourceDoc,
+        targetKey: res.targetKey
+      };
+      // Need songId/songTitle context. We can get it from the form
+      const form = el("song-edit-form");
+      const songId = form?.dataset?.songId;
+      const songTitle = el("song-edit-title")?.value?.trim?.() || "";
+
+      row = buildChartRow(chartObj, {
+        songId,
+        songTitle,
+        generated: res.generated,
+        numberSourceDoc: res.numberSourceDoc,
+        targetKey: res.targetKey || res.key
+      });
+      // We need to make sure buildChartRow sets the right dataset attributes for our new unified system
+      row.dataset.resourceType = 'chart';
+    } else {
+      // Link or File
+      // Adapt to what createLinkRow expects
+      const linkObj = {
+        ...res,
+        is_file_upload: res.type === 'file'
+      };
+      row = createLinkRow(linkObj, index, key);
+      row.dataset.resourceType = res.type;
+    }
+
+    if (row) {
+      row.dataset.resourceId = res.id;
+      row.dataset.displayOrder = res.display_order;
+      row.dataset.key = key;
+      content.appendChild(row);
+      if (isManager()) setupLinkDragAndDrop(row, content);
+    }
+  });
+
+  section.appendChild(content);
+  container.appendChild(section);
 }
 
 function createLinkRow(link, index, key) {
@@ -18784,101 +18786,130 @@ function addFileUploadToSection(key) {
   updateLinkOrder(sectionContent);
 }
 
-function collectSongLinks() {
+// Replaces collectSongLinks
+function collectSongResources() {
   const container = el("song-links-list");
   if (!container) return [];
 
-  const links = [];
+  const resources = [];
   let globalOrder = 0;
 
-  // Collect links from all sections, maintaining section order
+  // Collect from all sections
   const sections = Array.from(container.querySelectorAll(".song-links-section"));
   sections.forEach(section => {
     const sectionContent = section.querySelector(".song-links-section-content");
     if (!sectionContent) return;
 
-    // Only collect actual links (ignore chord chart rows)
-    const rows = Array.from(sectionContent.querySelectorAll(".song-link-row:not(.song-chart-row)"));
+    // Iterate ALL rows (links and charts)
+    const rows = Array.from(sectionContent.querySelectorAll(".song-link-row"));
     rows.forEach((row) => {
-      const titleInput = row.querySelector(".song-link-title-input");
-      const urlInput = row.querySelector(".song-link-url-input");
-      const fileInput = row.querySelector(".song-link-file-input");
-      const keyInput = row.querySelector(".song-link-key");
-      const idInput = row.querySelector(".song-link-id");
-      const isFileUploadInput = row.querySelector(".song-link-is-file-upload");
-      const filePathInput = row.querySelector(".song-link-file-path");
-      const fileNameInput = row.querySelector(".song-link-file-name");
-      const fileTypeInput = row.querySelector(".song-link-file-type");
+      // Determine type
+      // Check for chart class or dataset
+      const isChart = row.classList.contains("song-chart-row") || row.dataset.resourceType === 'chart';
 
-      const title = titleInput?.value.trim();
-      const key = keyInput?.value || null;
-      const id = idInput?.value;
-      const isFileUpload = isFileUploadInput?.value === 'true';
+      if (isChart) {
+        // Retrieve the full resource object if we stored it (prevent data loss)
+        if (row.chartResource) {
+          const res = row.chartResource;
+          res.type = 'chart'; // Ensure type is present
+          // Update key and order based on current DOM position
+          // If section has a keyId, look up the current value from the inputs
+          const keyId = row.closest('.song-links-section')?.dataset?.keyId;
+          let currentKey = row.dataset.key; // Fallback to what was on the row/section
 
-      if (isFileUpload) {
-        // File upload - check if file is selected or already uploaded
-        const file = fileInput?.files[0];
-        const existingFilePath = filePathInput?.value;
-        const existingFileName = fileNameInput?.value;
-        const existingFileType = fileTypeInput?.value;
+          if (keyId) {
+            // Find the input with this keyId (if it still exists)
+            const keyInputDesc = document.querySelector(`.song-key-row[data-key-id="${keyId}"] input.song-key-input`);
+            if (keyInputDesc) {
+              currentKey = keyInputDesc.value.trim();
+            } else {
+              // Input removed -> Key deleted.
+              // Move resource to General (empty string)
+              currentKey = "";
+            }
+          }
+          else {
+            // Fallback: check section dataset if row doesn't have it
+            currentKey = row.closest('.song-links-section')?.dataset?.key || null;
+          }
 
-        console.log("Collecting file upload link:", {
-          title,
-          hasFile: !!file,
-          file: file ? { name: file.name, size: file.size } : null,
-          existingFilePath,
-          existingFileName,
-          existingFileType
-        });
+          // If it was a generated chart and it lost its key, discard it.
+          if (res.generated && !currentKey) {
+            return; // Skip this resource
+          }
 
-        // For file uploads, we need either:
-        // 1. A title AND a file selected (new upload)
-        // 2. A title AND an existing file path (existing upload)
-        // 3. Just a file selected (we'll use the file name as title)
-        if (file || existingFilePath) {
-          // Use file name as title if title is empty
-          const finalTitle = title || (file ? file.name : existingFileName) || 'Untitled';
-
-          links.push({
-            id: id || null,
-            title: finalTitle,
-            url: null,
-            file_path: existingFilePath || null, // Will be set after upload
-            file_name: existingFileName || (file ? file.name : null),
-            file_type: existingFileType || (file ? getFileType(file) : null),
-            is_file_upload: true,
-            file: file || null, // Store file object for upload
-            key: key || null,
-            display_order: globalOrder++,
-          });
-        } else if (title) {
-          // If there's a title but no file, still save it (file might be uploaded separately)
-          // But this shouldn't happen in normal flow
-          console.warn("File upload link has title but no file:", { title, row: row });
+          res.key = currentKey || null;
+          res.display_order = globalOrder++;
+          resources.push(res);
         } else {
-          console.warn("File upload link skipped - no file and no title");
+          // Fallback to scraping (legacy/safety)
+          const chartId = row.querySelector(".song-chart-id")?.value?.trim() || row.dataset.chartId?.trim() || row.dataset.resourceId?.trim();
+          if (chartId) {
+            resources.push({
+              id: chartId,
+              type: 'chart',
+              display_order: globalOrder++,
+              key: row.dataset.key || null,
+              chart_content: { chart_type: 'chord', scope: 'general' } // Basic fallback
+            });
+          }
         }
       } else {
-        // URL link
-        const url = urlInput?.value.trim();
-        if (title && url) {
-          links.push({
-            id: id || null,
-            title,
-            url,
-            file_path: null,
-            file_name: null,
-            file_type: null,
-            is_file_upload: false,
-            key: key || null,
-            display_order: globalOrder++,
-          });
+        // Link or File
+        const titleInput = row.querySelector(".song-link-title-input");
+        const urlInput = row.querySelector(".song-link-url-input");
+        const fileInput = row.querySelector(".song-link-file-input");
+        const keyInput = row.querySelector(".song-link-key");
+        const idInput = row.querySelector(".song-link-id");
+        const isFileUploadInput = row.querySelector(".song-link-is-file-upload");
+        const filePathInput = row.querySelector(".song-link-file-path");
+        const fileNameInput = row.querySelector(".song-link-file-name");
+        const fileTypeInput = row.querySelector(".song-link-file-type");
+
+        const title = titleInput?.value.trim();
+        const key = keyInput?.value || row.dataset.key || null;
+        const id = idInput?.value;
+        const isFileUpload = isFileUploadInput?.value === 'true' || row.dataset.isFileUpload === 'true';
+
+        if (isFileUpload) {
+          const file = fileInput?.files[0];
+          const existingFilePath = filePathInput?.value;
+          const existingFileName = fileNameInput?.value;
+          const existingFileType = fileTypeInput?.value;
+
+          if (file || existingFilePath) {
+            const finalTitle = title || (file ? file.name : existingFileName) || 'Untitled';
+            resources.push({
+              id: id || null,
+              type: 'file',
+              title: finalTitle,
+              url: null,
+              file_path: existingFilePath || null,
+              file_name: existingFileName || (file ? file.name : null),
+              file_type: existingFileType || (file ? getFileType(file) : null),
+              file: file || null,
+              key: key,
+              display_order: globalOrder++
+            });
+          }
+        } else {
+          const url = urlInput?.value.trim();
+          if (title && url) {
+            resources.push({
+              id: id || null,
+              type: 'link',
+              title,
+              url,
+              key: key,
+              display_order: globalOrder++
+            });
+          }
         }
       }
     });
   });
 
-  return links;
+  return resources;
 }
 
 // Section Links Functions (similar to song links but for set sections)
@@ -19335,9 +19366,9 @@ async function handleSongEditSubmit(event) {
 
   const finalSongId = response.data.id;
   const keys = collectSongKeys();
-  const links = collectSongLinks();
+  const resources = collectSongResources();
 
-  console.log("Collected links for save:", links);
+  console.log("Collected resources for save:", resources);
   console.log("Final song ID:", finalSongId);
 
   // Handle song keys
@@ -19386,146 +19417,126 @@ async function handleSongEditSubmit(event) {
       );
   }
 
-  // Handle song links
-  // Get existing links
-  const { data: existingLinks } = await supabase
-    .from("song_links")
+  // Handle song resources (Unified)
+  // Get existing resources
+  const { data: existingResources } = await supabase
+    .from(SONG_RESOURCES_TABLE)
     .select("*")
     .eq("song_id", finalSongId);
 
-  // Determine which to delete, update, and insert
-  const existingIds = new Set(existingLinks?.map(l => l.id) || []);
-  const newLinks = links.filter(l => !l.id);
-  const updatedLinks = links.filter(l => l.id && existingIds.has(l.id));
-  const deletedIds = Array.from(existingIds).filter(id =>
-    !links.some(l => l.id === id)
-  );
+  const existingIds = new Set(existingResources?.map(r => r.id) || []);
 
-  // Delete removed links and their files
+  // Categorize
+  const newResources = resources.filter(r => !r.id);
+  const updatedResources = resources.filter(r => r.id && existingIds.has(r.id));
+  const deletedIds = Array.from(existingIds).filter(id => !resources.some(r => r.id === id));
+
+  // 1. Delete removed resources
   if (deletedIds.length > 0) {
-    // Get file paths of links to be deleted
-    const linksToDelete = existingLinks?.filter(l => deletedIds.includes(l.id)) || [];
-    for (const linkToDelete of linksToDelete) {
-      if (linkToDelete.is_file_upload && linkToDelete.file_path) {
-        await deleteFileFromSupabase(linkToDelete.file_path);
+    const resourcesToDelete = existingResources.filter(r => deletedIds.includes(r.id));
+    // Delete files for deleted resources
+    for (const res of resourcesToDelete) {
+      if (res.type === 'file' && res.file_path) {
+        await deleteFileFromSupabase(res.file_path);
       }
     }
 
-    await supabase
-      .from("song_links")
-      .delete()
-      .in("id", deletedIds);
+    await supabase.from(SONG_RESOURCES_TABLE).delete().in("id", deletedIds);
   }
 
-  // Update existing links
-  for (const link of updatedLinks) {
-    const existingLink = existingLinks?.find(l => l.id === link.id);
-    let filePath = link.file_path;
-    let fileName = link.file_name;
-    let fileType = link.file_type;
+  // 2. Update existing resources
+  for (const res of updatedResources) {
+    const existing = existingResources.find(r => r.id === res.id);
 
-    // If it's a file upload with a new file, upload it
-    if (link.is_file_upload && link.file) {
-      // Delete old file if it exists
-      if (existingLink?.is_file_upload && existingLink?.file_path) {
-        await deleteFileFromSupabase(existingLink.file_path);
-      }
+    const updateData = {
+      display_order: res.display_order,
+      key: res.key || null
+    };
 
-      // Upload new file
-      const uploadResult = await uploadFileToSupabase(link.file, finalSongId, null, state.currentTeamId);
-      if (!uploadResult.success) {
-        toastError(`Failed to upload file: ${uploadResult.error}`);
-        continue;
-      }
-      filePath = uploadResult.filePath;
-      fileName = uploadResult.fileName;
-      fileType = uploadResult.fileType;
-    } else if (link.is_file_upload && !link.file && existingLink?.file_path) {
-      // Keep existing file if no new file is selected
-      filePath = existingLink.file_path;
-      fileName = existingLink.file_name || link.file_name;
-      fileType = existingLink.file_type || link.file_type;
-    }
+    if (res.type === 'chart') {
+      // Charts: only update order and key
+    } else {
+      // Links/Files: Update title, url, file info
+      updateData.title = res.title;
+      updateData.url = (res.type === 'file') ? null : res.url;
 
-    await supabase
-      .from("song_links")
-      .update({
-        title: link.title,
-        url: link.is_file_upload ? null : link.url,
-        file_path: link.is_file_upload ? filePath : null,
-        file_name: link.is_file_upload ? fileName : null,
-        file_type: link.is_file_upload ? fileType : null,
-        is_file_upload: link.is_file_upload,
-        key: link.key || null,
-        display_order: link.display_order,
-      })
-      .eq("id", link.id);
-  }
+      let filePath = existing.file_path;
+      let fileName = existing.file_name;
+      let fileType = existing.file_type;
 
-  // Insert new links
-  if (newLinks.length > 0) {
-    const linksToInsert = [];
+      // If it's a file upload with a new file, upload it
+      if (res.type === 'file' && res.file) {
+        // Delete old file if it exists
+        if (existing.file_path) {
+          await deleteFileFromSupabase(existing.file_path);
+        }
 
-    for (const link of newLinks) {
-      let filePath = link.file_path;
-      let fileName = link.file_name;
-      let fileType = link.file_type;
-
-      // If it's a file upload, upload the file first
-      if (link.is_file_upload && link.file) {
-        console.log("Uploading file for new link:", link.file.name);
-        const uploadResult = await uploadFileToSupabase(link.file, finalSongId, null, state.currentTeamId);
+        // Upload new file
+        const uploadResult = await uploadFileToSupabase(res.file, finalSongId, null, state.currentTeamId);
         if (!uploadResult.success) {
-          console.error("File upload failed:", uploadResult.error);
           toastError(`Failed to upload file: ${uploadResult.error}`);
           continue;
         }
-        console.log("File uploaded successfully:", uploadResult);
         filePath = uploadResult.filePath;
         fileName = uploadResult.fileName;
         fileType = uploadResult.fileType;
-      } else if (link.is_file_upload && !link.file) {
-        console.warn("File upload link has no file selected:", link);
-        // Still allow saving if there's a title, the file might be uploaded separately
       }
 
-      linksToInsert.push({
+      updateData.file_path = filePath;
+      updateData.file_name = fileName;
+      updateData.file_type = fileType;
+    }
+
+    await supabase.from(SONG_RESOURCES_TABLE).update(updateData).eq("id", res.id);
+  }
+
+  // 3. Insert new resources
+  if (newResources.length > 0) {
+    for (const res of newResources) {
+      if (res.type === 'chart') {
+        // Logic for new charts created in list??
+        // Currently charts are created via modal which saves them immediately to song_charts (now song_resources).
+        // So collecting "new" charts from DOM shouldn't happen unless we dragged a "new" chart?
+        // But charts in DOM have IDs.
+        // If we somehow have a chart without ID, skipping for safety.
+        continue;
+      }
+
+      let filePath = null;
+      let fileName = null;
+      let fileType = null;
+
+      if (res.type === 'file' && res.file) {
+        const uploadResult = await uploadFileToSupabase(res.file, finalSongId, null, state.currentTeamId);
+        if (!uploadResult.success) {
+          toastError(`Failed to upload file: ${uploadResult.error}`);
+          continue;
+        }
+        filePath = uploadResult.filePath;
+        fileName = uploadResult.fileName;
+        fileType = uploadResult.fileType;
+      }
+
+      await supabase.from(SONG_RESOURCES_TABLE).insert({
         song_id: finalSongId,
-        title: link.title,
-        url: link.is_file_upload ? null : link.url,
-        file_path: link.is_file_upload ? filePath : null,
-        file_name: link.is_file_upload ? fileName : null,
-        file_type: link.is_file_upload ? fileType : null,
-        is_file_upload: link.is_file_upload,
-        key: link.key || null,
-        display_order: link.display_order,
         team_id: state.currentTeamId,
+        type: res.type,
+        title: res.title,
+        url: res.url,
+        file_path: filePath,
+        file_name: fileName || res.file_name,
+        file_type: fileType || res.file_type,
+        key: res.key || null,
+        display_order: res.display_order
       });
     }
-
-    if (linksToInsert.length > 0) {
-      const { data: insertedLinks, error: insertError } = await supabase
-        .from("song_links")
-        .insert(linksToInsert)
-        .select();
-
-      if (insertError) {
-        console.error("Error inserting song links:", insertError);
-        console.error("Links that failed to insert:", linksToInsert);
-        toastError(`Failed to save some links: ${insertError.message}`);
-
-        // Clean up uploaded files if database insert failed
-        for (const link of linksToInsert) {
-          if (link.is_file_upload && link.file_path) {
-            console.log("Cleaning up uploaded file due to insert failure:", link.file_path);
-            await deleteFileFromSupabase(link.file_path);
-          }
-        }
-      } else {
-        console.log("Successfully inserted song links:", insertedLinks);
-      }
-    }
   }
+
+  // Invalidate chart cache
+  if (state.chordCharts && state.chordCharts.cache) {
+    state.chordCharts.cache.delete(finalSongId);
+  }
+  // Continues execution...
 
   // Reload songs and update catalog
   await loadSongs();
@@ -19545,14 +19556,20 @@ async function handleSongEditSubmit(event) {
         .from("songs")
         .select(`
           *,
-          song_links (
+          *,
+          song_resources (
             id,
+            team_id,
+            type,
             title,
             url,
             file_path,
             file_name,
             file_type,
-            is_file_upload
+            key,
+            display_order,
+            chart_content,
+            created_at
           )
         `)
         .eq("id", finalSongId)
@@ -19902,7 +19919,7 @@ function openPrintSet(set) {
   renderSetPrintPreview(set);
   // Keep it visually hidden on screen; print styles will reveal it
   wrapper.setAttribute("aria-hidden", "false");
-  
+
   // Track print usage
   trackPostHogEvent('set_printed', {
     set_id: set.id,
@@ -20423,6 +20440,25 @@ async function renderSongLinksDisplay(links, container) {
 // ============================================================================
 
 const SONG_CHARTS_TABLE = "song_charts";
+const SONG_RESOURCES_TABLE = "song_resources";
+
+async function fetchSongResources(songId) {
+  if (!songId) return [];
+  try {
+    const { data, error } = await supabase
+      .from(SONG_RESOURCES_TABLE)
+      .select("*")
+      .eq("song_id", songId)
+      .eq("team_id", state.currentTeamId)
+      .order("display_order", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn("fetchSongResources failed:", err);
+    return [];
+  }
+}
 
 function chartDisplayLabel(chart) {
   if (!chart) return "Chart";
@@ -20469,6 +20505,9 @@ function buildChartRow(chart, { songId, songTitle, readOnly = false, generated =
       ${(!generated && !readOnly) ? `<button type="button" class="btn small ghost remove-song-chart">Delete</button>` : ""}
     </div>
   `;
+
+  // Attach the full chart object to the element so we can recover it during collectSongResources
+  div.chartResource = chart;
 
   if (canDrag) {
     div.classList.add("draggable-item");
@@ -20542,118 +20581,10 @@ function buildChartRow(chart, { songId, songTitle, readOnly = false, generated =
   return div;
 }
 
+// Deprecated: injectSongChartsIntoSongLinksList is no longer needed 
+// as charts are now handled as standard resources within renderSongLinks.
 function injectSongChartsIntoSongLinksList({ songId, songTitle, charts, keys }) {
-  const linksRoot = el("song-links-list");
-  if (!linksRoot) return;
-
-  const allCharts = Array.isArray(charts) ? charts : [];
-  const generalCharts = allCharts.filter(c => c.scope === "general");
-  const generalNumber = generalCharts.find(c => c.chart_type === "number") || null;
-  const generalChords = generalCharts.filter(c => c.chart_type === "chord");
-  const keyCharts = allCharts.filter(c => c.scope === "key");
-
-  // Remove old chart rows first
-  linksRoot.querySelectorAll(".song-chart-row").forEach(el => el.remove());
-
-  const keysToRender = (keys || collectSongKeys().map(k => k?.key)).map(normalizeKeyLabel).filter(Boolean);
-
-  const placeRowsInSection = (sectionKey, rows) => {
-    const section = linksRoot.querySelector(`.song-links-section[data-key="${CSS.escape(sectionKey)}"]`);
-    const sectionContent = section?.querySelector?.(".song-links-section-content");
-    if (!sectionContent) return;
-    
-    // Get all existing items (links) in this section with their display_order
-    const existingItems = Array.from(sectionContent.querySelectorAll(".song-link-row.draggable-item:not(.song-chart-row)"));
-    const itemsWithOrder = existingItems.map(item => {
-      const linkId = item.querySelector(".song-link-id")?.value?.trim();
-      // Get display_order from dataset (set by createLinkRow or updateAllLinkOrderInDom)
-      // If not in dataset, try to parse from the link data, otherwise use a high number
-      let displayOrder = Number.POSITIVE_INFINITY;
-      if (item.dataset.displayOrder) {
-        displayOrder = parseInt(item.dataset.displayOrder, 10);
-      } else {
-        // Fallback: try to get from the hidden input or data attribute
-        // This handles cases where the order hasn't been set yet
-        const orderAttr = item.getAttribute("data-display-order");
-        if (orderAttr) {
-          displayOrder = parseInt(orderAttr, 10);
-        }
-      }
-      return { element: item, displayOrder, linkId };
-    }).sort((a, b) => a.displayOrder - b.displayOrder); // Sort existing items by order
-    
-    // Sort charts by display_order before inserting
-    const chartsWithOrder = rows.map(row => {
-      const chartId = row.querySelector(".song-chart-id")?.value?.trim() || row.dataset.chartId?.trim();
-      // Find the chart's display_order from the charts array
-      const chart = allCharts.find(c => c.id === chartId);
-      const displayOrder = chart?.display_order ?? Number.POSITIVE_INFINITY;
-      return { element: row, displayOrder, chartId };
-    }).sort((a, b) => a.displayOrder - b.displayOrder);
-    
-    // Insert each chart in the correct position based on display_order
-    chartsWithOrder.forEach(({ element: chartRow, displayOrder: chartOrder }) => {
-      // Find the first existing item with a higher display_order
-      const insertBefore = itemsWithOrder.find(({ displayOrder }) => displayOrder > chartOrder);
-      
-      if (insertBefore) {
-        sectionContent.insertBefore(chartRow, insertBefore.element);
-      } else {
-        // If no item has higher order, append to the end (but before any "add" buttons)
-        const addCard = sectionContent.querySelector(".add-link-card, .add-file-upload-card");
-        if (addCard) {
-          sectionContent.insertBefore(chartRow, addCard);
-        } else {
-          sectionContent.appendChild(chartRow);
-        }
-      }
-      
-      if (isManager()) setupLinkDragAndDrop(chartRow, sectionContent);
-    });
-  };
-
-  // General section rows: number chart (at top), then chord charts
-  // Sort charts by display_order to maintain correct ordering
-  const generalRows = [];
-  if (generalNumber) {
-    generalRows.push(buildChartRow(generalNumber, { songId, songTitle }));
-  }
-  // Sort chord charts by display_order before building rows
-  const sortedGeneralChords = [...generalChords].sort((a, b) => {
-    const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
-    const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
-    return ao - bo;
-  });
-  sortedGeneralChords.forEach(ch => {
-    generalRows.push(buildChartRow(ch, { songId, songTitle }));
-  });
-  placeRowsInSection("", generalRows);
-
-  // Key sections: show generated read-only row if number chart exists, plus editable key charts
-  keysToRender.forEach(k => {
-    const rows = [];
-    if (generalNumber?.doc) {
-      rows.push(buildChartRow(
-        { scope: "key", chart_type: "chord", song_key: k, layout: generalNumber.layout || "one_column" },
-        { songId, songTitle, readOnly: true, generated: true, numberSourceDoc: generalNumber.doc, targetKey: k }
-      ));
-    }
-    // Sort key charts by display_order before building rows
-    const keyChartsForThisKey = keyCharts
-      .filter(c => normalizeKeyLabel(c.song_key) === normalizeKeyLabel(k))
-      .sort((a, b) => {
-        const ao = (a?.display_order ?? Number.POSITIVE_INFINITY);
-        const bo = (b?.display_order ?? Number.POSITIVE_INFINITY);
-        return ao - bo;
-      });
-    keyChartsForThisKey.forEach(c => {
-      rows.push(buildChartRow(c, { songId, songTitle }));
-    });
-    placeRowsInSection(k, rows);
-  });
-
-  // Normalize display order tags and persist if user re-ordered
-  updateAllLinkOrderInDom();
+  console.log("injectSongChartsIntoSongLinksList is deprecated/noop in new resource model");
 }
 
 function normalizeKeyLabel(key) {
@@ -20704,7 +20635,7 @@ function adjustPlacementsForLyricsChange(oldLines, newLines, placements) {
 
   placements.forEach(placement => {
     const oldLineIndex = Number(placement.lineIndex) || 0;
-    
+
     // If placement is out of bounds, remove it
     if (oldLineIndex >= newLines.length) {
       return; // Skip this placement
@@ -20726,7 +20657,7 @@ function adjustPlacementsForLyricsChange(oldLines, newLines, placements) {
           bestIndex = idx;
         }
       }
-      
+
       adjustedPlacements.push({
         ...placement,
         lineIndex: bestIndex,
@@ -20798,12 +20729,12 @@ function fitChartPageToContainer(wrapEl, outerEl, pageEl) {
 
   const wrapRect = wrapEl.getBoundingClientRect();
   const pageRect = pageEl.getBoundingClientRect();
-  
+
   // Account for padding in wrapEl (0.5rem on all sides)
   const wrapPadding = 16; // 0.5rem = 8px, but we have padding on both sides
   const availableW = Math.max(1, wrapRect.width - wrapPadding);
   const availableH = Math.max(1, wrapRect.height);
-  
+
   const baseW = Math.max(1, pageRect.width);
   const baseH = Math.max(1, pageRect.height);
 
@@ -20886,12 +20817,12 @@ function renderChartDocIntoPage(targetEl, doc, options = {}) {
 
   // Split content across pages, filling columns left-to-right
   const pages = [];
-  
+
   if (columns === 1) {
     // One column: simple pagination down the page
     const totalLines = bodyLines.length;
     const pagesNeeded = Math.max(1, Math.ceil(totalLines / ESTIMATED_LINES_PER_COLUMN));
-    
+
     for (let pageIdx = 0; pageIdx < pagesNeeded; pageIdx++) {
       const startLine = pageIdx * ESTIMATED_LINES_PER_COLUMN;
       const endLine = Math.min(startLine + ESTIMATED_LINES_PER_COLUMN, totalLines);
@@ -20925,16 +20856,16 @@ function renderChartDocIntoPage(targetEl, doc, options = {}) {
     const totalLines = bodyLines.length;
     const linesPerPage = 2 * ESTIMATED_LINES_PER_COLUMN; // Each page has 2 columns
     const totalPages = Math.max(1, Math.ceil(totalLines / linesPerPage));
-    
+
     for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
       const pageStartLine = pageIdx * linesPerPage;
-      
+
       // Left column: first ESTIMATED_LINES_PER_COLUMN lines of this page
       const leftStart = pageStartLine;
       const leftEnd = Math.min(leftStart + ESTIMATED_LINES_PER_COLUMN, totalLines);
       const leftPageLines = bodyLines.slice(leftStart, leftEnd);
       const leftHtml = leftPageLines.map((line, idx) => makeLineHtml(line, leftStart + idx)).join("");
-      
+
       // Right column: next ESTIMATED_LINES_PER_COLUMN lines of this page
       const rightStart = leftEnd;
       const rightEnd = Math.min(rightStart + ESTIMATED_LINES_PER_COLUMN, totalLines);
@@ -20974,26 +20905,25 @@ function renderChartDocIntoPage(targetEl, doc, options = {}) {
   }
 }
 
+// Adapter function: Fetches resources -> Maps to old chart object structure
 async function fetchSongCharts(songId, { useCache = true } = {}) {
-  if (!songId) return [];
-  const cached = state.chordCharts.cache.get(songId);
-  if (useCache && cached && (Date.now() - cached.loadedAt < 15_000)) {
-    return cached.charts || [];
-  }
-  try {
-    const { data, error } = await supabase
-      .from(SONG_CHARTS_TABLE)
-      .select("*")
-      .eq("song_id", songId)
-      .eq("team_id", state.currentTeamId);
-    if (error) throw error;
-    const charts = Array.isArray(data) ? data : [];
-    state.chordCharts.cache.set(songId, { loadedAt: Date.now(), charts });
-    return charts;
-  } catch (err) {
-    console.warn("fetchSongCharts failed (missing table or RLS?)", err);
-    return [];
-  }
+  const resources = await fetchSongResources(songId);
+  return resources
+    .filter(r => r.type === 'chart' && r.chart_content)
+    .map(r => ({
+      id: r.id,
+      song_id: r.song_id,
+      team_id: r.team_id,
+      title: r.title,
+      // Map flattened chart content back to top-level properties
+      chart_type: r.chart_content.chart_type,
+      scope: r.chart_content.scope,
+      song_key: r.key, // Map key
+      layout: r.chart_content.layout,
+      doc: r.chart_content.doc,
+      display_order: r.display_order,
+      created_at: r.created_at
+    }));
 }
 
 async function saveSongChart({
@@ -21011,31 +20941,58 @@ async function saveSongChart({
   if (!layout) throw new Error("Missing layout");
   if (!doc) throw new Error("Missing doc");
 
+  // Adapter: Map old chart object structure to new song_resources payload
+  const chartContent = {
+    chart_type: chartType,
+    scope,
+    layout,
+    doc
+  };
+
   const payload = {
     team_id: state.currentTeamId,
     song_id: songId,
-    scope,
-    chart_type: chartType,
-    layout,
-    song_key: songKey,
-    doc,
+    type: 'chart',
+    title: doc.title || (scope === 'key' ? `Key: ${songKey}` : "Common Chart"),
+    key: songKey || null,
+    chart_content: chartContent,
     updated_at: new Date().toISOString(),
   };
 
   if (!id) {
     payload.created_by = state.session?.user?.id || null;
+    // Get max display order to append? Or let DB default?
+    // DB default is 0. We might want to append.
+    // fetchSongResources might be expensive. For now let's set 0 or use a quick query if needed.
+    // Or just default 0 and let user reorder.
   }
 
   const query = id
-    ? supabase.from(SONG_CHARTS_TABLE).update(payload).eq("id", id).select().single()
-    : supabase.from(SONG_CHARTS_TABLE).insert(payload).select().single();
+    ? supabase.from(SONG_RESOURCES_TABLE).update(payload).eq("id", id).select().single()
+    : supabase.from(SONG_RESOURCES_TABLE).insert(payload).select().single();
 
   const { data, error } = await query;
   if (error) throw error;
 
   // Refresh cache
-  state.chordCharts.cache.delete(songId);
-  return data;
+  if (state.chordCharts && state.chordCharts.cache) {
+    state.chordCharts.cache.delete(songId);
+  }
+
+  // Return adapted object
+  return {
+    id: data.id,
+    song_id: data.song_id,
+    team_id: data.team_id,
+    title: data.title,
+    chart_type: data.chart_content.chart_type,
+    scope: data.chart_content.scope,
+    song_key: data.key,
+    layout: data.chart_content.layout,
+    doc: data.chart_content.doc,
+    display_order: data.display_order,
+    created_at: data.created_at
+  };
 }
 
 function parseKeyToPitchClass(keyStr) {
@@ -21351,8 +21308,8 @@ function openChordChartEditor({ songId, songTitle, scope, songKey = null, existi
   // Update insert input placeholder based on chart type
   const insertInput = el("chart-insert-value");
   if (insertInput) {
-    insertInput.placeholder = chartType === "number" 
-      ? "1, 4, 6m, b7, #4dim, 5sus..." 
+    insertInput.placeholder = chartType === "number"
+      ? "1, 4, 6m, b7, #4dim, 5sus..."
       : "C, Dm7, F#m, Bb, Gsus4...";
   }
 
@@ -21408,221 +21365,221 @@ function wireChordChartEditorInteractions() {
         state.chordCharts.editorCursor = { lineIndex, charIndex };
       });
     });
-    
+
     // Section headers are not clickable for cursor placement
 
     // Drag placements (pointer events) with double-tap to delete
     // Track taps for double-tap detection (shared across all placements on this page)
     const tapState = { lastTapTime: 0, lastTapId: null, dragTimeout: null };
-    
+
     pageEl.querySelectorAll(".chart-placement").forEach(plEl => {
-    plEl.addEventListener("pointerdown", (e) => {
-      const placementId = plEl.dataset.placementId;
-      if (!placementId) return;
-      const doc = state.chordCharts.active?.chart?.doc;
-      if (!doc) return;
+      plEl.addEventListener("pointerdown", (e) => {
+        const placementId = plEl.dataset.placementId;
+        if (!placementId) return;
+        const doc = state.chordCharts.active?.chart?.doc;
+        if (!doc) return;
 
-      const currentPlacement = (doc.placements || []).find(p => String(p.id) === String(placementId));
-      if (!currentPlacement) return;
+        const currentPlacement = (doc.placements || []).find(p => String(p.id) === String(placementId));
+        if (!currentPlacement) return;
 
-      // Check for double-tap (within 300ms, same element)
-      const now = Date.now();
-      const timeSinceLastTap = now - tapState.lastTapTime;
-      const isDoubleTap = timeSinceLastTap < 300 && 
-                         timeSinceLastTap > 0 && 
-                         tapState.lastTapId === placementId;
+        // Check for double-tap (within 300ms, same element)
+        const now = Date.now();
+        const timeSinceLastTap = now - tapState.lastTapTime;
+        const isDoubleTap = timeSinceLastTap < 300 &&
+          timeSinceLastTap > 0 &&
+          tapState.lastTapId === placementId;
 
-      // Clear any pending drag timeout
-      if (tapState.dragTimeout) {
-        clearTimeout(tapState.dragTimeout);
-        tapState.dragTimeout = null;
-      }
-
-      if (isDoubleTap) {
-        // Double-tap detected - delete the placement
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Reset tap tracking
-        tapState.lastTapTime = 0;
-        tapState.lastTapId = null;
-
-        // Remove placement from document
-        if (Array.isArray(doc.placements)) {
-          doc.placements = doc.placements.filter(p => String(p.id) !== String(placementId));
-        }
-
-        // Re-render to update display
-        const wrapEl2 = el("chart-editor-page");
-        if (wrapEl2) {
-          renderChartDocIntoPage(wrapEl2, doc, {
-            songTitle: state.chordCharts.active.songTitle || doc.title || "Chord Chart",
-            subtitle: state.chordCharts.active.scope === "key" ? `Key: ${state.chordCharts.active.songKey}` : (state.chordCharts.active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
-            layout: state.chordCharts.active.chart.layout || doc?.settings?.layout,
-            readOnly: false,
-          });
-          wireChordChartEditorInteractions();
-          requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl2));
-        }
-        return;
-      }
-
-      // Record this tap
-      tapState.lastTapTime = now;
-      tapState.lastTapId = placementId;
-
-      // Track initial position for movement detection
-      const startX = e.clientX;
-      const startY = e.clientY;
-      let hasMoved = false;
-      let dragStarted = false;
-
-      // Delay drag start to allow for double-tap detection
-      tapState.dragTimeout = setTimeout(() => {
-        if (dragStarted) return; // Already started or cancelled
-        
-        // Start drag tracking
-        const startRect = plEl.getBoundingClientRect();
-        state.chordCharts.drag = {
-          placementId,
-          startX: e.clientX,
-          startY: e.clientY,
-          startLeft: startRect.left,
-          startTop: startRect.top,
-          currentLeftPx: parseFloat(plEl.style.left || "0") || 0,
-          lineIndex: currentPlacement.lineIndex ?? 0,
-        };
-        plEl.classList.add("dragging");
-        plEl.setPointerCapture(e.pointerId);
-        dragStarted = true;
-      }, 200); // 200ms delay to allow double-tap
-
-      // Start drag immediately if user moves pointer (no delay for actual dragging)
-      const onMove = (ev) => {
-        // If we haven't started dragging yet, check if we should start now
-        if (!dragStarted) {
-          const moveDistance = Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY);
-          if (moveDistance > 3) {
-            // User is dragging - start immediately
-            if (tapState.dragTimeout) {
-              clearTimeout(tapState.dragTimeout);
-              tapState.dragTimeout = null;
-            }
-            const startRect = plEl.getBoundingClientRect();
-            state.chordCharts.drag = {
-              placementId,
-              startX: e.clientX,
-              startY: e.clientY,
-              startLeft: startRect.left,
-              startTop: startRect.top,
-              currentLeftPx: parseFloat(plEl.style.left || "0") || 0,
-              lineIndex: currentPlacement.lineIndex ?? 0,
-            };
-            plEl.classList.add("dragging");
-            plEl.setPointerCapture(e.pointerId);
-            dragStarted = true;
-            hasMoved = true;
-            // Cancel double-tap if we've moved
-            tapState.lastTapTime = 0;
-          } else {
-            return; // Not enough movement yet, wait
-          }
-        }
-        
-        const drag = state.chordCharts.drag;
-        if (!drag) return;
-        
-        const dxScaled = ev.clientX - drag.startX;
-        const dx = dxScaled / scale;
-        const newLeft = (parseFloat(plEl.style.left || "0") || 0) + dx;
-        plEl.style.left = `${Math.max(0, newLeft)}px`;
-        drag.startX = ev.clientX;
-
-        // Snap between lines by moving element to the nearest line under pointer
-        const elAt = document.elementFromPoint(ev.clientX, ev.clientY);
-        const line = elAt?.closest?.(".chart-line");
-        if (line && line.dataset?.lineIndex) {
-          const newLineIndex = parseInt(line.dataset.lineIndex, 10) || 0;
-          if (newLineIndex !== drag.lineIndex) {
-            const newLayer = line.querySelector(".chart-chord-layer");
-            if (newLayer) {
-              // Calculate the correct left position relative to the new layer
-              const lyricsEl = line.querySelector(".chart-lyrics-layer");
-              const newLayerRect = (lyricsEl || line).getBoundingClientRect();
-              const pointerX = ev.clientX;
-              const relativeX = (pointerX - newLayerRect.left) / scale;
-              const newCharIndex = clampInt(relativeX / charWidth, 0, 10_000);
-              const newLeftPx = newCharIndex * charWidth;
-              
-              newLayer.appendChild(plEl);
-              plEl.style.left = `${newLeftPx}px`;
-              drag.lineIndex = newLineIndex;
-              drag.currentLeftPx = newLeftPx;
-            }
-          } else {
-            // Update position within the same line based on pointer position
-            const lyricsEl = line.querySelector(".chart-lyrics-layer");
-            const lineRect = (lyricsEl || line).getBoundingClientRect();
-            const relativeX = (ev.clientX - lineRect.left) / scale;
-            const newCharIndex = clampInt(relativeX / charWidth, 0, 10_000);
-            const newLeftPx = newCharIndex * charWidth;
-            plEl.style.left = `${newLeftPx}px`;
-            drag.currentLeftPx = newLeftPx;
-          }
-        }
-      };
-
-      const onUp = (ev) => {
-        // Clear drag timeout if it exists
+        // Clear any pending drag timeout
         if (tapState.dragTimeout) {
           clearTimeout(tapState.dragTimeout);
           tapState.dragTimeout = null;
         }
-        
-        // If we never started dragging and didn't move, it was just a tap
-        if (!dragStarted && !hasMoved) {
+
+        if (isDoubleTap) {
+          // Double-tap detected - delete the placement
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Reset tap tracking
+          tapState.lastTapTime = 0;
+          tapState.lastTapId = null;
+
+          // Remove placement from document
+          if (Array.isArray(doc.placements)) {
+            doc.placements = doc.placements.filter(p => String(p.id) !== String(placementId));
+          }
+
+          // Re-render to update display
+          const wrapEl2 = el("chart-editor-page");
+          if (wrapEl2) {
+            renderChartDocIntoPage(wrapEl2, doc, {
+              songTitle: state.chordCharts.active.songTitle || doc.title || "Chord Chart",
+              subtitle: state.chordCharts.active.scope === "key" ? `Key: ${state.chordCharts.active.songKey}` : (state.chordCharts.active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
+              layout: state.chordCharts.active.chart.layout || doc?.settings?.layout,
+              readOnly: false,
+            });
+            wireChordChartEditorInteractions();
+            requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl2));
+          }
+          return;
+        }
+
+        // Record this tap
+        tapState.lastTapTime = now;
+        tapState.lastTapId = placementId;
+
+        // Track initial position for movement detection
+        const startX = e.clientX;
+        const startY = e.clientY;
+        let hasMoved = false;
+        let dragStarted = false;
+
+        // Delay drag start to allow for double-tap detection
+        tapState.dragTimeout = setTimeout(() => {
+          if (dragStarted) return; // Already started or cancelled
+
+          // Start drag tracking
+          const startRect = plEl.getBoundingClientRect();
+          state.chordCharts.drag = {
+            placementId,
+            startX: e.clientX,
+            startY: e.clientY,
+            startLeft: startRect.left,
+            startTop: startRect.top,
+            currentLeftPx: parseFloat(plEl.style.left || "0") || 0,
+            lineIndex: currentPlacement.lineIndex ?? 0,
+          };
+          plEl.classList.add("dragging");
+          plEl.setPointerCapture(e.pointerId);
+          dragStarted = true;
+        }, 200); // 200ms delay to allow double-tap
+
+        // Start drag immediately if user moves pointer (no delay for actual dragging)
+        const onMove = (ev) => {
+          // If we haven't started dragging yet, check if we should start now
+          if (!dragStarted) {
+            const moveDistance = Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY);
+            if (moveDistance > 3) {
+              // User is dragging - start immediately
+              if (tapState.dragTimeout) {
+                clearTimeout(tapState.dragTimeout);
+                tapState.dragTimeout = null;
+              }
+              const startRect = plEl.getBoundingClientRect();
+              state.chordCharts.drag = {
+                placementId,
+                startX: e.clientX,
+                startY: e.clientY,
+                startLeft: startRect.left,
+                startTop: startRect.top,
+                currentLeftPx: parseFloat(plEl.style.left || "0") || 0,
+                lineIndex: currentPlacement.lineIndex ?? 0,
+              };
+              plEl.classList.add("dragging");
+              plEl.setPointerCapture(e.pointerId);
+              dragStarted = true;
+              hasMoved = true;
+              // Cancel double-tap if we've moved
+              tapState.lastTapTime = 0;
+            } else {
+              return; // Not enough movement yet, wait
+            }
+          }
+
+          const drag = state.chordCharts.drag;
+          if (!drag) return;
+
+          const dxScaled = ev.clientX - drag.startX;
+          const dx = dxScaled / scale;
+          const newLeft = (parseFloat(plEl.style.left || "0") || 0) + dx;
+          plEl.style.left = `${Math.max(0, newLeft)}px`;
+          drag.startX = ev.clientX;
+
+          // Snap between lines by moving element to the nearest line under pointer
+          const elAt = document.elementFromPoint(ev.clientX, ev.clientY);
+          const line = elAt?.closest?.(".chart-line");
+          if (line && line.dataset?.lineIndex) {
+            const newLineIndex = parseInt(line.dataset.lineIndex, 10) || 0;
+            if (newLineIndex !== drag.lineIndex) {
+              const newLayer = line.querySelector(".chart-chord-layer");
+              if (newLayer) {
+                // Calculate the correct left position relative to the new layer
+                const lyricsEl = line.querySelector(".chart-lyrics-layer");
+                const newLayerRect = (lyricsEl || line).getBoundingClientRect();
+                const pointerX = ev.clientX;
+                const relativeX = (pointerX - newLayerRect.left) / scale;
+                const newCharIndex = clampInt(relativeX / charWidth, 0, 10_000);
+                const newLeftPx = newCharIndex * charWidth;
+
+                newLayer.appendChild(plEl);
+                plEl.style.left = `${newLeftPx}px`;
+                drag.lineIndex = newLineIndex;
+                drag.currentLeftPx = newLeftPx;
+              }
+            } else {
+              // Update position within the same line based on pointer position
+              const lyricsEl = line.querySelector(".chart-lyrics-layer");
+              const lineRect = (lyricsEl || line).getBoundingClientRect();
+              const relativeX = (ev.clientX - lineRect.left) / scale;
+              const newCharIndex = clampInt(relativeX / charWidth, 0, 10_000);
+              const newLeftPx = newCharIndex * charWidth;
+              plEl.style.left = `${newLeftPx}px`;
+              drag.currentLeftPx = newLeftPx;
+            }
+          }
+        };
+
+        const onUp = (ev) => {
+          // Clear drag timeout if it exists
+          if (tapState.dragTimeout) {
+            clearTimeout(tapState.dragTimeout);
+            tapState.dragTimeout = null;
+          }
+
+          // If we never started dragging and didn't move, it was just a tap
+          if (!dragStarted && !hasMoved) {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+            return; // Just a tap, let double-tap detection handle it
+          }
+
+          const drag = state.chordCharts.drag;
+          if (drag) {
+            state.chordCharts.drag = null;
+            plEl.classList.remove("dragging");
+            plEl.releasePointerCapture(ev.pointerId);
+          }
           window.removeEventListener("pointermove", onMove);
           window.removeEventListener("pointerup", onUp);
-          return; // Just a tap, let double-tap detection handle it
-        }
-        
-        const drag = state.chordCharts.drag;
-        if (drag) {
-          state.chordCharts.drag = null;
-          plEl.classList.remove("dragging");
-          plEl.releasePointerCapture(ev.pointerId);
-        }
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
 
-        const doc2 = state.chordCharts.active?.chart?.doc;
-        if (!doc2) return;
-        const p = (doc2.placements || []).find(pp => String(pp.id) === String(placementId));
-        if (!p) return;
+          const doc2 = state.chordCharts.active?.chart?.doc;
+          if (!doc2) return;
+          const p = (doc2.placements || []).find(pp => String(pp.id) === String(placementId));
+          if (!p) return;
 
-        // Get the final position from the element's style (which was updated during drag)
-        const leftPx = parseFloat(plEl.style.left || "0") || 0;
-        p.charIndex = clampInt(leftPx / charWidth, 0, 10_000);
-        p.lineIndex = drag?.lineIndex ?? p.lineIndex ?? 0;
-        state.chordCharts.editorCursor = { lineIndex: p.lineIndex, charIndex: p.charIndex };
+          // Get the final position from the element's style (which was updated during drag)
+          const leftPx = parseFloat(plEl.style.left || "0") || 0;
+          p.charIndex = clampInt(leftPx / charWidth, 0, 10_000);
+          p.lineIndex = drag?.lineIndex ?? p.lineIndex ?? 0;
+          state.chordCharts.editorCursor = { lineIndex: p.lineIndex, charIndex: p.charIndex };
 
-        // Re-render to snap to grid
-        const wrapEl2 = el("chart-editor-page");
-        if (wrapEl2) {
-          renderChartDocIntoPage(wrapEl2, doc2, {
-            songTitle: state.chordCharts.active.songTitle || doc2.title || "Chord Chart",
-            subtitle: state.chordCharts.active.scope === "key" ? `Key: ${state.chordCharts.active.songKey}` : (state.chordCharts.active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
-            layout: state.chordCharts.active.chart.layout || doc2?.settings?.layout,
-            readOnly: false,
-          });
-          wireChordChartEditorInteractions();
-          requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl2));
-        }
-      };
+          // Re-render to snap to grid
+          const wrapEl2 = el("chart-editor-page");
+          if (wrapEl2) {
+            renderChartDocIntoPage(wrapEl2, doc2, {
+              songTitle: state.chordCharts.active.songTitle || doc2.title || "Chord Chart",
+              subtitle: state.chordCharts.active.scope === "key" ? `Key: ${state.chordCharts.active.songKey}` : (state.chordCharts.active.chart.chartType === "number" ? "Number chart" : "Chord chart"),
+              layout: state.chordCharts.active.chart.layout || doc2?.settings?.layout,
+              readOnly: false,
+            });
+            wireChordChartEditorInteractions();
+            requestAnimationFrame(() => fitAllChartPagesToContainer(wrapEl2));
+          }
+        };
 
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-    });
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+      });
     });
   });
 }
@@ -22381,13 +22338,13 @@ function openEditAccountModal() {
 
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
-  
+
   // PostHog: Track modal open
   trackPostHogEvent('modal_opened', {
     modal_type: 'edit_account',
     team_id: state.currentTeamId
   });
-  
+
   // Start tracking time on modal
   startPageTimeTracking('modal_edit_account', {
     team_id: state.currentTeamId
@@ -22409,7 +22366,7 @@ async function loadProfilePicturePreview() {
   if (!previewEl) return;
 
   const profilePicturePath = state.profile?.profile_picture_path;
-  
+
   if (profilePicturePath) {
     // Get signed URL for profile picture from profile pictures bucket
     const url = await getFileUrl(profilePicturePath, PROFILE_PICTURES_BUCKET);
@@ -22469,7 +22426,7 @@ function displayProfilePictureInitials(element, fullName) {
     .substring(0, 2)
     .toUpperCase();
   element.textContent = initials;
-  
+
   // Adjust font size based on element size
   const size = element.offsetWidth || 64;
   if (size <= 64) {
@@ -22485,25 +22442,25 @@ function displayProfilePictureWithGradient(element, fullName) {
     element.innerHTML = '<i class="fa-solid fa-user"></i>';
     return;
   }
-  
+
   const initials = fullName
     .split(" ")
     .map(n => n[0])
     .join("")
     .substring(0, 2)
     .toUpperCase();
-  
+
   // Generate consistent colors based on name hash
   let hash = 0;
   for (let i = 0; i < fullName.length; i++) {
     hash = fullName.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
+
   // Use the --accent-color CSS variable for a solid background
   element.style.background = 'var(--accent-color)';
   element.style.color = '#ffffff';
   element.textContent = initials;
-  
+
   // Adjust font size based on element size
   const size = element.offsetWidth || 64;
   if (size <= 64) {
@@ -22516,12 +22473,12 @@ function displayProfilePictureWithGradient(element, fullName) {
 // Format relative time (e.g., "2 days ago", "in 3 days")
 function formatRelativeTime(dateString) {
   if (!dateString) return 'No date';
-  
+
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = date - now;
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays === 0) {
     return 'Today';
   } else if (diffDays === 1) {
@@ -22563,16 +22520,16 @@ function renderPieChart(accepted, declined, pending, total) {
   const pieChartEl = el("pie-chart");
   const pieTotalEl = el("pie-total");
   const pieBackgroundEl = el("pie-background");
-  
+
   if (!pieChartEl) {
     console.error('Pie chart element not found');
     return;
   }
-  
+
   if (pieTotalEl) {
     pieTotalEl.textContent = total;
   }
-  
+
   // Clear existing paths and circles (but keep the background circle)
   const existingPaths = pieChartEl.querySelectorAll('path');
   existingPaths.forEach(p => p.remove());
@@ -22597,7 +22554,7 @@ function renderPieChart(accepted, declined, pending, total) {
     hole.setAttribute('fill', 'var(--bg-card)');
     pieChartEl.appendChild(hole);
   }
-  
+
   // If no assignments, show grey background
   if (total === 0) {
     if (pieBackgroundEl) {
@@ -22609,36 +22566,36 @@ function renderPieChart(accepted, declined, pending, total) {
     addDonutHole();
     return;
   }
-  
+
   // If there are assignments, make background transparent so pie segments show
   if (pieBackgroundEl) {
     pieBackgroundEl.style.fill = 'transparent';
   }
-  
+
   // Color scheme
   const colors = {
     accepted: getComputedStyle(document.documentElement).getPropertyValue('--chart-accepted-color').trim() || '#10b981', // green
     declined: getComputedStyle(document.documentElement).getPropertyValue('--chart-declined-color').trim() || '#ef4444', // red
     pending: getComputedStyle(document.documentElement).getPropertyValue('--chart-pending-color').trim() || '#f59e0b'  // amber
   };
-  
+
   const data = [
     { value: accepted, color: colors.accepted, label: 'accepted' },
     { value: declined, color: colors.declined, label: 'declined' },
     { value: pending, color: colors.pending, label: 'pending' }
   ].filter(d => d.value > 0);
-  
+
   if (data.length === 0) {
     return;
   }
-  
+
   // Calculate angles starting from top (0 degrees, but SVG is rotated -90deg so this will appear at top)
   let currentAngle = 0;
-  
+
   data.forEach((item) => {
     const percentage = (item.value / total) * 100;
     const angle = (percentage / 100) * 360;
-    
+
     // Handle full circle case
     if (angle >= 360) {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -22652,36 +22609,36 @@ function renderPieChart(accepted, declined, pending, total) {
       pieChartEl.appendChild(circle);
       return;
     }
-    
+
     const startAngle = currentAngle;
     const endAngle = currentAngle + angle;
-    
+
     const startAngleRad = (startAngle * Math.PI) / 180;
     const endAngleRad = (endAngle * Math.PI) / 180;
-    
+
     const x1 = centerX + radius * Math.cos(startAngleRad);
     const y1 = centerY + radius * Math.sin(startAngleRad);
     const x2 = centerX + radius * Math.cos(endAngleRad);
     const y2 = centerY + radius * Math.sin(endAngleRad);
-    
+
     const largeArcFlag = angle > 180 ? 1 : 0;
-    
+
     const pathData = [
       `M ${centerX} ${centerY}`,
       `L ${x1} ${y1}`,
       `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
       'Z'
     ].join(' ');
-    
+
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', pathData);
     path.setAttribute('fill', item.color);
     path.setAttribute('class', `pie-segment pie-${item.label}`);
     path.setAttribute('stroke', 'var(--bg-card)');
     path.setAttribute('stroke-width', '2');
-    
+
     pieChartEl.appendChild(path);
-    
+
     currentAngle = endAngle;
   });
 
@@ -22695,7 +22652,7 @@ async function updateUserProfilePicture() {
   if (!profilePictureEl) return;
 
   const profilePicturePath = state.profile?.profile_picture_path;
-  
+
   if (profilePicturePath) {
     // Get signed URL for profile picture from profile pictures bucket
     const url = await getFileUrl(profilePicturePath, PROFILE_PICTURES_BUCKET);
@@ -22902,7 +22859,7 @@ async function handleEditAccountSubmit(e) {
   // Handle profile picture upload
   if (uploadInput?.files?.[0]) {
     const file = uploadInput.files[0];
-    
+
     // Delete old picture if it exists
     if (profilePicturePath) {
       await deleteFileFromSupabase(profilePicturePath, PROFILE_PICTURES_BUCKET);
@@ -23008,7 +22965,7 @@ async function handleAccountPasswordReset() {
 
   const email = state.session.user.email;
   const resetBtn = el("btn-reset-password");
-  
+
   if (!resetBtn) return;
 
   // Disable button and show loading state
@@ -23031,7 +22988,7 @@ async function handleAccountPasswordReset() {
 
     console.log('✅ Password reset email sent successfully to:', email);
     toastSuccess("Password reset email sent! Please check your inbox and follow the instructions to reset your password.");
-    
+
     // Re-enable button
     resetBtn.disabled = false;
     resetBtn.innerHTML = originalText;
