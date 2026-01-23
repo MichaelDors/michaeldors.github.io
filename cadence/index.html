@@ -28,34 +28,34 @@
   <meta property="og:url" content="https://michaeldors.com/cadence" />
 
   <script>
-    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group identify setPersonProperties setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags resetGroups onFeatureFlags addFeatureFlagsHandler onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    !function (t, e) { var o, n, p, r; e.__SV || (window.posthog = e, e._i = [], e.init = function (i, s, a) { function g(t, e) { var o = e.split("."); 2 == o.length && (t = t[o[0]], e = o[1]), t[e] = function () { t.push([e].concat(Array.prototype.slice.call(arguments, 0))) } } (p = t.createElement("script")).type = "text/javascript", p.async = !0, p.src = s.api_host.replace(".i.posthog.com", "-assets.i.posthog.com") + "/static/array.js", (r = t.getElementsByTagName("script")[0]).parentNode.insertBefore(p, r); var u = e; for (void 0 !== a ? u = e[a] = [] : a = "posthog", u.people = u.people || [], u.toString = function (t) { var e = "posthog"; return "posthog" !== a && (e += "." + a), t || (e += " (stub)"), e }, u.people.toString = function () { return u.toString(1) + ".people (stub)" }, o = "init capture register register_once register_for_session unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group identify setPersonProperties setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags resetGroups onFeatureFlags addFeatureFlagsHandler onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep".split(" "), n = 0; n < o.length; n++)g(u, o[n]); e._i.push([i, s, a]) }, e.__SV = 1) }(document, window.posthog || []);
     posthog.init('phc_ki3tgfxMI9num84CiDrln5HqCkLV1xoSNoDkxvEVBTG', {
-        api_host: 'https://us.i.posthog.com',
-        loaded: function(posthogInstance) {
-          console.log('✅ PostHog loaded and ready');
-          console.log('PostHog instance:', posthogInstance);
-          console.log('PostHog capture available:', typeof posthogInstance?.capture);
-          window.posthogReady = true;
-          
-          // Test capture immediately
-          try {
-            posthogInstance.capture('posthog_test_loaded', { test: true });
-            console.log('✅ PostHog test event sent');
-          } catch (e) {
-            console.error('❌ PostHog test capture failed:', e);
-          }
-          
-          // Flush any queued events (function will be available after app.js loads)
-          setTimeout(() => {
-            if (typeof window.flushPostHogQueue === 'function') {
-              window.flushPostHogQueue();
-            }
-          }, 100);
+      api_host: 'https://us.i.posthog.com',
+      loaded: function (posthogInstance) {
+        console.log('✅ PostHog loaded and ready');
+        console.log('PostHog instance:', posthogInstance);
+        console.log('PostHog capture available:', typeof posthogInstance?.capture);
+        window.posthogReady = true;
+
+        // Test capture immediately
+        try {
+          posthogInstance.capture('posthog_test_loaded', { test: true });
+          console.log('✅ PostHog test event sent');
+        } catch (e) {
+          console.error('❌ PostHog test capture failed:', e);
         }
+
+        // Flush any queued events (function will be available after app.js loads)
+        setTimeout(() => {
+          if (typeof window.flushPostHogQueue === 'function') {
+            window.flushPostHogQueue();
+          }
+        }, 100);
+      }
     });
     // Mark PostHog as initializing
     window.posthogReady = false;
-    
+
     // Debug: Check PostHog state after a delay
     setTimeout(() => {
       console.log('🔍 PostHog state check:', {
@@ -65,7 +65,7 @@
         posthog: window.posthog
       });
     }, 2000);
-</script>
+  </script>
 </head>
 
 <body>
@@ -78,8 +78,10 @@
       <div id="user-info" class="user-info hidden">
         <span id="user-name"></span>
         <div id="account-switcher" style="margin-right: 0.5rem; position: relative;">
-          <button id="btn-account-menu" class="btn ghost small" style="padding: 0; width: 40px; height: 40px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-            <div id="user-profile-picture" class="user-profile-picture" style="width: 100%; height: 100%; border-radius: 50%; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 500; color: var(--text-secondary); text-transform: uppercase;">
+          <button id="btn-account-menu" class="btn ghost small"
+            style="padding: 0; width: 40px; height: 40px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            <div id="user-profile-picture" class="user-profile-picture"
+              style="width: 100%; height: 100%; border-radius: 50%; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 500; color: var(--text-secondary); text-transform: uppercase;">
               <i class="fa-solid fa-user-circle" style="font-size: 1.5rem;"></i>
             </div>
           </button>
@@ -125,21 +127,20 @@
                   title="Purple">
                 </div>
 
-                  <div class="color-circle" onclick="setTheme('sunset')"
-                    style="background: linear-gradient(135deg, #2e1065 0%, #fb923c 100%);" title="Sunset">
-                  </div>
-                  <div class="color-circle" onclick="setTheme('forest')"
-                    style="background: linear-gradient(135deg, #052e16 0%, #4ade80 100%);" title="Forest">
-                  </div>
-                  <div class="color-circle" onclick="setTheme('ocean')"
-                    style="background: linear-gradient(135deg, #0f172a 0%, #00e5ff 100%);" title="Ocean">
-                  </div>
-                  <div class="color-circle" onclick="setTheme('midnight')"
-                    style="background: linear-gradient(135deg, #020617 0%, #818cf8 100%);" title="Midnight">
-                  </div>
-                  <div class="color-circle" onclick="setTheme('classic')"
-                    style="background: linear-gradient(135deg, #000000 0%, #dcff51 100%);"
-                    title="Classic">
+                <div class="color-circle" onclick="setTheme('sunset')"
+                  style="background: linear-gradient(135deg, #2e1065 0%, #fb923c 100%);" title="Sunset">
+                </div>
+                <div class="color-circle" onclick="setTheme('forest')"
+                  style="background: linear-gradient(135deg, #052e16 0%, #4ade80 100%);" title="Forest">
+                </div>
+                <div class="color-circle" onclick="setTheme('ocean')"
+                  style="background: linear-gradient(135deg, #0f172a 0%, #00e5ff 100%);" title="Ocean">
+                </div>
+                <div class="color-circle" onclick="setTheme('midnight')"
+                  style="background: linear-gradient(135deg, #020617 0%, #818cf8 100%);" title="Midnight">
+                </div>
+                <div class="color-circle" onclick="setTheme('classic')"
+                  style="background: linear-gradient(135deg, #000000 0%, #dcff51 100%);" title="Classic">
                 </div>
               </div>
 
@@ -425,7 +426,7 @@
                   class="fa-solid fa-print"></i>
                 Print</button>
               <button id="btn-pin-set-detail" class="btn primary ripple-btn" type="button"><i
-                  class="fa-regular fa-thumbtack"></i>
+                  class="fa-solid fa-thumbtack"></i>
                 Pin</button>
               <button id="btn-publish-set-detail" class="btn primary hidden ripple-btn" type="button"><i
                   class="fa-solid fa-eye"></i>
@@ -669,7 +670,8 @@
           </label>
         </div>
 
-        <div id="set-publish-section" class="hidden" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+        <div id="set-publish-section" class="hidden"
+          style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
             <div style="flex: 1;">
               <p style="margin: 0; font-weight: 500;">Publishing Status</p>
@@ -978,7 +980,8 @@
         </div>
         <div id="song-links-list"></div>
         <div class="modal-actions">
-          <button type="button" class="btn ghost" id="delete-song-from-edit-modal" style="display: none;">Delete</button>
+          <button type="button" class="btn ghost" id="delete-song-from-edit-modal"
+            style="display: none;">Delete</button>
           <div style="display: flex; gap: 0.5rem; margin-left: auto;">
             <button type="button" class="btn ghost" id="cancel-song-edit">Cancel</button>
             <button type="submit" class="btn primary">Save</button>
@@ -1134,12 +1137,14 @@
           <input type="checkbox" id="team-require-publish" class="custom-checkbox" />
           <span>Require sets to be published before visible to members</span>
         </label>
-        <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">When enabled, sets must be published by owners/managers before they're visible to other team members.</p>
+        <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">When enabled, sets must be
+          published by owners/managers before they're visible to other team members.</p>
         <label class="custom-checkbox-label">
           <input type="checkbox" id="team-itunes-indexing-enabled" class="custom-checkbox" />
           <span>Enable iTunes indexing for song metadata</span>
         </label>
-        <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">When disabled, background iTunes metadata indexing will not run for this team.</p>
+        <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">When disabled, background iTunes
+          metadata indexing will not run for this team.</p>
         <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
           <button type="button" class="btn ghost" id="btn-delete-team-settings"
             style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Team</button>
@@ -1162,73 +1167,76 @@
       </header>
       <form id="edit-account-form" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
         <div style="flex: 1; overflow-y: auto; padding-right: 0.5rem; margin-right: -0.5rem;">
-        <label style="margin-bottom: 2rem;">
-          Profile Picture
-          <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
-            <div id="profile-picture-preview" class="profile-picture-preview" style="width: 64px; height: 64px; border-radius: 50%; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 500; color: var(--text-secondary); border: 2px solid var(--border-color); text-transform: uppercase; position: relative; overflow: hidden; flex-shrink: 0;">
-              <!-- Profile picture or initials will be displayed here -->
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1;">
-              <label for="profile-picture-upload" class="btn secondary small" style="cursor: pointer; width: fit-content; margin: 0; display: inline-flex !important; align-items: center !important; gap: 0.5rem; flex-direction: row !important;">
-                <i class="fa-solid fa-upload"></i>
-                <span>Upload Photo</span>
-              </label>
-              <input type="file" id="profile-picture-upload" accept="image/*" style="display: none;">
-              <button type="button" id="btn-remove-profile-picture" class="btn ghost small" style="display: none; color: var(--error-color); width: fit-content; margin: 0; display: inline-flex !important; align-items: center !important; gap: 0.5rem; flex-direction: row;">
-                <i class="fa-solid fa-trash"></i>
-                <span>Remove</span>
-              </button>
-            </div>
-          </div>
-        </label>
-        <label>
-          Full Name
-          <input type="text" id="edit-account-name-input" placeholder="Enter your name" required autocomplete="off" />
-        </label>
-
-        <div class="section-header" style="margin-top: 1.5rem;">
-          <h4>Security</h4>
-        </div>
-        <div class="security-section">
-          <div class="security-item">
-            <div>
-              <div class="security-title" style="display: flex; align-items: center; gap: 0.5rem;">
-                <span id="mfa-status-badge" class="badge hidden"
-                  style="background: var(--accent-color); font-size: 0.7rem; padding: 0.1rem 0.5rem; margin-left:0px">ENABLED</span>
-                Authenticator App (Recommended)
+          <label style="margin-bottom: 2rem;">
+            Profile Picture
+            <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+              <div id="profile-picture-preview" class="profile-picture-preview"
+                style="width: 64px; height: 64px; border-radius: 50%; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 500; color: var(--text-secondary); border: 2px solid var(--border-color); text-transform: uppercase; position: relative; overflow: hidden; flex-shrink: 0;">
+                <!-- Profile picture or initials will be displayed here -->
               </div>
-              <div class="security-description">Secure your account with an extra layer of protection.</div>
+              <div style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1;">
+                <label for="profile-picture-upload" class="btn secondary small"
+                  style="cursor: pointer; width: fit-content; margin: 0; display: inline-flex !important; align-items: center !important; gap: 0.5rem; flex-direction: row !important;">
+                  <i class="fa-solid fa-upload"></i>
+                  <span>Upload Photo</span>
+                </label>
+                <input type="file" id="profile-picture-upload" accept="image/*" style="display: none;">
+                <button type="button" id="btn-remove-profile-picture" class="btn ghost small"
+                  style="display: none; color: var(--error-color); width: fit-content; margin: 0; display: inline-flex !important; align-items: center !important; gap: 0.5rem; flex-direction: row;">
+                  <i class="fa-solid fa-trash"></i>
+                  <span>Remove</span>
+                </button>
+              </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <button type="button" id="btn-setup-totp" class="btn secondary small">Setup</button>
-              <button type="button" id="btn-manage-totp" class="btn secondary small hidden">Disable</button>
+          </label>
+          <label>
+            Full Name
+            <input type="text" id="edit-account-name-input" placeholder="Enter your name" required autocomplete="off" />
+          </label>
+
+          <div class="section-header" style="margin-top: 1.5rem;">
+            <h4>Security</h4>
+          </div>
+          <div class="security-section">
+            <div class="security-item">
+              <div>
+                <div class="security-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span id="mfa-status-badge" class="badge hidden"
+                    style="background: var(--accent-color); font-size: 0.7rem; padding: 0.1rem 0.5rem; margin-left:0px">ENABLED</span>
+                  Authenticator App (Recommended)
+                </div>
+                <div class="security-description">Secure your account with an extra layer of protection.</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <button type="button" id="btn-setup-totp" class="btn secondary small">Setup</button>
+                <button type="button" id="btn-manage-totp" class="btn secondary small hidden">Disable</button>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="security-section">
-          <div class="security-item">
-            <div>
-              <div class="security-title">Reset Password</div>
-              <div class="security-description">You'll receive a link to your email to create a new password.</div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <button type="button" id="btn-reset-password" class="btn secondary small">Reset</button>
+          <div class="security-section">
+            <div class="security-item">
+              <div>
+                <div class="security-title">Reset Password</div>
+                <div class="security-description">You'll receive a link to your email to create a new password.</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <button type="button" id="btn-reset-password" class="btn secondary small">Reset</button>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="section-header" style="margin-top: 1.5rem;">
-          <h4>Active Sessions</h4>
-        </div>
-        <div id="account-session-list" class="session-list">
-          <!-- Sessions will be loaded here -->
-          <div class="loading-spinner-container">
-            <div class="loading-spinner"></div>
+          <div class="section-header" style="margin-top: 1.5rem;">
+            <h4>Active Sessions</h4>
           </div>
-        </div>
-        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
-          <button type="button" class="btn ghost" id="btn-delete-account"
-            style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Account</button>
-        </div>
+          <div id="account-session-list" class="session-list">
+            <!-- Sessions will be loaded here -->
+            <div class="loading-spinner-container">
+              <div class="loading-spinner"></div>
+            </div>
+          </div>
+          <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+            <button type="button" class="btn ghost" id="btn-delete-account"
+              style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Account</button>
+          </div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn ghost" id="cancel-edit-account">Cancel</button>
@@ -1354,7 +1362,7 @@
         </div>
         <div style="display: flex; gap: 0.5rem;">
           <button class="btn small ghost pin-set-btn" title="Pin set">
-            <i class="fa-regular fa-thumbtack"></i>
+            <i class="fa-solid fa-thumbtack"></i>
           </button>
           <button class="btn small ghost edit-set-btn hidden">Edit</button>
           <button class="btn small ghost delete-set-btn hidden">Delete</button>
@@ -1656,18 +1664,18 @@
   </div>
 
   <script type="module" src="app.js"></script>
-  
+
   <!-- PostHog Debug Helper (remove in production) -->
   <script>
     // Make trackPostHogEvent available globally for testing
     window.addEventListener('load', () => {
       setTimeout(() => {
         if (typeof trackPostHogEvent === 'function') {
-          window.testPostHog = function() {
+          window.testPostHog = function () {
             console.log('🧪 Testing PostHog...');
-            trackPostHogEvent('manual_test_event', { 
+            trackPostHogEvent('manual_test_event', {
               timestamp: new Date().toISOString(),
-              test: true 
+              test: true
             });
             console.log('PostHog state:', {
               posthog: window.posthog,

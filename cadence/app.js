@@ -6112,13 +6112,13 @@ function renderSetCard(set, container, index = 0, animate = true, baseDelay = 0)
     const icon = pinBtn.querySelector("i");
     if (icon) {
       if (isPinned) {
-        icon.classList.remove("fa-regular", "fa-thumbtack");
-        icon.classList.add("fa-solid", "fa-thumbtack");
+        icon.classList.remove("fa-solid", "fa-thumbtack");
+        icon.classList.add("fa-solid", "fa-thumbtack-slash");
         pinBtn.title = "Unpin set";
         pinBtn.classList.add("pinned");
       } else {
-        icon.classList.remove("fa-solid", "fa-thumbtack");
-        icon.classList.add("fa-regular", "fa-thumbtack");
+        icon.classList.remove("fa-solid", "fa-thumbtack-slash");
+        icon.classList.add("fa-solid", "fa-thumbtack");
         pinBtn.title = "Pin set";
         pinBtn.classList.remove("pinned");
       }
