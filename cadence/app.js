@@ -17231,7 +17231,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
           selectedChartItems.push({
             __resourceType: "chart",
             title: "Chord Chart",
-            subtitle: `Key: ${selectedKey} • Read-only (auto-generated)`,
+            subtitle: `Key: ${selectedKey}`,
             songId: songWithLinks.id,
             songTitle: songWithLinks.title || "",
             scope: "key",
@@ -17341,7 +17341,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             keyChartItems.push({
               __resourceType: "chart",
               title: "Chord Chart",
-              subtitle: `Key: ${key} • Read-only (auto-generated)`,
+              subtitle: `Key: ${key}`,
               songId: songWithLinks.id,
               songTitle: songWithLinks.title || "",
               scope: "key",
@@ -19749,8 +19749,20 @@ function updateServiceLengthDisplay(set) {
 }
 
 function renderSetPrintPreview(set) {
-  const container = el("print-set-content");
-  if (!container || !set) return;
+  const wrapper = el("print-set-container");
+  let container = el("print-set-content");
+
+  if (!wrapper) return;
+
+  // Robustness check: recreate content div if it went missing
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "print-set-content";
+    container.className = "print-set-content";
+    wrapper.appendChild(container);
+  }
+
+  if (!set) return;
 
   const sortedSetSongs = (set.set_songs || []).slice().sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
   const totalSeconds = calculateServiceLengthSeconds(set);
@@ -19915,6 +19927,14 @@ function renderSetPrintPreview(set) {
 function openPrintSet(set) {
   const wrapper = el("print-set-container");
   if (!wrapper || !set) return;
+
+  // Ensure chart container is empty
+  const chartWrapper = el("print-chart-container");
+  if (chartWrapper) {
+    const chartContent = el("print-chart-content");
+    if (chartContent) chartContent.innerHTML = "";
+    chartWrapper.setAttribute("aria-hidden", "true");
+  }
 
   renderSetPrintPreview(set);
   // Keep it visually hidden on screen; print styles will reveal it
@@ -20202,7 +20222,7 @@ async function renderSongLinksDisplay(links, container) {
 
       const subtitle = document.createElement("div");
       subtitle.className = "song-link-url";
-      subtitle.textContent = link.subtitle || (link.readOnly ? "Read-only (auto-generated)" : "View");
+      subtitle.textContent = (link.subtitle || "View") + (link.readOnly ? " • Read-only (auto-generated)" : "");
 
       content.appendChild(title);
       content.appendChild(subtitle);
@@ -21152,7 +21172,7 @@ function openChordChartViewerFromResource(resource) {
   }
 
   if (titleEl) titleEl.textContent = resource.title || "Chord Chart";
-  if (subtitleEl) subtitleEl.textContent = subtitle;
+  if (subtitleEl) subtitleEl.textContent = subtitle + (readOnly ? " • Read-only (auto-generated)" : "");
 
   state.chordCharts.active = {
     mode: "viewer",
@@ -21218,12 +21238,25 @@ function closeChordChartEditor() {
 
 function renderChartToPrintContainer({ songTitle, subtitle, doc, layout }) {
   const wrapper = el("print-chart-container");
-  const content = el("print-chart-content");
-  if (!wrapper || !content) return false;
+  let content = el("print-chart-content");
+
+  if (!wrapper) return false;
+
+  // Robustness check: recreate content div if it went missing
+  if (!content) {
+    content = document.createElement("div");
+    content.id = "print-chart-content";
+    content.className = "print-chart-content";
+    wrapper.appendChild(content);
+  }
 
   // Ensure the set print container won't show during chart printing
   const setWrapper = el("print-set-container");
-  if (setWrapper) setWrapper.setAttribute("aria-hidden", "true");
+  if (setWrapper) {
+    const setContent = el("print-set-content");
+    if (setContent) setContent.innerHTML = "";
+    setWrapper.setAttribute("aria-hidden", "true");
+  }
 
   // renderChartDocIntoPage handles pagination and renders pages directly into content
   content.innerHTML = "";
