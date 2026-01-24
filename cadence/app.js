@@ -14979,7 +14979,7 @@ async function renderSongCatalog(animate = true) {
     if (bpmStr) {
       highlightedBpm = searchTerm && bpmStr.includes(searchTerm) ? `<span>BPM: ${highlightMatch(bpmStr, searchTerm)}</span>` : `<span>BPM: ${bpmStr}</span>`;
     } else if (song.suggested_bpm) {
-      highlightedBpm = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested BPM">BPM: ${song.suggested_bpm}?</span>`;
+      highlightedBpm = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested BPM">BPM: ${song.suggested_bpm}</span>`;
     }
 
     // Only use keys from the song itself (song_keys relationship), remove duplicates
@@ -14989,7 +14989,7 @@ async function renderSongCatalog(animate = true) {
     if (keys) {
       highlightedKey = searchTerm && keys.toLowerCase().includes(searchTermLower) ? `<span>Key: ${highlightMatch(keys, searchTerm)}</span>` : `<span>Key: ${keys}</span>`;
     } else if (song.suggested_song_key) {
-      highlightedKey = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested Key">Key: ${song.suggested_song_key}?</span>`;
+      highlightedKey = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested Key">Key: ${song.suggested_song_key}</span>`;
     }
 
     const timeStr = song.time_signature || "";
@@ -14997,7 +14997,7 @@ async function renderSongCatalog(animate = true) {
     if (timeStr) {
       highlightedTime = searchTerm && timeStr.toLowerCase().includes(searchTermLower) ? `<span>Time: ${highlightMatch(timeStr, searchTerm)}</span>` : `<span>Time: ${escapeHtml(timeStr)}</span>`;
     } else if (song.suggested_time_signature) {
-      highlightedTime = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested Time Signature">Time: ${song.suggested_time_signature}?</span>`;
+      highlightedTime = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested Time Signature">Time: ${song.suggested_time_signature}</span>`;
     }
 
     const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
@@ -15006,7 +15006,7 @@ async function renderSongCatalog(animate = true) {
       highlightedDuration = searchTerm && durationStr.toLowerCase().includes(searchTermLower) ? `<span>Duration: ${highlightMatch(durationStr, searchTerm)}</span>` : `<span>Duration: ${durationStr}</span>`;
     } else if (song.suggested_duration) {
       const suggDur = formatDuration(song.suggested_duration);
-      highlightedDuration = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested Duration">Duration: ${suggDur}?</span>`;
+      highlightedDuration = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested Duration">Duration: ${suggDur}</span>`;
     }
 
     div.innerHTML = `
@@ -17191,7 +17191,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
           </div>` : ''}
           ${(!hasKeys && songWithResources.suggested_song_key) ? `<div class="detail-item">
             <span class="detail-label">Key</span>
-            <span class="detail-value" style="color: var(--text-muted); font-style: italic;" title="Suggested">${escapeHtml(songWithResources.suggested_song_key)}?</span>
+            <span class="detail-value" style="color: var(--text-muted); font-style: italic;" title="Suggested">${escapeHtml(songWithResources.suggested_song_key)}</span>
           </div>` : ''}
           ${selectedKey && !isSingleKeyMatch ? `<div class="detail-item">
             <span class="detail-label">Selected Key</span>
@@ -17199,11 +17199,11 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
           </div>` : ''}
           ${songWithResources.time_signature || songWithResources.suggested_time_signature ? `<div class="detail-item">
             <span class="detail-label">Time Signature</span>
-            <span class="detail-value">${escapeHtml(songWithResources.time_signature) || `<span style="color: var(--text-muted); font-style: italic;" title="Suggested">${escapeHtml(songWithResources.suggested_time_signature)}?</span>`}</span>
+            <span class="detail-value">${escapeHtml(songWithResources.time_signature) || `<span style="color: var(--text-muted); font-style: italic;" title="Suggested">${escapeHtml(songWithResources.suggested_time_signature)}</span>`}</span>
           </div>` : ''}
           ${songWithResources.duration_seconds || songWithResources.suggested_duration ? `<div class="detail-item">
             <span class="detail-label">Duration</span>
-            <span class="detail-value">${songWithResources.duration_seconds ? formatDuration(songWithResources.duration_seconds) : `<span style="color: var(--text-muted); font-style: italic;" title="Suggested">${formatDuration(songWithResources.suggested_duration)}?</span>`}</span>
+            <span class="detail-value">${songWithResources.duration_seconds ? formatDuration(songWithResources.duration_seconds) : `<span style="color: var(--text-muted); font-style: italic;" title="Suggested">${formatDuration(songWithResources.suggested_duration)}</span>`}</span>
           </div>` : ''}
             </div>
           </div>
@@ -17234,7 +17234,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         
        ${(songWithResources.suggested_bpm || songWithResources.suggested_song_key || songWithResources.suggested_duration) ? `
         <div style="text-align: right; margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-muted);">
-           Data powered by <a href="https://getsongbpm.com" target="_blank" rel="noopener noreferrer" style="color: inherit;">GetSongBPM</a>
+           Some data provided by <a href="https://getsongbpm.com" target="_blank" rel="noopener noreferrer" style="color: inherit;">GetSongBPM</a>
         </div>
        ` : ''}
 
