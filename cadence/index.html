@@ -562,7 +562,10 @@
           </div>
         </div>
         <div class="chart-modal-header-right">
-          <button type="button" id="btn-chart-viewer-export" class="btn secondary small">
+          <button type="button" id="btn-chart-viewer-edit" class="btn secondary small hidden">
+            <i class="fa-solid fa-pen"></i> Edit
+          </button>
+          <button type="button" id="btn-chart-viewer-export" class="btn primary small">
             <i class="fa-solid fa-print"></i> Print / Export PDF
           </button>
         </div>
@@ -987,6 +990,10 @@
             <button type="submit" class="btn primary">Save</button>
           </div>
         </div>
+        <p class="muted small-text" style="text-align: right; margin-top: 0.5rem; font-size: 0.7rem;">
+          Some data provided by <a href="https://getsongbpm.com" target="_blank" rel="noopener noreferrer"
+            style="color: inherit;">GetSongBPM</a>
+        </p>
       </form>
     </div>
   </div>
@@ -1662,6 +1669,8 @@
       <button id="database-error-retry" class="btn primary">Retry Connection</button>
     </div>
   </div>
+
+
 
   <script type="module" src="app.js"></script>
 

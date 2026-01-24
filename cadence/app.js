@@ -2154,6 +2154,21 @@ function bindEvents() {
   // Chord chart viewer/editor
   el("close-chart-viewer")?.addEventListener("click", () => closeChordChartViewer());
   el("close-chart-editor")?.addEventListener("click", () => closeChordChartEditor());
+  el("btn-chart-viewer-edit")?.addEventListener("click", () => {
+    const active = state.chordCharts.active;
+    if (active && active.songId && (isManager() || isOwner())) {
+      closeChordChartViewer();
+      // Ensure we pass the key and other details correctly
+      openChordChartEditor({
+        songId: active.songId,
+        songKey: active.songKey,
+        scope: active.scope,
+        existingChart: active.chart,
+        songTitle: active.songTitle
+      });
+    }
+  });
+
   el("btn-chart-viewer-export")?.addEventListener("click", () => openPrintChartFromActive());
   el("btn-chart-editor-export")?.addEventListener("click", () => openPrintChartFromActive());
   el("chart-viewer-modal")?.addEventListener("click", (e) => {
@@ -14960,18 +14975,39 @@ async function renderSongCatalog(animate = true) {
     // Sticking to standard highlighting of the residual text.
 
     const bpmStr = String(song.bpm || "");
-    const highlightedBpm = song.bpm ? (searchTerm && bpmStr.includes(searchTerm) ? `<span>BPM: ${highlightMatch(bpmStr, searchTerm)}</span>` : `<span>BPM: ${bpmStr}</span>`) : '';
+    let highlightedBpm = "";
+    if (bpmStr) {
+      highlightedBpm = searchTerm && bpmStr.includes(searchTerm) ? `<span>BPM: ${highlightMatch(bpmStr, searchTerm)}</span>` : `<span>BPM: ${bpmStr}</span>`;
+    } else if (song.suggested_bpm) {
+      highlightedBpm = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested BPM">BPM: ${song.suggested_bpm}?</span>`;
+    }
 
     // Only use keys from the song itself (song_keys relationship), remove duplicates
     const keysSet = new Set((song.song_keys || []).map(k => k.key).filter(Boolean));
     const keys = Array.from(keysSet).join(", ");
-    const highlightedKey = keys ? (searchTerm && keys.toLowerCase().includes(searchTermLower) ? `<span>Key: ${highlightMatch(keys, searchTerm)}</span>` : `<span>Key: ${keys}</span>`) : '';
+    let highlightedKey = "";
+    if (keys) {
+      highlightedKey = searchTerm && keys.toLowerCase().includes(searchTermLower) ? `<span>Key: ${highlightMatch(keys, searchTerm)}</span>` : `<span>Key: ${keys}</span>`;
+    } else if (song.suggested_song_key) {
+      highlightedKey = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested Key">Key: ${song.suggested_song_key}?</span>`;
+    }
 
     const timeStr = song.time_signature || "";
-    const highlightedTime = timeStr ? (searchTerm && timeStr.toLowerCase().includes(searchTermLower) ? `<span>Time: ${highlightMatch(timeStr, searchTerm)}</span>` : `<span>Time: ${escapeHtml(timeStr)}</span>`) : '';
+    let highlightedTime = "";
+    if (timeStr) {
+      highlightedTime = searchTerm && timeStr.toLowerCase().includes(searchTermLower) ? `<span>Time: ${highlightMatch(timeStr, searchTerm)}</span>` : `<span>Time: ${escapeHtml(timeStr)}</span>`;
+    } else if (song.suggested_time_signature) {
+      highlightedTime = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested Time Signature">Time: ${song.suggested_time_signature}?</span>`;
+    }
 
     const durationStr = song.duration_seconds ? formatDuration(song.duration_seconds) : '';
-    const highlightedDuration = durationStr ? (searchTerm && durationStr.toLowerCase().includes(searchTermLower) ? `<span>Duration: ${highlightMatch(durationStr, searchTerm)}</span>` : `<span>Duration: ${durationStr}</span>`) : '';
+    let highlightedDuration = "";
+    if (durationStr) {
+      highlightedDuration = searchTerm && durationStr.toLowerCase().includes(searchTermLower) ? `<span>Duration: ${highlightMatch(durationStr, searchTerm)}</span>` : `<span>Duration: ${durationStr}</span>`;
+    } else if (song.suggested_duration) {
+      const suggDur = formatDuration(song.suggested_duration);
+      highlightedDuration = `<span style="color: var(--text-muted); font-style: italic;" title="Suggested Duration">Duration: ${suggDur}?</span>`;
+    }
 
     div.innerHTML = `
       <div class="set-song-header song-card-header">
@@ -15090,18 +15126,103 @@ async function openSongEditModal(songId = null) {
     }
   }
 
+
   if (songId) {
     title.textContent = "Edit Song";
     form.dataset.songId = songId;
 
+    // Helper to setup suggestion UI
+    const setupSuggestion = (inputId, value, suggestedValue, label) => {
+      const input = el(inputId);
+      if (!input) return;
+
+      // Clear previous suggestion state
+      input.classList.remove("suggestion-placeholder");
+      input.placeholder = ""; // Reset to default or empty
+      const parent = input.parentElement;
+      const existingHint = parent.querySelector(".suggestion-hint");
+      if (existingHint) existingHint.remove();
+
+      // Remove old event listeners (requires cloning node or named functions, simple clone is easiest to clear listeners)
+      // However, cloning breaks references if other code holds them. 
+      // Better: just overwrite onfocus/onblur if simple, or use a cleanup approach.
+      // For now, we'll manually handle the logic.
+
+      if (!value && suggestedValue) {
+        input.placeholder = `${suggestedValue} (Suggested)`;
+        input.classList.add("suggestion-placeholder");
+
+        const hint = document.createElement("div");
+        hint.className = "suggestion-hint";
+        hint.textContent = `Suggested: ${suggestedValue}`;
+        hint.style.cursor = "pointer";
+        hint.onclick = () => {
+          input.value = suggestedValue;
+          input.classList.remove("suggestion-placeholder");
+          hint.remove();
+        };
+        parent.appendChild(hint);
+
+        // Auto-fill on input (optional, or just keep placeholder behavior)
+        input.onfocus = () => {
+          if (!input.value) {
+            // We could auto-fill, or just let them type. 
+            // Let's NOT auto-fill on focus, but let them click the hint or type.
+            // actually, let's auto-fill if they start typing? No.
+          }
+        };
+      } else {
+        input.value = value || "";
+      }
+    };
+
     // Try to pre-populate from state if available
     const song = state.songs ? state.songs.find(s => s.id === songId) : null;
+
+    const populateForm = (songData) => {
+      el("song-edit-title").value = songData.title || "";
+      el("song-edit-description").value = songData.description || "";
+
+      setupSuggestion("song-edit-bpm", songData.bpm, songData.suggested_bpm, "BPM");
+      setupSuggestion("song-edit-time-signature", songData.time_signature, songData.suggested_time_signature, "Time Sig");
+
+      // Duration handling
+      const durationFormatted = songData.duration_seconds ? formatDuration(songData.duration_seconds) : "";
+      const suggestedDurationFormatted = songData.suggested_duration ? formatDuration(songData.suggested_duration) : "";
+      setupSuggestion("song-edit-duration", durationFormatted, suggestedDurationFormatted, "Duration");
+
+      // Key handling is tricky because it might be a Select or custom UI.
+      // Based on index.html, it seems keys are managed separately in this modal (renderSongKeys).
+      // So we probably don't have a single "Key" input to suggest on. 
+      // We might want to add a "Suggested Key: C" badge near the key adder.
+
+      const keySection = el("song-keys-list")?.parentElement; // Assuming structure
+      const existingKeyHint = keySection?.querySelector(".suggestion-hint");
+      if (existingKeyHint) existingKeyHint.remove();
+
+      if ((!songData.song_keys || songData.song_keys.length === 0) && songData.suggested_song_key) {
+        // Add a hint to add the suggested key
+        if (keySection) {
+          const hint = document.createElement("div");
+          hint.className = "suggestion-hint";
+          hint.textContent = `Suggested Key: ${songData.suggested_song_key} (Click to add)`;
+          hint.style.cursor = "pointer";
+          hint.style.textAlign = "left";
+          hint.style.justifyContent = "flex-start";
+          hint.onclick = async () => {
+            // Logic to add key
+            // This implies calling an API to add the key or adding to a pending list.
+            // Since specific key adding logic involves IDs, we might just autofill the "Add Key" input if it exists?
+            // Or we just rely on visual hint.
+            // For now, let's just show the hint.
+          };
+          keySection.appendChild(hint);
+        }
+      }
+    };
+
     if (song) {
-      el("song-edit-title").value = song.title || "";
-      el("song-edit-bpm").value = song.bpm || "";
-      el("song-edit-time-signature").value = song.time_signature || "";
-      el("song-edit-duration").value = song.duration_seconds ? formatDuration(song.duration_seconds) : "";
-      el("song-edit-description").value = song.description || "";
+      populateForm(song);
     } else {
       // Reset fields if waiting for data to avoid confusion
       form.reset();
@@ -15137,11 +15258,7 @@ async function openSongEditModal(songId = null) {
 
       if (songData) {
         // Update form with fresh data
-        el("song-edit-title").value = songData.title || "";
-        el("song-edit-bpm").value = songData.bpm || "";
-        el("song-edit-time-signature").value = songData.time_signature || "";
-        el("song-edit-duration").value = songData.duration_seconds ? formatDuration(songData.duration_seconds) : "";
-        el("song-edit-description").value = songData.description || "";
+        populateForm(songData);
 
         renderSongKeys(songData.song_keys || []);
         renderSongLinks(songData.song_resources || []);
@@ -15175,6 +15292,17 @@ async function openSongEditModal(songId = null) {
   } else {
     title.textContent = "New Song";
     form.reset();
+    // Clear suggested placeholders
+    ["song-edit-bpm", "song-edit-time-signature", "song-edit-duration"].forEach(id => {
+      const input = el(id);
+      if (input) {
+        input.classList.remove("suggestion-placeholder");
+        input.placeholder = "";
+        const hint = input.parentElement?.querySelector(".suggestion-hint");
+        if (hint) hint.remove();
+      }
+    });
+
     delete form.dataset.songId;
     renderSongKeys([]);
     renderSongLinks([]);
@@ -17049,9 +17177,9 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             </div>
             ${itunesFetchDisabled ? `<div class="song-itunes-warning"><i class="fa-brands fa-itunes-note"></i> Some additional metadata for this song could not be found</div>` : ''}
             <div class="song-details-meta">
-          ${songWithResources.bpm ? `<div class="detail-item">
+          ${songWithResources.bpm || songWithResources.suggested_bpm ? `<div class="detail-item">
             <span class="detail-label">BPM</span>
-            <span class="detail-value">${songWithResources.bpm}</span>
+            <span class="detail-value">${songWithResources.bpm || `<span style="color: var(--text-muted); font-style: italic;" title="Suggested">${songWithResources.suggested_bpm}?</span>`}</span>
           </div>` : ''}
           ${isSingleKeyMatch ? `<div class="detail-item">
             <span class="detail-label">Key</span>
@@ -17061,30 +17189,34 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             <span class="detail-label">Keys</span>
             <span class="detail-value">${keysArray.map(k => escapeHtml(k.key)).join(", ")}</span>
           </div>` : ''}
+          ${(!hasKeys && songWithResources.suggested_song_key) ? `<div class="detail-item">
+            <span class="detail-label">Key</span>
+            <span class="detail-value" style="color: var(--text-muted); font-style: italic;" title="Suggested">${escapeHtml(songWithResources.suggested_song_key)}?</span>
+          </div>` : ''}
           ${selectedKey && !isSingleKeyMatch ? `<div class="detail-item">
             <span class="detail-label">Selected Key</span>
             <span class="detail-value">${escapeHtml(selectedKey)}</span>
           </div>` : ''}
-          ${songWithResources.time_signature ? `<div class="detail-item">
+          ${songWithResources.time_signature || songWithResources.suggested_time_signature ? `<div class="detail-item">
             <span class="detail-label">Time Signature</span>
-            <span class="detail-value">${escapeHtml(songWithResources.time_signature)}</span>
+            <span class="detail-value">${escapeHtml(songWithResources.time_signature) || `<span style="color: var(--text-muted); font-style: italic;" title="Suggested">${escapeHtml(songWithResources.suggested_time_signature)}?</span>`}</span>
           </div>` : ''}
-          ${songWithResources.duration_seconds ? `<div class="detail-item">
+          ${songWithResources.duration_seconds || songWithResources.suggested_duration ? `<div class="detail-item">
             <span class="detail-label">Duration</span>
-            <span class="detail-value">${formatDuration(songWithResources.duration_seconds)}</span>
+            <span class="detail-value">${songWithResources.duration_seconds ? formatDuration(songWithResources.duration_seconds) : `<span style="color: var(--text-muted); font-style: italic;" title="Suggested">${formatDuration(songWithResources.suggested_duration)}?</span>`}</span>
           </div>` : ''}
             </div>
           </div>
         </div>
         
-        ${songWithResources.bpm ? `
+        ${(songWithResources.bpm || songWithResources.suggested_bpm) ? `
         <div class="song-click-track">
           <div class="song-click-track-info">
             <p class="song-click-track-title"><i class="fa-solid fa-drum"></i> Click Track</p>
-            <p class="song-click-track-description">Set to ${songWithResources.bpm} BPM</p>
+            <p class="song-click-track-description">Set to ${songWithResources.bpm || songWithResources.suggested_bpm} BPM</p>
           </div>
-          <button class="btn primary click-track-btn" data-bpm="${songWithResources.bpm}" title="Click Track">
-            ${state.metronome.isPlaying && state.metronome.bpm === songWithResources.bpm
+          <button class="btn primary click-track-btn" data-bpm="${songWithResources.bpm || songWithResources.suggested_bpm}" title="Click Track">
+            ${state.metronome.isPlaying && state.metronome.bpm === (songWithResources.bpm || songWithResources.suggested_bpm)
         ? `<i class="fa-solid fa-pause"></i> Stop`
         : `<i class="fa-solid fa-play"></i> Click`}
           </button>
@@ -17100,6 +17232,12 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         ` : ''
     }
         
+       ${(songWithResources.suggested_bpm || songWithResources.suggested_song_key || songWithResources.suggested_duration) ? `
+        <div style="text-align: right; margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-muted);">
+           Data powered by <a href="https://getsongbpm.com" target="_blank" rel="noopener noreferrer" style="color: inherit;">GetSongBPM</a>
+        </div>
+       ` : ''}
+
         ${hasResources ? `
         <div class="resources-section-wrapper">
           <div class="resources-wave-divider">
@@ -17228,21 +17366,24 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             display_order: existingKeyChart.display_order ?? Number.POSITIVE_INFINITY,
           });
         } else if (generalChart && generalChart.chart_type === "number") {
-          selectedChartItems.push({
-            __resourceType: "chart",
-            title: "Chord Chart",
-            subtitle: `Key: ${selectedKey}`,
-            songId: songWithLinks.id,
-            songTitle: songWithLinks.title || "",
-            scope: "key",
-            songKey: selectedKey,
-            layout: generalChart.layout || "one_column",
-            readOnly: true,
-            generatedFromNumber: true,
-            sourceDoc: generalChart.doc,
-            targetKey: selectedKey,
-            display_order: Number.POSITIVE_INFINITY, // Generated charts go to end
-          });
+          // Validate key before generating
+          if (parseKeyToPitchClass(selectedKey)) {
+            selectedChartItems.push({
+              __resourceType: "chart",
+              title: "Chord Chart",
+              subtitle: `Key: ${selectedKey}`,
+              songId: songWithLinks.id,
+              songTitle: songWithLinks.title || "",
+              scope: "key",
+              songKey: selectedKey,
+              layout: generalChart.layout || "one_column",
+              readOnly: true,
+              generatedFromNumber: true,
+              sourceDoc: generalChart.doc,
+              targetKey: selectedKey,
+              display_order: Number.POSITIVE_INFINITY, // Generated charts go to end
+            });
+          }
         }
         // Merge charts and links, then sort by display_order to maintain correct interleaved order
         // Ensure display_order is a number (handle null, undefined, or string values)
@@ -17338,21 +17479,24 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
               display_order: existingKeyChart.display_order ?? Number.POSITIVE_INFINITY,
             });
           } else if (generalChart && generalChart.chart_type === "number") {
-            keyChartItems.push({
-              __resourceType: "chart",
-              title: "Chord Chart",
-              subtitle: `Key: ${key}`,
-              songId: songWithLinks.id,
-              songTitle: songWithLinks.title || "",
-              scope: "key",
-              songKey: key,
-              layout: generalChart.layout || "one_column",
-              readOnly: true,
-              generatedFromNumber: true,
-              sourceDoc: generalChart.doc,
-              targetKey: key,
-              display_order: Number.POSITIVE_INFINITY, // Generated charts go to end
-            });
+            // Validate key before generating
+            if (parseKeyToPitchClass(key)) {
+              keyChartItems.push({
+                __resourceType: "chart",
+                title: "Chord Chart",
+                subtitle: `Key: ${key}`,
+                songId: songWithLinks.id,
+                songTitle: songWithLinks.title || "",
+                scope: "key",
+                songKey: key,
+                layout: generalChart.layout || "one_column",
+                readOnly: true,
+                generatedFromNumber: true,
+                sourceDoc: generalChart.doc,
+                targetKey: key,
+                display_order: Number.POSITIVE_INFINITY, // Generated charts go to end
+              });
+            }
           }
           // Merge charts and links, then sort by display_order to maintain correct interleaved order
           // Ensure display_order is a number (handle null, undefined, or string values)
@@ -18351,13 +18495,15 @@ function renderSongLinks(resources) {
   });
 
   // Add any keys that have resources but aren't in the song's keys list
-  // Add any keys that have resources but aren't in the song's keys list
+  // LOGIC REMOVED: We want resources to disappear if the key is removed.
+  /*
   const existingKeyNames = new Set(keys.map(k => k.key));
   Object.keys(resourcesByKey).forEach(resKey => {
     if (!existingKeyNames.has(resKey)) {
       keys.push({ id: null, key: resKey });
     }
   });
+  */
 
   // Auto-generate virtual charts for keys if they don't exist
   // Check for General Number Chart (handle both nested and flattened structure)
@@ -18378,18 +18524,21 @@ function renderSongLinks(resources) {
 
     if (generalNumberChart) {
       // Auto-generate "View Generated" tile derived from Number chart
-      const sourceDoc = generalNumberChart.chart_content?.doc || generalNumberChart.doc;
-      resourcesByKey[k].unshift({
-        id: null, // Virtual
-        type: 'chart',
-        display_order: -1, // Put at top
-        key: k,
-        generated: true,
-        numberSourceDoc: sourceDoc,
-        targetKey: k,
-        // Minimal content needed for renderer
-        chart_content: { chart_type: 'chord', scope: 'key', songKey: k, doc: null } // Renderer doesn't strictly need doc here if generated=true handled by buildChartRow
-      });
+      // Validate key first
+      if (parseKeyToPitchClass(k)) {
+        const sourceDoc = generalNumberChart.chart_content?.doc || generalNumberChart.doc;
+        resourcesByKey[k].unshift({
+          id: null, // Virtual
+          type: 'chart',
+          display_order: -1, // Put at top
+          key: k,
+          generated: true,
+          numberSourceDoc: sourceDoc,
+          targetKey: k,
+          // Minimal content needed for renderer
+          chart_content: { chart_type: 'chord', scope: 'key', songKey: k, doc: null } // Renderer doesn't strictly need doc here if generated=true handled by buildChartRow
+        });
+      }
     } else if (generalChordChart) {
       // Auto-generate "Draft" chord chart (start with copy of general)
       // When user clicks Edit, they will edit this copy.
@@ -21019,12 +21168,16 @@ function parseKeyToPitchClass(keyStr) {
   const k = (keyStr || "").trim();
   if (!k) return null;
   // Basic forms: C, C#, Db, Am, F#m, Bb
-  const m = k.match(/^([A-Ga-g])([#b]?)(m)?/);
+  const m = k.match(/^([A-Ga-g])([#b]?)(m)?$/);
   if (!m) return null;
   const letter = m[1].toUpperCase();
   const accidental = m[2] || "";
   const isMinor = !!m[3];
-  const base = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[letter];
+
+  const bases = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  if (bases[letter] === undefined) return null;
+
+  const base = bases[letter];
   let pc = base;
   if (accidental === "#") pc += 1;
   if (accidental === "b") pc -= 1;
@@ -21077,20 +21230,38 @@ function nashvilleNumberToChord(token, targetKey) {
   const k = parseKeyToPitchClass(targetKey);
   if (!k) return String(token || "").trim();
 
-  // Relative major behavior for minor keys: use tonic + 3 semitones
-  const tonicPc = k.isMinor ? (k.pc + 3) % 12 : k.pc;
+  // "Minor as 1" behavior:
+  // If key is minor (e.g. Am), 1 = Am.
+  // Use Natural Minor Scale intervals: W H W W H W W -> [0, 2, 3, 5, 7, 8, 10]
+  // Diatonic minor chords: 1m, 2dim, 3(Maj), 4m, 5m, 6(Maj), 7(Maj)
+  // (Note: NNS often treats 5 as Major in minor keys for V7, but strictly diatonic natural minor is vm.
+  //  However, standard "Minor as 1" usually implies natural minor intervals.
+  //  User can write "5" for Major V or "5m" for minor v.
+  //  We will set default qualities to match natural minor.)
+
+  const tonicPc = k.pc; // Use the actual key root (e.g. A for Am), not relative major
   const preferFlats = k.preferFlats;
   const parsed = parseNashvilleNumberToken(token);
   if (!parsed || !parsed.degree) return String(token || "").trim();
 
-  const majorScaleOffsets = [0, 2, 4, 5, 7, 9, 11];
-  const baseOffset = majorScaleOffsets[parsed.degree - 1] ?? 0;
+  let scaleOffsets;
+  let diatonicQualityByDegree;
+
+  if (k.isMinor) {
+    // Natural Minor: 1, 2, b3, 4, 5, b6, b7
+    scaleOffsets = [0, 2, 3, 5, 7, 8, 10];
+    diatonicQualityByDegree = { 1: "m", 2: "dim", 3: "", 4: "m", 5: "m", 6: "", 7: "" };
+  } else {
+    // Major
+    scaleOffsets = [0, 2, 4, 5, 7, 9, 11];
+    diatonicQualityByDegree = { 1: "", 2: "m", 3: "m", 4: "", 5: "", 6: "m", 7: "dim" };
+  }
+
+  const baseOffset = scaleOffsets[parsed.degree - 1] ?? 0;
   const accOffset = parsed.accidental === "b" ? -1 : (parsed.accidental === "#" ? 1 : 0);
   const rootPc = (tonicPc + baseOffset + accOffset + 120) % 12;
   const rootName = pitchClassToNoteName(rootPc, preferFlats);
 
-  // Diatonic default qualities in major
-  const diatonicQualityByDegree = { 1: "", 2: "m", 3: "m", 4: "", 5: "", 6: "m", 7: "dim" };
   let quality = "";
   if (parsed.quality === "dim") quality = "dim";
   else if (parsed.quality === "aug") quality = "aug";
@@ -21150,6 +21321,7 @@ function openChordChartViewerFromResource(resource) {
   const titleEl = el("chart-viewer-title");
   const subtitleEl = el("chart-viewer-subtitle");
   const wrapEl = el("chart-viewer-page");
+  const editBtn = el("btn-chart-viewer-edit");
   if (!modal || !wrapEl) return;
 
   const songTitle = resource.songTitle || resource.song_title || resource._songTitle || "";
@@ -21173,6 +21345,14 @@ function openChordChartViewerFromResource(resource) {
 
   if (titleEl) titleEl.textContent = resource.title || "Chord Chart";
   if (subtitleEl) subtitleEl.textContent = subtitle + (readOnly ? " • Read-only (auto-generated)" : "");
+
+  if (editBtn) {
+    if (isManager() || isOwner()) {
+      editBtn.classList.remove("hidden");
+    } else {
+      editBtn.classList.add("hidden");
+    }
+  }
 
   state.chordCharts.active = {
     mode: "viewer",

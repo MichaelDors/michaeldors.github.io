@@ -1699,6 +1699,22 @@ select:hover {
   border-color: var(--border-accent);
 }
 
+/* Suggestion Styles */
+.suggestion-placeholder::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.suggestion-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 0.25rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
 input:focus,
 textarea:focus,
 select:focus {
@@ -1722,7 +1738,7 @@ textarea {
   position: sticky;
   /* modal-content has 2rem padding; stick to actual bottom edge */
   bottom: -2rem;
-  z-index: 5;
+  z-index: 5000;
   background: var(--bg-card);
   border-top: 1px solid var(--border-color);
   padding-top: 1.5rem;
@@ -2057,7 +2073,7 @@ textarea {
   overflow: hidden;
 }
 
-.album-art-skeleton {
+.song-album-art-container .album-art-skeleton {
   position: absolute;
   inset: 0;
   border-radius: 1rem;
