@@ -458,6 +458,7 @@ const setsList = el("sets-list");
 const yourSetsList = el("your-sets-list");
 const setModal = el("set-modal");
 const songModal = el("song-modal");
+
 const tagModal = el("tag-modal");
 const sectionModal = el("section-modal");
 const sectionHeaderModal = el("section-header-modal");
@@ -15098,6 +15099,10 @@ async function openSongEditModal(songId = null) {
   // Show modal immediately to ensure responsiveness
   modal.classList.remove("hidden");
 
+  // Reset attribution visibility
+  const attributionEl = el('getsongbpm-attribution');
+  if (attributionEl) attributionEl.style.display = 'none';
+
   // PostHog: Track modal open
   trackPostHogEvent('modal_opened', {
     modal_type: songId ? 'edit_song' : 'new_song',
@@ -15217,6 +15222,16 @@ async function openSongEditModal(songId = null) {
             // For now, let's just show the hint.
           };
           keySection.appendChild(hint);
+        }
+      }
+
+      // Attribution logic
+      const attributionEl = el('getsongbpm-attribution');
+      if (attributionEl) {
+        if (songData.suggested_song_key || songData.suggested_time_signature) {
+          attributionEl.style.display = 'block';
+        } else {
+          attributionEl.style.display = 'none';
         }
       }
     };
@@ -17179,7 +17194,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             <div class="song-details-meta">
           ${songWithResources.bpm || songWithResources.suggested_bpm ? `<div class="detail-item">
             <span class="detail-label">BPM</span>
-            <span class="detail-value">${songWithResources.bpm || `<span style="color: var(--text-muted); font-style: italic;" title="Suggested">${songWithResources.suggested_bpm}?</span>`}</span>
+            <span class="detail-value">${songWithResources.bpm || `<span style="color: var(--text-muted); font-style: italic;" title="Suggested">${songWithResources.suggested_bpm}</span>`}</span>
           </div>` : ''}
           ${isSingleKeyMatch ? `<div class="detail-item">
             <span class="detail-label">Key</span>
@@ -17232,7 +17247,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         ` : ''
     }
         
-       ${(songWithResources.suggested_bpm || songWithResources.suggested_song_key || songWithResources.suggested_duration) ? `
+       ${(songWithResources.suggested_song_key || songWithResources.suggested_time_signature) ? `
         <div style="text-align: right; margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-muted);">
            Some data provided by <a href="https://getsongbpm.com" target="_blank" rel="noopener noreferrer" style="color: inherit;">GetSongBPM</a>
         </div>
@@ -17788,6 +17803,25 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
     }
   };
   modal.addEventListener("click", handleOutsideClick);
+
+  // Attribution logic
+  if (songWithLinks.suggested_song_key || songWithLinks.suggested_time_signature) {
+    const attribution = document.createElement("p");
+    attribution.className = "muted small-text";
+    attribution.style.textAlign = "right";
+    attribution.style.marginTop = "2rem";
+    attribution.style.marginBottom = "0.5rem";
+    attribution.style.fontSize = "0.7rem";
+    attribution.innerHTML = 'Some data provided by <a href="https://getsongbpm.com" target="_blank" rel="noopener noreferrer" style="color: inherit;">GetSongBPM</a>';
+
+    // Append to the section if possible to keep padding correct
+    const section = content.querySelector(".song-details-section");
+    if (section) {
+      section.appendChild(attribution);
+    } else {
+      content.appendChild(attribution);
+    }
+  }
 
   // Close on Escape key
   const handleEscape = (e) => {
