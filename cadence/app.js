@@ -4486,16 +4486,20 @@ async function loadSets() {
             id,
             key
           ),
-          song_links (
-            id,
-            title,
-            url,
-            key,
-            file_path,
-            file_name,
-            file_type,
-            is_file_upload
-          )
+            song_resources (
+              id,
+              team_id,
+              type,
+              title,
+              url,
+              file_path,
+              file_name,
+              file_type,
+              key,
+              display_order,
+              chart_content,
+              created_at
+            )
         ),
         song_links (
           id,
@@ -4741,20 +4745,6 @@ async function loadSets() {
                   created_at
                 )
               ),
-              song_resources (
-                id,
-                team_id,
-                type,
-                title,
-                url,
-                file_path,
-                file_name,
-                file_type,
-                key,
-                display_order,
-                chart_content,
-                created_at
-              ),
               song_assignments (
                 id,
                 person_id,
@@ -4783,7 +4773,7 @@ async function loadSets() {
         const pinnedSetIdsForTeam = new Set(
           pinnedData
             .map(item => item.set)
-            .filter(set => set !== null && set.team_id === state.currentTeamId)
+            .filter(set => set !== null && set.team_id == state.currentTeamId)
             .map(set => set.id)
         );
 
@@ -7647,12 +7637,12 @@ function showSetDetail(set) {
       if (isPinned) {
         icon.classList.remove("fa-regular", "fa-thumbtack");
         icon.classList.add("fa-solid", "fa-thumbtack");
-        pinBtn.innerHTML = '<i class="fa-solid fa-thumbtack"></i>\n                Unpin';
+        pinBtn.innerHTML = '<i class="fa-solid fa-thumbtack-slash"></i>\n                Unpin';
         pinBtn.classList.add("pinned");
       } else {
         icon.classList.remove("fa-solid", "fa-thumbtack");
         icon.classList.add("fa-regular", "fa-thumbtack");
-        pinBtn.innerHTML = '<i class="fa-regular fa-thumbtack"></i>\n                Pin';
+        pinBtn.innerHTML = '<i class="fa-solid fa-thumbtack"></i>\n                Pin';
         pinBtn.classList.remove("pinned");
       }
     }
@@ -7666,10 +7656,10 @@ function showSetDetail(set) {
       // Update the button text after toggling
       const updatedIsPinned = set.is_pinned === true;
       if (updatedIsPinned) {
-        finalPinBtn.innerHTML = '<i class="fa-solid fa-thumbtack"></i>\n                Unpin';
+        finalPinBtn.innerHTML = '<i class="fa-solid fa-thumbtack-slash"></i>\n                Unpin';
         finalPinBtn.classList.add("pinned");
       } else {
-        finalPinBtn.innerHTML = '<i class="fa-regular fa-thumbtack"></i>\n                Pin';
+        finalPinBtn.innerHTML = '<i class="fa-solid fa-thumbtack"></i>\n                Pin';
         finalPinBtn.classList.remove("pinned");
       }
     });
@@ -13231,14 +13221,20 @@ async function togglePinSet(set, pinBtn) {
         });
 
       if (error) {
-        console.error("Error pinning set:", error);
-        // If error is due to table not existing, show a helpful message
-        if (error.code === 'PGRST116' || error.code === '42P01') {
-          toastError("Pinning feature is not available yet. Please run the database migration.");
+        // Handle 409 Conflict (set already pinned) as success
+        if (error.code === '409' || error.code === '23505') {
+          console.warn("Set was already pinned (409 Conflict), treating as success.");
+          // Fall through to success handling
         } else {
-          toastError("Unable to pin set. Please try again.");
+          console.error("Error pinning set:", error);
+          // If error is due to table not existing, show a helpful message
+          if (error.code === 'PGRST116' || error.code === '42P01') {
+            toastError("Pinning feature is not available yet. Please run the database migration.");
+          } else {
+            toastError("Unable to pin set. Please try again.");
+          }
+          return;
         }
-        return;
       }
 
       // Update local state
@@ -14831,9 +14827,15 @@ function filterSongs(songs, queryRaw) {
   });
 }
 
+// Track the latest scan request to prevent race conditions
+let currentSongRenderId = 0;
+
 async function renderSongCatalog(animate = true) {
   const list = el("songs-catalog-list");
   if (!list) return;
+
+  // Increment render ID and capture it - MUST be at the top to invalidate previous async runs
+  const thisRenderId = ++currentSongRenderId;
 
   // Deduplicate state.songs by ID first (keep first occurrence) to ensure no duplicates
   // Do this IMMEDIATELY and update state to prevent race conditions
@@ -14910,6 +14912,12 @@ async function renderSongCatalog(animate = true) {
     // Get weeks since last performance map
     // Pass the deduplicated snapshot to ensure we don't query for duplicates
     weeksSinceMap = await getWeeksSinceLastPerformance(filteredSongs);
+
+    // If a newer render has started, abort this one
+    if (thisRenderId !== currentSongRenderId) {
+      console.log(`🚫 renderSongCatalog aborted (stale: ${thisRenderId} vs ${currentSongRenderId})`);
+      return;
+    }
 
     // 1. Identify "New" songs (created within last 5 days)
     const fiveDaysAgo = new Date();
@@ -15678,128 +15686,65 @@ async function displayAlbumArt(content, albumArtData, song) {
 
     // Set referrerPolicy to ensure image loads on mobile browsers
     img.referrerPolicy = 'no-referrer-when-downgrade';
+    // Enable CORS for color extraction
+    img.crossOrigin = "anonymous";
 
-    // For override images, try direct load first (they're from Supabase storage)
-    if (albumArtData.isOverride) {
-      const canUpload = placeholder?.dataset?.canUpload === "1";
-      img.crossOrigin = null;
-      img.src = albumArtData.small;
+    // Simple helper to handle loading
+    const startLoading = (url) => {
+      img.src = url;
       img.style.display = "";
-      img.addEventListener('load', async () => {
-        try {
-          placeholder.classList.add("album-art-loaded");
-          placeholder.classList.remove("album-art-loading");
-          await applyColorToShadow();
-        } catch (err) {
-          console.warn("Error applying album art shadow color:", err);
-        } finally {
-          done();
-        }
-      }, { once: true });
-      img.addEventListener('error', async () => {
-        console.warn('Failed to load album art override image directly, trying fallback');
-        // Try via edge function as fallback
-        const fallbackUrl = await loadImageWithFallback(albumArtData.small);
-        if (fallbackUrl) {
-          img.src = fallbackUrl;
-          img.style.display = "";
-          img.addEventListener('load', async () => {
-            try {
-              placeholder.classList.add("album-art-loaded");
-              placeholder.classList.remove("album-art-loading");
-              await applyColorToShadow();
-            } catch (err) {
-              console.warn("Error applying album art shadow color:", err);
-            } finally {
-              done();
-            }
-          }, { once: true });
-        } else {
-          if (canUpload) {
-            showSongAlbumArtNoImagePlaceholder(content);
-          } else {
-            collapseSongAlbumArt(content);
-          }
-          done();
-        }
-      }, { once: true });
-    } else {
-      // For iTunes images, use loadImageWithFallback which handles desktop/mobile logic
+    };
+
+    // Handle load/error events
+    const onLoad = async () => {
       try {
-        console.log('🎨 Starting to load iTunes album art - small:', albumArtData.small, 'large:', albumArtData.large);
-        const canUpload = placeholder?.dataset?.canUpload === "1";
-        // Load small image first for fast display
-        const smallBlobUrl = await loadImageWithFallback(albumArtData.small);
-        console.log('🎨 Small image load result:', smallBlobUrl ? 'success' : 'failed');
-
-        if (smallBlobUrl) {
-          img.crossOrigin = null; // Blob URLs don't need CORS
-          img.style.display = "";
-          placeholder.classList.remove("album-art-loaded", "album-art-collapsed");
-          placeholder.classList.add("album-art-loading");
-
-          const reveal = () => {
-            placeholder.classList.add("album-art-loaded");
-            placeholder.classList.remove("album-art-loading");
-            applyColorToShadow().catch(err => {
-              console.warn("Error applying album art shadow color:", err);
-            });
-          };
-
-          img.addEventListener("load", reveal, { once: true });
-          img.addEventListener("error", () => {
-            if (canUpload) {
-              showSongAlbumArtNoImagePlaceholder(content);
-            } else {
-              collapseSongAlbumArt(content);
-            }
-          }, { once: true });
-
-          img.src = smallBlobUrl;
-
-          // If it was already cached/decoded, reveal immediately.
-          if (img.complete && img.naturalWidth > 0) {
-            reveal();
-          }
-
-          // On desktop, preload the large image in the background
-          // On mobile, only load large image when user clicks to expand (saves bandwidth)
-          const isMobile = isMobileDevice();
-          if (!isMobile && albumArtData.large && albumArtData.large !== albumArtData.small) {
-            // Small delay to let small image render first, then load large in background
-            setTimeout(async () => {
-              const largeBlobUrl = await loadImageWithFallback(albumArtData.large);
-              if (largeBlobUrl) {
-                // Large image ready, swap it in
-                img.src = largeBlobUrl;
-                // Re-apply color extraction on the high-res image
-                img.addEventListener('load', applyColorToShadow, { once: true });
-              } else {
-                console.log('Failed to load high-res album art, using small version');
-              }
-            }, 500); // 500ms delay to prioritize small image display
-          } else if (isMobile) {
-            console.log('📱 Mobile: skipping large image preload, will load on expand');
-          }
-        } else {
-          console.warn('Failed to load album art image');
-          if (canUpload) {
-            showSongAlbumArtNoImagePlaceholder(content);
-          } else {
-            collapseSongAlbumArt(content);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading album art:', error);
-        const canUpload = placeholder?.dataset?.canUpload === "1";
-        if (canUpload) {
-          showSongAlbumArtNoImagePlaceholder(content);
-        } else {
-          collapseSongAlbumArt(content);
-        }
+        placeholder.classList.add("album-art-loaded");
+        placeholder.classList.remove("album-art-loading");
+        await applyColorToShadow();
+      } catch (err) {
+        console.warn("Error applying album art shadow color:", err);
       } finally {
+        // If we have a large image and we currently loaded the small one, swap it
+        // Check if we are currently displaying the small image and have a different large one
+        if (albumArtData.large && albumArtData.large !== albumArtData.small && img.src === albumArtData.small) {
+          // We could preload large image here if we want, but letting browser handle it is fine
+          // preventing explicit double-load logic for simplicity unless user complaints about blips
+          // Actually, standard progressive enhancement: once small is loaded, switch src to large
+          const largeImg = new Image();
+          largeImg.crossOrigin = "anonymous";
+          largeImg.onload = () => {
+            img.src = albumArtData.large;
+            // Re-apply color in case it differs slightly or to ensure sync
+            applyColorToShadow();
+          };
+          largeImg.src = albumArtData.large;
+        }
         done();
       }
+    };
+
+    const onError = (e) => {
+      console.warn('Failed to load album art image:', e);
+      const canUpload = placeholder?.dataset?.canUpload === "1";
+      if (canUpload) {
+        showSongAlbumArtNoImagePlaceholder(content);
+      } else {
+        collapseSongAlbumArt(content);
+      }
+      done();
+    };
+
+    // Attach listeners
+    img.onload = onLoad;
+    img.onerror = onError;
+
+    // Start loading
+    if (albumArtData.small) {
+      startLoading(albumArtData.small);
+    } else if (albumArtData.large) {
+      startLoading(albumArtData.large);
+    } else {
+      onError(new Error("No album art URL provided"));
     }
   };
 
@@ -16098,7 +16043,7 @@ async function getAlbumArt(song, songTitle, options = {}) {
 
 // Cache for loaded images to avoid duplicate edge function calls
 // Only stores successful results - failures are not cached to allow retries
-const imageLoadCache = new Map();
+
 
 // Cache for iTunes metadata by song title
 // This ensures we always use the same iTunes result that provided the album art
@@ -16443,194 +16388,7 @@ function isMobileDevice() {
     (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
 }
 
-/**
- * Load an image URL, trying direct fetch first on desktop, falling back to edge function
- * @param {string} imageUrl - The URL of the image to load
- * @returns {Promise<string|null>} - Data URL or blob URL of the image, or null if failed
- */
-async function loadImageWithFallback(imageUrl) {
-  if (!imageUrl) {
-    console.warn('⚠️ loadImageWithFallback called with empty URL');
-    return null;
-  }
 
-  // Check cache first to avoid duplicate calls (only successful results are cached)
-  if (imageLoadCache.has(imageUrl)) {
-    const cached = imageLoadCache.get(imageUrl);
-    // Only return cached value if it's a valid URL (not null)
-    if (cached) {
-      console.log('📦 Using cached image for:', imageUrl.substring(0, 50));
-      return cached;
-    } else {
-      // Cached null means it failed, but we'll retry anyway (cache might be stale)
-      console.log('📦 Found failed cache entry, will retry:', imageUrl.substring(0, 50));
-      imageLoadCache.delete(imageUrl); // Remove stale failure from cache
-    }
-  }
-
-  const isMobile = isMobileDevice();
-  console.log(`🔍 Device detection: isMobile=${isMobile}, userAgent=${navigator.userAgent.substring(0, 50)}...`);
-  console.log(`🔍 Screen width: ${window.innerWidth}px`);
-  console.log(`🔍 Loading image: ${imageUrl}`);
-
-  // On mobile, use edge function directly since direct fetch often fails
-  if (isMobile) {
-    console.log('📱 Mobile device detected, using edge function for image:', imageUrl);
-    try {
-      const result = await loadImageViaEdgeFunction(imageUrl);
-      console.log('📱 Edge function result:', result ? 'success' : 'failed');
-      // Only cache successful results - don't cache failures to allow retries
-      if (result) {
-        imageLoadCache.set(imageUrl, result);
-        return result;
-      }
-      // Don't cache failures - allow retry on next attempt
-
-      // If edge function fails on mobile, try direct fetch as last resort
-      console.log('📱 Edge function failed, trying direct fetch as last resort');
-      try {
-        const response = await fetch(imageUrl, {
-          method: 'GET',
-          mode: 'no-cors', // Try no-cors on mobile
-          credentials: 'omit'
-        });
-        if (response.ok || response.type === 'opaque') {
-          const blob = await response.blob();
-          return URL.createObjectURL(blob);
-        }
-      } catch (directError) {
-        console.warn('📱 Direct fetch also failed on mobile:', directError);
-      }
-      return null;
-    } catch (error) {
-      console.error('📱 Error in mobile image loading:', error);
-      return null;
-    }
-  }
-
-  // On desktop, try direct fetch first
-  try {
-    console.log('🖥️ Desktop: trying direct fetch for image:', imageUrl);
-    const response = await fetch(imageUrl, {
-      method: 'GET',
-      mode: 'cors',
-      credentials: 'omit'
-    });
-
-    if (response.ok) {
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      console.log('✅ Direct fetch succeeded');
-      // Cache successful result
-      imageLoadCache.set(imageUrl, blobUrl);
-      return blobUrl;
-    } else {
-      console.warn('⚠️ Direct fetch failed (status:', response.status, '), falling back to edge function');
-    }
-  } catch (error) {
-    console.warn('⚠️ Direct fetch error, falling back to edge function:', error);
-  }
-
-  // Fallback to edge function if direct fetch fails
-  console.log('🔄 Falling back to edge function for:', imageUrl);
-  try {
-    const result = await loadImageViaEdgeFunction(imageUrl);
-    console.log('🔄 Edge function fallback result:', result ? 'success' : 'failed');
-    // Only cache successful results
-    if (result) {
-      imageLoadCache.set(imageUrl, result);
-    }
-    // Don't cache failures - allow retry
-    return result;
-  } catch (error) {
-    console.error('🔄 Edge function fallback also failed:', error);
-    // Don't cache failures - allow retry
-    return null;
-  }
-}
-
-/**
- * Load an image via edge function (bypasses CORS)
- * @param {string} imageUrl - The URL of the image to load
- * @returns {Promise<string|null>} - Data URL of the image, or null if failed
- */
-async function loadImageViaEdgeFunction(imageUrl) {
-  try {
-    console.log('🌐 Fetching image via edge function:', imageUrl);
-    console.log('🌐 Supabase client available:', !!supabase);
-    console.log('🌐 Supabase functions available:', !!supabase?.functions);
-
-    if (!supabase || !supabase.functions) {
-      console.error('❌ Supabase client or functions not available');
-      return null;
-    }
-
-    let data, error;
-    try {
-      const result = await supabase.functions.invoke('fetch-album-art', {
-        body: { imageUrl }
-      });
-      data = result.data;
-      error = result.error;
-    } catch (invokeError) {
-      console.error('❌ Exception during invoke:', invokeError);
-      error = invokeError;
-    }
-
-    console.log('🌐 Edge function response - error:', error);
-    console.log('🌐 Edge function response - data:', data ? { success: data.success, hasDataUrl: !!data.dataUrl } : 'null');
-
-    if (error) {
-      console.error('❌ Edge function error:', error);
-      console.error('❌ Error details:', JSON.stringify(error, null, 2));
-
-      // If it's a FunctionsHttpError, the function probably isn't deployed
-      // Try direct fetch as fallback
-      if (error.name === 'FunctionsHttpError' || error.message?.includes('404') || error.context?.status === 404) {
-        console.log('⚠️ Edge function not available, falling back to direct fetch');
-        try {
-          const response = await fetch(imageUrl, {
-            method: 'GET',
-            mode: 'no-cors',
-            credentials: 'omit'
-          });
-          if (response.ok || response.type === 'opaque') {
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            return blobUrl;
-          }
-        } catch (directError) {
-          console.error('Direct fetch fallback failed:', directError);
-        }
-      }
-      return null;
-    }
-
-    if (data?.success && data?.dataUrl) {
-      console.log('✅ Edge function succeeded, converting data URL to blob URL');
-      try {
-        // Convert data URL to blob URL for consistency and better memory management
-        const response = await fetch(data.dataUrl);
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        console.log('✅ Blob URL created successfully');
-        return blobUrl;
-      } catch (blobError) {
-        console.error('❌ Error converting data URL to blob:', blobError);
-        // Fallback: return data URL directly
-        console.log('⚠️ Falling back to data URL');
-        return data.dataUrl;
-      }
-    }
-
-    console.warn('⚠️ Edge function returned unsuccessful response:', data);
-    return null;
-  } catch (error) {
-    console.error('❌ Error calling edge function:', error);
-    console.error('❌ Error stack:', error.stack);
-    return null;
-  }
-}
 
 /**
  * Convert various date formats to ISO8601 format
@@ -19524,6 +19282,7 @@ function collectSectionLinks(containerId = "section-links-list") {
             id: id || null,
             title,
             url: null,
+            type: 'file',
             file_path: existingFilePath || null, // Will be set after upload
             file_name: existingFileName || (file ? file.name : null),
             file_type: existingFileType || (file ? getFileType(file) : null),
@@ -19541,6 +19300,7 @@ function collectSectionLinks(containerId = "section-links-list") {
             id: id || null,
             title,
             url,
+            type: 'link',
             file_path: null,
             file_name: null,
             file_type: null,
@@ -20463,6 +20223,7 @@ async function renderSongLinksDisplay(links, container) {
       tile.className = "song-link-display";
       tile.href = "#";
       tile.style.cursor = "pointer";
+      tile.style.backgroundImage = `radial-gradient(circle at 70% 120%, color-mix(in srgb, var(--accent-color), transparent 85%) 0%, transparent 70%)`;
 
       const icon = document.createElement("div");
       icon.className = "song-link-favicon";
@@ -20502,7 +20263,7 @@ async function renderSongLinksDisplay(links, container) {
     const linkEl = document.createElement("a");
     linkEl.className = "song-link-display";
 
-    if (link.is_file_upload && link.file_path) {
+    if ((link.is_file_upload || link.type === 'file') && link.file_path) {
       console.log('Rendering file upload link:', {
         title: link.title,
         file_path: link.file_path,
@@ -20622,15 +20383,16 @@ async function renderSongLinksDisplay(links, container) {
       const getBrandColor = (urlStr) => {
         try {
           const hostname = new URL(urlStr).hostname.toLowerCase();
-          if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return '#ff0000';
-          if (hostname.includes('spotify.com')) return '#1db954';
-          if (hostname.includes('planningcenteronline.com')) return '#314457';
+          if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return '#fc0032';
+          if (hostname.includes('spotify.com')) return '#1ED760';
+          if (hostname.includes('planningcenteronline.com')) return '#4ea033';
           if (hostname.includes('multitracks.com')) return '#51c5ffff';
-          if (hostname.includes('praisecharts.com')) return '#ff0000ff';
-          if (hostname.includes('songselect.ccli.com')) return '#00547f';
-          if (hostname.includes('loopcommunity.com')) return '#2a2a2a';
+          if (hostname.includes('praisecharts.com')) return 'rgb(255, 21, 12)';
+          if (hostname.includes('songselect.ccli.com')) return '#00a3e0';
+          if (hostname.includes('loopcommunity.com')) return 'rgb(0, 183, 217)';
           if (hostname.includes('dropbox.com')) return '#0061fe';
           if (hostname.includes('drive.google.com')) return '#F4B400';
+          if (hostname.includes('ultimate-guitar.com')) return 'rgb(255, 215, 6)';
           if (hostname.includes('docs.google.com')) return '#4285f4';
           return null;
         } catch (e) { return null; }
