@@ -11127,7 +11127,7 @@ async function populateTagSongOptions() {
       key: (song.song_keys || []).map(k => k.key).join(", "),
       timeSignature: song.time_signature,
       duration: song.duration_seconds ? formatDuration(song.duration_seconds) : null,
-      weeksSinceLastPerformed: weeksSinceMap.get(song.id) || null,
+      weeksSinceLastPerformed: weeksSinceMap.get(song.id)?.diffWeeks ?? null,
     }
   }));
 
@@ -11136,18 +11136,8 @@ async function populateTagSongOptions() {
   // Past (-1, -2, -3, ...) sorted lowest to highest (most recent past first)
   // Unscheduled (null) at the bottom
   options.sort((a, b) => {
-    const weeksA = a.meta.weeksSinceLastPerformed;
-    const weeksB = b.meta.weeksSinceLastPerformed;
-
-    // Parse weeks string to number
-    const parseWeeks = (weeksStr) => {
-      if (!weeksStr) return null;
-      if (weeksStr === "0") return 0;
-      return parseInt(weeksStr, 10);
-    };
-
-    const numA = parseWeeks(weeksA);
-    const numB = parseWeeks(weeksB);
+    const numA = a.meta.weeksSinceLastPerformed;
+    const numB = b.meta.weeksSinceLastPerformed;
 
     // Both have scheduled dates
     if (numA !== null && numB !== null) {
@@ -11637,7 +11627,7 @@ async function populateSongOptions() {
       timeSignature: song.time_signature,
       duration: song.duration_seconds ? formatDuration(song.duration_seconds) : null,
       durationSeconds: song.duration_seconds || null,
-      weeksSinceLastPerformed: weeksSinceMap.get(song.id) || null,
+      weeksSinceLastPerformed: weeksSinceMap.get(song.id)?.diffWeeks ?? null,
     }
   }));
 
@@ -11646,18 +11636,8 @@ async function populateSongOptions() {
   // Past (-1, -2, -3, ...) sorted lowest to highest (most recent past first)
   // Unscheduled (null) at the bottom
   options.sort((a, b) => {
-    const weeksA = a.meta.weeksSinceLastPerformed;
-    const weeksB = b.meta.weeksSinceLastPerformed;
-
-    // Parse weeks string to number
-    const parseWeeks = (weeksStr) => {
-      if (!weeksStr) return null;
-      if (weeksStr === "0") return 0;
-      return parseInt(weeksStr, 10);
-    };
-
-    const numA = parseWeeks(weeksA);
-    const numB = parseWeeks(weeksB);
+    const numA = a.meta.weeksSinceLastPerformed;
+    const numB = b.meta.weeksSinceLastPerformed;
 
     // Both have scheduled dates
     if (numA !== null && numB !== null) {
@@ -11728,6 +11708,7 @@ async function getWeeksSinceLastPerformance(songsToUse = null) {
     .select(`
       song_id,
       set:set_id (
+        id,
         scheduled_date
       )
     `)
@@ -11759,13 +11740,14 @@ async function getWeeksSinceLastPerformance(songsToUse = null) {
 
         const entry = songScheduleMap.get(songId) || { next: null, last: null };
 
+        // Prefer keeping the set object reference for the link
         if (dateValue >= now) {
-          if (!entry.next || dateValue < entry.next) {
-            entry.next = dateValue;
+          if (!entry.next || dateValue < entry.next.date) {
+            entry.next = { date: dateValue, setId: setData.id };
           }
         } else {
-          if (!entry.last || dateValue > entry.last) {
-            entry.last = dateValue;
+          if (!entry.last || dateValue > entry.last.date) {
+            entry.last = { date: dateValue, setId: setData.id };
           }
         }
 
@@ -11779,13 +11761,43 @@ async function getWeeksSinceLastPerformance(songsToUse = null) {
   // Prefer future schedule if present; otherwise show most recent past
   songScheduleMap.forEach((entry, songId) => {
     if (entry.next) {
-      const diffWeeks = Math.round((entry.next.getTime() - now.getTime()) / weekMs);
-      const label = diffWeeks > 0 ? `+${diffWeeks}` : "0";
-      weeksMap.set(songId, label);
+      const diffWeeks = Math.round((entry.next.date.getTime() - now.getTime()) / weekMs);
+      const label = diffWeeks > 0 ? `+${diffWeeks}w` : "This week";
+      // Use +Xw format as requested (user mentioned + or - count) - actually user said "+ or - recency / upcoming weeks count", e.g. -2w
+      // Previous code used +1, +2. I will use +1w, -2w for clarity in the badge, or keep compact +1, -2.
+      // The implementation plan proposed keeping label simple but I'll add 'w' for the badge if needed.
+      // Actually, let's stick to the numbers for label for now, or just rely on diffWeeks.
+      // Wait, renderSongList previously used label. I should check if I should update label format.
+      // "a badge that only shows in the relevancy sorting mode for the + or - recency / upcoming weeks count"
+      // I'll construct the label here to be display-ready.
+      const displayLabel = diffWeeks === 0 ? "This week" : (diffWeeks > 0 ? `+${diffWeeks}w` : `${diffWeeks}w`);
+
+      weeksMap.set(songId, {
+        diffWeeks,
+        label: displayLabel,
+        setId: entry.next.setId,
+        type: 'future'
+      });
     } else if (entry.last) {
-      const diffWeeks = Math.round((now.getTime() - entry.last.getTime()) / weekMs);
-      const label = diffWeeks > 0 ? `-${diffWeeks}` : "0";
-      weeksMap.set(songId, label);
+      const diffWeeks = Math.round((now.getTime() - entry.last.date.getTime()) / weekMs);
+      // diffWeeks is positive here (weeks ago).
+      // We want negative number for sorting logic relative to future? 
+      // Wait, original logic:
+      // entry.next: diffWeeks > 0 ? `+${diffWeeks}` : "0"
+      // entry.last: diffWeeks > 0 ? `-${diffWeeks}` : "0" (weeks ago)
+
+      // I should preserve the signed integer for sorting.
+      // For Label: "-2w"
+
+      const weeksAgo = diffWeeks;
+      const signedWeeks = -weeksAgo;
+
+      weeksMap.set(songId, {
+        diffWeeks: signedWeeks,
+        label: weeksAgo === 0 ? "This week" : `-${weeksAgo}w`,
+        setId: entry.last.setId,
+        type: 'past'
+      });
     }
   });
 
@@ -14892,29 +14904,50 @@ async function renderSongCatalog(animate = true) {
 
   // Sort based on selected option
   const sortOption = state.songSortOption || "relevancy";
+  let weeksSinceMap = null;
 
   if (sortOption === "relevancy") {
-    // Get weeks offset to sort by most recently scheduled
+    // Get weeks since last performance map
     // Pass the deduplicated snapshot to ensure we don't query for duplicates
-    const weeksSinceMap = await getWeeksSinceLastPerformance(filteredSongs);
+    weeksSinceMap = await getWeeksSinceLastPerformance(filteredSongs);
 
-    // Sort by most recently scheduled using the weeks value
-    // Upcoming (0, +1, +2, ...) sorted lowest to highest
-    // Past (-1, -2, -3, ...) sorted lowest to highest (most recent past first)
-    // Unscheduled (null) at the bottom
-    filteredSongs.sort((a, b) => {
-      const weeksA = weeksSinceMap.get(a.id);
-      const weeksB = weeksSinceMap.get(b.id);
+    // 1. Identify "New" songs (created within last 5 days)
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
 
-      // Parse weeks string to number
-      const parseWeeks = (weeksStr) => {
-        if (!weeksStr) return null;
-        if (weeksStr === "0") return 0;
-        return parseInt(weeksStr, 10);
-      };
+    const newSongs = [];
+    const otherSongs = [];
 
-      const numA = parseWeeks(weeksA);
-      const numB = parseWeeks(weeksB);
+    filteredSongs.forEach(song => {
+      const createdAt = song.created_at ? new Date(song.created_at) : new Date(0);
+      if (createdAt > fiveDaysAgo) {
+        newSongs.push(song);
+      } else {
+        otherSongs.push(song);
+      }
+    });
+
+    // 2. Sort "New" songs by created_at descending (newest first)
+    newSongs.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at) : new Date(0);
+      const dateB = b.created_at ? new Date(b.created_at) : new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    // 3. Extract top 3 "New" songs to boost
+    const boostedSongs = newSongs.slice(0, 3);
+    const remainingNewSongs = newSongs.slice(3);
+
+    // Add remaining new songs back to otherSongs for standard sorting
+    otherSongs.push(...remainingNewSongs);
+
+    // 4. Sort otherSongs by most recently scheduled using the weeks value
+    otherSongs.sort((a, b) => {
+      const infoA = weeksSinceMap.get(a.id);
+      const infoB = weeksSinceMap.get(b.id);
+
+      const numA = infoA ? infoA.diffWeeks : null;
+      const numB = infoB ? infoB.diffWeeks : null;
 
       // Both have scheduled dates
       if (numA !== null && numB !== null) {
@@ -14938,6 +14971,9 @@ async function renderSongCatalog(animate = true) {
       // Neither has date: sort by title
       return (a.title || "").localeCompare(b.title || "");
     });
+
+    // 5. Concatenate: Boosted New Songs + Sorted Other Songs
+    filteredSongs = [...boostedSongs, ...otherSongs];
   } else if (sortOption === "newest") {
     // Sort by created_at descending (newest first)
     filteredSongs.sort((a, b) => {
@@ -15013,7 +15049,28 @@ async function renderSongCatalog(animate = true) {
     div.innerHTML = `
       <div class="set-song-header song-card-header">
         <div class="set-song-info">
-          <h4 class="song-title" style="margin: 0 0 0.5rem 0;">${highlightedTitle}</h4>
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <h4 class="song-title" style="margin: 0;">${highlightedTitle}</h4>
+            ${(() => {
+        // Check if song is "New" (created within last 5 days)
+        const createdAt = song.created_at ? new Date(song.created_at) : new Date(0);
+        const fiveDaysAgo = new Date();
+        fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+
+        let html = '';
+        if (createdAt > fiveDaysAgo) {
+          html += `<span class="badge-new" style="background-color: var(--accent-color); color: var(--bg-primary); padding: 2px 6px; border-radius: 4px; font-size: 0.7em; font-weight: 600; letter-spacing: 0.5px; margin-right: 6px;">NEW</span>`;
+        }
+
+        if (sortOption === 'relevancy' && weeksSinceMap) {
+          const info = weeksSinceMap.get(song.id);
+          if (info && info.label) {
+            html += `<span class="badge-relevancy" data-set-id="${info.setId || ''}" style="cursor: pointer; background-color: var(--bg-tertiary); color: var(--text-main); padding: 2px 6px; border-radius: 4px; font-size: 0.7em; font-weight: 600; letter-spacing: 0.5px;" title="Click to view set">${info.label}</span>`;
+          }
+        }
+        return html;
+      })()}
+          </div>
           <div class="song-meta-text">
             ${highlightedBpm}
             ${highlightedKey}
@@ -15035,6 +15092,21 @@ async function renderSongCatalog(animate = true) {
     if (viewDetailsBtn) {
       viewDetailsBtn.addEventListener("click", () => {
         openSongDetailsModal(song);
+      });
+    }
+
+    const relevancyBadge = div.querySelector(".badge-relevancy");
+    if (relevancyBadge) {
+      relevancyBadge.addEventListener("click", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const setId = relevancyBadge.dataset.setId;
+        if (setId) {
+          const set = state.sets.find(s => String(s.id) === String(setId));
+          if (set) {
+            showSetDetail(set);
+          }
+        }
       });
     }
 
