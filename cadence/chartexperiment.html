@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadence AI Chart Experiment</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <style>
+        body {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .input-group input,
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        #json-output {
+            font-family: monospace;
+            white-space: pre-wrap;
+            height: 300px;
+            overflow-y: auto;
+        }
+
+        .preview-box {
+            border: 1px solid var(--border-color);
+            background: white;
+            /* Always white for chart preview usually? Or theme? Let's stick to theme */
+            background: var(--bg-primary);
+            min-height: 400px;
+            padding: 2rem;
+            font-family: monospace;
+            white-space: pre;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .chart-line {
+            line-height: 3em;
+            position: relative;
+            margin-bottom: 1em;
+        }
+
+        .chart-chord {
+            position: absolute;
+            bottom: 1.2em;
+            /* Place above text */
+            font-weight: bold;
+            color: var(--accent-color);
+            font-size: 0.9em;
+        }
+
+        .debug-text-item {
+            position: absolute;
+            border: 1px solid rgba(255, 0, 0, 0.2);
+            font-size: 10px;
+            color: red;
+            white-space: nowrap;
+        }
+
+        #pdf-canvas-container {
+            position: relative;
+            border: 1px solid var(--border-color);
+            height: 500px;
+            overflow: auto;
+            background: #eee;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1><i class="fa-solid fa-wand-magic-sparkles"></i> Cadence AI Import Experiment</h1>
+    <p class="muted">Upload a PDF chord chart to test AI conversion.</p>
+
+    <div class="input-group">
+        <label>OpenRouter API Key</label>
+        <input type="password" id="api-key" placeholder="sk-or-..." />
+    </div>
+
+    <div class="input-group">
+        <label>Model</label>
+        <select id="model-select">
+            <option value="tngtech/deepseek-r1t2-chimera:free">tngtech/deepseek-r1t2-chimera:free</option>
+            <option value="google/gemma-3-27b-it:free">google/gemma-3-27b-it:free</option>
+            <option value="deepseek/deepseek-r1-0528:free">deepseek/deepseek-r1-0528:free</option>
+            <option value="google/gemini-2.0-flash-exp:free">google/gemini-2.0-flash-exp:free</option>
+            <option value="openai/gpt-oss-120b:free">openai/gpt-oss-120b:free</option>
+            <option value="meta-llama/llama-3.3-70b-instruct:free">meta-llama/llama-3.3-70b-instruct:free</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>
+            <input type="checkbox" id="two-column-mode" />
+            Two-Column Mode (Sort Left side then Right side)
+        </label>
+    </div>
+
+    <div class="container">
+        <!-- Left Column: Input & Controls -->
+        <div class="left-col">
+            <div class="card">
+                <h3>1. Source File</h3>
+                <div class="input-group">
+                    <input type="file" id="file-input" accept="application/pdf" />
+                </div>
+                <!-- Canvas for PDF Preview -->
+                <div id="pdf-canvas-container">
+                    <div id="pdf-page-wrapper"></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 1rem;">
+                <h3>2. Extraction Debug</h3>
+                <p class="muted small-text">Extracted text items ready for prompt:</p>
+                <div class="input-group">
+                    <textarea id="extracted-text-debug" rows="10" readonly></textarea>
+                </div>
+                <button id="btn-convert" class="btn primary" disabled>
+                    <i class="fa-solid fa-robot"></i> Convert with AI
+                </button>
+                <div id="loading-spinner" class="hidden" style="margin-top: 1rem;">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> Processing...
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Output & Preview -->
+        <div class="right-col">
+            <div class="card">
+                <h3>3. AI JSON Output</h3>
+                <div class="input-group">
+                    <textarea id="json-output" placeholder="JSON will appear here..."></textarea>
+                </div>
+                <button id="btn-render" class="btn secondary">Render Preview</button>
+            </div>
+
+            <div class="card" style="margin-top: 1rem;">
+                <h3>4. Rendered Chart</h3>
+                <div id="chart-preview" class="preview-box"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Utility DOM helper (simplified version of app.js one)
+        const el = (id) => document.getElementById(id);
+
+        let extractedItems = [];
+        let pdfScale = 1.5;
+        let pdfPageWidth = 0; // Store page width for column detection
+
+        // Auto-load API Key from localStorage
+        const storedKey = localStorage.getItem('cadence_openai_key');
+        if (storedKey) el('api-key').value = storedKey;
+
+        el('api-key').addEventListener('input', (e) => {
+            localStorage.setItem('cadence_openai_key', e.target.value);
+            checkReady();
+        });
+
+        // Re-process on checkbox change
+        el('two-column-mode').addEventListener('change', () => {
+            // We can't re-read the file easily without storing the blob, 
+            // but we can re-sort extractedItems if we kept the raw PDF tokens?
+            // Actually, processPDF overwrites extractedItems.
+            // Let's just ask user to re-upload for now, or simplify:
+            // We'll just trigger the same logic if we had the file.
+            // Since we don't store the file object globally, let's just alert.
+            if (extractedItems.length === 0) return;
+            // Sort and update debug
+            sortExtractedItems();
+            el('extracted-text-debug').value = JSON.stringify(extractedItems, null, 2);
+        });
+
+        el('file-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.type === 'application/pdf') {
+                el('extracted-text-debug').value = "Loading PDF...";
+                try {
+                    await processPDF(file);
+                } catch (err) {
+                    console.error("PDF Processing Error:", err);
+                    alert("Failed to process PDF: " + err.message);
+                    el('extracted-text-debug').value = "Error: " + err.message;
+                }
+            } else {
+                alert('Only PDF supported for now.');
+            }
+            checkReady();
+        });
+
+        function checkReady() {
+            const hasKey = el('api-key').value.length > 5;
+            const hasData = extractedItems.length > 0;
+            const btn = el('btn-convert');
+            btn.disabled = !(hasKey && hasData);
+
+            if (!hasKey) {
+                btn.title = "Enter API Key first";
+            } else if (!hasData) {
+                btn.title = "Upload a PDF first";
+            } else {
+                btn.title = "";
+            }
+        }
+
+        async function processPDF(file) {
+            console.log("Starting processPDF for", file.name);
+            const arrayBuffer = await file.arrayBuffer();
+            const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+            const pdf = await loadingTask.promise;
+            console.log("PDF loaded, pages:", pdf.numPages);
+
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({ scale: pdfScale });
+            const pdfPageHeight = viewport.height / pdfScale;
+            pdfPageWidth = viewport.width / pdfScale;
+
+            const wrapper = el('pdf-page-wrapper');
+            wrapper.innerHTML = '';
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            canvas.style.maxWidth = "100%";
+            canvas.style.height = "auto";
+            wrapper.appendChild(canvas);
+
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+            const textContent = await page.getTextContent();
+
+            extractedItems = textContent.items.map(item => {
+                return {
+                    str: item.str,
+                    x: item.transform[4],
+                    y: pdfPageHeight - item.transform[5], // Invert Y to Top-Down (0 is top)
+                    w: item.width,
+                    h: item.height || item.transform[3], // Fallback to font size
+                };
+            });
+
+            extractedItems = extractedItems.filter(i => i.str.trim().length > 0);
+
+            // Calculate char width for columns
+            const heights = extractedItems.map(i => i.h).filter(h => h > 0).sort((a, b) => a - b);
+            const medianH = heights.length > 0 ? heights[Math.floor(heights.length / 2)] : 12;
+            const charWidth = Math.max(1, medianH * 0.5);
+
+            extractedItems = extractedItems.map(i => ({
+                ...i,
+                col: Math.round(i.x / charWidth)
+            }));
+
+            // Auto-detect columns
+            const midPoint = pdfPageWidth / 2;
+            const leftItems = extractedItems.filter(i => i.x < midPoint);
+            const rightItems = extractedItems.filter(i => i.x >= midPoint);
+            const isTwoColumn = leftItems.length > 10 && rightItems.length > 10;
+            el('two-column-mode').checked = isTwoColumn;
+            console.log(`Auto-detected columns: ${isTwoColumn ? 'Two Columns' : 'Single Column'}`);
+
+            sortExtractedItems();
+            el('extracted-text-debug').value = JSON.stringify(extractedItems, null, 2);
+        }
+
+        function sortExtractedItems() {
+            const useTwoColumns = el('two-column-mode').checked;
+            const midPoint = pdfPageWidth / 2;
+            // Get charWidth from global calculation (need to store it or re-calculate)
+            // Ideally we should have stored it on the items or globally.
+            // Let's infer it from one item or just recalculate medianH roughly.
+            // Actually, we can just shift the 'col' values.
+
+            // Re-detect columns logic inside here to be safe or rely on toggle.
+
+            if (useTwoColumns) {
+                // Find rough column shift amount
+                const rightColStartX = midPoint;
+                // We want to shift Right Column items to start at 0 (or match Left Column).
+                // But we don't know the exact offset. 
+                // Simple heuristic: subtract the column offset from 'col'.
+
+                // We need to know charWidth again. 
+                // Let's store charWidth globally in processPDF.
+            }
+
+            extractedItems.sort((a, b) => {
+                if (useTwoColumns) {
+                    const aIsLeft = a.x < midPoint;
+                    const bIsLeft = b.x < midPoint;
+                    if (aIsLeft && !bIsLeft) return -1;
+                    if (!aIsLeft && bIsLeft) return 1;
+                }
+                // Sort by Y (Top-Down): Smaller Y is higher up
+                const yDiff = a.y - b.y;
+                if (Math.abs(yDiff) > 5) return yDiff;
+                return a.x - b.x;
+            });
+
+            // Normalize Columns for AI (Visual Reset)
+            if (useTwoColumns) {
+                // Calculate offset for right side
+                // We can't easily change 'col' permanently because sorting might run multiple times.
+                // WE SHOULD ONLY CHANGE IT FOR DISPLAY passed to Prompt.
+                // So let's NOT change extractedItems here. 
+                // We will handle this in buildPrompt or create a temporary mapped array.
+            }
+        }
+
+        el('btn-convert').addEventListener('click', async () => {
+            const key = el('api-key').value;
+            const model = el('model-select').value;
+            if (!key || extractedItems.length === 0) return;
+
+            el('loading-spinner').classList.remove('hidden');
+            el('btn-convert').disabled = true;
+
+            try {
+                const prompt = buildPrompt(extractedItems);
+                console.log("Sending prompt...", model);
+                const result = await callOpenRouter(key, model, prompt);
+                console.log("Received response");
+
+                const jsonMatch = result.match(/```json\n([\s\S]*?)\n```/) || result.match(/{[\s\S]*}/);
+                let jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : result;
+
+                el('json-output').value = jsonStr;
+                renderChart(JSON.parse(jsonStr));
+            } catch (err) {
+                console.error("Conversion Error:", err);
+                alert('Error: ' + err.message);
+                el('json-output').value = "Error: " + err.message;
+            } finally {
+                el('loading-spinner').classList.add('hidden');
+                el('btn-convert').disabled = false;
+            }
+        });
+
+        el('btn-render').addEventListener('click', () => {
+            try {
+                const val = el('json-output').value;
+                if (!val) return;
+                const data = JSON.parse(val);
+                renderChart(data);
+            } catch (e) { alert('Invalid JSON'); }
+        });
+
+        function buildPrompt(items) {
+            const useTwoColumns = el('two-column-mode').checked;
+            const midPoint = pdfPageWidth / 2;
+
+            // 1. Split into Columns (if needed)
+            let leftItems = items;
+            let rightItems = [];
+
+            if (useTwoColumns) {
+                leftItems = items.filter(i => i.x < midPoint);
+                rightItems = items.filter(i => i.x >= midPoint);
+
+                // Normalize Right Column X (Shift to Left)
+                if (rightItems.length > 0) {
+                    // Robust normalization: use 10th percentile to ignore outliers
+                    const sortedCols = rightItems.map(i => i.col).sort((a, b) => a - b);
+                    const minRightCol = sortedCols.length > 5
+                        ? sortedCols[Math.floor(sortedCols.length * 0.1)]
+                        : sortedCols[0];
+
+                    rightItems = rightItems.map(i => ({ ...i, col: Math.max(0, i.col - minRightCol) }));
+                }
+            } else {
+                // Single column: Ensure everything is roughly left-aligned? 
+                // No, trust raw X.
+            }
+
+            // 2. Group into Logical Rows (Linearize: Left then Right)
+            // Function to group items into rows based on Y proximity
+            const createRows = (itemList) => {
+                const rows = [];
+                // Sort by Y (Top-Down) then X
+                itemList.sort((a, b) => (a.y - b.y) || (a.x - b.x));
+
+                let currentRow = null;
+                const ROW_TOLERANCE = 4; // Pixels (Reduced from 10 to prevent merging close lines)
+
+                itemList.forEach(item => {
+                    if (!currentRow) {
+                        currentRow = { y: item.y, items: [item] };
+                    } else {
+                        if (Math.abs(item.y - currentRow.y) < ROW_TOLERANCE) {
+                            currentRow.items.push(item);
+                        } else {
+                            // Finish current row
+                            rows.push(currentRow);
+                            currentRow = { y: item.y, items: [item] };
+                        }
+                    }
+                });
+                if (currentRow) rows.push(currentRow);
+
+                // Sort items within each row by X (Left to Right)
+                rows.forEach(r => r.items.sort((a, b) => a.x - b.x));
+                return rows;
+            };
+
+            const leftRows = createRows(leftItems);
+            const rightRows = createRows(rightItems);
+
+            // Combine: Left Rows then Right Rows
+            const allRows = [...leftRows, ...rightRows];
+
+            // 3. Generate Prompt Text
+            // We give each row a logical "Row ID" to help the AI referencing.
+            const linesLog = allRows.map((row, idx) => {
+                // Construct string for the row
+                // "Ab" (col=0) ... "Gb" (col=10)
+                const rowContent = row.items.map(i => `"${i.str}" (col=${i.col})`).join('  ');
+                return `ROW ${idx + 1}: ${rowContent}`;
+            }).join('\n');
+
+            // DEBUG: Show the rows in the UI
+            el('extracted-text-debug').value = "--- GENERATED PROMPT ROWS ---\n" + linesLog;
+
+            return `
+You are a music chart converter. I have extracted text tokens from a PDF chord chart.
+I have pre-processed the chart into LOGICAL ROWS of text.
+If the PDF had two columns, I have already appended the second column AFTER the first one.
+So treat this input as a single continuous vertical list.
+
+Your goal is to reconstruct the song structure into a specific JSON format used by our software.
+
+Input Rows:
+${linesLog}
+
+Target JSON Format:
+{
+  "doc": {
+      "title": "Song Title",
+      "lyricsLines": ["[Verse 1]", "line 1", "line 2", "[Chorus]", "line 1"],
+      "placements": [
+        { "lineIndex": 1, "charIndex": 5, "value": "C", "kind": "chord" }
+      ]
+  }
+}
+
+Rules:
+1. "lyricsLines":
+   - MUST ONLY contain the lyrics text + section headers.
+   - NO lines that are just chords.
+   - NO metadata (Title, Artist, CCLI).
+   - "lyricsLines" should flow naturally line-by-line.
+
+2. "placements" (Chords):
+   - **THE GOLDEN RULE**: Chords on "ROW N" belong to the Lyrics on "ROW N+1".
+   - **Hyphenated Chords (CRITICAL)**:
+     - Lines like "Ab - Bbm" or "Ab / Bbm" are CHORD rows, NOT lyrics.
+     - Extract "Ab" and "Bbm" as separate chords for the text line below.
+     - IGNORE the hyphen "-".
+     - Do not overlap these chords, put them very close, next to each other in the correct order. Don't try to space them out, just make sure they're not overlapped.
+   - **Same-Row Chords**:
+     - If a Row contains BOTH chords (e.g. "Ab") and Lyrics (e.g. "Words"), extract the chords and place them on the SAME line.
+   - **Instrumentals**:
+     - If a Row is ONLY chords and the NEXT row is also chords (or a Header), treat it as an Instrumental (create an empty string lyric line).
+
+3. **Section Headers (STRICT)**:
+   - Headers like "[Chorus]" usually appear on their own Row.
+   - **STRIP METADATA**: Remove repeats/instructions.
+     - "[Verse 1(2x)]" -> "[Verse 1]"
+     - "[Bridge(Guitar Only)]" -> "[Bridge]"
+   - **NO CHORDS ON HEADERS**:
+     - The "placements" list for a Header line MUST be empty "[]".
+     - If chords appear visually near the header, they belong to the *next* line (Lyrics or Instrumental).
+
+4. **NO HALLUCINATIONS**:
+   - ONLY use the text provided in the Input Rows.
+   - Do NOT invent chords from previous verses if you don't see them.
+
+5. Output ONLY valid JSON inside \`\`\`json\`\`\` blocks. CRITICAL: Do not summarize, process every single row. If a row has no chords, output an empty placement list for that line. ONLY OUTPUT VALID JSON.
+`;
+        }
+
+        async function callOpenRouter(apiKey, model, prompt) {
+            console.log(prompt);
+
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": window.location.href, // Required for some free tiers
+                    "X-Title": "Cadence AI Experiment"
+                },
+                body: JSON.stringify({
+                    "model": model, // Good fast model, usually free/cheap
+                    "messages": [
+                        { "role": "user", "content": prompt }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                // Try to get error text
+                const errText = await response.text();
+                // Check for specific data policy error
+                if (errText.includes("data policy") || errText.includes("Free model publication")) {
+                    throw new Error('OpenRouter Data Policy Error: You must enable "Allow data logging for free models" in your OpenRouter Privacy Settings to use free models. Go to: https://openrouter.ai/settings/privacy');
+                }
+                throw new Error('API Error: ' + response.status + ' ' + response.statusText + ' - ' + errText);
+            }
+
+            const data = await response.json();
+            console.log("Full OpenRouter API Response:", data);
+
+            if (data.error) {
+                throw new Error("Provider Error: " + data.error.message);
+            }
+
+            if (!data.choices || data.choices.length === 0) {
+                throw new Error("No choices returned from API.");
+            }
+
+            return data.choices[0].message.content;
+        }
+
+        function renderChart(data) {
+            const preview = el('chart-preview');
+            preview.innerHTML = '';
+
+            const doc = data.doc || data; // Handle if wrapped or not
+            const lines = doc.lyricsLines || [];
+            const placements = doc.placements || [];
+
+            lines.forEach((lineText, lineIdx) => {
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'chart-line';
+                // Replace spaces with non-breaking spaces for alignment? 
+                // Using pre-wrap handles it mostly, but monospace helps.
+                lineDiv.textContent = lineText || ' '; // Ensure height for empty lines
+
+                // Highlight section headers
+                if (lineText.trim().match(/^\[([^\]]+)\]$/)) {
+                    lineDiv.style.fontWeight = "bold";
+                    lineDiv.style.color = "#555";
+                    lineDiv.style.marginTop = "1em";
+                }
+
+                // Find placements for this line
+                const linePlacements = placements.filter(p => p.lineIndex === lineIdx);
+
+                linePlacements.forEach(p => {
+                    const chordSpan = document.createElement('span');
+                    chordSpan.className = 'chart-chord';
+                    chordSpan.textContent = p.value;
+                    // Calculate left position based on char index
+                    // Assuming monospace font, 1ch = 1 char width roughly
+                    chordSpan.style.left = `${p.charIndex}ch`;
+                    lineDiv.appendChild(chordSpan);
+                });
+
+                preview.appendChild(lineDiv);
+            });
+        }
+    </script>
+</body>
+
+</html>
