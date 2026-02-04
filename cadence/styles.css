@@ -2868,7 +2868,9 @@ i {
 .pin-set-btn i,
 .album-art-modal-close i,
 .album-art-overlay-controls i,
-.close-modal-absolute i {
+.close-modal-absolute i,
+.btn-ai-chat-generated i,
+#close-chat-btn i {
   margin-right: 0px !important;
 }
 
@@ -5420,7 +5422,14 @@ i {
   border-top: 1px solid var(--border-color);
   background: var(--bg-secondary);
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .chat-input {
@@ -5438,6 +5447,58 @@ i {
 .chat-input:focus {
   outline: none;
   border-color: var(--accent-color);
+}
+
+.chat-reply-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+
+.chat-reply-preview.hidden {
+  display: none;
+}
+
+.chat-reply-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-reply-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.chat-reply-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-reply-context {
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.chat-message-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+
+.chat-message-actions .btn {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
 }
 
 /* Action Cards in Chat */

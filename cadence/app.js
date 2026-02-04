@@ -144,10 +144,14 @@ const state = {
   isAiChatOpen: false,
   aiChatMessages: [], // { id, role, content, type: 'text'|'card', cardData? }
   isAiTyping: false,
+  aiChatReplyContext: null, // { role, text }
+  aiChatSelection: null, // { messageIndex, role, text }
   // AI Chat State
   isAiChatOpen: false,
   aiChatMessages: [], // { id, role, content, type: 'text'|'card', cardData? }
-  isAiTyping: false
+  isAiTyping: false,
+  aiChatReplyContext: null, // { role, text }
+  aiChatSelection: null // { messageIndex, role, text }
 };
 
 // PostHog tracking helper - safely tracks events even if PostHog isn't loaded yet
@@ -25198,6 +25202,129 @@ function renderSetDetailPendingRequests(set) {
 // AI Chat Logic
 // ==========================================
 
+function parseChatContent(content) {
+  if (content && typeof content === "object" && !Array.isArray(content)) {
+    if ("text" in content) {
+      const text = typeof content.text === "string" ? content.text : String(content.text ?? "");
+      const reply = content.reply && typeof content.reply === "object"
+        ? {
+          role: typeof content.reply.role === "string" ? content.reply.role : "assistant",
+          text: typeof content.reply.text === "string" ? content.reply.text : ""
+        }
+        : null;
+      return { text, reply };
+    }
+    return { text: JSON.stringify(content), reply: null };
+  }
+  return { text: typeof content === "string" ? content : String(content ?? ""), reply: null };
+}
+
+function buildReplyQuote(text) {
+  return text.split(/\r?\n/).map(line => `> ${line}`).join("\n");
+}
+
+function serializeChatContentForAi(content) {
+  const { text, reply } = parseChatContent(content);
+  if (reply && reply.text) {
+    return `Replying to this message from ${reply.role}:\n${buildReplyQuote(reply.text)}\n\n${text}`;
+  }
+  return text;
+}
+
+function buildAiPayloadMessages(messages) {
+  return messages.map(m => ({
+    role: m.role,
+    content: serializeChatContentForAi(m.content)
+  }));
+}
+
+function clampChatText(text, maxLen = 240) {
+  if (!text) return "";
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, maxLen - 1)}…`;
+}
+
+function renderChatReplyPreview() {
+  const preview = document.getElementById("chat-reply-preview");
+  const label = document.getElementById("chat-reply-label");
+  const textEl = document.getElementById("chat-reply-text");
+  if (!preview || !label || !textEl) return;
+
+  const reply = state.aiChatReplyContext;
+  if (!reply || !reply.text) {
+    preview.classList.add("hidden");
+    label.textContent = "";
+    textEl.textContent = "";
+    return;
+  }
+
+  label.textContent = `Replying to ${reply.role === "assistant" ? "assistant" : reply.role}`;
+  textEl.textContent = clampChatText(reply.text, 200);
+  preview.classList.remove("hidden");
+}
+
+function clearChatReplyContext() {
+  state.aiChatReplyContext = null;
+  renderChatReplyPreview();
+}
+
+function captureChatSelection(container) {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed) {
+    state.aiChatSelection = null;
+    return;
+  }
+
+  const text = selection.toString().trim();
+  if (!text) return;
+
+  if (!selection.rangeCount) return;
+  const range = selection.getRangeAt(0);
+  const node = range.commonAncestorContainer;
+  const element = node.nodeType === 1 ? node : node.parentElement;
+  const messageEl = element ? element.closest(".chat-message") : null;
+
+  if (!messageEl || !container.contains(messageEl)) return;
+
+  const msgIndex = Number(messageEl.dataset.msgIndex);
+  if (!Number.isFinite(msgIndex)) return;
+
+  state.aiChatSelection = {
+    messageIndex: msgIndex,
+    role: messageEl.dataset.role || "assistant",
+    text
+  };
+}
+
+function extractActionBlock(contentText) {
+  let rawContent = contentText;
+  let actionBlock = null;
+
+  const jsonMatch = contentText.match(/```json\n([\s\S]*?)\n```/);
+  if (jsonMatch) {
+    rawContent = contentText.replace(jsonMatch[0], "").trim();
+    try {
+      actionBlock = JSON.parse(jsonMatch[1]);
+    } catch (e) { console.error("Bad JSON in chat", e); }
+  }
+
+  return { rawContent, actionBlock };
+}
+
+function getLastAssistantIndex(messages) {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i].role === "assistant") return i;
+  }
+  return -1;
+}
+
+function updateChatControls() {
+  const sendBtn = document.getElementById("send-chat-btn");
+  const input = document.getElementById("chat-input-text");
+  if (sendBtn) sendBtn.disabled = state.isAiTyping;
+  if (input) input.disabled = state.isAiTyping;
+}
+
 async function toggleAiChat(set) {
   state.isAiChatOpen = !state.isAiChatOpen;
   const main = document.querySelector('main');
@@ -25237,6 +25364,9 @@ async function toggleAiChat(set) {
 
 async function loadAiChatHistory(setId) {
   state.aiChatMessages = [];
+  state.aiChatReplyContext = null;
+  state.aiChatSelection = null;
+  renderChatReplyPreview();
 
   // Fetch from DB (RLS ensures we only get our own)
   const { data, error } = await supabase
@@ -25252,10 +25382,14 @@ async function loadAiChatHistory(setId) {
   }
 
   state.aiChatMessages = data.map(msg => {
+    let content = msg.content;
+    if (content && typeof content === "object" && !Array.isArray(content) && !("text" in content)) {
+      content = JSON.stringify(content);
+    }
     return {
       id: msg.id,
       role: msg.role,
-      content: typeof msg.content === 'object' ? JSON.stringify(msg.content) : msg.content
+      content
     };
   });
 }
@@ -25353,8 +25487,17 @@ function renderSetChatPanel(set) {
     </div>
     <div class="chat-messages" id="chat-messages-list"></div>
     <div class="chat-input-area">
-      <textarea class="chat-input" id="chat-input-text" placeholder="Ask to reorder songs, suggest keys..."></textarea>
-      <button class="btn primary icon-only" id="send-chat-btn"><i class="fa-solid fa-paper-plane"></i></button>
+      <div class="chat-reply-preview hidden" id="chat-reply-preview">
+        <div class="chat-reply-info">
+          <div class="chat-reply-label" id="chat-reply-label"></div>
+          <div class="chat-reply-text" id="chat-reply-text"></div>
+        </div>
+        <button class="btn ghost small icon-only" id="clear-reply-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="chat-input-row">
+        <textarea class="chat-input" id="chat-input-text" placeholder="Ask to reorder songs, suggest keys..."></textarea>
+        <button class="btn primary icon-only" id="send-chat-btn"><i class="fa-solid fa-paper-plane"></i></button>
+      </div>
     </div>
   `;
 
@@ -25374,6 +25517,7 @@ function renderSetChatPanel(set) {
   const input = sidebar.querySelector("#chat-input-text");
 
   const send = () => {
+    if (state.isAiTyping) return;
     const text = input.value.trim();
     if (!text) return;
     sendMessageToAi(set, text);
@@ -25388,7 +25532,18 @@ function renderSetChatPanel(set) {
     }
   });
 
-  renderChatMessages(sidebar.querySelector("#chat-messages-list"));
+  const clearReplyBtn = sidebar.querySelector("#clear-reply-btn");
+  if (clearReplyBtn) {
+    clearReplyBtn.addEventListener("click", () => clearChatReplyContext());
+  }
+
+  const messagesList = sidebar.querySelector("#chat-messages-list");
+  messagesList.addEventListener("mouseup", () => captureChatSelection(messagesList));
+  messagesList.addEventListener("keyup", () => captureChatSelection(messagesList));
+
+  renderChatReplyPreview();
+  updateChatControls();
+  renderChatMessages(messagesList);
 }
 
 
@@ -25405,19 +25560,32 @@ function renderChatMessages(container) {
     return;
   }
 
-  state.aiChatMessages.forEach(msg => {
+  const lastAssistantIndex = getLastAssistantIndex(state.aiChatMessages);
+
+  state.aiChatMessages.forEach((msg, index) => {
     const msgEl = document.createElement("div");
     msgEl.className = `chat-message ${msg.role}`;
+    msgEl.dataset.msgIndex = index;
+    msgEl.dataset.role = msg.role;
 
-    let rawContent = msg.content;
-    let actionBlock = null;
+    const { text, reply } = parseChatContent(msg.content);
+    const { rawContent, actionBlock } = extractActionBlock(text);
 
-    const jsonMatch = msg.content.match(/```json\n([\s\S]*?)\n```/);
-    if (jsonMatch) {
-      rawContent = msg.content.replace(jsonMatch[0], "").trim();
-      try {
-        actionBlock = JSON.parse(jsonMatch[1]);
-      } catch (e) { console.error("Bad JSON in chat", e); }
+    if (reply && reply.text) {
+      const replyEl = document.createElement("div");
+      replyEl.className = "chat-reply-context";
+
+      const replyLabel = document.createElement("div");
+      replyLabel.className = "chat-reply-label";
+      replyLabel.textContent = `Replying to ${reply.role === "assistant" ? "assistant" : reply.role}`;
+
+      const replyText = document.createElement("div");
+      replyText.className = "chat-reply-text";
+      replyText.textContent = clampChatText(reply.text, 220);
+
+      replyEl.appendChild(replyLabel);
+      replyEl.appendChild(replyText);
+      msgEl.appendChild(replyEl);
     }
 
     let contentHtml;
@@ -25437,8 +25605,10 @@ function renderChatMessages(container) {
       contentHtml = escapeHtml(rawContent).replace(/\n/g, "<br>");
     }
 
-    let html = `<div class="message-bubble markdown-body">${contentHtml}</div>`;
-    msgEl.innerHTML = html;
+    const bubble = document.createElement("div");
+    bubble.className = "message-bubble markdown-body";
+    bubble.innerHTML = contentHtml;
+    msgEl.appendChild(bubble);
 
     if (actionBlock) {
       const card = document.createElement("div");
@@ -25476,6 +25646,47 @@ function renderChatMessages(container) {
       msgEl.appendChild(card);
     }
 
+    if (msg.role === "user" || msg.role === "assistant") {
+      const actions = document.createElement("div");
+      actions.className = "chat-message-actions";
+
+      const replyBtn = document.createElement("button");
+      replyBtn.className = "btn ghost small chat-action-btn";
+      replyBtn.innerHTML = '<i class="fa-solid fa-reply"></i> Reply';
+      replyBtn.addEventListener("click", () => {
+        const selection = state.aiChatSelection;
+        const selectedText = selection && selection.messageIndex === index ? selection.text : "";
+        const replyText = (selectedText || rawContent || "").trim();
+        if (!replyText) return;
+
+        state.aiChatReplyContext = { role: msg.role, text: replyText };
+        state.aiChatSelection = null;
+        renderChatReplyPreview();
+
+        const input = document.getElementById("chat-input-text");
+        if (input) input.focus();
+      });
+      actions.appendChild(replyBtn);
+
+      const canRegenerate = msg.role === "assistant" && index === lastAssistantIndex;
+      if (canRegenerate) {
+        const regenBtn = document.createElement("button");
+        regenBtn.className = "btn ghost small chat-action-btn";
+        regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Regenerate';
+        regenBtn.disabled = state.isAiTyping;
+        regenBtn.addEventListener("click", () => {
+          if (!state.selectedSet) {
+            toastError("No set selected.");
+            return;
+          }
+          regenerateAssistantMessage(state.selectedSet, index);
+        });
+        actions.appendChild(regenBtn);
+      }
+
+      msgEl.appendChild(actions);
+    }
+
     container.appendChild(msgEl);
   });
 
@@ -25483,24 +25694,16 @@ function renderChatMessages(container) {
 }
 
 
-async function sendMessageToAi(set, text) {
-  const userMsg = { role: 'user', content: text };
-  state.aiChatMessages.push(userMsg);
-
+async function streamAiResponse(set, messagesForAi, userId) {
   const container = document.getElementById("chat-messages-list");
-  if (container) renderChatMessages(container);
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-
-  await supabase.from("set_chat_messages").insert({
-    set_id: set.id,
-    user_id: user.id,
-    role: 'user',
-    content: text
-  });
+  state.isAiTyping = true;
+  updateChatControls();
 
   if (container) {
+    const existingTyping = container.querySelector(".typing-indicator");
+    if (existingTyping) existingTyping.remove();
+
     const typing = document.createElement("div");
     typing.className = "chat-message assistant typing-indicator";
     typing.innerHTML = `<div class="message-bubble"><span></span><span></span><span></span></div>`;
@@ -25522,7 +25725,7 @@ async function sendMessageToAi(set, text) {
       },
       body: JSON.stringify({
         set_id: set.id,
-        messages: state.aiChatMessages.map(m => ({ role: m.role, content: m.content }))
+        messages: messagesForAi
       })
     });
 
@@ -25536,7 +25739,7 @@ async function sendMessageToAi(set, text) {
     const decoder = new TextDecoder();
     let aiText = "";
 
-    if (container && container.lastChild.classList.contains("typing-indicator")) {
+    if (container && container.lastChild && container.lastChild.classList.contains("typing-indicator")) {
       container.lastChild.remove();
     }
 
@@ -25566,20 +25769,81 @@ async function sendMessageToAi(set, text) {
       }
     }
 
-    await supabase.from("set_chat_messages").insert({
-      set_id: set.id,
-      user_id: user.id,
-      role: 'assistant',
-      content: aiText
-    });
+    if (userId) {
+      const { data, error } = await supabase.from("set_chat_messages").insert({
+        set_id: set.id,
+        user_id: userId,
+        role: 'assistant',
+        content: aiText
+      }).select("id").single();
+
+      if (!error && data) assistantMsg.id = data.id;
+    }
 
   } catch (err) {
     console.error(err);
-    if (container && container.lastChild.classList.contains("typing-indicator")) {
+    if (container && container.lastChild && container.lastChild.classList.contains("typing-indicator")) {
       container.lastChild.remove();
     }
     toastError("AI is unavailable right now.");
+  } finally {
+    state.isAiTyping = false;
+    updateChatControls();
+    if (container) renderChatMessages(container);
   }
+}
+
+async function sendMessageToAi(set, text) {
+  if (state.isAiTyping) return;
+
+  const reply = state.aiChatReplyContext ? {
+    role: state.aiChatReplyContext.role,
+    text: state.aiChatReplyContext.text
+  } : null;
+
+  const content = reply ? { text, reply } : text;
+
+  const userMsg = { role: 'user', content };
+  state.aiChatMessages.push(userMsg);
+
+  const container = document.getElementById("chat-messages-list");
+  if (container) renderChatMessages(container);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data, error } = await supabase.from("set_chat_messages").insert({
+    set_id: set.id,
+    user_id: user.id,
+    role: 'user',
+    content
+  }).select("id").single();
+
+  if (!error && data) userMsg.id = data.id;
+
+  state.aiChatReplyContext = null;
+  state.aiChatSelection = null;
+  renderChatReplyPreview();
+
+  const messagesForAi = buildAiPayloadMessages(state.aiChatMessages);
+  await streamAiResponse(set, messagesForAi, user.id);
+}
+
+async function regenerateAssistantMessage(set, assistantIndex) {
+  if (state.isAiTyping) return;
+
+  const history = state.aiChatMessages.slice(0, assistantIndex);
+  const hasUserMessage = history.some(m => m.role === "user");
+  if (!hasUserMessage) {
+    toastError("Nothing to regenerate yet.");
+    return;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const messagesForAi = buildAiPayloadMessages(history);
+  await streamAiResponse(set, messagesForAi, user.id);
 }
 
 async function handleAiAction(actionBlock) {
