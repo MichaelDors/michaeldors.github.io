@@ -25749,6 +25749,7 @@ function renderActionItem(action) {
 
   const item = document.createElement("div");
   item.className = "chat-change-item";
+  item.dataset.state = "pending";
 
   const header = document.createElement("div");
   header.className = "chat-change-item-header";
@@ -25804,8 +25805,9 @@ function renderActionItem(action) {
   approveBtn.className = "action-btn approve";
   approveBtn.textContent = "Apply";
 
-  const disableItem = (stateLabel) => {
+  const disableItem = (stateLabel, stateValue) => {
     item.classList.add("is-disabled");
+    item.dataset.state = stateValue || "done";
     declineBtn.disabled = true;
     approveBtn.disabled = true;
     if (stateLabel) {
@@ -25814,18 +25816,29 @@ function renderActionItem(action) {
       badge.textContent = stateLabel;
       actionsRow.appendChild(badge);
     }
+    if (typeof item.__notifyParent === "function") {
+      item.__notifyParent();
+    }
   };
 
-  declineBtn.addEventListener("click", () => {
-    disableItem("Declined");
-  });
+  const declineItem = () => {
+    if (item.dataset.state !== "pending") return;
+    disableItem("Declined", "declined");
+  };
 
-  approveBtn.addEventListener("click", async () => {
+  const applyItem = async () => {
+    if (item.dataset.state !== "pending") return;
     declineBtn.disabled = true;
     approveBtn.disabled = true;
     await handleAiAction(action);
-    disableItem("Applied");
-  });
+    disableItem("Applied", "applied");
+  };
+
+  declineBtn.addEventListener("click", declineItem);
+  approveBtn.addEventListener("click", applyItem);
+
+  item.__declineAction = declineItem;
+  item.__applyAction = applyItem;
 
   actionsRow.appendChild(declineBtn);
   actionsRow.appendChild(approveBtn);
@@ -25855,8 +25868,54 @@ function renderActionCard(actions) {
 
   const list = document.createElement("div");
   list.className = "chat-change-list";
-  actions.forEach(action => list.appendChild(renderActionItem(action)));
+  const footer = document.createElement("div");
+  footer.className = "chat-action-footer";
+
+  const declineAllBtn = document.createElement("button");
+  declineAllBtn.className = "action-btn decline";
+  declineAllBtn.textContent = "Decline All";
+
+  const applyAllBtn = document.createElement("button");
+  applyAllBtn.className = "action-btn approve";
+  applyAllBtn.textContent = "Apply All";
+
+  const updateFooterState = () => {
+    const pendingItems = list.querySelectorAll('.chat-change-item[data-state="pending"]');
+    const hasPending = pendingItems.length > 0;
+    declineAllBtn.disabled = !hasPending;
+    applyAllBtn.disabled = !hasPending;
+  };
+
+  actions.forEach(action => {
+    const item = renderActionItem(action);
+    item.__notifyParent = updateFooterState;
+    list.appendChild(item);
+  });
   card.appendChild(list);
+
+  declineAllBtn.addEventListener("click", () => {
+    const items = list.querySelectorAll('.chat-change-item[data-state="pending"]');
+    items.forEach(item => item.__declineAction?.());
+    updateFooterState();
+  });
+
+  applyAllBtn.addEventListener("click", async () => {
+    declineAllBtn.disabled = true;
+    applyAllBtn.disabled = true;
+    const items = Array.from(list.querySelectorAll('.chat-change-item[data-state="pending"]'));
+    for (const item of items) {
+      if (item.__applyAction) {
+        await item.__applyAction();
+      }
+    }
+    updateFooterState();
+  });
+
+  footer.appendChild(declineAllBtn);
+  footer.appendChild(applyAllBtn);
+  card.appendChild(footer);
+
+  updateFooterState();
   return card;
 }
 
@@ -25885,11 +25944,6 @@ async function toggleAiChat(set) {
     setTimeout(() => {
       const sidebar = el("ai-chat-sidebar");
       if (sidebar) {
-        // Calculate header height dynamically
-        const header = document.querySelector('.app-header');
-        const headerHeight = header ? header.offsetHeight : 0;
-        sidebar.style.top = `${headerHeight}px`;
-
         sidebar.classList.remove("hidden");
         // Initial width or current width
         const width = sidebar.style.width || "400px";
@@ -25950,11 +26004,25 @@ window.resizeChatLayout = () => {
   const sidebar = el("ai-chat-sidebar");
   if (!sidebar || sidebar.classList.contains("hidden")) return;
 
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    sidebar.style.top = "0px";
+    sidebar.style.height = "100%";
+    sidebar.style.width = "100%";
+    const main = document.querySelector('main');
+    if (main) {
+      main.style.marginLeft = "";
+      main.style.marginRight = "";
+    }
+    return;
+  }
+
   // Calculate header sync
   const header = document.querySelector('.app-header');
   const headerHeight = header ? header.offsetHeight : 0;
   const top = Math.max(0, headerHeight - window.scrollY);
   sidebar.style.top = `${top}px`;
+  sidebar.style.height = "";
 
   // Calculate layout
   if (window.innerWidth > 768) {
@@ -25987,7 +26055,14 @@ function renderSetChatPanel(set) {
 
     // Initial positioning check (if opened first time)
     const header = document.querySelector('.app-header');
-    if (header) sidebar.style.top = `${header.offsetHeight}px`;
+    if (header) {
+      if (window.innerWidth <= 768) {
+        sidebar.style.top = "0px";
+        sidebar.style.height = "100%";
+      } else {
+        sidebar.style.top = `${header.offsetHeight}px`;
+      }
+    }
 
     // Add resize handle
     const handle = document.createElement("div");

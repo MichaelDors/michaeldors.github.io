@@ -5729,6 +5729,11 @@ i {
   align-items: center;
 }
 
+.chat-change-item-actions .action-btn {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+}
+
 .chat-change-item-state {
   margin-left: auto;
   font-size: 0.7rem;
@@ -5965,6 +5970,10 @@ i {
     border-radius: 0;
     z-index: 2000;
     max-width: none;
+  }
+
+  .chat-resize-handle {
+    display: none;
   }
 
   .chat-messages {
