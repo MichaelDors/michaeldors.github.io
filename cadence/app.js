@@ -7556,6 +7556,40 @@ function getDaysUntil(dateString) {
   return diffDays;
 }
 
+function updateAiChatFab(set) {
+  const detailView = el("set-detail");
+  if (!detailView) return;
+
+  const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+  const aiEnabled = currentTeam?.ai_enabled;
+  let fab = el("ai-chat-fab");
+
+  if (!aiEnabled || !set) {
+    if (fab) fab.remove();
+    return;
+  }
+
+  if (!fab) {
+    fab = document.createElement("button");
+    fab.id = "ai-chat-fab";
+    fab.className = "ai-chat-fab";
+    fab.type = "button";
+    fab.setAttribute("aria-label", "AI Assistant");
+    fab.title = "AI Assistant";
+    fab.innerHTML = `
+      <span class="ai-chat-fab__mesh"></span>
+      <span class="ai-chat-fab__icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+    `;
+    detailView.appendChild(fab);
+  }
+
+  fab.onclick = () => {
+    if (state.selectedSet) {
+      toggleAiChat(state.selectedSet);
+    }
+  };
+}
+
 function showSetDetail(set) {
   // Stop tracking time on previous page
   stopPageTimeTracking();
@@ -7757,38 +7791,8 @@ function showSetDetail(set) {
     }
   }
 
-  // AI Chat Button Injection
-  const currentPinBtn = el("btn-pin-set-detail");
-  console.log("🔮 Debug AI Button:");
-  console.log("  - currentPinBtn:", currentPinBtn);
-  console.log("  - parentNode:", currentPinBtn?.parentNode);
-
-  if (currentPinBtn && currentPinBtn.parentNode) {
-    const existingChatBtn = currentPinBtn.parentNode.querySelector(".btn-ai-chat-generated");
-    if (existingChatBtn) existingChatBtn.remove(); // Cleanup re-renders
-
-    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
-    console.log("  - state.currentTeamId:", state.currentTeamId);
-    console.log("  - currentTeam found:", !!currentTeam);
-    console.log("  - ai_enabled:", currentTeam?.ai_enabled);
-
-    const aiEnabled = currentTeam?.ai_enabled;
-
-    if (aiEnabled) {
-      console.log("  - ✅ AI is enabled, creating button...");
-      const chatBtn = document.createElement("button");
-      chatBtn.className = "btn icon-only secondary btn-ai-chat-generated";
-      chatBtn.title = "AI Assistant";
-      chatBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-color)"></i>';
-      chatBtn.onclick = () => toggleAiChat(set);
-
-      currentPinBtn.parentNode.insertBefore(chatBtn, currentPinBtn);
-    } else {
-      console.log("  - ❌ AI is disabled or settings missing");
-    }
-  } else {
-    console.log("  - ❌ Pin button or parent not found");
-  }
+  // AI Chat Floating Button
+  updateAiChatFab(set);
 
   // Render assignments (mobile tab)
   const assignmentsContentMobile = el("set-assignments-content-mobile");
@@ -25244,6 +25248,116 @@ function clampChatText(text, maxLen = 240) {
   return `${text.slice(0, maxLen - 1)}…`;
 }
 
+let chatSelectionListenersAttached = false;
+
+function ensureChatSelectionAction() {
+  let action = document.getElementById("chat-selection-action");
+  if (action) return action;
+
+  action = document.createElement("div");
+  action.id = "chat-selection-action";
+  action.className = "chat-selection-action hidden";
+  action.innerHTML = `
+    <button class="btn secondary small chat-selection-btn">
+      <i class="fa-solid fa-reply"></i> Reply
+    </button>
+  `;
+  document.body.appendChild(action);
+
+  const button = action.querySelector("button");
+  button.addEventListener("click", () => {
+    if (!state.aiChatSelection) return;
+    state.aiChatReplyContext = {
+      role: state.aiChatSelection.role,
+      text: state.aiChatSelection.text
+    };
+    state.aiChatSelection = null;
+    renderChatReplyPreview();
+    hideChatSelectionAction();
+
+    const input = document.getElementById("chat-input-text");
+    if (input) input.focus();
+  });
+
+  return action;
+}
+
+function hideChatSelectionAction() {
+  const action = document.getElementById("chat-selection-action");
+  if (action) action.classList.add("hidden");
+}
+
+function updateChatSelection(container) {
+  const action = ensureChatSelectionAction();
+  if (!state.isAiChatOpen || !container) {
+    hideChatSelectionAction();
+    return;
+  }
+
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || !selection.rangeCount) {
+    state.aiChatSelection = null;
+    hideChatSelectionAction();
+    return;
+  }
+
+  const text = selection.toString().trim();
+  if (!text) {
+    state.aiChatSelection = null;
+    hideChatSelectionAction();
+    return;
+  }
+
+  const range = selection.getRangeAt(0);
+  const node = range.commonAncestorContainer;
+  const element = node.nodeType === 1 ? node : node.parentElement;
+  const messageEl = element ? element.closest(".chat-message") : null;
+
+  if (!messageEl || !container.contains(messageEl)) {
+    state.aiChatSelection = null;
+    hideChatSelectionAction();
+    return;
+  }
+
+  const msgIndex = Number(messageEl.dataset.msgIndex);
+  if (!Number.isFinite(msgIndex)) {
+    state.aiChatSelection = null;
+    hideChatSelectionAction();
+    return;
+  }
+
+  const rect = range.getBoundingClientRect();
+  if (!rect || (rect.width === 0 && rect.height === 0)) {
+    state.aiChatSelection = null;
+    hideChatSelectionAction();
+    return;
+  }
+
+  state.aiChatSelection = {
+    messageIndex: msgIndex,
+    role: messageEl.dataset.role || "assistant",
+    text
+  };
+
+  action.classList.remove("hidden");
+
+  const padding = 8;
+  const actionWidth = action.offsetWidth || 72;
+  const actionHeight = action.offsetHeight || 28;
+
+  let top = rect.top + window.scrollY - actionHeight - 6;
+  if (top < window.scrollY + padding) {
+    top = rect.bottom + window.scrollY + 6;
+  }
+
+  let left = rect.right + window.scrollX + 6;
+  const maxLeft = window.scrollX + window.innerWidth - actionWidth - padding;
+  left = Math.min(Math.max(window.scrollX + padding, left), maxLeft);
+
+  action.style.top = `${top}px`;
+  action.style.left = `${left}px`;
+}
+
 function renderChatReplyPreview() {
   const preview = document.getElementById("chat-reply-preview");
   const label = document.getElementById("chat-reply-label");
@@ -25268,47 +25382,482 @@ function clearChatReplyContext() {
   renderChatReplyPreview();
 }
 
-function captureChatSelection(container) {
-  const selection = window.getSelection();
-  if (!selection || selection.isCollapsed) {
-    state.aiChatSelection = null;
-    return;
+// captureChatSelection removed in favor of updateChatSelection
+
+function safeJsonParse(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function isActionObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) && typeof value.action === "string";
+}
+
+function normalizeActionBlocks(payload) {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload.filter(isActionObject);
+  if (isActionObject(payload)) return [payload];
+  if (payload.actions && Array.isArray(payload.actions)) {
+    return payload.actions.filter(isActionObject);
+  }
+  return [];
+}
+
+function findJsonBlock(text) {
+  if (!text) return null;
+  let inString = false;
+  let escape = false;
+  const stack = [];
+  let blockStart = -1;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (ch === "{" || ch === "[") {
+      if (stack.length === 0) blockStart = i;
+      stack.push(ch);
+      continue;
+    }
+
+    if (ch === "}" || ch === "]") {
+      if (!stack.length) continue;
+      const last = stack.pop();
+      if ((ch === "}" && last !== "{") || (ch === "]" && last !== "[")) {
+        stack.length = 0;
+        blockStart = -1;
+        continue;
+      }
+      if (stack.length === 0 && blockStart !== -1) {
+        return {
+          jsonText: text.slice(blockStart, i + 1),
+          start: blockStart,
+          end: i + 1
+        };
+      }
+    }
   }
 
-  const text = selection.toString().trim();
-  if (!text) return;
+  return null;
+}
 
-  if (!selection.rangeCount) return;
-  const range = selection.getRangeAt(0);
-  const node = range.commonAncestorContainer;
-  const element = node.nodeType === 1 ? node : node.parentElement;
-  const messageEl = element ? element.closest(".chat-message") : null;
+function extractActionBlocks(contentText) {
+  let rawContent = typeof contentText === "string" ? contentText : String(contentText ?? "");
+  const actionBlocks = [];
+  const rawJsonBlocks = [];
 
-  if (!messageEl || !container.contains(messageEl)) return;
+  const fenceRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
+  let match;
+  let removedFence = false;
 
-  const msgIndex = Number(messageEl.dataset.msgIndex);
-  if (!Number.isFinite(msgIndex)) return;
+  while ((match = fenceRegex.exec(rawContent)) !== null) {
+    const jsonText = match[1];
+    const parsed = safeJsonParse(jsonText);
+    const normalized = normalizeActionBlocks(parsed);
+    if (normalized.length > 0) {
+      actionBlocks.push(...normalized);
+      rawJsonBlocks.push(jsonText);
+      const before = rawContent.slice(0, match.index);
+      const after = rawContent.slice(fenceRegex.lastIndex);
+      rawContent = `${before}${after}`;
+      fenceRegex.lastIndex = 0;
+      removedFence = true;
+    }
+  }
 
-  state.aiChatSelection = {
-    messageIndex: msgIndex,
-    role: messageEl.dataset.role || "assistant",
-    text
+  if (!actionBlocks.length) {
+    const jsonBlock = findJsonBlock(rawContent);
+    if (jsonBlock) {
+      const parsed = safeJsonParse(jsonBlock.jsonText);
+      const normalized = normalizeActionBlocks(parsed);
+      if (normalized.length > 0) {
+        actionBlocks.push(...normalized);
+        rawJsonBlocks.push(jsonBlock.jsonText);
+        rawContent = `${rawContent.slice(0, jsonBlock.start)}${rawContent.slice(jsonBlock.end)}`;
+      }
+    }
+  } else if (removedFence) {
+    rawContent = rawContent.trim();
+  }
+
+  return {
+    rawContent: rawContent.trim(),
+    actionBlocks,
+    rawActionJson: rawJsonBlocks.length ? rawJsonBlocks.join("\n\n") : null
   };
 }
 
-function extractActionBlock(contentText) {
-  let rawContent = contentText;
-  let actionBlock = null;
+function getSortedSetSongs() {
+  const setSongs = state.selectedSet?.set_songs || [];
+  return [...setSongs].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
+}
 
-  const jsonMatch = contentText.match(/```json\n([\s\S]*?)\n```/);
-  if (jsonMatch) {
-    rawContent = contentText.replace(jsonMatch[0], "").trim();
-    try {
-      actionBlock = JSON.parse(jsonMatch[1]);
-    } catch (e) { console.error("Bad JSON in chat", e); }
+function getSetSongById(setSongId) {
+  if (!setSongId || !state.selectedSet?.set_songs) return null;
+  return state.selectedSet.set_songs.find(ss => String(ss.id) === String(setSongId)) || null;
+}
+
+function getSetSongDisplayName(setSong) {
+  if (!setSong) return "Unknown item";
+  const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
+  if (tagInfo) {
+    const partName = resolveTagPartName(tagInfo.tagType, tagInfo.customValue) || setSong.title || "Tag";
+    return `${setSong.song?.title ?? "Untitled"} — ${partName}`;
+  }
+  if (setSong.song_id) {
+    return setSong.song?.title || "Untitled Song";
+  }
+  return setSong.title || "Untitled Section";
+}
+
+function shortId(value) {
+  if (!value) return "";
+  const str = String(value);
+  return str.length > 8 ? `${str.slice(0, 8)}...` : str;
+}
+
+function extractReorderIds(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  const candidates = [
+    payload.new_order,
+    payload.new_sequence,
+    payload.set_song_ids,
+    payload.sequence,
+    payload.order,
+    payload.items
+  ];
+
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate) || candidate.length === 0) continue;
+    if (candidate.every(v => typeof v === "string" || typeof v === "number")) {
+      return candidate.map(value => String(value));
+    }
+    if (candidate.every(v => v && typeof v === "object")) {
+      if (candidate.some(v => v.set_song_id)) {
+        return candidate
+          .slice()
+          .sort((a, b) => (a.sequence_order ?? a.order ?? 0) - (b.sequence_order ?? b.order ?? 0))
+          .map(v => v.set_song_id || v.id)
+          .filter(Boolean)
+          .map(value => String(value));
+      }
+      if (candidate.some(v => v.id)) {
+        return candidate
+          .slice()
+          .sort((a, b) => (a.sequence_order ?? a.order ?? 0) - (b.sequence_order ?? b.order ?? 0))
+          .map(v => v.id)
+          .filter(Boolean)
+          .map(value => String(value));
+      }
+    }
   }
 
-  return { rawContent, actionBlock };
+  return null;
+}
+
+function buildActionSummary(actions) {
+  if (!actions || actions.length === 0) return "";
+  const parts = actions.map(action => {
+    const type = action?.action;
+    const payload = action?.payload || {};
+    const setSong = getSetSongById(payload.set_song_id || payload.setSongId || payload.id);
+    const target = setSong ? getSetSongDisplayName(setSong) : "item";
+    if (type === "change_key") {
+      return `Change key of ${target} to ${payload.new_key || payload.key || "?"}`;
+    }
+    if (type === "add_note") {
+      return `Update notes for ${target}`;
+    }
+    if (type === "remove_song") {
+      return `Remove ${target}`;
+    }
+    if (type === "reorder_songs") {
+      return "Reorder setlist";
+    }
+    return `Apply ${type || "change"}`;
+  });
+  return `Proposed changes: ${parts.join("; ")}`;
+}
+
+function titleCaseAction(value) {
+  if (!value) return "Proposed Change";
+  return value
+    .split("_")
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function renderDiffValue(container, value) {
+  if (Array.isArray(value)) {
+    const list = document.createElement("ol");
+    list.className = "chat-diff-list";
+    value.forEach(item => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      list.appendChild(li);
+    });
+    container.appendChild(list);
+    return;
+  }
+  if (value === null || value === undefined || value === "") {
+    const empty = document.createElement("span");
+    empty.className = "chat-diff-empty";
+    empty.textContent = "(empty)";
+    container.appendChild(empty);
+    return;
+  }
+  if (typeof value === "object") {
+    container.textContent = JSON.stringify(value, null, 2);
+    container.classList.add("mono");
+    return;
+  }
+  container.textContent = String(value);
+}
+
+function buildDiffElement(label, beforeValue, afterValue) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "chat-diff";
+
+  if (label) {
+    const title = document.createElement("div");
+    title.className = "chat-diff-title";
+    title.textContent = label;
+    wrapper.appendChild(title);
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "chat-diff-grid";
+
+  const beforeCol = document.createElement("div");
+  beforeCol.className = "chat-diff-col";
+  const beforeLabel = document.createElement("div");
+  beforeLabel.className = "chat-diff-label";
+  beforeLabel.textContent = "Before";
+  const beforeValueEl = document.createElement("div");
+  beforeValueEl.className = "chat-diff-value from";
+  renderDiffValue(beforeValueEl, beforeValue);
+  beforeCol.appendChild(beforeLabel);
+  beforeCol.appendChild(beforeValueEl);
+
+  const arrow = document.createElement("div");
+  arrow.className = "chat-diff-arrow";
+  arrow.textContent = "->";
+
+  const afterCol = document.createElement("div");
+  afterCol.className = "chat-diff-col";
+  const afterLabel = document.createElement("div");
+  afterLabel.className = "chat-diff-label";
+  afterLabel.textContent = "After";
+  const afterValueEl = document.createElement("div");
+  afterValueEl.className = "chat-diff-value to";
+  renderDiffValue(afterValueEl, afterValue);
+  afterCol.appendChild(afterLabel);
+  afterCol.appendChild(afterValueEl);
+
+  grid.appendChild(beforeCol);
+  grid.appendChild(arrow);
+  grid.appendChild(afterCol);
+  wrapper.appendChild(grid);
+
+  return wrapper;
+}
+
+function buildSingleValueElement(label, value) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "chat-diff";
+
+  if (label) {
+    const title = document.createElement("div");
+    title.className = "chat-diff-title";
+    title.textContent = label;
+    wrapper.appendChild(title);
+  }
+
+  const pre = document.createElement("pre");
+  pre.className = "chat-diff-raw";
+  pre.textContent = value;
+  wrapper.appendChild(pre);
+
+  return wrapper;
+}
+
+function buildReorderPreview(payload) {
+  const setSongs = getSortedSetSongs();
+  const beforeLabels = setSongs.map(getSetSongDisplayName);
+  const orderIds = extractReorderIds(payload);
+  if (!orderIds) {
+    return {
+      beforeLabels,
+      afterLabels: null,
+      warnings: ["Missing a reorder list in the payload."]
+    };
+  }
+
+  const normalized = orderIds.map(id => String(id));
+  const unique = [];
+  const seen = new Set();
+  normalized.forEach(id => {
+    if (!seen.has(id)) {
+      seen.add(id);
+      unique.push(id);
+    }
+  });
+
+  const knownMap = new Map(setSongs.map(song => [String(song.id), song]));
+  const afterLabels = unique.map(id => {
+    const setSong = knownMap.get(id);
+    return setSong ? getSetSongDisplayName(setSong) : `Unknown item (${shortId(id)})`;
+  });
+
+  const warnings = [];
+  const missingIds = setSongs.map(song => String(song.id)).filter(id => !seen.has(id));
+  const unknownIds = unique.filter(id => !knownMap.has(id));
+  if (missingIds.length > 0) warnings.push(`Missing ${missingIds.length} item${missingIds.length === 1 ? "" : "s"} from the reorder list.`);
+  if (unknownIds.length > 0) warnings.push(`Contains ${unknownIds.length} unknown item${unknownIds.length === 1 ? "" : "s"}.`);
+  if (normalized.length !== unique.length) warnings.push("Contains duplicate items; duplicates will be ignored.");
+
+  return { beforeLabels, afterLabels, warnings };
+}
+
+function renderActionItem(action) {
+  const type = action?.action;
+  const payload = action?.payload || {};
+  const setSongId = payload.set_song_id || payload.setSongId || payload.id;
+  const setSong = getSetSongById(setSongId);
+  const targetLabel = setSong ? getSetSongDisplayName(setSong) : "";
+
+  const item = document.createElement("div");
+  item.className = "chat-change-item";
+
+  const header = document.createElement("div");
+  header.className = "chat-change-item-header";
+
+  const title = document.createElement("div");
+  title.className = "chat-change-item-title";
+  title.textContent = titleCaseAction(type);
+  header.appendChild(title);
+  item.appendChild(header);
+
+  if (targetLabel) {
+    const subtitle = document.createElement("div");
+    subtitle.className = "chat-change-item-subtitle";
+    subtitle.textContent = targetLabel;
+    item.appendChild(subtitle);
+  }
+
+  if (type === "change_key") {
+    const oldKey = setSong?.key || "";
+    const newKey = payload.new_key || payload.key || "";
+    item.appendChild(buildDiffElement("Key", oldKey, newKey));
+  } else if (type === "add_note") {
+    const existingNotes = setSong?.notes || "";
+    const note = payload.note || payload.text || "";
+    const shouldAppend = payload.mode === "append" || payload.append === true || payload.mode === undefined;
+    const updatedNotes = shouldAppend && existingNotes
+      ? `${existingNotes}\n${note}`.trim()
+      : note;
+    item.appendChild(buildDiffElement("Notes", existingNotes, updatedNotes));
+  } else if (type === "remove_song") {
+    item.appendChild(buildDiffElement("Setlist", "Present", "Removed"));
+  } else if (type === "reorder_songs") {
+    const preview = buildReorderPreview(payload);
+    item.appendChild(buildDiffElement("Order", preview.beforeLabels, preview.afterLabels || "(missing)"));
+    if (preview.warnings && preview.warnings.length) {
+      const warning = document.createElement("div");
+      warning.className = "chat-change-warning";
+      warning.textContent = preview.warnings.join(" ");
+      item.appendChild(warning);
+    }
+  } else {
+    item.appendChild(buildSingleValueElement("Payload", JSON.stringify(action, null, 2)));
+  }
+
+  const actionsRow = document.createElement("div");
+  actionsRow.className = "chat-change-item-actions";
+
+  const declineBtn = document.createElement("button");
+  declineBtn.className = "action-btn decline";
+  declineBtn.textContent = "Decline";
+
+  const approveBtn = document.createElement("button");
+  approveBtn.className = "action-btn approve";
+  approveBtn.textContent = "Apply";
+
+  const disableItem = (stateLabel) => {
+    item.classList.add("is-disabled");
+    declineBtn.disabled = true;
+    approveBtn.disabled = true;
+    if (stateLabel) {
+      const badge = document.createElement("span");
+      badge.className = "chat-change-item-state";
+      badge.textContent = stateLabel;
+      actionsRow.appendChild(badge);
+    }
+  };
+
+  declineBtn.addEventListener("click", () => {
+    disableItem("Declined");
+  });
+
+  approveBtn.addEventListener("click", async () => {
+    declineBtn.disabled = true;
+    approveBtn.disabled = true;
+    await handleAiAction(action);
+    disableItem("Applied");
+  });
+
+  actionsRow.appendChild(declineBtn);
+  actionsRow.appendChild(approveBtn);
+  item.appendChild(actionsRow);
+
+  return item;
+}
+
+function renderActionCard(actions) {
+  const card = document.createElement("div");
+  card.className = "chat-action-card chat-change-card";
+
+  const header = document.createElement("div");
+  header.className = "chat-change-header";
+
+  const title = document.createElement("div");
+  title.className = "chat-change-title";
+  title.innerHTML = `<i class="fa-solid fa-bolt"></i> Proposed Changes`;
+
+  const meta = document.createElement("div");
+  meta.className = "chat-change-meta";
+  meta.textContent = `${actions.length} change${actions.length === 1 ? "" : "s"}`;
+
+  header.appendChild(title);
+  header.appendChild(meta);
+  card.appendChild(header);
+
+  const list = document.createElement("div");
+  list.className = "chat-change-list";
+  actions.forEach(action => list.appendChild(renderActionItem(action)));
+  card.appendChild(list);
+  return card;
 }
 
 function getLastAssistantIndex(messages) {
@@ -25356,6 +25905,7 @@ async function toggleAiChat(set) {
     // Close
     const sidebar = el("ai-chat-sidebar");
     if (sidebar) sidebar.classList.add("hidden");
+    hideChatSelectionAction();
     main.style.transition = "margin-right 0.3s ease, margin-left 0.3s ease";
     main.style.marginRight = "";
     main.style.marginLeft = "";
@@ -25367,6 +25917,7 @@ async function loadAiChatHistory(setId) {
   state.aiChatReplyContext = null;
   state.aiChatSelection = null;
   renderChatReplyPreview();
+  hideChatSelectionAction();
 
   // Fetch from DB (RLS ensures we only get our own)
   const { data, error } = await supabase
@@ -25538,8 +26089,30 @@ function renderSetChatPanel(set) {
   }
 
   const messagesList = sidebar.querySelector("#chat-messages-list");
-  messagesList.addEventListener("mouseup", () => captureChatSelection(messagesList));
-  messagesList.addEventListener("keyup", () => captureChatSelection(messagesList));
+  messagesList.addEventListener("mouseup", () => updateChatSelection(messagesList));
+  messagesList.addEventListener("keyup", () => updateChatSelection(messagesList));
+
+  ensureChatSelectionAction();
+  if (!chatSelectionListenersAttached) {
+    chatSelectionListenersAttached = true;
+
+    document.addEventListener("selectionchange", () => {
+      if (!state.isAiChatOpen) return;
+      const list = document.getElementById("chat-messages-list");
+      if (!list) return;
+      updateChatSelection(list);
+    });
+
+    document.addEventListener("mousedown", (event) => {
+      const action = document.getElementById("chat-selection-action");
+      if (action && action.contains(event.target)) return;
+      hideChatSelectionAction();
+    });
+
+    window.addEventListener("scroll", () => {
+      hideChatSelectionAction();
+    }, { passive: true });
+  }
 
   renderChatReplyPreview();
   updateChatControls();
@@ -25569,7 +26142,9 @@ function renderChatMessages(container) {
     msgEl.dataset.role = msg.role;
 
     const { text, reply } = parseChatContent(msg.content);
-    const { rawContent, actionBlock } = extractActionBlock(text);
+    const { rawContent, actionBlocks } = extractActionBlocks(text);
+    const actionSummary = buildActionSummary(actionBlocks);
+    const displayContent = rawContent || actionSummary;
 
     if (reply && reply.text) {
       const replyEl = document.createElement("div");
@@ -25588,61 +26163,32 @@ function renderChatMessages(container) {
       msgEl.appendChild(replyEl);
     }
 
-    let contentHtml;
-    // Check if marked and DOMPurify are available
-    if (typeof marked !== 'undefined') {
-      try {
-        contentHtml = marked.parse(rawContent);
-        if (typeof DOMPurify !== 'undefined') {
-          contentHtml = DOMPurify.sanitize(contentHtml);
+    if (displayContent) {
+      let contentHtml;
+      // Check if marked and DOMPurify are available
+      if (typeof marked !== 'undefined') {
+        try {
+          contentHtml = marked.parse(displayContent);
+          if (typeof DOMPurify !== 'undefined') {
+            contentHtml = DOMPurify.sanitize(contentHtml);
+          }
+        } catch (err) {
+          console.error("Markdown error:", err);
+          contentHtml = escapeHtml(displayContent).replace(/\n/g, "<br>");
         }
-      } catch (err) {
-        console.error("Markdown error:", err);
-        contentHtml = escapeHtml(rawContent).replace(/\n/g, "<br>");
+      } else {
+        // Fallback
+        contentHtml = escapeHtml(displayContent).replace(/\n/g, "<br>");
       }
-    } else {
-      // Fallback
-      contentHtml = escapeHtml(rawContent).replace(/\n/g, "<br>");
+
+      const bubble = document.createElement("div");
+      bubble.className = "message-bubble markdown-body";
+      bubble.innerHTML = contentHtml;
+      msgEl.appendChild(bubble);
     }
 
-    const bubble = document.createElement("div");
-    bubble.className = "message-bubble markdown-body";
-    bubble.innerHTML = contentHtml;
-    msgEl.appendChild(bubble);
-
-    if (actionBlock) {
-      const card = document.createElement("div");
-      card.className = "chat-action-card";
-
-      let title = "Proposed Change";
-      let details = "Action";
-
-      if (actionBlock.action === 'reorder_songs') {
-        title = "Reorder Songs";
-        details = `Update sequence for ${actionBlock.payload?.new_order_count || 'songs'}`;
-      } else if (actionBlock.action === 'change_key') {
-        title = "Change Key";
-        details = `Change key to ${actionBlock.payload?.new_key}`;
-      } else if (actionBlock.action === 'remove_song') {
-        title = "Remove Song";
-        details = "Remove song from set";
-      }
-
-      card.innerHTML = `
-        <div class="chat-action-title"><i class="fa-solid fa-bolt"></i> ${title}</div>
-        <div class="chat-action-details">${details}</div>
-        <div class="chat-action-buttons">
-           <button class="action-btn decline">Decline</button> 
-           <button class="action-btn approve">Apply Change</button>
-        </div>
-      `;
-
-      card.querySelector(".approve").addEventListener("click", () => handleAiAction(actionBlock));
-      card.querySelector(".decline").addEventListener("click", () => {
-        card.style.opacity = "0.5";
-        card.style.pointerEvents = "none";
-      });
-
+    if (actionBlocks && actionBlocks.length) {
+      const card = renderActionCard(actionBlocks);
       msgEl.appendChild(card);
     }
 
@@ -25656,7 +26202,7 @@ function renderChatMessages(container) {
       replyBtn.addEventListener("click", () => {
         const selection = state.aiChatSelection;
         const selectedText = selection && selection.messageIndex === index ? selection.text : "";
-        const replyText = (selectedText || rawContent || "").trim();
+        const replyText = (selectedText || displayContent || "").trim();
         if (!replyText) return;
 
         state.aiChatReplyContext = { role: msg.role, text: replyText };
@@ -25847,17 +26393,81 @@ async function regenerateAssistantMessage(set, assistantIndex) {
 }
 
 async function handleAiAction(actionBlock) {
-  const action = actionBlock.action;
-  const payload = actionBlock.payload;
+  const action = actionBlock?.action;
+  const payload = actionBlock?.payload || {};
+  if (!action) return;
 
   if (action === 'reorder_songs') {
-    toastSuccess("Reordered songs (Simulated)");
+    const orderIds = extractReorderIds(payload);
+    if (!orderIds || orderIds.length === 0) {
+      toastError("Reorder proposal is missing the new order list.");
+      return;
+    }
+    if (!state.selectedSet) {
+      toastError("No set selected.");
+      return;
+    }
+
+    const setSongs = getSortedSetSongs();
+    const allIds = setSongs.map(song => String(song.id));
+    const uniqueIds = Array.from(new Set(orderIds.map(id => String(id))));
+    const unknownIds = uniqueIds.filter(id => !allIds.includes(id));
+    const missingIds = allIds.filter(id => !uniqueIds.includes(id));
+
+    if (unknownIds.length > 0) {
+      toastError("Reorder proposal contains unknown items.");
+      return;
+    }
+    if (missingIds.length > 0) {
+      toastError("Reorder proposal is missing some items. Please regenerate the suggestion.");
+      return;
+    }
+
+    const orderedItems = uniqueIds.map((id, index) => ({ id, sequence_order: index }));
+    await updateSongOrder(orderedItems, true);
+    toastSuccess("Setlist reordered");
   } else if (action === 'change_key') {
-    const { set_song_id, new_key } = payload;
-    const { error } = await supabase.from('set_songs').update({ key: new_key }).eq('id', set_song_id);
+    const setSongId = payload.set_song_id || payload.setSongId || payload.id;
+    const newKey = payload.new_key || payload.key;
+    if (!setSongId || !newKey) {
+      toastError("Key change proposal is missing details.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('set_songs')
+      .update({ key: newKey })
+      .eq('id', setSongId);
 
     if (!error) {
-      toastSuccess(`Key changed to ${new_key}`);
+      toastSuccess(`Key changed to ${newKey}`);
+      const set = state.selectedSet;
+      loadSets().then(() => {
+        const updated = state.sets.find(s => s.id === set.id);
+        if (updated) showSetDetail(updated);
+      });
+    }
+  } else if (action === 'add_note') {
+    const setSongId = payload.set_song_id || payload.setSongId || payload.id;
+    const note = payload.note || payload.text || "";
+    if (!setSongId || !note.trim()) {
+      toastError("Note proposal is missing a target or note text.");
+      return;
+    }
+
+    const setSong = getSetSongById(setSongId);
+    const shouldAppend = payload.mode === "append" || payload.append === true || payload.mode === undefined;
+    const updatedNotes = shouldAppend && setSong?.notes
+      ? `${setSong.notes}\n${note}`.trim()
+      : note.trim();
+
+    const { error } = await supabase
+      .from('set_songs')
+      .update({ notes: updatedNotes || null })
+      .eq('id', setSongId);
+
+    if (!error) {
+      toastSuccess("Note added");
       const set = state.selectedSet;
       loadSets().then(() => {
         const updated = state.sets.find(s => s.id === set.id);
@@ -25865,8 +26475,13 @@ async function handleAiAction(actionBlock) {
       });
     }
   } else if (action === 'remove_song') {
-    const { set_song_id } = payload;
-    const { error } = await supabase.from('set_songs').delete().eq('id', set_song_id);
+    const setSongId = payload.set_song_id || payload.setSongId || payload.id;
+    if (!setSongId) {
+      toastError("Remove proposal is missing a target.");
+      return;
+    }
+
+    const { error } = await supabase.from('set_songs').delete().eq('id', setSongId);
     if (!error) {
       toastSuccess("Song removed");
       loadSets().then(() => {
