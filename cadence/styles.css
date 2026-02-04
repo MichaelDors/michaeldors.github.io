@@ -2872,7 +2872,8 @@ i {
 .btn-ai-chat-generated i,
 #close-chat-btn i,
 #send-chat-btn i,
-.ai-chat-fab__icon i {
+.ai-chat-fab__icon i,
+.chat-change-item-action-btn i {
   margin-right: 0px !important;
 }
 
@@ -5614,6 +5615,7 @@ i {
 .chat-change-item-title {
   font-weight: 600;
   font-size: 0.85rem;
+  flex: 1;
 }
 
 .chat-change-item-subtitle {
@@ -5722,20 +5724,44 @@ i {
   border-radius: 8px;
 }
 
-.chat-change-item-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.6rem;
+.chat-change-item-controls {
+  margin-left: auto;
+  display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
 }
 
-.chat-change-item-actions .action-btn {
-  padding: 0.3rem 0.5rem;
+.chat-change-item-action-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
   font-size: 0.75rem;
 }
 
+.chat-change-item-action-btn:hover {
+  background: var(--bg-card-hover);
+}
+
+.chat-change-item-action-btn.approve {
+  border-color: color-mix(in srgb, var(--accent-color) 55%, var(--border-color));
+  color: var(--accent-color);
+}
+
+.chat-change-item-action-btn.decline {
+  border-color: color-mix(in srgb, var(--text-muted) 60%, var(--border-color));
+}
+
 .chat-change-item-state {
-  margin-left: auto;
+  margin-left: 0.25rem;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -5922,11 +5948,13 @@ i {
     filter: blur(16px);
     transform: translate3d(0, 0, 0) scale(1);
   }
+
   50% {
     opacity: 0.85;
     filter: blur(22px);
     transform: translate3d(0, -2px, 0) scale(1.03);
   }
+
   100% {
     opacity: 0.65;
     filter: blur(16px);

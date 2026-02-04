@@ -25758,6 +25758,27 @@ function renderActionItem(action) {
   title.className = "chat-change-item-title";
   title.textContent = titleCaseAction(type);
   header.appendChild(title);
+
+  const controls = document.createElement("div");
+  controls.className = "chat-change-item-controls";
+
+  const declineBtn = document.createElement("button");
+  declineBtn.className = "chat-change-item-action-btn decline";
+  declineBtn.setAttribute("type", "button");
+  declineBtn.setAttribute("aria-label", "Decline change");
+  declineBtn.setAttribute("title", "Decline");
+  declineBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+
+  const approveBtn = document.createElement("button");
+  approveBtn.className = "chat-change-item-action-btn approve";
+  approveBtn.setAttribute("type", "button");
+  approveBtn.setAttribute("aria-label", "Apply change");
+  approveBtn.setAttribute("title", "Apply");
+  approveBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+
+  controls.appendChild(declineBtn);
+  controls.appendChild(approveBtn);
+  header.appendChild(controls);
   item.appendChild(header);
 
   if (targetLabel) {
@@ -25794,17 +25815,6 @@ function renderActionItem(action) {
     item.appendChild(buildSingleValueElement("Payload", JSON.stringify(action, null, 2)));
   }
 
-  const actionsRow = document.createElement("div");
-  actionsRow.className = "chat-change-item-actions";
-
-  const declineBtn = document.createElement("button");
-  declineBtn.className = "action-btn decline";
-  declineBtn.textContent = "Decline";
-
-  const approveBtn = document.createElement("button");
-  approveBtn.className = "action-btn approve";
-  approveBtn.textContent = "Apply";
-
   const disableItem = (stateLabel, stateValue) => {
     item.classList.add("is-disabled");
     item.dataset.state = stateValue || "done";
@@ -25814,7 +25824,7 @@ function renderActionItem(action) {
       const badge = document.createElement("span");
       badge.className = "chat-change-item-state";
       badge.textContent = stateLabel;
-      actionsRow.appendChild(badge);
+      controls.appendChild(badge);
     }
     if (typeof item.__notifyParent === "function") {
       item.__notifyParent();
@@ -25839,10 +25849,6 @@ function renderActionItem(action) {
 
   item.__declineAction = declineItem;
   item.__applyAction = applyItem;
-
-  actionsRow.appendChild(declineBtn);
-  actionsRow.appendChild(approveBtn);
-  item.appendChild(actionsRow);
 
   return item;
 }
