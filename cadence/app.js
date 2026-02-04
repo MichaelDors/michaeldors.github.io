@@ -139,7 +139,15 @@ const state = {
     active: null, // { mode: 'viewer'|'editor', songId, scope, songKey, readOnly, chart, songTitle }
     editorCursor: { lineIndex: 0, charIndex: 0 },
     drag: null, // internal drag state
-  }
+  },
+  // AI Chat State
+  isAiChatOpen: false,
+  aiChatMessages: [], // { id, role, content, type: 'text'|'card', cardData? }
+  isAiTyping: false,
+  // AI Chat State
+  isAiChatOpen: false,
+  aiChatMessages: [], // { id, role, content, type: 'text'|'card', cardData? }
+  isAiTyping: false
 };
 
 // PostHog tracking helper - safely tracks events even if PostHog isn't loaded yet
@@ -597,6 +605,19 @@ function closeModalWithAnimation(modalElement, onHidden) {
   }, 250); // Slightly longer than 0.2s to be safe
 }
 
+function resetModalScroll(modalElement) {
+  if (!modalElement) return;
+
+  // Reset overlay scroll (if used) and content scroll (primary)
+  modalElement.scrollTop = 0;
+  modalElement.scrollLeft = 0;
+
+  const content = modalElement.querySelector('.modal-content');
+  if (content) {
+    content.scrollTop = 0;
+    content.scrollLeft = 0;
+  }
+}
 
 function hideDatabaseError() {
   const overlay = el('database-error-overlay');
@@ -877,7 +898,10 @@ function loadAppDataFromCache(session) {
     state.songs = uniqueSongsFromCache;
 
     state.people = data.people || [];
-    state.userTeams = data.userTeams || [];
+    state.userTeams = (data.userTeams || []).map(t => ({
+      ...t,
+      ai_enabled: t.ai_enabled || false
+    }));
     state.currentTeamId = data.currentTeamId;
     state.pendingRequests = data.pendingRequests || [];
     state.session = session; // Ensure session is set
@@ -1067,6 +1091,9 @@ function setupModalObservers() {
             content.offsetHeight; /* force reflow */
             content.style.animation = '';
           }
+
+          // Always reset scroll when a modal opens
+          resetModalScroll(target);
         });
       }
     });
@@ -3728,7 +3755,8 @@ async function fetchProfile() {
             name,
             owner_id,
             daily_reminder_time,
-            timezone
+            timezone,
+            ai_enabled
           )
         `)
         .eq("id", state.session.user.id)
@@ -3954,7 +3982,8 @@ async function fetchUserTeams() {
           daily_reminder_time,
           timezone,
           require_publish,
-          itunes_indexing_enabled
+          itunes_indexing_enabled,
+          ai_enabled
         )
       `)
       .eq("user_id", state.session.user.id)
@@ -3977,7 +4006,8 @@ async function fetchUserTeams() {
             assignment_mode,
             daily_reminder_time,
             timezone,
-            require_publish
+            require_publish,
+            ai_enabled
           )
         `)
         .eq("user_id", state.session.user.id)
@@ -4020,6 +4050,7 @@ async function fetchUserTeams() {
       timezone: tm.team?.timezone,
       require_publish: tm.team?.require_publish !== false, // Default to true
       itunes_indexing_enabled: tm.team?.itunes_indexing_enabled !== false, // Default to true
+      ai_enabled: tm.team?.ai_enabled || false,
     }));
 
     console.log('  - ✅ Found', state.userTeams.length, 'teams');
@@ -7720,6 +7751,39 @@ function showSetDetail(set) {
     } else {
       if (editAssignmentsBtn) editAssignmentsBtn.classList.add("hidden");
     }
+  }
+
+  // AI Chat Button Injection
+  const currentPinBtn = el("btn-pin-set-detail");
+  console.log("🔮 Debug AI Button:");
+  console.log("  - currentPinBtn:", currentPinBtn);
+  console.log("  - parentNode:", currentPinBtn?.parentNode);
+
+  if (currentPinBtn && currentPinBtn.parentNode) {
+    const existingChatBtn = currentPinBtn.parentNode.querySelector(".btn-ai-chat-generated");
+    if (existingChatBtn) existingChatBtn.remove(); // Cleanup re-renders
+
+    const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
+    console.log("  - state.currentTeamId:", state.currentTeamId);
+    console.log("  - currentTeam found:", !!currentTeam);
+    console.log("  - ai_enabled:", currentTeam?.ai_enabled);
+
+    const aiEnabled = currentTeam?.ai_enabled;
+
+    if (aiEnabled) {
+      console.log("  - ✅ AI is enabled, creating button...");
+      const chatBtn = document.createElement("button");
+      chatBtn.className = "btn icon-only secondary btn-ai-chat-generated";
+      chatBtn.title = "AI Assistant";
+      chatBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-color)"></i>';
+      chatBtn.onclick = () => toggleAiChat(set);
+
+      currentPinBtn.parentNode.insertBefore(chatBtn, currentPinBtn);
+    } else {
+      console.log("  - ❌ AI is disabled or settings missing");
+    }
+  } else {
+    console.log("  - ❌ Pin button or parent not found");
   }
 
   // Render assignments (mobile tab)
@@ -15604,6 +15668,22 @@ async function extractVibrantColor(img) {
   }
 }
 
+/**
+ * Helper to load an image and return its URL (or blob URL if fetched)
+ * @param {string} url - The URL to load
+ * @returns {Promise<string|null>} - The URL if successful, null otherwise
+ */
+const loadImageWithFallback = async (url) => {
+  if (!url) return null;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(url);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+};
+
 // Track which songs are currently loading album art to prevent duplicate calls
 const loadingAlbumArt = new Set();
 
@@ -15892,12 +15972,13 @@ async function displayAlbumArt(content, albumArtData, song) {
     document.addEventListener("keydown", handleEsc);
   };
 
-  // Add click handler to both container and image
+  // Add click handler to container (handles both image and skeleton/background)
   // Only open modal if clicking on the image/container itself, not on buttons
   placeholder.style.cursor = "pointer";
   img.style.cursor = "pointer";
-  placeholder.addEventListener("click", (e) => {
-    // Check if click is on overlay controls
+
+  const handleAlbumArtClick = (e) => {
+    // Check if click is on overlay controls or interactive elements
     const overlayControls = placeholder.querySelector("#album-art-overlay-controls");
     if (overlayControls && (overlayControls.contains(e.target) || e.target === overlayControls)) {
       return;
@@ -15906,12 +15987,12 @@ async function displayAlbumArt(content, albumArtData, song) {
     if (e.target.closest('button') || e.target.closest('label') || e.target.closest('input')) {
       return;
     }
+
+    console.log('🖼️ Album art clicked, opening modal');
     openAlbumArtModal(e);
-  });
-  img.addEventListener("click", (e) => {
-    e.stopPropagation(); // Prevent container click from also firing
-    openAlbumArtModal(e);
-  });
+  };
+
+  placeholder.addEventListener("click", handleAlbumArtClick);
 }
 
 /**
@@ -16974,7 +17055,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         <div class="song-details-header-wrapper">
           <div id="song-album-art-placeholder" class="song-album-art-container" data-can-upload="${canUploadAlbumArt ? '1' : '0'}" style="display:none;">
             <div class="album-art-skeleton skeleton" aria-hidden="true"></div>
-            <img id="song-album-art-img" src="" alt="Album art for ${escapeHtml(songWithLinks.title || 'song')}" class="song-album-art" style="display:none;" loading="lazy" />
+            <img id="song-album-art-img" src="" alt="Album art for ${escapeHtml(songWithLinks.title || 'song')}" class="song-album-art" style="display:none;" />
             <div id="song-album-art-no-image" class="song-album-art-no-image hidden">No image</div>
             ${canUploadAlbumArt ? `
             <div class="album-art-overlay-controls" id="album-art-overlay-controls" style="position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.5rem; opacity: 0; transition: opacity 0.2s;">
@@ -21407,6 +21488,109 @@ function openChordChartEditor({ songId, songTitle, scope, songKey = null, existi
 
   wireChordChartEditorInteractions();
 
+  // --- LRCLIB Integration ---
+  const searchInput = el("chart-lyrics-search-input");
+  const searchBtn = el("btn-chart-lyrics-search");
+  const resultsContainer = el("chart-lyrics-results");
+
+  if (searchInput && searchBtn && resultsContainer) {
+    // Clear previous state
+    searchInput.value = "";
+    resultsContainer.innerHTML = "";
+    resultsContainer.classList.add("hidden");
+
+    const performSearch = async () => {
+      const q = searchInput.value.trim();
+      console.log("[LRCLIB] Performing search for:", q);
+      if (!q) return;
+
+      searchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      searchBtn.disabled = true;
+      resultsContainer.classList.add("hidden");
+
+      try {
+        const results = await searchLyrics(q);
+        console.log("[LRCLIB] API Results:", results);
+        renderLyricResults(results);
+      } catch (err) {
+        console.error("Lyrics search failed:", err);
+        toastError("Failed to search lyrics: " + err.message);
+      } finally {
+        searchBtn.textContent = "Search";
+        searchBtn.disabled = false;
+      }
+    };
+
+    searchBtn.onclick = performSearch;
+    searchInput.onkeydown = (e) => {
+      if (e.key === "Enter") performSearch();
+    };
+
+    // Helper: Search implementation
+    async function searchLyrics(query) {
+      console.log("[LRCLIB] Fetching from API...");
+      // LRCLIB API: GET https://lrclib.net/api/search?q=...
+      const res = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(query)}`);
+      console.log("[LRCLIB] Response status:", res.status);
+      if (!res.ok) throw new Error("API Error: " + res.status);
+      return await res.json();
+    }
+
+    // Helper: Render results
+    function renderLyricResults(results) {
+      console.log("[LRCLIB] Rendering results:", results?.length);
+      resultsContainer.innerHTML = "";
+
+      if (!results || results.length === 0) {
+        resultsContainer.innerHTML = '<div class="muted small-text" style="padding:0.5rem; text-align:center;">No results found.</div>';
+        resultsContainer.classList.remove("hidden");
+        return;
+      }
+
+      let count = 0;
+      results.forEach(track => {
+        // Only show tracks that have lyrics
+        if (!track.plainLyrics && !track.syncedLyrics) return;
+        count++;
+
+        const div = document.createElement("div");
+        div.className = "chart-lyrics-result-item";
+        div.style.padding = "0.5rem";
+        div.style.borderBottom = "1px solid var(--border-color)";
+        div.style.cursor = "pointer";
+        div.innerHTML = `
+          <div style="font-weight:500;">${escapeHtml(track.trackName)}</div>
+          <div class="muted small-text">${escapeHtml(track.artistName)} • ${escapeHtml(track.albumName || "")}</div>
+        `;
+
+        div.onclick = () => {
+          if (confirm(`Replace current lyrics with lyrics from "${track.trackName}"?`)) {
+            const newLyrics = track.plainLyrics || track.syncedLyrics; // Fallback to synced if plain missing (though rare)
+
+            // Populate textarea
+            const lyricsInput = el("chart-lyrics-input");
+            if (lyricsInput) {
+              lyricsInput.value = newLyrics;
+              // Trigger input event to update the chart preview
+              lyricsInput.dispatchEvent(new Event("input"));
+            }
+            resultsContainer.classList.add("hidden");
+            searchInput.value = "";
+          }
+        };
+
+        resultsContainer.appendChild(div);
+      });
+
+      console.log("[LRCLIB] Rendered items:", count);
+      if (count === 0) {
+        resultsContainer.innerHTML = '<div class="muted small-text" style="padding:0.5rem; text-align:center;">No results found (with lyrics).</div>';
+      }
+
+      resultsContainer.classList.remove("hidden");
+    }
+  }
+
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden", "false");
   document.body.style.overflow = "hidden";
@@ -23230,6 +23414,12 @@ async function openTeamSettingsModal() {
     if (itunesIndexingEnabledCheckbox) {
       itunesIndexingEnabledCheckbox.checked = data.itunes_indexing_enabled !== false; // Default to true if not set
     }
+
+    // AI Enabled
+    const aiEnabledCheckbox = el("team-ai-enabled");
+    if (aiEnabledCheckbox) {
+      aiEnabledCheckbox.checked = data.ai_enabled || false;
+    }
   };
 
   // Render immediately with local data
@@ -23243,7 +23433,7 @@ async function openTeamSettingsModal() {
   try {
     let { data: freshData, error } = await supabase
       .from("teams")
-      .select("id, name, assignment_mode, daily_reminder_time, timezone, require_publish, itunes_indexing_enabled")
+      .select("id, name, assignment_mode, daily_reminder_time, timezone, require_publish, itunes_indexing_enabled, ai_enabled")
       .eq("id", state.currentTeamId)
       .single();
 
@@ -23275,7 +23465,8 @@ async function openTeamSettingsModal() {
         (freshData.daily_reminder_time !== teamData.daily_reminder_time) ||
         (freshData.timezone !== teamData.timezone) ||
         (freshData.require_publish !== teamData.require_publish) ||
-        (freshData.itunes_indexing_enabled !== teamData.itunes_indexing_enabled);
+        (freshData.itunes_indexing_enabled !== teamData.itunes_indexing_enabled) ||
+        (freshData.ai_enabled !== teamData.ai_enabled);
 
       // Update local state
       const stateTeam = state.userTeams.find(t => t.id === state.currentTeamId);
@@ -23309,6 +23500,7 @@ async function handleTeamSettingsSubmit(e) {
   const nameInput = el("team-settings-name-input");
   const requirePublishCheckbox = el("team-require-publish");
   const itunesIndexingEnabledCheckbox = el("team-itunes-indexing-enabled");
+  const aiEnabledCheckbox = el("team-ai-enabled");
 
   if (!nameInput || !teamAssignmentModeDropdown) return;
 
@@ -23322,6 +23514,7 @@ async function handleTeamSettingsSubmit(e) {
   const newTimezone = teamTimezoneDropdown?.getValue() || teamTimezoneSelectedValue;
   const newRequirePublish = requirePublishCheckbox?.checked !== false; // Default to true
   const newItunesIndexingEnabled = itunesIndexingEnabledCheckbox?.checked !== false; // Default to true
+  const newAiEnabled = aiEnabledCheckbox?.checked || false;
 
   if (!newName) {
     toastError("Team name cannot be empty.");
@@ -23361,6 +23554,12 @@ async function handleTeamSettingsSubmit(e) {
     hasChanges = true;
   }
 
+  // Handle AI Enabled (New Column)
+  if (newAiEnabled !== (currentTeam?.ai_enabled || false)) {
+    updates.ai_enabled = newAiEnabled;
+    hasChanges = true;
+  }
+
   if (!hasChanges) {
     // No changes, just close modal
     closeTeamSettingsModal();
@@ -23392,10 +23591,18 @@ async function handleTeamSettingsSubmit(e) {
   // Update local state
   if (currentTeam) {
     if (updates.name) currentTeam.name = updates.name;
+    if (updates.assignment_mode) currentTeam.assignment_mode = updates.assignment_mode;
     if (updates.daily_reminder_time) currentTeam.daily_reminder_time = updates.daily_reminder_time;
     if (updates.timezone) currentTeam.timezone = updates.timezone;
     if (updates.require_publish !== undefined) currentTeam.require_publish = updates.require_publish;
     if (updates.itunes_indexing_enabled !== undefined) currentTeam.itunes_indexing_enabled = updates.itunes_indexing_enabled;
+    if (updates.ai_enabled !== undefined) currentTeam.ai_enabled = updates.ai_enabled;
+
+    // Force update the current selected team ref in the list to trigger reactivity if any
+    const teamIndex = state.userTeams.findIndex(t => t.id === state.currentTeamId);
+    if (teamIndex !== -1) {
+      state.userTeams[teamIndex] = { ...currentTeam };
+    }
   }
 
   if (state.profile?.team && updates.name) {
@@ -24985,4 +25192,423 @@ function renderSetDetailPendingRequests(set) {
   }).catch(err => {
     console.error("Error loading pending requests for set detail:", err);
   });
+}
+
+// ==========================================
+// AI Chat Logic
+// ==========================================
+
+async function toggleAiChat(set) {
+  state.isAiChatOpen = !state.isAiChatOpen;
+  const main = document.querySelector('main');
+
+  if (state.isAiChatOpen) {
+    // Open
+    await loadAiChatHistory(set.id);
+    renderSetChatPanel(set);
+    setTimeout(() => {
+      const sidebar = el("ai-chat-sidebar");
+      if (sidebar) {
+        // Calculate header height dynamically
+        const header = document.querySelector('.app-header');
+        const headerHeight = header ? header.offsetHeight : 0;
+        sidebar.style.top = `${headerHeight}px`;
+
+        sidebar.classList.remove("hidden");
+        // Initial width or current width
+        const width = sidebar.style.width || "400px";
+
+        // Trigger layout calculation
+        if (typeof window.resizeChatLayout === 'function') {
+          window.resizeChatLayout();
+        }
+
+      }
+    }, 10);
+  } else {
+    // Close
+    const sidebar = el("ai-chat-sidebar");
+    if (sidebar) sidebar.classList.add("hidden");
+    main.style.transition = "margin-right 0.3s ease, margin-left 0.3s ease";
+    main.style.marginRight = "";
+    main.style.marginLeft = "";
+  }
+}
+
+async function loadAiChatHistory(setId) {
+  state.aiChatMessages = [];
+
+  // Fetch from DB (RLS ensures we only get our own)
+  const { data, error } = await supabase
+    .from("set_chat_messages")
+    .select("*")
+    .eq("set_id", setId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error loading chat:", error);
+    toastError("Failed to load chat history.");
+    return;
+  }
+
+  state.aiChatMessages = data.map(msg => {
+    return {
+      id: msg.id,
+      role: msg.role,
+      content: typeof msg.content === 'object' ? JSON.stringify(msg.content) : msg.content
+    };
+  });
+}
+
+// Helper for chat layout
+window.resizeChatLayout = () => {
+  const sidebar = el("ai-chat-sidebar");
+  if (!sidebar || sidebar.classList.contains("hidden")) return;
+
+  // Calculate header sync
+  const header = document.querySelector('.app-header');
+  const headerHeight = header ? header.offsetHeight : 0;
+  const top = Math.max(0, headerHeight - window.scrollY);
+  sidebar.style.top = `${top}px`;
+
+  // Calculate layout
+  if (window.innerWidth > 768) {
+    const sidebarW = parseInt(sidebar.style.width || "400");
+    const availW = window.innerWidth - sidebarW;
+    const maxContentW = 1200; // Match CSS max-width
+
+    // Center in available space
+    const targetLeft = Math.max(0, (availW - maxContentW) / 2);
+
+    const main = document.querySelector('main');
+    main.style.marginLeft = `${targetLeft}px`;
+    main.style.marginRight = `${sidebarW}px`;
+  }
+};
+
+window.addEventListener('scroll', window.resizeChatLayout);
+window.addEventListener('resize', window.resizeChatLayout);
+
+
+function renderSetChatPanel(set) {
+  let sidebar = el("ai-chat-sidebar");
+  if (!sidebar) {
+    sidebar = document.createElement("div");
+    sidebar.id = "ai-chat-sidebar";
+    sidebar.className = "chat-sidebar hidden";
+    // Set default width explicitly for logic
+    sidebar.style.width = "400px";
+    document.body.appendChild(sidebar);
+
+    // Initial positioning check (if opened first time)
+    const header = document.querySelector('.app-header');
+    if (header) sidebar.style.top = `${header.offsetHeight}px`;
+
+    // Add resize handle
+    const handle = document.createElement("div");
+    handle.className = "chat-resize-handle";
+    sidebar.appendChild(handle);
+
+    // Drag resizing logic
+    handle.addEventListener('mousedown', (e) => {
+      sidebar.dataset.resizing = "true";
+      document.body.style.cursor = 'col-resize';
+      document.querySelector('main').style.transition = 'none';
+      sidebar.style.transition = 'none';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (sidebar.dataset.resizing !== "true") return;
+
+      // Calculate new width relative to right edge
+      const newWidth = window.innerWidth - e.clientX;
+
+      // Constraints (min 300, max 800)
+      if (newWidth > 300 && newWidth < 800) {
+        sidebar.style.width = `${newWidth}px`;
+        if (typeof window.resizeChatLayout === 'function') window.resizeChatLayout();
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (sidebar.dataset.resizing === "true") {
+        sidebar.dataset.resizing = "false";
+        document.body.style.cursor = '';
+
+        // Re-enable transition
+        const main = document.querySelector('main');
+        main.style.transition = 'margin-right 0.3s ease, margin-left 0.3s ease';
+        sidebar.style.transition = 'transform 0.3s ease';
+      }
+    });
+  }
+
+  // Render content
+  sidebar.innerHTML = `
+    <div class="chat-resize-handle"></div>
+    <div class="chat-header">
+      <h3><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-color)"></i> Set Assistant</h3>
+      <button class="btn icon-only" id="close-chat-btn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="chat-messages" id="chat-messages-list"></div>
+    <div class="chat-input-area">
+      <textarea class="chat-input" id="chat-input-text" placeholder="Ask to reorder songs, suggest keys..."></textarea>
+      <button class="btn primary icon-only" id="send-chat-btn"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  `;
+
+  // Re-attach handle event listener logic
+  const handle = sidebar.querySelector(".chat-resize-handle");
+  handle.addEventListener('mousedown', (e) => {
+    sidebar.dataset.resizing = "true";
+    document.body.style.cursor = 'col-resize';
+    document.querySelector('main').style.transition = 'none';
+    sidebar.style.transition = 'none';
+    e.preventDefault();
+  });
+
+  sidebar.querySelector("#close-chat-btn").addEventListener("click", () => toggleAiChat(set));
+
+  const sendBtn = sidebar.querySelector("#send-chat-btn");
+  const input = sidebar.querySelector("#chat-input-text");
+
+  const send = () => {
+    const text = input.value.trim();
+    if (!text) return;
+    sendMessageToAi(set, text);
+    input.value = "";
+  };
+
+  sendBtn.addEventListener("click", send);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+
+  renderChatMessages(sidebar.querySelector("#chat-messages-list"));
+}
+
+
+function renderChatMessages(container) {
+  container.innerHTML = "";
+
+  if (state.aiChatMessages.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+        <i class="fa-solid fa-robot" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+        <p>I can help you manage this set.<br>Try asking: "Sort these songs by BPM" or "Suggest a key for the second song".</p>
+      </div>
+    `;
+    return;
+  }
+
+  state.aiChatMessages.forEach(msg => {
+    const msgEl = document.createElement("div");
+    msgEl.className = `chat-message ${msg.role}`;
+
+    let rawContent = msg.content;
+    let actionBlock = null;
+
+    const jsonMatch = msg.content.match(/```json\n([\s\S]*?)\n```/);
+    if (jsonMatch) {
+      rawContent = msg.content.replace(jsonMatch[0], "").trim();
+      try {
+        actionBlock = JSON.parse(jsonMatch[1]);
+      } catch (e) { console.error("Bad JSON in chat", e); }
+    }
+
+    let contentHtml;
+    // Check if marked and DOMPurify are available
+    if (typeof marked !== 'undefined') {
+      try {
+        contentHtml = marked.parse(rawContent);
+        if (typeof DOMPurify !== 'undefined') {
+          contentHtml = DOMPurify.sanitize(contentHtml);
+        }
+      } catch (err) {
+        console.error("Markdown error:", err);
+        contentHtml = escapeHtml(rawContent).replace(/\n/g, "<br>");
+      }
+    } else {
+      // Fallback
+      contentHtml = escapeHtml(rawContent).replace(/\n/g, "<br>");
+    }
+
+    let html = `<div class="message-bubble markdown-body">${contentHtml}</div>`;
+    msgEl.innerHTML = html;
+
+    if (actionBlock) {
+      const card = document.createElement("div");
+      card.className = "chat-action-card";
+
+      let title = "Proposed Change";
+      let details = "Action";
+
+      if (actionBlock.action === 'reorder_songs') {
+        title = "Reorder Songs";
+        details = `Update sequence for ${actionBlock.payload?.new_order_count || 'songs'}`;
+      } else if (actionBlock.action === 'change_key') {
+        title = "Change Key";
+        details = `Change key to ${actionBlock.payload?.new_key}`;
+      } else if (actionBlock.action === 'remove_song') {
+        title = "Remove Song";
+        details = "Remove song from set";
+      }
+
+      card.innerHTML = `
+        <div class="chat-action-title"><i class="fa-solid fa-bolt"></i> ${title}</div>
+        <div class="chat-action-details">${details}</div>
+        <div class="chat-action-buttons">
+           <button class="action-btn decline">Decline</button> 
+           <button class="action-btn approve">Apply Change</button>
+        </div>
+      `;
+
+      card.querySelector(".approve").addEventListener("click", () => handleAiAction(actionBlock));
+      card.querySelector(".decline").addEventListener("click", () => {
+        card.style.opacity = "0.5";
+        card.style.pointerEvents = "none";
+      });
+
+      msgEl.appendChild(card);
+    }
+
+    container.appendChild(msgEl);
+  });
+
+  container.scrollTop = container.scrollHeight;
+}
+
+
+async function sendMessageToAi(set, text) {
+  const userMsg = { role: 'user', content: text };
+  state.aiChatMessages.push(userMsg);
+
+  const container = document.getElementById("chat-messages-list");
+  if (container) renderChatMessages(container);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from("set_chat_messages").insert({
+    set_id: set.id,
+    user_id: user.id,
+    role: 'user',
+    content: text
+  });
+
+  if (container) {
+    const typing = document.createElement("div");
+    typing.className = "chat-message assistant typing-indicator";
+    typing.innerHTML = `<div class="message-bubble"><span></span><span></span><span></span></div>`;
+    container.appendChild(typing);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) throw new Error("No active session");
+
+    const response = await fetch("https://pvqrxkbyjhgomwqwkedw.supabase.co/functions/v1/ai-chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+        "apikey": SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        set_id: set.id,
+        messages: state.aiChatMessages.map(m => ({ role: m.role, content: m.content }))
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI API Error:", response.status, errorText);
+      throw new Error(`AI Request Failed: ${errorText}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let aiText = "";
+
+    if (container && container.lastChild.classList.contains("typing-indicator")) {
+      container.lastChild.remove();
+    }
+
+    const assistantMsg = { role: 'assistant', content: "" };
+    state.aiChatMessages.push(assistantMsg);
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+
+      const lines = chunk.split("\n");
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const dataStr = line.replace("data: ", "").trim();
+          if (dataStr === "[DONE]") break;
+          try {
+            const data = JSON.parse(dataStr);
+            const content = data.choices[0]?.delta?.content || "";
+            aiText += content;
+            assistantMsg.content = aiText;
+            if (container) renderChatMessages(container);
+          } catch (e) {
+            // Ignore partial
+          }
+        }
+      }
+    }
+
+    await supabase.from("set_chat_messages").insert({
+      set_id: set.id,
+      user_id: user.id,
+      role: 'assistant',
+      content: aiText
+    });
+
+  } catch (err) {
+    console.error(err);
+    if (container && container.lastChild.classList.contains("typing-indicator")) {
+      container.lastChild.remove();
+    }
+    toastError("AI is unavailable right now.");
+  }
+}
+
+async function handleAiAction(actionBlock) {
+  const action = actionBlock.action;
+  const payload = actionBlock.payload;
+
+  if (action === 'reorder_songs') {
+    toastSuccess("Reordered songs (Simulated)");
+  } else if (action === 'change_key') {
+    const { set_song_id, new_key } = payload;
+    const { error } = await supabase.from('set_songs').update({ key: new_key }).eq('id', set_song_id);
+
+    if (!error) {
+      toastSuccess(`Key changed to ${new_key}`);
+      const set = state.selectedSet;
+      loadSets().then(() => {
+        const updated = state.sets.find(s => s.id === set.id);
+        if (updated) showSetDetail(updated);
+      });
+    }
+  } else if (action === 'remove_song') {
+    const { set_song_id } = payload;
+    const { error } = await supabase.from('set_songs').delete().eq('id', set_song_id);
+    if (!error) {
+      toastSuccess("Song removed");
+      loadSets().then(() => {
+        const updated = state.sets.find(s => s.id === state.selectedSet.id);
+        if (updated) showSetDetail(updated);
+      });
+    }
+  }
 }

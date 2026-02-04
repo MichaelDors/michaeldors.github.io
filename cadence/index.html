@@ -18,6 +18,8 @@
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
 
   <link rel="icon" type="image/x-icon" href="cadence.ico">
   <meta name="theme-color" content="#ff7b51" />
@@ -636,6 +638,18 @@
             <textarea id="chart-lyrics-input" class="chart-lyrics-textarea" rows="16"
               placeholder="Paste lyrics here…"></textarea>
           </div>
+          <div class="chart-sidebar-section">
+            <div class="chart-sidebar-title">Find Lyrics</div>
+            <div class="chart-insert-row">
+              <input type="text" id="chart-lyrics-search-input" class="chart-insert-input"
+                placeholder="Song title..." />
+              <button type="button" id="btn-chart-lyrics-search" class="btn secondary small">Search</button>
+            </div>
+            <div id="chart-lyrics-results" class="chart-lyrics-results hidden"></div>
+            <div class="muted small-text" style="margin-top:0.5rem;">
+              Powered by <a href="https://lrclib.net" target="_blank" style="color:var(--text-secondary);">LRCLIB</a>
+            </div>
+          </div>
         </aside>
         <main class="chart-editor-canvas">
           <div id="chart-editor-page" class="chart-page-wrap" aria-label="Chord chart page"></div>
@@ -1147,12 +1161,26 @@
         </label>
         <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">When enabled, sets must be
           published by owners/managers before they're visible to other team members.</p>
-        <label class="custom-checkbox-label">
-          <input type="checkbox" id="team-itunes-indexing-enabled" class="custom-checkbox" />
-          <span>Enable iTunes indexing for song metadata</span>
-        </label>
-        <p class="muted small-text" style="margin-top: -0.5rem; margin-bottom: 1rem;">When disabled, background iTunes
-          metadata indexing will not run for this team.</p>
+        <div class="checkbox-setting-group">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="team-itunes-indexing-enabled" class="custom-checkbox" checked />
+            <span>Enable iTunes Indexing</span>
+          </label>
+          <p class="muted small-text" style="margin-top: 0.25rem; margin-left: 1.75rem;">
+            Automatically match songs to iTunes metadata for BPM/Key info.
+          </p>
+        </div>
+
+        <div class="checkbox-setting-group" style="margin-top: 1rem;">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="team-ai-enabled" class="custom-checkbox" />
+            <span>Enable AI Features <span class="badge"
+                style="background: var(--accent-color); color: var(--bg-primary); border: none; font-size: 0.7rem; padding: 2px 6px; margin-left: 0.5rem;">BETA</span></span>
+          </label>
+          <p class="muted small-text" style="margin-top: 0.25rem; margin-left: 1.75rem;">
+            Allow AI to suggest keys, reorder songs, and assist with set management.
+          </p>
+        </div>
         <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
           <button type="button" class="btn ghost" id="btn-delete-team-settings"
             style="color: var(--error-color); width: 100%;"><i class="fa-solid fa-trash"></i> Delete Team</button>
