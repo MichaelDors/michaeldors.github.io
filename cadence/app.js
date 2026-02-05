@@ -18887,6 +18887,22 @@ function renderResourceSection(container, key, resources, keyId = null) {
   container.appendChild(section);
 }
 
+function isAiChartEnabled() {
+  const currentTeam = state.userTeams?.find(t => t.id === state.currentTeamId);
+  return !!currentTeam?.ai_enabled;
+}
+
+function isPdfResourceLink(link) {
+  if (!link) return false;
+  const fileType = String(link.file_type || "").toLowerCase();
+  const normalizedType = fileType.split(";")[0].trim();
+  const fileName = String(link.file_name || "").toLowerCase();
+  const url = String(link.url || "").toLowerCase();
+  return normalizedType === "application/pdf" ||
+    fileName.endsWith(".pdf") ||
+    url.includes(".pdf");
+}
+
 function createLinkRow(link, index, key) {
   const div = document.createElement("div");
   div.className = "song-link-row draggable-item";
@@ -18898,6 +18914,11 @@ function createLinkRow(link, index, key) {
   div.dataset.isFileUpload = link.is_file_upload ? 'true' : 'false';
 
   const isFileUpload = link.is_file_upload || false;
+  const isPdf = isPdfResourceLink(link);
+  const canGenerateCadence = isAiChartEnabled() && isPdf && !!link.id && (!!link.file_path || !!link.url);
+  const generateBtnHtml = canGenerateCadence
+    ? `<button type="button" class="btn small secondary generate-cadence-chart-btn">Generate Cadence</button>`
+    : "";
 
   if (isFileUpload) {
     // File upload row
@@ -18927,6 +18948,7 @@ function createLinkRow(link, index, key) {
       ${link.file_type ? `<input type="hidden" class="song-link-file-type" value="${escapeHtml(link.file_type)}" />` : ''}
       <input type="hidden" class="song-link-is-file-upload" value="true" />
       <input type="hidden" class="song-link-key" value="${escapeHtml(key)}" />
+      ${generateBtnHtml}
       <button type="button" class="btn small ghost remove-song-link">Remove</button>
     `;
 
@@ -18972,9 +18994,13 @@ function createLinkRow(link, index, key) {
       ${link.id ? `<input type="hidden" class="song-link-id" value="${link.id}" />` : ''}
       <input type="hidden" class="song-link-is-file-upload" value="false" />
       <input type="hidden" class="song-link-key" value="${escapeHtml(key)}" />
+      ${generateBtnHtml}
       <button type="button" class="btn small ghost remove-song-link">Remove</button>
     `;
   }
+
+  // Attach the resource for AI generation reuse
+  div.linkResource = link;
 
   div.querySelector(".remove-song-link").addEventListener("click", async () => {
     // If it's a file upload, delete the file from storage
@@ -19000,7 +19026,160 @@ function createLinkRow(link, index, key) {
     }
   });
 
+  const generateBtn = div.querySelector(".generate-cadence-chart-btn");
+  if (generateBtn) {
+    generateBtn.addEventListener("click", () => {
+      handleGenerateCadenceChart({
+        row: div,
+        link,
+        sectionKey: key,
+        button: generateBtn
+      });
+    });
+  }
+
   return div;
+}
+
+async function handleGenerateCadenceChart({ row, link, sectionKey, button } = {}) {
+  if (!link) return;
+  if (button?.dataset?.processing === "true") return;
+
+  const songForm = el("song-edit-form");
+  const songId = songForm?.dataset?.songId || null;
+  const songTitle = el("song-edit-title")?.value?.trim?.() || "";
+
+  if (!songId) {
+    toastInfo("Save the song first to generate charts.");
+    return;
+  }
+  if (!isAiChartEnabled()) {
+    toastInfo("AI is disabled for this team.");
+    return;
+  }
+  if (!link.id) {
+    toastInfo("Save this resource first.");
+    return;
+  }
+  if (!isPdfResourceLink(link)) {
+    toastInfo("Only PDF resources can be converted.");
+    return;
+  }
+
+  const existingResources = collectSongResources();
+  const existingGeneralNumber = existingResources.find(r =>
+    r.type === "chart" &&
+    !r.key &&
+    (r.chart_type === "number" || r.chart_content?.chart_type === "number")
+  );
+  if (existingGeneralNumber) {
+    toastInfo("A General Number Chart already exists. Remove it to regenerate.");
+    return;
+  }
+
+  const resourceKeyRaw = normalizeKeyLabel(sectionKey || row?.dataset?.key || "");
+  const resourceKey = resourceKeyRaw && parseKeyToPitchClass(resourceKeyRaw) ? resourceKeyRaw : null;
+  const songKeys = collectSongKeys();
+  const songKeyRaw = normalizeKeyLabel(songKeys?.[0]?.key || "");
+  const songKey = songKeyRaw && parseKeyToPitchClass(songKeyRaw) ? songKeyRaw : null;
+  let selectedKey = resourceKey || songKey || null;
+
+  let pdfUrl = link.url || null;
+  if (!pdfUrl && link.file_path) {
+    pdfUrl = await getFileUrl(link.file_path);
+  }
+  if (!pdfUrl) {
+    toastError("Unable to access the PDF file.");
+    return;
+  }
+
+  const setProcessing = (isProcessing) => {
+    if (!button) return;
+    button.dataset.processing = isProcessing ? "true" : "false";
+    button.classList.toggle("processing", isProcessing);
+    button.disabled = isProcessing;
+    button.textContent = isProcessing ? "Processing..." : "Generate Cadence";
+  };
+
+  setProcessing(true);
+
+  try {
+    const rows = await extractPdfRowsFromUrl(pdfUrl);
+    if (!rows || rows.length === 0) {
+      throw new Error("No text could be extracted from the PDF.");
+    }
+
+    const prompt = buildAiChartPrompt(rows, { keyHint: selectedKey });
+    const { data, error } = await supabase.functions.invoke("ai-chart", {
+      body: {
+        song_id: songId,
+        resource_id: link.id,
+        prompt
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message || "AI request failed.");
+    }
+
+    const content = data?.content;
+    if (!content) {
+      throw new Error("AI response was empty.");
+    }
+
+    const parsed = parseAiChartJson(content);
+    const doc = parsed?.doc || parsed;
+    if (!doc || !Array.isArray(doc.lyricsLines) || !Array.isArray(doc.placements)) {
+      throw new Error("AI returned an invalid chart format.");
+    }
+
+    const aiKeyRaw = normalizeKeyLabel(doc.key || "");
+    const aiKey = aiKeyRaw && parseKeyToPitchClass(aiKeyRaw) ? aiKeyRaw : null;
+    if (!selectedKey) selectedKey = aiKey;
+
+    if (!selectedKey) {
+      toastError("Could not determine a key for Nashville conversion.");
+      return;
+    }
+
+    const numberDoc = convertChordDocToNumberDoc(doc, selectedKey, songTitle);
+
+    const saved = await saveSongChart({
+      songId,
+      scope: "general",
+      chartType: "number",
+      layout: numberDoc?.settings?.layout || "one_column",
+      songKey: null,
+      doc: numberDoc
+    });
+
+    // Insert into General Resources section without re-rendering everything
+    const listContainer = el("song-links-list");
+    const generalSection = listContainer?.querySelector('[data-key=""]');
+    const sectionContent = generalSection?.querySelector(".song-links-section-content");
+
+    if (sectionContent && saved) {
+      const chartRow = buildChartRow(saved, {
+        songId,
+        songTitle,
+        generated: false
+      });
+      chartRow.dataset.resourceType = "chart";
+      chartRow.dataset.resourceId = saved.id;
+      chartRow.dataset.key = "";
+      chartRow.dataset.displayOrder = saved.display_order ?? "";
+      sectionContent.appendChild(chartRow);
+      if (isManager()) setupLinkDragAndDrop(chartRow, sectionContent);
+      updateAllLinkOrderInDom();
+    }
+
+    toastSuccess("Cadence chart generated.");
+  } catch (err) {
+    console.error("Cadence chart generation failed:", err);
+    toastError(err?.message || "Failed to generate cadence chart.");
+  } finally {
+    setProcessing(false);
+  }
 }
 
 function addSongLinkInput() {
@@ -21051,6 +21230,274 @@ function adjustPlacementsForLyricsChange(oldLines, newLines, placements) {
   });
 
   return adjustedPlacements;
+}
+
+async function extractPdfRowsFromUrl(url) {
+  if (!url) return [];
+  if (typeof pdfjsLib === "undefined") {
+    throw new Error("PDF parser not loaded.");
+  }
+
+  const loadingTask = pdfjsLib.getDocument(url);
+  const pdf = await loadingTask.promise;
+  const allRows = [];
+  const pdfScale = 1.5;
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: pdfScale });
+    const pdfPageHeight = viewport.height / pdfScale;
+    const pdfPageWidth = viewport.width / pdfScale;
+
+    const textContent = await page.getTextContent();
+    let items = textContent.items.map(item => ({
+      str: item.str,
+      x: item.transform[4],
+      y: pdfPageHeight - item.transform[5],
+      w: item.width,
+      h: item.height || item.transform[3],
+    })).filter(i => i.str && i.str.trim().length > 0);
+
+    if (items.length === 0) continue;
+
+    const heights = items.map(i => i.h).filter(h => h > 0).sort((a, b) => a - b);
+    const medianH = heights.length > 0 ? heights[Math.floor(heights.length / 2)] : 12;
+    const charWidth = Math.max(1, medianH * 0.5);
+
+    items = items.map(i => ({
+      ...i,
+      col: Math.round(i.x / charWidth)
+    }));
+
+    const midPoint = pdfPageWidth / 2;
+    const leftItems = items.filter(i => i.x < midPoint);
+    const rightItems = items.filter(i => i.x >= midPoint);
+    const isTwoColumn = leftItems.length > 10 && rightItems.length > 10;
+
+    const createRows = (itemList) => {
+      const rows = [];
+      const sorted = [...itemList].sort((a, b) => (a.y - b.y) || (a.x - b.x));
+      let currentRow = null;
+      const ROW_TOLERANCE = 4;
+
+      sorted.forEach(item => {
+        if (!currentRow) {
+          currentRow = { y: item.y, items: [item] };
+        } else if (Math.abs(item.y - currentRow.y) < ROW_TOLERANCE) {
+          currentRow.items.push(item);
+        } else {
+          rows.push(currentRow);
+          currentRow = { y: item.y, items: [item] };
+        }
+      });
+      if (currentRow) rows.push(currentRow);
+      rows.forEach(r => r.items.sort((a, b) => a.x - b.x));
+      return rows;
+    };
+
+    let pageRows = [];
+    if (isTwoColumn) {
+      let normalizedRightItems = rightItems;
+      if (rightItems.length > 0) {
+        const sortedCols = rightItems.map(i => i.col).sort((a, b) => a - b);
+        const minRightCol = sortedCols.length > 5
+          ? sortedCols[Math.floor(sortedCols.length * 0.1)]
+          : sortedCols[0];
+        normalizedRightItems = rightItems.map(i => ({ ...i, col: Math.max(0, i.col - minRightCol) }));
+      }
+      const leftRows = createRows(leftItems);
+      const rightRows = createRows(normalizedRightItems);
+      pageRows = [...leftRows, ...rightRows];
+    } else {
+      pageRows = createRows(items);
+    }
+
+    pageRows.forEach(row => {
+      allRows.push({
+        items: row.items.map(i => ({
+          str: i.str,
+          col: i.col
+        }))
+      });
+    });
+  }
+
+  return allRows;
+}
+
+function buildAiChartPrompt(rows, { keyHint = null } = {}) {
+  const linesLog = (rows || []).map((row, idx) => {
+    const rowContent = (row.items || []).map(i => `"${i.str}" (col=${i.col})`).join("  ");
+    return `ROW ${idx + 1}: ${rowContent}`;
+  }).join("\n");
+
+  const keyHintLine = keyHint ? `Key hint: ${keyHint}` : "Key hint: None";
+
+  return `
+You are a music chart converter. I have extracted text tokens from a PDF chord chart.
+I have pre-processed the chart into LOGICAL ROWS of text.
+If the PDF had two columns, I have already appended the second column AFTER the first one.
+So treat this input as a single continuous vertical list.
+
+Your goal is to reconstruct the song structure into a specific JSON format used by our software.
+
+${keyHintLine}
+
+Input Rows:
+${linesLog}
+
+Target JSON Format:
+{
+  "doc": {
+      "title": "Song Title",
+      "key": "C",
+      "lyricsLines": ["[Verse 1]", "line 1", "line 2", "[Chorus]", "line 1"],
+      "placements": [
+        { "lineIndex": 1, "charIndex": 5, "value": "C", "kind": "chord" }
+      ]
+  }
+}
+
+Rules:
+0. "key":
+   - DETECT the key of the song from the chords or title (e.g. "Key: G").
+   - If not found, infer it from the first/last chord.
+   - If a key hint is provided, prefer it.
+   - Output the Key in the JSON.
+1. "lyricsLines":
+   - MUST ONLY contain the lyrics text + section headers.
+   - NO lines that are just chords.
+   - NO metadata (Title, Artist, CCLI).
+   - "lyricsLines" should flow naturally line-by-line.
+
+2. "placements" (Chords):
+   - **THE GOLDEN RULE**: Chords on "ROW N" belong to the Lyrics on "ROW N+1".
+   - **Hyphenated Chords (CRITICAL)**:
+     - Lines like "Ab - Bbm" or "Ab / Bbm" are CHORD rows, NOT lyrics.
+     - Extract "Ab" and "Bbm" as separate chords for the text line below.
+     - IGNORE the hyphen "-".
+     - Do not overlap these chords, put them very close, next to each other in the correct order. Don't try to space them out, just make sure they're not overlapped.
+   - **Same-Row Chords**:
+     - If a Row contains BOTH chords (e.g. "Ab") and Lyrics (e.g. "Words"), extract the chords and place them on the SAME line.
+   - **Instrumentals**:
+     - If a Row is ONLY chords and the NEXT row is also chords (or a Header), treat it as an Instrumental (create an empty string lyric line).
+
+3. **Section Headers (STRICT)**:
+   - Headers like "[Chorus]" usually appear on their own Row.
+   - **STRIP METADATA**: Remove repeats/instructions.
+     - "[Verse 1(2x)]" -> "[Verse 1]"
+     - "[Bridge(Guitar Only)]" -> "[Bridge]"
+   - **NO CHORDS ON HEADERS**:
+     - The "placements" list for a Header line MUST be empty "[]".
+     - If chords appear visually near the header, they belong to the *next* line (Lyrics or Instrumental).
+
+4. **NO HALLUCINATIONS**:
+   - ONLY use the text provided in the Input Rows.
+   - Do NOT invent chords from previous verses if you don't see them.
+
+5. Output ONLY valid JSON inside \`\`\`json\`\`\` blocks. CRITICAL: Do not summarize, process every single row. If a row has no chords, output an empty placement list for that line. ONLY OUTPUT VALID JSON.
+`;
+}
+
+function parseAiChartJson(content) {
+  if (!content) return null;
+  const jsonMatch = content.match(/```json\s*([\s\S]*?)```/i) || content.match(/{[\s\S]*}/);
+  const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
+  return JSON.parse(jsonStr);
+}
+
+function chordToNashvilleNumber(chordToken, keyStr) {
+  const k = parseKeyToPitchClass(keyStr);
+  if (!k) return chordToken;
+
+  const tonicPc = k.pc;
+  const match = String(chordToken || "").trim().match(/^([A-G][#b]?)(.*)$/);
+  if (!match) return chordToken;
+
+  const rootNote = match[1];
+  const tail = match[2] || "";
+
+  const rootParsed = parseKeyToPitchClass(rootNote);
+  if (!rootParsed) return chordToken;
+  const rootPc = rootParsed.pc;
+
+  const semitones = (rootPc - tonicPc + 12) % 12;
+  let degree = "?";
+  let accidental = "";
+
+  if (k.isMinor) {
+    switch (semitones) {
+      case 0: degree = "1"; break;
+      case 1: degree = "2"; accidental = "b"; break;
+      case 2: degree = "2"; break;
+      case 3: degree = "3"; break;
+      case 4: degree = "3"; accidental = "#"; break;
+      case 5: degree = "4"; break;
+      case 6: degree = "5"; accidental = "b"; break;
+      case 7: degree = "5"; break;
+      case 8: degree = "6"; break;
+      case 9: degree = "6"; accidental = "#"; break;
+      case 10: degree = "7"; break;
+      case 11: degree = "7"; accidental = "#"; break;
+    }
+  } else {
+    switch (semitones) {
+      case 0: degree = "1"; break;
+      case 1: degree = "2"; accidental = "b"; break;
+      case 2: degree = "2"; break;
+      case 3: degree = "3"; accidental = "b"; break;
+      case 4: degree = "3"; break;
+      case 5: degree = "4"; break;
+      case 6: degree = "5"; accidental = "b"; break;
+      case 7: degree = "5"; break;
+      case 8: degree = "6"; accidental = "b"; break;
+      case 9: degree = "6"; break;
+      case 10: degree = "7"; accidental = "b"; break;
+      case 11: degree = "7"; break;
+    }
+  }
+
+  let newTail = tail;
+  if (tail.includes("/")) {
+    const parts = tail.split("/");
+    const qualityPart = parts[0];
+    const bassNoteRaw = parts[1];
+    const bassNum = chordToNashvilleNumber(bassNoteRaw, keyStr);
+    const bassMatch = String(bassNum).match(/^([b#]?\d+)/);
+    const finalBass = bassMatch ? bassMatch[1] : bassNoteRaw;
+    newTail = `${qualityPart}/${finalBass}`;
+  }
+
+  return `${accidental}${degree}${newTail}`;
+}
+
+function convertChordDocToNumberDoc(doc, keyStr, title = "") {
+  const base = doc || createEmptyChartDoc(title);
+  const lyricsLines = Array.isArray(base.lyricsLines) ? base.lyricsLines : [""];
+  const placements = Array.isArray(base.placements) ? base.placements : [];
+
+  const convertedPlacements = placements.map(p => {
+    const value = String(p?.value || "").trim();
+    const numberValue = chordToNashvilleNumber(value, keyStr);
+    return {
+      ...p,
+      id: p?.id || genPlacementId(),
+      kind: "number",
+      value: numberValue
+    };
+  });
+
+  return {
+    ...base,
+    title: title || base.title || "",
+    key: normalizeKeyLabel(keyStr) || base.key,
+    lyricsLines,
+    placements: convertedPlacements,
+    settings: {
+      ...(base.settings || {}),
+      layout: base?.settings?.layout || "one_column"
+    }
+  };
 }
 
 function genPlacementId() {
