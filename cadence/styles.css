@@ -1830,15 +1830,6 @@ textarea {
   flex-shrink: 0;
 }
 
-.song-link-row .generate-cadence-chart-btn {
-  white-space: nowrap;
-}
-
-.song-link-row .generate-cadence-chart-btn.processing {
-  opacity: 0.7;
-  cursor: progress;
-}
-
 .song-link-row label {
   margin: 0;
 }
