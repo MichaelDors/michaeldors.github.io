@@ -147,13 +147,13 @@ const state = {
     editorCursor: { lineIndex: 0, charIndex: 0 },
     drag: null, // internal drag state
   },
-  // AI Chat State
+  // Trill Chat State
   isAiChatOpen: false,
   aiChatMessages: [], // { id, role, content, type: 'text'|'card', cardData? }
   isAiTyping: false,
   aiChatReplyContext: null, // { role, text }
   aiChatSelection: null, // { messageIndex, role, text }
-  // AI Chat State
+  // Trill Chat State
   isAiChatOpen: false,
   aiChatMessages: [], // { id, role, content, type: 'text'|'card', cardData? }
   isAiTyping: false,
@@ -7581,8 +7581,8 @@ function updateAiChatFab(set) {
     fab.id = "ai-chat-fab";
     fab.className = "ai-chat-fab";
     fab.type = "button";
-    fab.setAttribute("aria-label", "AI Assistant");
-    fab.title = "AI Assistant";
+    fab.setAttribute("aria-label", "Trill");
+    fab.title = "Trill";
     fab.innerHTML = `
       <span class="ai-chat-fab__mesh"></span>
       <span class="ai-chat-fab__icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
@@ -7798,7 +7798,7 @@ function showSetDetail(set) {
     }
   }
 
-  // AI Chat Floating Button
+  // Trill Chat Floating Button
   updateAiChatFab(set);
 
   // Render assignments (mobile tab)
@@ -8460,6 +8460,9 @@ function hideSetDetail() {
   stopPageTimeTracking();
 
   closeHeaderDropdown();
+  if (state.isAiChatOpen) {
+    toggleAiChat(state.selectedSet);
+  }
   const dashboard = el("dashboard");
   const detailView = el("set-detail");
 
@@ -23753,7 +23756,7 @@ async function openTeamSettingsModal() {
       itunesIndexingEnabledCheckbox.checked = data.itunes_indexing_enabled !== false; // Default to true if not set
     }
 
-    // AI Enabled
+    // Trill Enabled
     const aiEnabledCheckbox = el("team-ai-enabled");
     if (aiEnabledCheckbox) {
       aiEnabledCheckbox.checked = data.ai_enabled || false;
@@ -23892,7 +23895,7 @@ async function handleTeamSettingsSubmit(e) {
     hasChanges = true;
   }
 
-  // Handle AI Enabled (New Column)
+  // Handle Trill Enabled (New Column)
   if (newAiEnabled !== (currentTeam?.ai_enabled || false)) {
     updates.ai_enabled = newAiEnabled;
     hasChanges = true;
@@ -25533,7 +25536,7 @@ function renderSetDetailPendingRequests(set) {
 }
 
 // ==========================================
-// AI Chat Logic
+// Trill Chat Logic
 // ==========================================
 
 function parseChatContent(content) {
@@ -26561,7 +26564,7 @@ function renderSetChatPanel(set) {
   sidebar.innerHTML = `
     <div class="chat-resize-handle"></div>
     <div class="chat-header">
-      <h3><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-color)"></i> Set Assistant</h3>
+      <h3><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-color)"></i> Trill</h3>
       <button class="btn icon-only" id="close-chat-btn"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="chat-messages" id="chat-messages-list"></div>
@@ -26805,8 +26808,8 @@ async function streamAiResponse(set, messagesForAi, userId) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI API Error:", response.status, errorText);
-      throw new Error(`AI Request Failed: ${errorText}`);
+      console.error("Trill API Error:", response.status, errorText);
+      throw new Error(`Trill Request Failed: ${errorText}`);
     }
 
     const reader = response.body.getReader();
@@ -26859,7 +26862,7 @@ async function streamAiResponse(set, messagesForAi, userId) {
     if (container && container.lastChild && container.lastChild.classList.contains("typing-indicator")) {
       container.lastChild.remove();
     }
-    toastError("AI is unavailable right now.");
+    toastError("Trill is unavailable right now.");
   } finally {
     state.isAiTyping = false;
     updateChatControls();
@@ -26974,7 +26977,7 @@ async function handleAiAction(actionBlock) {
       .eq('id', setSongId);
 
     if (error) {
-      console.error("AI key change failed:", error);
+      console.error("Trill key change failed:", error);
       toastError("Unable to change key.");
       return false;
     }
@@ -27010,7 +27013,7 @@ async function handleAiAction(actionBlock) {
       .eq('id', setSongId);
 
     if (error) {
-      console.error("AI note update failed:", error);
+      console.error("Trill note update failed:", error);
       toastError("Unable to add note.");
       return false;
     }
@@ -27032,7 +27035,7 @@ async function handleAiAction(actionBlock) {
 
     const { error } = await supabase.from('set_songs').delete().eq('id', setSongId);
     if (error) {
-      console.error("AI remove song failed:", error);
+      console.error("Trill remove song failed:", error);
       toastError("Unable to remove song.");
       return false;
     }
