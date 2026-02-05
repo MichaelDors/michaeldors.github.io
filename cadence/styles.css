@@ -5278,6 +5278,37 @@ i {
 }
 
 /* Loading Spinner */
+.app-boot-loader {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  z-index: 9999;
+}
+
+.app-boot-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  max-width: 280px;
+}
+
+body.booting .app-header,
+body.booting #auth-gate,
+body.booting #password-setup-gate,
+body.booting #dashboard,
+body.booting main {
+  display: none !important;
+}
+
 .spinner {
   width: 40px;
   height: 40px;

@@ -1,9 +1,35 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
 import { FastAverageColor } from "https://esm.sh/fast-average-color@9.4.0";
 
 const SUPABASE_URL = "https://pvqrxkbyjhgomwqwkedw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cXJ4a2J5amhnb213cXdrZWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1Mjg1NTQsImV4cCI6MjA3ODEwNDU1NH0.FWrCZOExwjhfihh7nSZFR2FkIhcJjVyDo0GdDaGKg1g";
+const SUPABASE_IMPORT_PRIMARY_URL = "https://esm.sh/@supabase/supabase-js@2";
+const SUPABASE_IMPORT_FALLBACK_URL = "https://esm.sh/@supabase/supabase-js@2.48.1";
+const SUPABASE_IMPORT_TIMEOUT_MS = 1000;
 const PDF_WORKER_SRC = window.__pdfjsWorkerSrc || "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+async function importWithTimeout(url, timeoutMs) {
+  return Promise.race([
+    import(url),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Import timeout after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+}
+
+async function loadSupabaseCreateClient() {
+  setBootLoaderMessage("Loading...");
+  try {
+    const primaryModule = await importWithTimeout(SUPABASE_IMPORT_PRIMARY_URL, SUPABASE_IMPORT_TIMEOUT_MS);
+    console.log("✅ Supabase ESM loaded (primary).");
+    return { createClient: primaryModule.createClient, source: "primary" };
+  } catch (error) {
+    console.warn("⚠️ Supabase ESM primary import failed or timed out. Falling back.", error);
+    setBootLoaderMessage("Still loading...");
+    const fallbackModule = await import(SUPABASE_IMPORT_FALLBACK_URL);
+    console.log("✅ Supabase ESM loaded (fallback).");
+    return { createClient: fallbackModule.createClient, source: "fallback" };
+  }
+}
 
 function ensurePdfWorker() {
   if (typeof window === "undefined") return;
@@ -69,14 +95,7 @@ const isInviteLink = window.__isInviteLink;
 // Initialize FastAverageColor
 const fac = new FastAverageColor();
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    detectSessionInUrl: true,
-    persistSession: true,
-    storage: window.localStorage,
-    autoRefreshToken: true,
-  },
-});
+let supabase = null;
 
 const state = {
   session: null,
@@ -478,6 +497,36 @@ async function sendAggregateMetrics() {
 }
 
 const el = (id) => document.getElementById(id);
+const appBootLoader = el("app-boot-loader");
+const appBootLoaderMessage = el("app-boot-loader-message");
+const appBootLoaderRetry = el("app-boot-loader-retry");
+
+if (appBootLoaderRetry) {
+  appBootLoaderRetry.addEventListener("click", () => window.location.reload());
+}
+
+function setBootLoaderMessage(message) {
+  if (!appBootLoaderMessage || !message) return;
+  appBootLoaderMessage.textContent = message;
+}
+
+function showBootLoader(message = "Loading Cadence...") {
+  document.body.classList.add("booting");
+  if (appBootLoader) appBootLoader.classList.remove("hidden");
+  setBootLoaderMessage(message);
+  if (appBootLoaderRetry) appBootLoaderRetry.classList.add("hidden");
+}
+
+function showBootLoaderError(message) {
+  showBootLoader(message);
+  if (appBootLoaderRetry) appBootLoaderRetry.classList.remove("hidden");
+}
+
+function hideBootLoader() {
+  if (appBootLoader) appBootLoader.classList.add("hidden");
+  document.body.classList.remove("booting");
+}
+
 const authGate = el("auth-gate");
 const dashboard = el("dashboard");
 const userInfo = el("user-info");
@@ -1171,6 +1220,7 @@ function initTabAnimations() {
 }
 
 async function init() {
+  showBootLoader("Checking your session...");
   // Initialize color picker visibility logic
   initTheme();
 
@@ -1214,24 +1264,6 @@ async function init() {
     if (event === 'TOKEN_REFRESHED' && state.session) {
       console.log('  - Token refreshed, skipping full reload');
       return;
-    }
-
-    // AUTH LOADING STATE OPTIMIZATION
-    // Immediately show spinner if we have a session to improve perceived performance
-    if (session) {
-      const authGateInner = document.getElementById('auth-gate');
-      const spinner = document.getElementById('auth-loading-spinner');
-      if (authGateInner && spinner) {
-        // Hide the login form but keep the auth gate visible (the card)
-        const loginForm = authGateInner.querySelector('#login-form-container');
-        if (loginForm) loginForm.classList.add('hidden');
-
-        // Show the spinner
-        spinner.classList.remove('hidden');
-
-        // Ensure the auth gate card itself is visible
-        authGateInner.classList.remove('hidden');
-      }
     }
 
     state.session = session;
@@ -1301,6 +1333,7 @@ async function init() {
         isProcessingSession = false;
         // Fallback to allowed to prevent lockout if just an API error? 
         // Or fail closed for security? Fails closed here (auth gate stays).
+        showAuthGate();
         setAuthMessage("Authentication verification failed. Please try again.", true);
       }
     } else {
@@ -2581,6 +2614,8 @@ function showAuthGate() {
   console.log('  - Current state.session:', state.session);
   console.log('  - Current state.profile:', state.profile);
 
+  hideBootLoader();
+
   // Always close set details when showing auth gate
   hideSetDetail();
 
@@ -2609,6 +2644,8 @@ function showPasswordSetupGate() {
   console.log('🔐 showPasswordSetupGate() called');
   console.log('  - isPasswordReset:', state.isPasswordReset);
   console.log('  - isPasswordSetup:', state.isPasswordSetup);
+
+  hideBootLoader();
 
   // Always close set details when showing password setup gate
   hideSetDetail();
@@ -2656,6 +2693,8 @@ function showApp() {
   console.log('✅ showApp() called');
   console.log('  - state.session:', !!state.session);
   console.log('  - state.profile:', state.profile);
+
+  hideBootLoader();
 
   // Re-fetch elements in case they weren't available during init
   const authGateEl = el("auth-gate");
@@ -7595,7 +7634,7 @@ function updateAiChatFab(set) {
     fab.title = "Trill";
     fab.innerHTML = `
       <span class="ai-chat-fab__mesh"></span>
-      <span class="ai-chat-fab__icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+      <span class="ai-chat-fab__icon"><i class="fa-solid fa-wave-square"></i></span>
     `;
     detailView.appendChild(fab);
   }
@@ -25853,8 +25892,31 @@ async function handleMfaChallengeSubmit(e) {
   }
 }
 
-init();
-setupMfaListeners();
+async function bootstrap() {
+  showBootLoader("Loading...");
+
+  try {
+    const { createClient, source } = await loadSupabaseCreateClient();
+    console.log(`🔌 Supabase import source: ${source}`);
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        detectSessionInUrl: true,
+        persistSession: true,
+        storage: window.localStorage,
+        autoRefreshToken: true,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Failed to load Supabase client:", error);
+    showBootLoaderError("Unable to load the app. Please refresh.");
+    return;
+  }
+
+  init();
+  setupMfaListeners();
+}
+
+bootstrap();
 
 
 function renderSetDetailPendingRequests(set) {
@@ -27023,7 +27085,7 @@ function renderSetChatPanel(set) {
   sidebar.innerHTML = `
     <div class="chat-resize-handle"></div>
     <div class="chat-header">
-      <h3><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-color)"></i> Trill</h3>
+      <h3><i class="fa-solid fa-wave-square" style="color: var(--accent-color)"></i> Trill</h3>
       <button class="btn icon-only" id="close-chat-btn"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="chat-messages" id="chat-messages-list"></div>
@@ -27036,7 +27098,7 @@ function renderSetChatPanel(set) {
         <button class="btn ghost small icon-only" id="clear-reply-btn"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="chat-input-row">
-        <textarea class="chat-input" id="chat-input-text" placeholder="Ask to reorder songs, suggest keys..."></textarea>
+        <textarea class="chat-input" id="chat-input-text" placeholder="Ask Trill"></textarea>
         <button class="btn primary icon-only" id="send-chat-btn"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
     </div>
@@ -27116,7 +27178,7 @@ function renderChatMessages(container) {
   if (state.aiChatMessages.length === 0) {
     container.innerHTML = `
       <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
-        <i class="fa-solid fa-robot" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+        <i class="fa-solid fa-ticket" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
         <p>I can help you manage this set.<br>Try asking: "Sort these songs by BPM" or "Suggest a key for the second song".</p>
       </div>
     `;

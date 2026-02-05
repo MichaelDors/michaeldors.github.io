@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://esm.sh" crossorigin>
-  <link rel="modulepreload" href="https://esm.sh/@supabase/supabase-js@2.48.1">
+  <link rel="modulepreload" href="https://esm.sh/@supabase/supabase-js@2">
   <link rel="modulepreload" href="https://esm.sh/fast-average-color@9.4.0">
   <meta name="referrer" content="no-referrer">
   <link
@@ -80,7 +80,15 @@
   </script>
 </head>
 
-<body>
+<body class="booting">
+  <div id="app-boot-loader" class="app-boot-loader" aria-live="polite">
+    <div class="app-boot-card">
+      <div class="spinner"></div>
+      <p id="app-boot-loader-message" class="muted">Loading...</p>
+      <button id="app-boot-loader-retry" class="btn secondary small hidden">Refresh</button>
+    </div>
+  </div>
+
   <header class="app-header">
     <div>
       <h1><i class="fa-solid fa-ticket" style="color: var(--accent-color);"></i> Cadence</h1>
