@@ -1983,6 +1983,63 @@ textarea {
   border-radius: 50%;
 }
 
+.audio-transpose-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.15rem;
+  flex-wrap: wrap;
+}
+
+.audio-transpose-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.audio-transpose-button {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.audio-transpose-button:hover {
+  border-color: var(--border-light);
+  background: var(--bg-secondary);
+}
+
+.audio-transpose-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.audio-transpose-value {
+  min-width: 4.75rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+
 .section-header {
   display: flex;
   justify-content: space-between;

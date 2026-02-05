@@ -108,13 +108,20 @@ const state = {
 
     // NEW: Precise timing and accent support variables
     nextNoteTime: 0.0,
-    currentBeat: 0,
+    startTime: 0.0,
+    noteIndex: 0,
+    beatInBar: 0,
+    beatsPerBar: 4,
+    secondsPerBeat: 0,
     scheduleAheadTime: 0.1, // Schedule 100ms ahead
     lookahead: 25.0, // Check every 25ms
     timeSignature: { // Default to 4/4
       numerator: 4,
       denominator: 4
-    }
+    },
+    clickBuffers: null,
+    clickBufferSampleRate: 0,
+    outputGain: null
   },
   mfa: {
     setupFactorId: null,
@@ -8127,12 +8134,19 @@ function renderSetDetailSongs(set) {
                       // Audio player
                       const audio = document.createElement("audio");
                       audio.controls = true;
+                      audio.crossOrigin = "anonymous";
                       audio.src = fileUrl;
                       audio.style.width = "100%";
                       audio.style.marginTop = "0.5rem";
                       audio.preload = "metadata";
 
                       content.appendChild(title);
+                      try {
+                        const transposeControls = buildAudioTransposeControls(audio, { baseKey: link.key || link.song_key || link.songKey });
+                        if (transposeControls) content.appendChild(transposeControls);
+                      } catch (err) {
+                        console.error("Failed to build transpose controls:", err);
+                      }
                       content.appendChild(audio);
 
                       audioContainer.appendChild(audioIcon);
@@ -8913,13 +8927,13 @@ function getDragAfterElement(container, y, dragging) {
 async function updateSongOrder(orderedItems, shouldRerender = true) {
   if (!state.selectedSet) {
     console.warn("No selected set, cannot update song order");
-    return;
+    return false;
   }
 
   if (!isManager()) {
     console.warn("Only managers can reorder songs");
     toastError("Only managers can reorder songs.");
-    return;
+    return false;
   }
 
   console.log("Updating song order:", orderedItems);
@@ -8941,7 +8955,7 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
         renderSetDetailSongs(updatedSet);
       }
     }
-    return;
+    return false;
   }
 
   // Update sequence orders using a two-phase approach to avoid unique constraint violations
@@ -8986,7 +9000,7 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
         renderSetDetailSongs(updatedSet);
       }
     }
-    return;
+    return false;
   }
 
   console.log("Phase 2: Setting all songs to their final sequence_order values...");
@@ -9034,7 +9048,7 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
         renderSetDetailSongs(updatedSet);
       }
     }
-    return;
+    return false;
   }
 
   console.log("All updates successful");
@@ -9068,6 +9082,8 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
       state.selectedSet.set_songs.sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
     }
   }
+
+  return true;
 }
 
 function setupLinkDragAndDrop(item, container) {
@@ -12969,6 +12985,9 @@ async function handleEditSetSongSubmit(event) {
       .from("song_assignments")
       .select("*")
       .eq("set_song_id", setSongId);
+    const existingAssignmentById = new Map(
+      (existingAssignments || []).map((assignment) => [String(assignment.id), assignment])
+    );
 
     // Determine which to delete, update, and insert
     const existingIds = new Set(existingAssignments?.map(a => a.id) || []);
@@ -12988,6 +13007,15 @@ async function handleEditSetSongSubmit(event) {
 
     // Update existing assignments
     for (const assignment of updatedAssignments) {
+      const existingAssignment = existingAssignmentById.get(String(assignment.id));
+      const existingIdentity = getAssignmentIdentityKeyFromDbRow(existingAssignment);
+      const newIdentity = getAssignmentIdentityKeyFromFormAssignment(assignment);
+      const shouldPreserveStatus =
+        existingIdentity && newIdentity && existingIdentity === newIdentity;
+      const statusToUse = shouldPreserveStatus
+        ? (existingAssignment?.status || 'pending')
+        : 'pending';
+
       await supabase
         .from("song_assignments")
         .update({
@@ -12996,8 +13024,8 @@ async function handleEditSetSongSubmit(event) {
           pending_invite_id: assignment.pending_invite_id || null,
           person_name: assignment.person_name || null,
           person_email: assignment.person_email || null,
-          // Preserve existing status when updating, or set to pending if person changed
-          status: assignment.status || 'pending',
+          // Preserve existing status when identity is unchanged; reset to pending if person changed
+          status: statusToUse,
         })
         .eq("id", assignment.id);
     }
@@ -18408,6 +18436,221 @@ function isAudioFile(fileType, fileName) {
   return false;
 }
 
+const AUDIO_TRANSPOSE_LIMITS = { min: -12, max: 12 };
+const AUDIO_PITCH_SHIFT_WORKLET_URL = "https://cdn.jsdelivr.net/npm/@soundtouchjs/audio-worklet@0.2.1/dist/soundtouch-worklet.js";
+const audioPitchShiftRegistry = new WeakMap();
+let audioPitchShiftContext = null;
+let audioPitchShiftModulePromise = null;
+
+function supportsAudioPitchShift() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  return !!AudioContextClass && typeof AudioWorkletNode !== "undefined";
+}
+
+function normalizeKeyToken(keyStr) {
+  const raw = String(keyStr || "").trim();
+  if (!raw) return null;
+  const hasMinorWord = /\bminor\b/i.test(raw) || /\bmin\b/i.test(raw);
+  const match = raw.match(/([A-Ga-g])([#b]?)(m(?!aj))?/);
+  if (!match) return null;
+  const letter = match[1].toUpperCase();
+  const accidental = match[2] || "";
+  const isMinor = !!match[3] || hasMinorWord;
+  return `${letter}${accidental}${isMinor ? "m" : ""}`;
+}
+
+function getTransposedKeyInfo(baseKey, semitones) {
+  const token = normalizeKeyToken(baseKey);
+  if (!token) return null;
+  const parsed = parseKeyToPitchClass(token);
+  if (!parsed) return null;
+  const baseName = `${pitchClassToNoteName(parsed.pc, parsed.preferFlats)}${parsed.isMinor ? "m" : ""}`;
+  const targetPc = (parsed.pc + semitones + 120) % 12;
+  const targetName = `${pitchClassToNoteName(targetPc, parsed.preferFlats)}${parsed.isMinor ? "m" : ""}`;
+  return { base: baseName, transposed: targetName };
+}
+
+async function ensureSoundTouchForAudio(audioEl) {
+  if (!supportsAudioPitchShift() || !audioEl) return null;
+
+  const existing = audioPitchShiftRegistry.get(audioEl);
+  if (existing?.ready) return existing;
+  if (existing?.initializing) return existing.initializing;
+
+  const initPromise = (async () => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!audioPitchShiftContext) {
+      audioPitchShiftContext = new AudioContextClass();
+    }
+
+    if (!audioPitchShiftModulePromise) {
+      audioPitchShiftModulePromise = audioPitchShiftContext.audioWorklet
+        .addModule(AUDIO_PITCH_SHIFT_WORKLET_URL)
+        .catch(err => {
+          audioPitchShiftModulePromise = null;
+          throw err;
+        });
+    }
+
+    await audioPitchShiftModulePromise;
+
+    const soundtouchNode = new AudioWorkletNode(audioPitchShiftContext, "soundtouch-processor");
+    const sourceNode = audioPitchShiftContext.createMediaElementSource(audioEl);
+    sourceNode.connect(soundtouchNode);
+    soundtouchNode.connect(audioPitchShiftContext.destination);
+
+    const params = soundtouchNode.parameters;
+    if (params?.get("tempo")) params.get("tempo").value = 1;
+    if (params?.get("rate")) params.get("rate").value = 1;
+    if (params?.get("pitchSemitones")) params.get("pitchSemitones").value = 0;
+
+    if (audioPitchShiftContext.state === "suspended") {
+      try {
+        await audioPitchShiftContext.resume();
+      } catch (err) {
+        console.warn("AudioContext resume blocked:", err);
+      }
+    }
+
+    const readyEntry = {
+      audioContext: audioPitchShiftContext,
+      soundtouchNode,
+      sourceNode,
+      ready: true,
+    };
+    audioPitchShiftRegistry.set(audioEl, readyEntry);
+    return readyEntry;
+  })().catch(err => {
+    audioPitchShiftRegistry.delete(audioEl);
+    throw err;
+  });
+
+  audioPitchShiftRegistry.set(audioEl, { initializing: initPromise, ready: false });
+  return initPromise;
+}
+
+function buildAudioTransposeControls(audioEl, { baseKey } = {}) {
+  if (!audioEl) return null;
+
+  const controls = document.createElement("div");
+  controls.className = "audio-transpose-controls";
+
+  const label = document.createElement("span");
+  label.className = "audio-transpose-label";
+  label.textContent = "Transpose";
+
+  const downBtn = document.createElement("button");
+  downBtn.type = "button";
+  downBtn.className = "audio-transpose-button";
+  downBtn.textContent = "-";
+  downBtn.setAttribute("aria-label", "Transpose down one semitone");
+
+  const value = document.createElement("span");
+  value.className = "audio-transpose-value";
+  value.title = "Click to reset";
+
+  const upBtn = document.createElement("button");
+  upBtn.type = "button";
+  upBtn.className = "audio-transpose-button";
+  upBtn.textContent = "+";
+  upBtn.setAttribute("aria-label", "Transpose up one semitone");
+
+  controls.appendChild(label);
+  controls.appendChild(downBtn);
+  controls.appendChild(value);
+  controls.appendChild(upBtn);
+
+  let currentSemitones = 0;
+  let initFailed = false;
+  const supportsPitchShift = supportsAudioPitchShift();
+
+  const buildValueLabel = () => {
+    const baseLabel = currentSemitones === 0
+      ? "0"
+      : (currentSemitones > 0 ? `+${currentSemitones}` : `${currentSemitones}`);
+
+    if (!baseKey) return baseLabel;
+
+    const keyInfo = getTransposedKeyInfo(baseKey, currentSemitones);
+    if (!keyInfo) return baseLabel;
+
+    const displayKey = currentSemitones === 0 ? keyInfo.base : keyInfo.transposed;
+    return `${baseLabel} (${displayKey})`;
+  };
+
+  const applyPitchShift = () => {
+    if (!supportsPitchShift || initFailed) return;
+    const semitonesToApply = currentSemitones;
+
+    void ensureSoundTouchForAudio(audioEl)
+      .then(entry => {
+        if (!entry?.soundtouchNode) return;
+        const params = entry.soundtouchNode.parameters;
+        const pitchParam = params?.get("pitchSemitones");
+        if (pitchParam) pitchParam.value = semitonesToApply;
+        const tempoParam = params?.get("tempo");
+        if (tempoParam) tempoParam.value = 1;
+        const rateParam = params?.get("rate");
+        if (rateParam) rateParam.value = 1;
+      })
+      .catch(err => {
+        initFailed = true;
+        console.error("Failed to initialize pitch shifting:", err);
+        downBtn.disabled = true;
+        upBtn.disabled = true;
+        value.textContent = "N/A";
+        value.title = "Pitch shift unavailable";
+      });
+  };
+
+  const update = (apply = false) => {
+    value.textContent = buildValueLabel();
+    downBtn.disabled = currentSemitones <= AUDIO_TRANSPOSE_LIMITS.min;
+    upBtn.disabled = currentSemitones >= AUDIO_TRANSPOSE_LIMITS.max;
+    if (apply) applyPitchShift();
+  };
+
+  downBtn.addEventListener("click", () => {
+    if (currentSemitones <= AUDIO_TRANSPOSE_LIMITS.min) return;
+    currentSemitones -= 1;
+    update(true);
+  });
+
+  upBtn.addEventListener("click", () => {
+    if (currentSemitones >= AUDIO_TRANSPOSE_LIMITS.max) return;
+    currentSemitones += 1;
+    update(true);
+  });
+
+  value.addEventListener("click", () => {
+    if (currentSemitones === 0) return;
+    currentSemitones = 0;
+    update(true);
+  });
+
+  if (!supportsPitchShift) {
+    value.textContent = "N/A";
+    value.title = "Pitch shift not supported in this browser";
+    downBtn.disabled = true;
+    upBtn.disabled = true;
+    return controls;
+  }
+
+  audioEl.playbackRate = 1;
+  audioEl.defaultPlaybackRate = 1;
+
+  audioEl.addEventListener(
+    "play",
+    () => {
+      applyPitchShift();
+    },
+    { once: true }
+  );
+
+  update(false);
+  return controls;
+}
+
 // ============================================================================
 // Song Links Functions
 // ============================================================================
@@ -20390,12 +20633,19 @@ async function renderSongLinksDisplay(links, container) {
         // Audio player
         const audio = document.createElement("audio");
         audio.controls = true;
+        audio.crossOrigin = "anonymous";
         audio.src = fileUrl;
         audio.style.width = "100%";
         audio.style.marginTop = "0.5rem";
         audio.preload = "metadata";
 
         content.appendChild(title);
+        try {
+          const transposeControls = buildAudioTransposeControls(audio, { baseKey: link.key || link.song_key || link.songKey });
+          if (transposeControls) content.appendChild(transposeControls);
+        } catch (err) {
+          console.error("Failed to build transpose controls:", err);
+        }
         content.appendChild(audio);
 
         audioContainer.appendChild(audioIcon);
@@ -21874,14 +22124,134 @@ function parseLocalDate(dateString) {
 
 // Metronome/Click Track Functions
 
+function computeBeatsPerBar(timeSignature) {
+  const numerator = Number(timeSignature?.numerator) || 4;
+  return numerator > 0 ? numerator : 4;
+}
+
+function buildClickBuffer(audioContext, {
+  frequency,
+  duration,
+  decay,
+  noiseAmount,
+  toneMix,
+  noiseDuration,
+  impulseAmount,
+  impulseSamples,
+  highpassCoeff
+}) {
+  const sampleRate = audioContext.sampleRate;
+  const length = Math.max(1, Math.round(sampleRate * duration));
+  const buffer = audioContext.createBuffer(1, length, sampleRate);
+  const data = buffer.getChannelData(0);
+
+  const noiseSamples = Math.max(1, Math.round(sampleRate * (noiseDuration || duration))); // short noise burst
+  const impulseCount = Math.max(0, Math.round(impulseSamples || 0));
+  const hpCoeff = typeof highpassCoeff === "number" ? highpassCoeff : 0.98;
+  let prevNoise = 0;
+  let max = 0;
+
+  for (let i = 0; i < length; i++) {
+    const t = i / sampleRate;
+    const env = Math.exp(-t / decay);
+    let noise = 0;
+    if (i < noiseSamples) {
+      const rawNoise = Math.random() * 2 - 1;
+      const hpNoise = rawNoise - prevNoise * hpCoeff;
+      prevNoise = rawNoise;
+      const fade = 1 - i / noiseSamples;
+      noise = hpNoise * fade;
+    }
+    let sample = noise * noiseAmount * env;
+    if (impulseCount > 0 && impulseAmount) {
+      if (i < impulseCount) {
+        const impulseEnv = 1 - i / impulseCount;
+        sample += impulseAmount * impulseEnv;
+      }
+    }
+    if (toneMix > 0 && frequency) {
+      const tone =
+        Math.sin(2 * Math.PI * frequency * t) +
+        0.15 * Math.sin(2 * Math.PI * frequency * 2 * t);
+      sample += tone * toneMix * env;
+    }
+    data[i] = sample;
+    const abs = Math.abs(sample);
+    if (abs > max) max = abs;
+  }
+
+  // Normalize to a safe headroom
+  if (max > 0) {
+    const scale = 0.9 / max;
+    for (let i = 0; i < length; i++) {
+      data[i] *= scale;
+    }
+  }
+
+  return buffer;
+}
+
+function ensureMetronomeBuffers() {
+  const metronome = state.metronome;
+  const audioContext = metronome.audioContext;
+  if (!audioContext) return;
+
+  if (!metronome.outputGain) {
+    metronome.outputGain = audioContext.createGain();
+    metronome.outputGain.gain.value = 0.8;
+    metronome.outputGain.connect(audioContext.destination);
+  }
+
+  if (!metronome.clickBuffers || metronome.clickBufferSampleRate !== audioContext.sampleRate) {
+    metronome.clickBuffers = {
+      accent: buildClickBuffer(audioContext, {
+        frequency: 1200,
+        duration: 0.026,
+        decay: 0.008,
+        noiseAmount: 1.2,
+        toneMix: 0.12,
+        noiseDuration: 0.0065,
+        impulseAmount: 1.0,
+        impulseSamples: 10,
+        highpassCoeff: 0.985
+      }),
+      regular: buildClickBuffer(audioContext, {
+        frequency: 950,
+        duration: 0.024,
+        decay: 0.007,
+        noiseAmount: 1.15,
+        toneMix: 0.08,
+        noiseDuration: 0.006,
+        impulseAmount: 0.8,
+        impulseSamples: 8,
+        highpassCoeff: 0.985
+      })
+    };
+    metronome.clickBufferSampleRate = audioContext.sampleRate;
+  }
+}
+
 // Precise scheduling engine
 function scheduler() {
   const metronome = state.metronome;
+  if (!metronome.audioContext || !metronome.secondsPerBeat) return;
+  const now = metronome.audioContext.currentTime;
+
+  // If we're behind, skip ahead to avoid "catch-up" bursts.
+  if (metronome.nextNoteTime < now - metronome.scheduleAheadTime) {
+    const beatsBehind = Math.floor((now - metronome.nextNoteTime) / metronome.secondsPerBeat);
+    if (beatsBehind > 0) {
+      metronome.noteIndex += beatsBehind;
+      metronome.nextNoteTime = metronome.startTime + metronome.noteIndex * metronome.secondsPerBeat;
+      const beatsPerBar = metronome.beatsPerBar || 4;
+      metronome.beatInBar = (metronome.beatInBar + beatsBehind) % beatsPerBar;
+    }
+  }
 
   // while there are notes that will need to play before the next interval,
   // schedule them and advance the pointer.
-  while (metronome.nextNoteTime < metronome.audioContext.currentTime + metronome.scheduleAheadTime) {
-    scheduleNote(metronome.currentBeat, metronome.nextNoteTime);
+  while (metronome.nextNoteTime < now + metronome.scheduleAheadTime) {
+    scheduleNote(metronome.beatInBar, metronome.nextNoteTime);
     nextNote();
   }
 
@@ -21892,83 +22262,34 @@ function scheduler() {
 
 function nextNote() {
   const metronome = state.metronome;
-  const secondsPerBeat = 60.0 / metronome.bpm;
+  if (!metronome.secondsPerBeat) return;
 
-  metronome.nextNoteTime += secondsPerBeat; // Add beat length to last beat time
+  metronome.noteIndex += 1;
+  metronome.nextNoteTime = metronome.startTime + metronome.noteIndex * metronome.secondsPerBeat;
 
-  // Advance the beat number, wrapping to zero
-  metronome.currentBeat++;
-  if (metronome.currentBeat >= metronome.timeSignature.numerator) {
-    metronome.currentBeat = 0;
-  }
+  const beatsPerBar = metronome.beatsPerBar || 4;
+  metronome.beatInBar = (metronome.beatInBar + 1) % beatsPerBar;
 }
 
-function scheduleNote(beatNumber, time) {
+function scheduleNote(beatInBar, time) {
   const metronome = state.metronome;
   // push the note on the queue, even if we're not playing.
-  createClickSound(metronome.audioContext, time, beatNumber);
+  createClickSound(metronome.audioContext, time, beatInBar < 0.0001);
 }
 
+function createClickSound(audioContext, time, isAccent) {
+  if (!audioContext) return;
+  ensureMetronomeBuffers();
 
-function createClickSound(audioContext, time, beatNumber) {
-  // Determine if this is the first beat of the bar (beat 0)
-  const isAccent = beatNumber === 0;
+  const metronome = state.metronome;
+  const buffers = metronome.clickBuffers;
+  if (!buffers) return;
 
-  // 1. WHITE NOISE (The "Click" attack)
-  // -----------------------------------
-  const clickDuration = 0.01;
-  const bufferSize = audioContext.sampleRate * clickDuration;
-  const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-  const data = buffer.getChannelData(0);
-
-  // Fill buffer with white noise
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = Math.random() * 2 - 1;
-  }
-
-  // Filter noise to sound like a sharp tick
-  const noiseFilter = audioContext.createBiquadFilter();
-  noiseFilter.type = 'bandpass';
-  noiseFilter.frequency.setValueAtTime(isAccent ? 3000 : 2000, time); // Higher snap for accent
-  noiseFilter.Q.setValueAtTime(2, time);
-
-  // Envelope for noise
-  const noiseGain = audioContext.createGain();
-  noiseGain.gain.setValueAtTime(0, time);
-  noiseGain.gain.linearRampToValueAtTime(0.8, time + 0.001); // Sharp attack
-  noiseGain.gain.exponentialRampToValueAtTime(0.01, time + clickDuration);
-
-  const noiseSource = audioContext.createBufferSource();
-  noiseSource.buffer = buffer;
-  noiseSource.connect(noiseFilter);
-  noiseFilter.connect(noiseGain);
-  noiseGain.connect(audioContext.destination);
-
-  noiseSource.start(time);
-  noiseSource.stop(time + clickDuration + 0.05);
-
-  // 2. OSCILLATOR (The "Tone" pitch)
-  // --------------------------------
-  // Higher pitch for accent (beat 1), standard pitch for others
-  const tonePitch = isAccent ? 1600 : 1000;
-  const toneDuration = 0.05; // Short beep
-
-  const osc = audioContext.createOscillator();
-  const oscGain = audioContext.createGain();
-
-  osc.type = isAccent ? 'sine' : 'sine';
-  osc.frequency.setValueAtTime(tonePitch, time);
-
-  // Envelope for tone
-  oscGain.gain.setValueAtTime(0, time);
-  oscGain.gain.linearRampToValueAtTime(isAccent ? 0.8 : 0.5, time + 0.002);
-  oscGain.gain.exponentialRampToValueAtTime(0.001, time + toneDuration);
-
-  osc.connect(oscGain);
-  oscGain.connect(audioContext.destination);
-
-  osc.start(time);
-  osc.stop(time + toneDuration + 0.05);
+  const source = audioContext.createBufferSource();
+  source.buffer = isAccent ? buffers.accent : buffers.regular;
+  source.connect(metronome.outputGain || audioContext.destination);
+  source.start(time);
+  source.stop(time + source.buffer.duration + 0.01);
 }
 
 async function startMetronome(bpm, timeSignatureStr = '4/4') {
@@ -22004,11 +22325,17 @@ async function startMetronome(bpm, timeSignatureStr = '4/4') {
     }
 
     // Reset scheduling state
-    state.metronome.currentBeat = 0;
-    state.metronome.nextNoteTime = state.metronome.audioContext.currentTime + 0.1; // Start slightly in future
     state.metronome.bpm = bpm;
     state.metronome.timeSignature = { numerator, denominator };
+    state.metronome.secondsPerBeat = 60.0 / bpm;
+    state.metronome.beatsPerBar = computeBeatsPerBar(state.metronome.timeSignature);
+    state.metronome.beatInBar = 0;
+    state.metronome.noteIndex = 0;
+    state.metronome.startTime = state.metronome.audioContext.currentTime + 0.1; // Start slightly in future
+    state.metronome.nextNoteTime = state.metronome.startTime;
     state.metronome.isPlaying = true;
+
+    ensureMetronomeBuffers();
 
     // Start the scheduler loop
     scheduler();
@@ -22024,6 +22351,9 @@ async function startMetronome(bpm, timeSignatureStr = '4/4') {
 function stopMetronome() {
   state.metronome.isPlaying = false;
   state.metronome.bpm = null; // Clear active BPM to reset buttons
+  state.metronome.secondsPerBeat = 0;
+  state.metronome.noteIndex = 0;
+  state.metronome.beatInBar = 0;
   if (state.metronome.schedulerId) {
     window.clearTimeout(state.metronome.schedulerId);
     state.metronome.schedulerId = null;
@@ -25518,6 +25848,81 @@ function getSetSongById(setSongId) {
   return state.selectedSet.set_songs.find(ss => String(ss.id) === String(setSongId)) || null;
 }
 
+function normalizeMatchString(value) {
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase();
+}
+
+function resolveSetSongByIndex(indexValue, setSongs = getSortedSetSongs()) {
+  if (indexValue === undefined || indexValue === null || indexValue === "") return null;
+  const indexNum = Number(indexValue);
+  if (!Number.isFinite(indexNum)) return null;
+  const indexInt = Math.round(indexNum);
+  if (Math.abs(indexNum - indexInt) > 0.00001) return null;
+  if (indexInt >= 1 && indexInt <= setSongs.length) return setSongs[indexInt - 1];
+  if (indexInt >= 0 && indexInt < setSongs.length) return setSongs[indexInt];
+  return null;
+}
+
+function resolveSetSongFromPayload(payload) {
+  if (!payload || typeof payload !== "object") return null;
+
+  const directId = payload.set_song_id || payload.setSongId || payload.id;
+  if (directId) {
+    const directMatch = getSetSongById(directId);
+    if (directMatch) return directMatch;
+  }
+
+  const setSongs = getSortedSetSongs();
+  const indexCandidates = [
+    directId,
+    payload.index,
+    payload.song_index,
+    payload.set_song_index,
+    payload.position,
+    payload.song_position,
+    payload.order
+  ];
+
+  for (const candidate of indexCandidates) {
+    const byIndex = resolveSetSongByIndex(candidate, setSongs);
+    if (byIndex) return byIndex;
+  }
+
+  const titleCandidates = [
+    payload.song_title,
+    payload.title,
+    payload.name,
+    payload.song
+  ].filter(value => typeof value === "string" && value.trim());
+
+  if (titleCandidates.length > 0) {
+    const normalizedTargets = titleCandidates.map(normalizeMatchString).filter(Boolean);
+    const matches = setSongs.filter(setSong => {
+      const candidateTitles = [
+        setSong.song?.title,
+        setSong.title,
+        getSetSongDisplayName(setSong)
+      ].map(normalizeMatchString).filter(Boolean);
+      return candidateTitles.some(title => normalizedTargets.includes(title));
+    });
+    if (matches.length === 1) return matches[0];
+  }
+
+  return null;
+}
+
+function getPayloadTargetLabel(payload) {
+  if (!payload || typeof payload !== "object") return "";
+  const indexValue = payload.index ?? payload.song_index ?? payload.set_song_index ?? payload.position ?? payload.song_position ?? payload.order;
+  if (indexValue !== undefined && indexValue !== null && String(indexValue).trim() !== "") {
+    return `Item #${indexValue}`;
+  }
+  const titleValue = payload.song_title ?? payload.title ?? payload.name ?? payload.song;
+  if (typeof titleValue === "string" && titleValue.trim()) return titleValue.trim();
+  return "";
+}
+
 function getSetSongDisplayName(setSong) {
   if (!setSong) return "Unknown item";
   const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
@@ -25576,13 +25981,61 @@ function extractReorderIds(payload) {
   return null;
 }
 
+function resolveReorderIds(payload) {
+  const orderIds = extractReorderIds(payload);
+  if (!orderIds || orderIds.length === 0) {
+    return { orderIds: null, uniqueIds: null, warnings: ["Missing a reorder list in the payload."] };
+  }
+
+  const setSongs = getSortedSetSongs();
+  const knownIds = new Set(setSongs.map(song => String(song.id)));
+  const normalized = orderIds.map(value => String(value).trim()).filter(Boolean);
+
+  let resolved = normalized.slice();
+  let usedIndexMapping = false;
+
+  const unknownIds = resolved.filter(id => !knownIds.has(id));
+  if (unknownIds.length > 0) {
+    const numeric = resolved.map(value => Number(value));
+    if (numeric.every(value => Number.isFinite(value))) {
+      const min = Math.min(...numeric);
+      const max = Math.max(...numeric);
+      if (min >= 1 && max <= setSongs.length) {
+        resolved = numeric.map(value => String(setSongs[value - 1]?.id)).filter(Boolean);
+        usedIndexMapping = true;
+      } else if (min >= 0 && max < setSongs.length) {
+        resolved = numeric.map(value => String(setSongs[value]?.id)).filter(Boolean);
+        usedIndexMapping = true;
+      }
+    }
+  }
+
+  const uniqueIds = [];
+  const seen = new Set();
+  resolved.forEach(id => {
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    uniqueIds.push(id);
+  });
+
+  const warnings = [];
+  const missingIds = setSongs.map(song => String(song.id)).filter(id => !seen.has(id));
+  const stillUnknownIds = uniqueIds.filter(id => !knownIds.has(id));
+  if (missingIds.length > 0) warnings.push(`Missing ${missingIds.length} item${missingIds.length === 1 ? "" : "s"} from the reorder list.`);
+  if (stillUnknownIds.length > 0) warnings.push(`Contains ${stillUnknownIds.length} unknown item${stillUnknownIds.length === 1 ? "" : "s"}.`);
+  if (resolved.length !== uniqueIds.length) warnings.push("Contains duplicate items; duplicates will be ignored.");
+  if (usedIndexMapping) warnings.push("Interpreted reorder list as setlist positions (index numbers).");
+
+  return { orderIds: resolved, uniqueIds, warnings, usedIndexMapping };
+}
+
 function buildActionSummary(actions) {
   if (!actions || actions.length === 0) return "";
   const parts = actions.map(action => {
     const type = action?.action;
     const payload = action?.payload || {};
-    const setSong = getSetSongById(payload.set_song_id || payload.setSongId || payload.id);
-    const target = setSong ? getSetSongDisplayName(setSong) : "item";
+    const setSong = resolveSetSongFromPayload(payload);
+    const target = setSong ? getSetSongDisplayName(setSong) : (getPayloadTargetLabel(payload) || "item");
     if (type === "change_key") {
       return `Change key of ${target} to ${payload.new_key || payload.key || "?"}`;
     }
@@ -25705,37 +26158,20 @@ function buildSingleValueElement(label, value) {
 function buildReorderPreview(payload) {
   const setSongs = getSortedSetSongs();
   const beforeLabels = setSongs.map(getSetSongDisplayName);
-  const orderIds = extractReorderIds(payload);
-  if (!orderIds) {
+  const { orderIds, uniqueIds, warnings } = resolveReorderIds(payload);
+  if (!orderIds || !uniqueIds) {
     return {
       beforeLabels,
       afterLabels: null,
-      warnings: ["Missing a reorder list in the payload."]
+      warnings: warnings || ["Missing a reorder list in the payload."]
     };
   }
 
-  const normalized = orderIds.map(id => String(id));
-  const unique = [];
-  const seen = new Set();
-  normalized.forEach(id => {
-    if (!seen.has(id)) {
-      seen.add(id);
-      unique.push(id);
-    }
-  });
-
   const knownMap = new Map(setSongs.map(song => [String(song.id), song]));
-  const afterLabels = unique.map(id => {
+  const afterLabels = uniqueIds.map(id => {
     const setSong = knownMap.get(id);
     return setSong ? getSetSongDisplayName(setSong) : `Unknown item (${shortId(id)})`;
   });
-
-  const warnings = [];
-  const missingIds = setSongs.map(song => String(song.id)).filter(id => !seen.has(id));
-  const unknownIds = unique.filter(id => !knownMap.has(id));
-  if (missingIds.length > 0) warnings.push(`Missing ${missingIds.length} item${missingIds.length === 1 ? "" : "s"} from the reorder list.`);
-  if (unknownIds.length > 0) warnings.push(`Contains ${unknownIds.length} unknown item${unknownIds.length === 1 ? "" : "s"}.`);
-  if (normalized.length !== unique.length) warnings.push("Contains duplicate items; duplicates will be ignored.");
 
   return { beforeLabels, afterLabels, warnings };
 }
@@ -25743,9 +26179,8 @@ function buildReorderPreview(payload) {
 function renderActionItem(action) {
   const type = action?.action;
   const payload = action?.payload || {};
-  const setSongId = payload.set_song_id || payload.setSongId || payload.id;
-  const setSong = getSetSongById(setSongId);
-  const targetLabel = setSong ? getSetSongDisplayName(setSong) : "";
+  const setSong = resolveSetSongFromPayload(payload);
+  const targetLabel = setSong ? getSetSongDisplayName(setSong) : getPayloadTargetLabel(payload);
 
   const item = document.createElement("div");
   item.className = "chat-change-item";
@@ -25815,6 +26250,13 @@ function renderActionItem(action) {
     item.appendChild(buildSingleValueElement("Payload", JSON.stringify(action, null, 2)));
   }
 
+  if (!setSong && (type === "change_key" || type === "add_note" || type === "remove_song")) {
+    const warning = document.createElement("div");
+    warning.className = "chat-change-warning";
+    warning.textContent = "Could not match this change to a setlist item. Ask the assistant to include a set_song_id.";
+    item.appendChild(warning);
+  }
+
   const disableItem = (stateLabel, stateValue) => {
     item.classList.add("is-disabled");
     item.dataset.state = stateValue || "done";
@@ -25840,8 +26282,13 @@ function renderActionItem(action) {
     if (item.dataset.state !== "pending") return;
     declineBtn.disabled = true;
     approveBtn.disabled = true;
-    await handleAiAction(action);
-    disableItem("Applied", "applied");
+    const success = await handleAiAction(action);
+    if (success) {
+      disableItem("Applied", "applied");
+    } else {
+      declineBtn.disabled = false;
+      approveBtn.disabled = false;
+    }
   };
 
   declineBtn.addEventListener("click", declineItem);
@@ -26476,43 +26923,49 @@ async function regenerateAssistantMessage(set, assistantIndex) {
 async function handleAiAction(actionBlock) {
   const action = actionBlock?.action;
   const payload = actionBlock?.payload || {};
-  if (!action) return;
+  if (!action) return false;
 
   if (action === 'reorder_songs') {
-    const orderIds = extractReorderIds(payload);
+    const { orderIds, uniqueIds } = resolveReorderIds(payload);
     if (!orderIds || orderIds.length === 0) {
       toastError("Reorder proposal is missing the new order list.");
-      return;
+      return false;
     }
     if (!state.selectedSet) {
       toastError("No set selected.");
-      return;
+      return false;
     }
 
     const setSongs = getSortedSetSongs();
     const allIds = setSongs.map(song => String(song.id));
-    const uniqueIds = Array.from(new Set(orderIds.map(id => String(id))));
-    const unknownIds = uniqueIds.filter(id => !allIds.includes(id));
-    const missingIds = allIds.filter(id => !uniqueIds.includes(id));
+    const dedupedIds = uniqueIds || Array.from(new Set(orderIds.map(id => String(id))));
+    const unknownIds = dedupedIds.filter(id => !allIds.includes(id));
+    const missingIds = allIds.filter(id => !dedupedIds.includes(id));
 
     if (unknownIds.length > 0) {
       toastError("Reorder proposal contains unknown items.");
-      return;
+      return false;
     }
     if (missingIds.length > 0) {
       toastError("Reorder proposal is missing some items. Please regenerate the suggestion.");
-      return;
+      return false;
     }
 
-    const orderedItems = uniqueIds.map((id, index) => ({ id, sequence_order: index }));
-    await updateSongOrder(orderedItems, true);
-    toastSuccess("Setlist reordered");
+    const orderedItems = dedupedIds.map((id, index) => ({ id, sequence_order: index }));
+    const success = await updateSongOrder(orderedItems, true);
+    if (success) toastSuccess("Setlist reordered");
+    return !!success;
   } else if (action === 'change_key') {
-    const setSongId = payload.set_song_id || payload.setSongId || payload.id;
+    const setSong = resolveSetSongFromPayload(payload);
+    const setSongId = setSong?.id;
     const newKey = payload.new_key || payload.key;
-    if (!setSongId || !newKey) {
-      toastError("Key change proposal is missing details.");
-      return;
+    if (!setSongId) {
+      toastError("Key change proposal is missing a target. Ask the assistant to include a set_song_id.");
+      return false;
+    }
+    if (!newKey) {
+      toastError("Key change proposal is missing the new key.");
+      return false;
     }
 
     const { error } = await supabase
@@ -26520,23 +26973,32 @@ async function handleAiAction(actionBlock) {
       .update({ key: newKey })
       .eq('id', setSongId);
 
-    if (!error) {
-      toastSuccess(`Key changed to ${newKey}`);
-      const set = state.selectedSet;
-      loadSets().then(() => {
-        const updated = state.sets.find(s => s.id === set.id);
-        if (updated) showSetDetail(updated);
-      });
-    }
-  } else if (action === 'add_note') {
-    const setSongId = payload.set_song_id || payload.setSongId || payload.id;
-    const note = payload.note || payload.text || "";
-    if (!setSongId || !note.trim()) {
-      toastError("Note proposal is missing a target or note text.");
-      return;
+    if (error) {
+      console.error("AI key change failed:", error);
+      toastError("Unable to change key.");
+      return false;
     }
 
-    const setSong = getSetSongById(setSongId);
+    toastSuccess(`Key changed to ${newKey}`);
+    const set = state.selectedSet;
+    loadSets().then(() => {
+      const updated = state.sets.find(s => s.id === set.id);
+      if (updated) showSetDetail(updated);
+    });
+    return true;
+  } else if (action === 'add_note') {
+    const setSong = resolveSetSongFromPayload(payload);
+    const setSongId = setSong?.id;
+    const note = payload.note || payload.text || "";
+    if (!setSongId) {
+      toastError("Note proposal is missing a target. Ask the assistant to include a set_song_id.");
+      return false;
+    }
+    if (!note.trim()) {
+      toastError("Note proposal is missing note text.");
+      return false;
+    }
+
     const shouldAppend = payload.mode === "append" || payload.append === true || payload.mode === undefined;
     const updatedNotes = shouldAppend && setSong?.notes
       ? `${setSong.notes}\n${note}`.trim()
@@ -26547,28 +27009,40 @@ async function handleAiAction(actionBlock) {
       .update({ notes: updatedNotes || null })
       .eq('id', setSongId);
 
-    if (!error) {
-      toastSuccess("Note added");
-      const set = state.selectedSet;
-      loadSets().then(() => {
-        const updated = state.sets.find(s => s.id === set.id);
-        if (updated) showSetDetail(updated);
-      });
+    if (error) {
+      console.error("AI note update failed:", error);
+      toastError("Unable to add note.");
+      return false;
     }
+
+    toastSuccess("Note added");
+    const set = state.selectedSet;
+    loadSets().then(() => {
+      const updated = state.sets.find(s => s.id === set.id);
+      if (updated) showSetDetail(updated);
+    });
+    return true;
   } else if (action === 'remove_song') {
-    const setSongId = payload.set_song_id || payload.setSongId || payload.id;
+    const setSong = resolveSetSongFromPayload(payload);
+    const setSongId = setSong?.id;
     if (!setSongId) {
-      toastError("Remove proposal is missing a target.");
-      return;
+      toastError("Remove proposal is missing a target. Ask the assistant to include a set_song_id.");
+      return false;
     }
 
     const { error } = await supabase.from('set_songs').delete().eq('id', setSongId);
-    if (!error) {
-      toastSuccess("Song removed");
-      loadSets().then(() => {
-        const updated = state.sets.find(s => s.id === state.selectedSet.id);
-        if (updated) showSetDetail(updated);
-      });
+    if (error) {
+      console.error("AI remove song failed:", error);
+      toastError("Unable to remove song.");
+      return false;
     }
+
+    toastSuccess("Song removed");
+    loadSets().then(() => {
+      const updated = state.sets.find(s => s.id === state.selectedSet.id);
+      if (updated) showSetDetail(updated);
+    });
+    return true;
   }
+  return false;
 }
