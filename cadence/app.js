@@ -1,8 +1,18 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
 import { FastAverageColor } from "https://esm.sh/fast-average-color@9.4.0";
 
 const SUPABASE_URL = "https://pvqrxkbyjhgomwqwkedw.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2cXJ4a2J5amhnb213cXdrZWR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1Mjg1NTQsImV4cCI6MjA3ODEwNDU1NH0.FWrCZOExwjhfihh7nSZFR2FkIhcJjVyDo0GdDaGKg1g";
+const PDF_WORKER_SRC = window.__pdfjsWorkerSrc || "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+function ensurePdfWorker() {
+  if (typeof window === "undefined") return;
+  if (window.pdfjsLib?.GlobalWorkerOptions) {
+    if (window.pdfjsLib.GlobalWorkerOptions.workerSrc !== PDF_WORKER_SRC) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+    }
+  }
+}
 
 // Check for access_token in URL BEFORE creating Supabase client
 // This way we can intercept it before detectSessionInUrl processes it
@@ -14805,6 +14815,7 @@ async function searchSongResources(searchTerm, existingResults) {
 // Helper to extract text from PDF URL
 async function extractTextFromPdf(url) {
   try {
+    ensurePdfWorker();
     const loadingTask = pdfjsLib.getDocument(url);
     const pdf = await loadingTask.promise;
     let fullText = "";
@@ -21238,6 +21249,7 @@ async function extractPdfRowsFromUrl(url) {
     throw new Error("PDF parser not loaded.");
   }
 
+  ensurePdfWorker();
   const loadingTask = pdfjsLib.getDocument(url);
   const pdf = await loadingTask.promise;
   const allRows = [];
