@@ -8343,17 +8343,22 @@ function renderSetDetailSongs(set) {
 
         const assignmentsWrap = songNode.querySelector(".assignments");
         const assignmentMode = getSetAssignmentMode(set);
+        const assignmentSourceSetSong = getAssignmentSourceSetSong(setSong, set);
+        const displayAssignments = assignmentSourceSetSong?.song_assignments || [];
+        const assignmentSongTitle = assignmentSourceSetSong?.song_id
+          ? (assignmentSourceSetSong.song?.title || assignmentSourceSetSong.title || "Unknown Song")
+          : (assignmentSourceSetSong?.title || setSong.title || "Unknown Section");
 
         // Hide assignments section completely when in per-set mode
         if (assignmentMode === 'per_set') {
           assignmentsWrap.style.display = 'none';
         } else {
           assignmentsWrap.style.display = '';
-          if (!setSong.song_assignments?.length) {
+          if (!displayAssignments.length) {
             assignmentsWrap.innerHTML =
               '<span class="muted">No assignments yet.</span>';
           } else {
-            setSong.song_assignments.forEach((assignment) => {
+            displayAssignments.forEach((assignment) => {
               const pill = document
                 .getElementById("assignment-pill-template")
                 .content.cloneNode(true);
@@ -8414,9 +8419,7 @@ function renderSetDetailSongs(set) {
                 pillRoot.dataset.assignmentStatus = assignmentStatus;
                 pillRoot.dataset.personName = personName;
                 pillRoot.dataset.role = assignment.role;
-                pillRoot.dataset.songTitle = setSong.song_id
-                  ? (setSong.song?.title || setSong.title || "Unknown Song")
-                  : (setSong.title || "Unknown Section");
+                pillRoot.dataset.songTitle = assignmentSongTitle;
 
                 pillRoot.addEventListener("click", (e) => {
                   e.preventDefault();
@@ -8426,9 +8429,7 @@ function renderSetDetailSongs(set) {
                     personEmail: assignment.person?.email || assignment.pending_invite?.email || assignment.person_email || "",
                     personId: assignment.person_id || assignment.person?.id || null,
                     role: assignment.role,
-                    songTitle: setSong.song_id
-                      ? (setSong.song?.title || setSong.title || "Unknown Song")
-                      : (setSong.title || "Unknown Section"),
+                    songTitle: assignmentSongTitle,
                     status: assignmentStatus,
                     assignmentId: assignment.id
                   });
@@ -8578,6 +8579,68 @@ function setupSongDragAndDrop(container) {
   // Include song cards, section headers, and tag cards in drag and drop
   const items = container.querySelectorAll(".set-song-card.draggable-item, .section-header-wrapper.draggable-item");
 
+  const getSetSongFromElement = (el) => {
+    const id = el?.dataset?.setSongId;
+    if (!id || !state.selectedSet?.set_songs) return null;
+    return state.selectedSet.set_songs.find(ss => String(ss.id) === String(id)) || null;
+  };
+
+  const findNearestParentSongAbove = (draggedItem) => {
+    if (!state.selectedSet?.set_songs) return null;
+    const finalIndex = Array.from(container.children).indexOf(draggedItem);
+    if (finalIndex <= 0) return null;
+
+    for (let i = finalIndex - 1; i >= 0; i--) {
+      const prevItem = container.children[i];
+      if (prevItem.classList.contains("set-song-card") || prevItem.classList.contains("section-header-wrapper")) {
+        const prevSetSong = getSetSongFromElement(prevItem);
+        if (prevSetSong && prevSetSong.song_id && !isTag(prevSetSong)) {
+          return prevSetSong;
+        }
+      }
+    }
+    return null;
+  };
+
+  const normalizeTagsWithParents = () => {
+    if (!state.selectedSet?.set_songs) return;
+
+    const setSongsById = new Map(state.selectedSet.set_songs.map(ss => [String(ss.id), ss]));
+    const children = Array.from(container.children);
+    const tagsByParent = new Map();
+
+    children.forEach(child => {
+      const setSong = getSetSongFromElement(child);
+      if (!setSong || !isTag(setSong)) return;
+      const tagInfo = parseTagDescription(setSong);
+      const parentId = tagInfo?.parentSetSongId ? String(tagInfo.parentSetSongId) : null;
+      if (!parentId) return;
+
+      const parentSetSong = setSongsById.get(parentId);
+      if (!parentSetSong || !parentSetSong.song_id || isTag(parentSetSong)) return;
+
+      if (!tagsByParent.has(parentId)) tagsByParent.set(parentId, []);
+      tagsByParent.get(parentId).push(child);
+    });
+
+    children.forEach(child => {
+      const setSong = getSetSongFromElement(child);
+      if (!setSong || isTag(setSong) || !setSong.song_id) return;
+      const tags = tagsByParent.get(String(setSong.id));
+      if (!tags || tags.length === 0) return;
+
+      let insertAfter = child;
+      tags.forEach(tagEl => {
+        if (tagEl === insertAfter.nextSibling) {
+          insertAfter = tagEl;
+          return;
+        }
+        container.insertBefore(tagEl, insertAfter.nextSibling);
+        insertAfter = tagEl;
+      });
+    });
+  };
+
   // Define handlers as named functions
   const handleDragStart = function (e) {
     e.dataTransfer.effectAllowed = "move";
@@ -8676,6 +8739,31 @@ function setupSongDragAndDrop(container) {
     draggedItem.style.opacity = "";
     draggedItem.draggable = false;
 
+    // Check if the dragged item is a tag and update its parent if needed
+    const draggedSetSong = state.selectedSet?.set_songs?.find(ss => String(ss.id) === String(draggedId));
+    if (draggedSetSong && isTag(draggedSetSong)) {
+      const parentSetSong = findNearestParentSongAbove(draggedItem);
+      if (parentSetSong) {
+        const tagInfo = parseTagDescription(draggedSetSong);
+        if (tagInfo && String(tagInfo.parentSetSongId) !== String(parentSetSong.id)) {
+          const newDescription = JSON.stringify({
+            ...tagInfo,
+            parentSetSongId: parentSetSong.id,
+          });
+
+          draggedSetSong.description = newDescription;
+
+          await supabase
+            .from("set_songs")
+            .update({ description: newDescription })
+            .eq("id", draggedSetSong.id);
+        }
+      }
+    }
+
+    // Keep tags grouped with their parent songs
+    normalizeTagsWithParents();
+
     // Get the final DOM order (include both song cards and section headers)
     const allItems = Array.from(container.children);
     const items = allItems
@@ -8716,45 +8804,6 @@ function setupSongDragAndDrop(container) {
     }
 
     console.log("handleDrop - items to update:", items);
-
-    // Check if the dragged item is a tag and update its parent if needed
-    const draggedSetSong = state.selectedSet?.set_songs?.find(ss => String(ss.id) === String(draggedId));
-    if (draggedSetSong && isTag(draggedSetSong)) {
-      // Find the nearest song above the tag (not a section or another tag)
-      const finalIndex = Array.from(container.children).indexOf(draggedItem);
-      let parentSetSong = null;
-
-      // Look backwards from the tag's position to find the nearest song
-      for (let i = finalIndex - 1; i >= 0; i--) {
-        const prevItem = container.children[i];
-        if (prevItem.classList.contains("set-song-card") || prevItem.classList.contains("section-header-wrapper")) {
-          const prevId = prevItem.dataset.setSongId;
-          if (prevId) {
-            const prevSetSong = state.selectedSet.set_songs.find(ss => String(ss.id) === String(prevId));
-            if (prevSetSong && prevSetSong.song_id && !isTag(prevSetSong)) {
-              parentSetSong = prevSetSong;
-              break;
-            }
-          }
-        }
-      }
-
-      if (parentSetSong) {
-        // Update tag's parent reference
-        const tagInfo = parseTagDescription(draggedSetSong);
-        if (tagInfo && tagInfo.parentSetSongId !== parentSetSong.id) {
-          const newDescription = JSON.stringify({
-            parentSetSongId: parentSetSong.id,
-            tagType: tagInfo.tagType,
-          });
-
-          await supabase
-            .from("set_songs")
-            .update({ description: newDescription })
-            .eq("id", draggedSetSong.id);
-        }
-      }
-    }
 
     await updateSongOrder(items, false); // Pass false to skip re-render
 
@@ -8865,6 +8914,31 @@ function setupSongDragAndDrop(container) {
     draggedItem.style.opacity = "";
     draggedItem.draggable = false;
 
+    // Check if the dragged item is a tag and update its parent if needed
+    const draggedSetSong = state.selectedSet?.set_songs?.find(ss => String(ss.id) === String(draggedId));
+    if (draggedSetSong && isTag(draggedSetSong)) {
+      const parentSetSong = findNearestParentSongAbove(draggedItem);
+      if (parentSetSong) {
+        const tagInfo = parseTagDescription(draggedSetSong);
+        if (tagInfo && String(tagInfo.parentSetSongId) !== String(parentSetSong.id)) {
+          const newDescription = JSON.stringify({
+            ...tagInfo,
+            parentSetSongId: parentSetSong.id,
+          });
+
+          draggedSetSong.description = newDescription;
+
+          await supabase
+            .from("set_songs")
+            .update({ description: newDescription })
+            .eq("id", draggedSetSong.id);
+        }
+      }
+    }
+
+    // Keep tags grouped with their parent songs
+    normalizeTagsWithParents();
+
     // Get the final DOM order (include both song cards and section headers)
     const allItems = Array.from(container.children);
     const items = allItems
@@ -8885,45 +8959,6 @@ function setupSongDragAndDrop(container) {
       console.warn("No items to update in handleContainerDrop");
       container.dataset.processingDrop = "false";
       return;
-    }
-
-    // Check if the dragged item is a tag and update its parent if needed
-    const draggedSetSong = state.selectedSet?.set_songs?.find(ss => String(ss.id) === String(draggedId));
-    if (draggedSetSong && isTag(draggedSetSong)) {
-      // Find the nearest song above the tag (not a section or another tag)
-      const finalIndex = Array.from(container.children).indexOf(draggedItem);
-      let parentSetSong = null;
-
-      // Look backwards from the tag's position to find the nearest song
-      for (let i = finalIndex - 1; i >= 0; i--) {
-        const prevItem = container.children[i];
-        if (prevItem.classList.contains("set-song-card") || prevItem.classList.contains("section-header-wrapper")) {
-          const prevId = prevItem.dataset.setSongId;
-          if (prevId) {
-            const prevSetSong = state.selectedSet.set_songs.find(ss => String(ss.id) === String(prevId));
-            if (prevSetSong && prevSetSong.song_id && !isTag(prevSetSong)) {
-              parentSetSong = prevSetSong;
-              break;
-            }
-          }
-        }
-      }
-
-      if (parentSetSong) {
-        // Update tag's parent reference
-        const tagInfo = parseTagDescription(draggedSetSong);
-        if (tagInfo && tagInfo.parentSetSongId !== parentSetSong.id) {
-          const newDescription = JSON.stringify({
-            parentSetSongId: parentSetSong.id,
-            tagType: tagInfo.tagType,
-          });
-
-          await supabase
-            .from("set_songs")
-            .update({ description: newDescription })
-            .eq("id", draggedSetSong.id);
-        }
-      }
     }
 
     // Optimistically update the state to match DOM order immediately
@@ -11457,6 +11492,23 @@ function parseTagDescription(setSong) {
   } catch {
     return null;
   }
+}
+
+function getTagParentSetSong(setSong, set = state.selectedSet) {
+  if (!setSong || !set?.set_songs) return null;
+  const tagInfo = parseTagDescription(setSong);
+  if (!tagInfo?.parentSetSongId) return null;
+  return set.set_songs.find(ss => String(ss.id) === String(tagInfo.parentSetSongId)) || null;
+}
+
+function getAssignmentSourceSetSong(setSong, set) {
+  if (!setSong || !set) return setSong || null;
+  const assignmentMode = getSetAssignmentMode(set);
+  if (assignmentMode !== 'per_song') return setSong;
+  if (!isTag(setSong)) return setSong;
+  const parent = getTagParentSetSong(setSong, set);
+  if (parent && parent.song_id && !isTag(parent)) return parent;
+  return setSong;
 }
 
 function resolveTagPartName(tagType, customValue = "") {
@@ -20440,8 +20492,10 @@ function renderSetPrintPreview(set) {
     if (isSection && setSong.description) notesParts.push(setSong.description);
 
     let assignmentSummary = "";
-    if (assignmentMode === "per_song" && setSong.song_assignments?.length) {
-      const byRole = setSong.song_assignments.reduce((acc, assignment) => {
+    const assignmentSourceSetSong = getAssignmentSourceSetSong(setSong, set);
+    const assignmentSummaryAssignments = assignmentSourceSetSong?.song_assignments || [];
+    if (assignmentMode === "per_song" && assignmentSummaryAssignments.length) {
+      const byRole = assignmentSummaryAssignments.reduce((acc, assignment) => {
         const role = assignment.role || "Unassigned";
         if (!acc[role]) acc[role] = [];
         acc[role].push(formatAssignmentName(assignment));
