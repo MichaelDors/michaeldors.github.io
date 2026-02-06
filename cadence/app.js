@@ -183,7 +183,9 @@ const state = {
   aiChatMessages: [], // { id, role, content, type: 'text'|'card', cardData? }
   isAiTyping: false,
   aiChatReplyContext: null, // { role, text }
-  aiChatSelection: null // { messageIndex, role, text }
+  aiChatSelection: null, // { messageIndex, role, text }
+  aiChatEmptyPrompts: [],
+  aiChatEmptyPromptsChatId: null
 };
 
 // PostHog tracking helper - safely tracks events even if PostHog isn't loaded yet
@@ -27767,6 +27769,7 @@ function renderSetChatPanel(set) {
         <textarea class="chat-input" id="chat-input-text" placeholder="Ask Trill"></textarea>
         <button class="btn primary icon-only" id="send-chat-btn"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
+      <div class="chat-disclaimer muted">Trill uses AI and can be wrong. Double-check important info.</div>
     </div>
   `;
 
@@ -27839,16 +27842,74 @@ function renderSetChatPanel(set) {
 }
 
 
+function pickRandomChatPrompts(allPrompts, count) {
+  const pool = Array.isArray(allPrompts) ? allPrompts.slice() : [];
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, Math.min(count, pool.length));
+}
+
 function renderChatMessages(container) {
   container.innerHTML = "";
 
   if (state.aiChatMessages.length === 0) {
     container.innerHTML = `
-      <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
-        <i class="fa-solid fa-ticket" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-        <p>I can help you manage this set.<br>Try asking: "Sort these songs by BPM" or "Suggest a key for the second song".</p>
+      <div class="chat-empty">
+        <i class="fa-solid fa-ticket chat-empty-icon"></i>
+        <div class="chat-empty-pills" id="chat-empty-pills"></div>
       </div>
     `;
+
+    const allPrompts = [
+      "Sort these songs by BPM",
+      "Sort by key to smooth transitions",
+      "Suggest a key for the second song",
+      "Reorder the set for flow and energy",
+      "Give me a smooth plan for transitions",
+      "Add a note for the bridge in the opener",
+      "Find the best opener and closer",
+      "Spot any tempo drops and fix the order",
+      "Which songs should I drop to fit 35 minutes?",
+      "Suggest a mid-set acoustic moment",
+      "Give me a one-line intro for each song",
+      "Group these songs by vibe",
+      "What key should I modulate to in song 5?",
+      "Suggest a dynamic build for the last 3 songs"
+    ];
+    const promptCount = 5;
+    if (state.aiChatEmptyPromptsChatId !== state.aiChatId || !state.aiChatEmptyPrompts.length) {
+      state.aiChatEmptyPrompts = pickRandomChatPrompts(allPrompts, promptCount);
+      state.aiChatEmptyPromptsChatId = state.aiChatId;
+    }
+    const prompts = state.aiChatEmptyPrompts;
+
+    const pillsWrap = container.querySelector("#chat-empty-pills");
+    if (pillsWrap) {
+      prompts.forEach((prompt) => {
+        const pill = document.createElement("button");
+        pill.type = "button";
+        pill.className = "chat-empty-pill";
+        pill.textContent = prompt;
+        pill.dataset.prompt = prompt;
+        pill.disabled = state.isAiTyping;
+        pill.addEventListener("click", () => {
+          if (state.isAiTyping) return;
+          if (!state.selectedSet) {
+            toastError("No set selected.");
+            return;
+          }
+          const input = document.getElementById("chat-input-text");
+          if (input) {
+            input.value = prompt;
+          }
+          void sendMessageToAi(state.selectedSet, prompt);
+          if (input) input.value = "";
+        });
+        pillsWrap.appendChild(pill);
+      });
+    }
     return;
   }
 
