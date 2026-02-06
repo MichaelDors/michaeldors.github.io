@@ -125,6 +125,7 @@ const state = {
   isPasswordSetup: isInviteLink, // Set flag immediately if this is an invite link
   isPasswordReset: isRecovery, // Set flag immediately if this is a password reset link
   isMemberView: false, // Track if manager is viewing as member
+  hasRestoredTab: false, // Prevent tab reset on subsequent showApp calls
   currentTeamId: null, // Current team the user is viewing/working with
   userTeams: [], // Array of all teams the user is a member of
   teamAssignmentMode: 'per_set', // Team-wide assignment mode (default: per_set)
@@ -2744,24 +2745,35 @@ function showApp() {
     // Usually fetchProfile or init handles selecting the first team.
   }
 
-  // Force hide auth gate, password setup gate, and show dashboard
+  // Force hide auth gate and password setup gate
   authGateEl.classList.add("hidden");
   if (passwordSetupGateEl) passwordSetupGateEl.classList.add("hidden");
-  dashboardEl.classList.remove("hidden");
   el("empty-state")?.classList.add("hidden");
 
-  // Check if there's a saved set ID - if so, don't hide set details yet
-  // (restoration will happen after sets are loaded)
+  // Keep dashboard hidden when set detail is already open to avoid double-visible states
+  const detailView = el("set-detail");
+  const isDetailVisible = detailView && !detailView.classList.contains("hidden");
   const savedSetId = localStorage.getItem('cadence-selected-set-id');
-  if (!savedSetId) {
-    // No saved set ID, hide set detail view normally
-    hideSetDetail();
+
+  if (isDetailVisible) {
+    dashboardEl.classList.add("hidden");
+  } else {
+    dashboardEl.classList.remove("hidden");
+    // Check if there's a saved set ID - if so, don't hide set details yet
+    // (restoration will happen after sets are loaded)
+    if (!savedSetId) {
+      // No saved set ID, hide set detail view normally
+      hideSetDetail();
+    }
   }
   // If there's a saved set ID, we'll restore it after sets are loaded (in loadSets or renderSets)
 
-  // Restore the saved tab, defaulting to "sets" if none is saved
+  // Restore the saved tab only once per session to avoid closing set detail on background re-entry
   const savedTab = localStorage.getItem('cadence-active-tab') || 'sets';
-  switchTab(savedTab);
+  if (!state.hasRestoredTab) {
+    switchTab(savedTab, { preserveSetDetail: true });
+    state.hasRestoredTab = true;
+  }
 
   if (userInfoEl) {
     userInfoEl.classList.remove("hidden");
@@ -2834,12 +2846,17 @@ function showApp() {
   console.log('  - authGate hidden:', authGateHidden);
   console.log('  - dashboard visible:', dashboardVisible);
 
-  if (!authGateHidden || !dashboardVisible) {
+  if (!authGateHidden || (!dashboardVisible && !isDetailVisible)) {
     console.error('❌ UI update failed! Forcing update...');
     // Force update with setTimeout to ensure DOM has processed
     setTimeout(() => {
       authGateEl.classList.add("hidden");
-      dashboardEl.classList.remove("hidden");
+      // Only force-show dashboard if set detail isn't already visible
+      const detailView = el("set-detail");
+      const detailVisibleNow = detailView && !detailView.classList.contains("hidden");
+      if (!detailVisibleNow) {
+        dashboardEl.classList.remove("hidden");
+      }
       console.log('  - Forced update complete');
     }, 0);
   }
@@ -2882,6 +2899,7 @@ function resetState() {
   state.currentSetSongs = [];
   state.currentTeamId = null;
   state.userTeams = [];
+  state.hasRestoredTab = false;
   setsList.innerHTML = "";
 }
 
@@ -6509,7 +6527,8 @@ function renderSets(animate = true) {
   }, 100);
 }
 
-function switchTab(tabName) {
+function switchTab(tabName, options = {}) {
+  const { preserveSetDetail = false } = options;
   // Stop tracking time on previous tab
   stopPageTimeTracking();
 
@@ -6517,7 +6536,9 @@ function switchTab(tabName) {
   localStorage.setItem('cadence-active-tab', tabName);
 
   // Always hide set details when switching tabs - set details should only be visible when explicitly viewing a set
-  hideSetDetail();
+  if (!preserveSetDetail) {
+    hideSetDetail();
+  }
 
   // Track tab switch
   trackPostHogEvent('tab_switched', {
