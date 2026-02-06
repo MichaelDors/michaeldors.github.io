@@ -26070,6 +26070,7 @@ const DEFAULT_CHAT_TITLE = "New Chat";
 const AI_CHAT_TITLE_TIMEOUT_MS = 6000;
 const AI_CHAT_TITLE_MAX_RETRIES = 2;
 const aiChatTitleRetryCounts = new Map();
+const aiChatTitleStatus = new Map();
 const CHAT_TITLE_STOPWORDS = new Set([
   "a", "an", "the", "and", "or", "but", "so", "to", "of", "for", "with", "without", "about",
   "in", "on", "at", "by", "from", "into", "over", "under", "between", "within", "during",
@@ -26088,9 +26089,20 @@ function isAbortError(error) {
   return error && (error.name === "AbortError" || String(error).includes("AbortError"));
 }
 
+function getChatTitleStatus(chatId) {
+  return aiChatTitleStatus.get(chatId) || "idle";
+}
+
+function setChatTitleStatus(chatId, status) {
+  if (!chatId) return;
+  aiChatTitleStatus.set(chatId, status);
+}
+
 function shouldGenerateChatTitle(chatId) {
   const chat = state.aiChats.find(item => item.id === chatId);
   if (!chat || !isDefaultChatTitle(chat.title)) return false;
+  const status = getChatTitleStatus(chatId);
+  if (status === "in_flight" || status === "complete") return false;
   const messageCount = state.aiChatMessages.filter(m => m && (m.role === "user" || m.role === "assistant")).length;
   return messageCount > 0 && messageCount <= 2;
 }
@@ -26100,6 +26112,7 @@ function scheduleChatTitleRetry(set, chatId) {
   const count = aiChatTitleRetryCounts.get(chatId) || 0;
   if (count >= AI_CHAT_TITLE_MAX_RETRIES) return;
   aiChatTitleRetryCounts.set(chatId, count + 1);
+  setChatTitleStatus(chatId, "idle");
   setTimeout(() => {
     void maybeRenameChatTitle(set, chatId);
   }, 1200);
@@ -27313,6 +27326,8 @@ async function createAiChat(setId) {
 
   state.aiChats = [...state.aiChats, created];
   state.aiChatId = created.id;
+  aiChatTitleRetryCounts.delete(created.id);
+  aiChatTitleStatus.delete(created.id);
   await loadAiChatMessages(created.id);
   renderChatTabs();
 }
@@ -27391,6 +27406,8 @@ async function deleteAiChat(chatId) {
   }
 
   state.aiChats = state.aiChats.filter(chat => chat.id !== chatId);
+  aiChatTitleRetryCounts.delete(chatId);
+  aiChatTitleStatus.delete(chatId);
 
   if (state.aiChatId === chatId) {
     state.aiChatId = state.aiChats[0]?.id || null;
@@ -27423,8 +27440,13 @@ async function maybeRenameChatTitle(set, chatId) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
 
+  setChatTitleStatus(chatId, "in_flight");
+
   const messagesForTitle = buildTitlePromptMessages(state.aiChatMessages);
-  if (!messagesForTitle.length) return;
+  if (!messagesForTitle.length) {
+    setChatTitleStatus(chatId, "idle");
+    return;
+  }
 
   const fallbackTitle = buildFallbackChatTitle(state.aiChatMessages);
   const applyTitleLocally = (title) => {
@@ -27516,6 +27538,7 @@ async function maybeRenameChatTitle(set, chatId) {
     if (error) {
       console.warn("Failed to persist chat title:", error);
     }
+    setChatTitleStatus(chatId, "complete");
   } catch (err) {
     console.warn("Chat title generation failed:", err);
     if (isAbortError(err)) {
@@ -27531,6 +27554,9 @@ async function maybeRenameChatTitle(set, chatId) {
       if (error) {
         console.warn("Failed to persist fallback chat title:", error);
       }
+      setChatTitleStatus(chatId, "complete");
+    } else {
+      setChatTitleStatus(chatId, "idle");
     }
   } finally {
     // Ensure timeout cleanup if fetch didn't resolve
@@ -27968,6 +27994,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
     container.scrollTop = container.scrollHeight;
   }
 
+  let titleRequested = false;
   try {
     const { data: { session } } = await supabase.auth.getSession();
 
@@ -28019,6 +28046,11 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
             aiText += content;
             assistantMsg.content = aiText;
             if (container) renderChatMessages(container);
+
+            if (!titleRequested && chatId && shouldGenerateChatTitle(chatId) && aiText.length >= 60) {
+              titleRequested = true;
+              void maybeRenameChatTitle(set, chatId);
+            }
           } catch (e) {
             // Ignore partial
           }
@@ -28038,7 +28070,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
       if (!error && data) assistantMsg.id = data.id;
     }
 
-    if (chatId && shouldGenerateChatTitle(chatId)) {
+    if (!titleRequested && chatId && shouldGenerateChatTitle(chatId)) {
       void maybeRenameChatTitle(set, chatId);
     }
 
