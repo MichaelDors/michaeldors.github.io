@@ -881,6 +881,27 @@
     </div>
   </div>
 
+  <div id="rename-chat-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Rename Chat</h3>
+        <button class="icon-btn" id="close-rename-chat-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <form id="rename-chat-form">
+        <label>
+          Chat Name
+          <input type="text" id="rename-chat-input" maxlength="60" required />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" id="cancel-rename-chat">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="edit-set-song-modal" class="modal hidden">
     <div class="modal-content">
       <header>

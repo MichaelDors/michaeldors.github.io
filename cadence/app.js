@@ -178,12 +178,8 @@ const state = {
   },
   // Trill Chat State
   isAiChatOpen: false,
-  aiChatMessages: [], // { id, role, content, type: 'text'|'card', cardData? }
-  isAiTyping: false,
-  aiChatReplyContext: null, // { role, text }
-  aiChatSelection: null, // { messageIndex, role, text }
-  // Trill Chat State
-  isAiChatOpen: false,
+  aiChats: [], // { id, title, created_at }
+  aiChatId: null, // active chat id
   aiChatMessages: [], // { id, role, content, type: 'text'|'card', cardData? }
   isAiTyping: false,
   aiChatReplyContext: null, // { role, text }
@@ -1665,6 +1661,16 @@ function bindEvents() {
   el("team-settings-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "team-settings-modal") {
       closeTeamSettingsModal();
+    }
+  });
+
+  // Rename chat modal
+  el("rename-chat-form")?.addEventListener("submit", handleRenameChatSubmit);
+  el("cancel-rename-chat")?.addEventListener("click", () => closeRenameChatModal());
+  el("close-rename-chat-modal")?.addEventListener("click", () => closeRenameChatModal());
+  el("rename-chat-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "rename-chat-modal") {
+      closeRenameChatModal();
     }
   });
   el("btn-leave-team")?.addEventListener("click", () => {
@@ -26060,6 +26066,104 @@ function renderSetDetailPendingRequests(set) {
 // Trill Chat Logic
 // ==========================================
 
+const DEFAULT_CHAT_TITLE = "New Chat";
+const AI_CHAT_TITLE_TIMEOUT_MS = 6000;
+const AI_CHAT_TITLE_MAX_RETRIES = 2;
+const aiChatTitleRetryCounts = new Map();
+const CHAT_TITLE_STOPWORDS = new Set([
+  "a", "an", "the", "and", "or", "but", "so", "to", "of", "for", "with", "without", "about",
+  "in", "on", "at", "by", "from", "into", "over", "under", "between", "within", "during",
+  "is", "are", "was", "were", "be", "been", "being", "do", "does", "did", "doing",
+  "can", "could", "would", "should", "may", "might", "will", "please",
+  "i", "me", "my", "we", "our", "you", "your", "us", "they", "their", "it", "its",
+  "help", "make", "create", "generate", "write", "draft", "suggest", "give", "need", "want"
+]);
+
+function isDefaultChatTitle(title) {
+  if (!title) return true;
+  return title.trim().toLowerCase() === DEFAULT_CHAT_TITLE.toLowerCase();
+}
+
+function isAbortError(error) {
+  return error && (error.name === "AbortError" || String(error).includes("AbortError"));
+}
+
+function shouldGenerateChatTitle(chatId) {
+  const chat = state.aiChats.find(item => item.id === chatId);
+  if (!chat || !isDefaultChatTitle(chat.title)) return false;
+  const messageCount = state.aiChatMessages.filter(m => m && (m.role === "user" || m.role === "assistant")).length;
+  return messageCount > 0 && messageCount <= 2;
+}
+
+function scheduleChatTitleRetry(set, chatId) {
+  if (!set || !chatId) return;
+  const count = aiChatTitleRetryCounts.get(chatId) || 0;
+  if (count >= AI_CHAT_TITLE_MAX_RETRIES) return;
+  aiChatTitleRetryCounts.set(chatId, count + 1);
+  setTimeout(() => {
+    void maybeRenameChatTitle(set, chatId);
+  }, 1200);
+}
+
+function toTitleCase(value) {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function buildFallbackChatTitle(messages) {
+  if (!Array.isArray(messages)) return DEFAULT_CHAT_TITLE;
+
+  const getMessageText = (msg) => {
+    if (!msg) return "";
+    if (typeof msg.content === "string") return msg.content;
+    return serializeChatContentForAi(msg.content);
+  };
+
+  const userMsg = messages.find(m => m && m.role === "user");
+  const assistantMsg = messages.find(m => m && m.role === "assistant");
+  const source = getMessageText(userMsg || assistantMsg);
+  if (!source) return DEFAULT_CHAT_TITLE;
+
+  const cleaned = source
+    .replace(/[`*_#>\[\]()]/g, " ")
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) return DEFAULT_CHAT_TITLE;
+
+  const words = cleaned.split(" ").map(w => w.toLowerCase()).filter(Boolean);
+  const keywords = words.filter(w => w.length > 2 && !CHAT_TITLE_STOPWORDS.has(w));
+  const chosen = (keywords.length ? keywords : words).slice(0, 4);
+  if (!chosen.length) return DEFAULT_CHAT_TITLE;
+
+  return toTitleCase(chosen.join(" "));
+}
+
+function buildTitlePromptMessages(messages) {
+  if (!Array.isArray(messages)) return [];
+
+  const getMessageText = (msg) => {
+    if (!msg) return "";
+    if (typeof msg.content === "string") return msg.content;
+    return serializeChatContentForAi(msg.content);
+  };
+
+  const userMsg = messages.find(m => m && m.role === "user");
+  const assistantMsg = [...messages].reverse().find(m => m && m.role === "assistant");
+
+  const userText = getMessageText(userMsg);
+  const assistantText = getMessageText(assistantMsg);
+
+  const result = [];
+  if (userText) result.push({ role: "user", content: userText });
+  if (assistantText) result.push({ role: "assistant", content: assistantText });
+  return result;
+}
+
 function parseChatContent(content) {
   if (content && typeof content === "object" && !Array.isArray(content)) {
     if ("text" in content) {
@@ -26096,6 +26200,20 @@ function buildAiPayloadMessages(messages) {
   }));
 }
 
+function findActionBlockStart(text) {
+  if (!text) return -1;
+  const jsonFenceMatch = text.match(/```json/i);
+  if (jsonFenceMatch && typeof jsonFenceMatch.index === "number") {
+    return jsonFenceMatch.index;
+  }
+  const actionsIndex = text.search(/\"actions\"\s*:/);
+  if (actionsIndex !== -1) {
+    const braceIndex = text.lastIndexOf("{", actionsIndex);
+    return braceIndex !== -1 ? braceIndex : actionsIndex;
+  }
+  return -1;
+}
+
 function clampChatText(text, maxLen = 240) {
   if (!text) return "";
   if (text.length <= maxLen) return text;
@@ -26103,6 +26221,7 @@ function clampChatText(text, maxLen = 240) {
 }
 
 let chatSelectionListenersAttached = false;
+let chatTabMenuListenersAttached = false;
 
 function ensureChatSelectionAction() {
   let action = document.getElementById("chat-selection-action");
@@ -26234,6 +26353,153 @@ function renderChatReplyPreview() {
 function clearChatReplyContext() {
   state.aiChatReplyContext = null;
   renderChatReplyPreview();
+}
+
+function openRenameChatModal(chatId) {
+  const modal = el("rename-chat-modal");
+  const input = el("rename-chat-input");
+  const form = el("rename-chat-form");
+  if (!modal || !input || !form) return;
+
+  const chat = state.aiChats.find(item => item.id === chatId);
+  if (!chat) return;
+
+  modal.dataset.chatId = chatId;
+  input.value = chat.title || DEFAULT_CHAT_TITLE;
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+
+  setTimeout(() => {
+    input.focus();
+    input.select();
+  }, 100);
+}
+
+function closeRenameChatModal() {
+  const modal = el("rename-chat-modal");
+  const form = el("rename-chat-form");
+  closeModalWithAnimation(modal, () => {
+    if (form) form.reset();
+    if (modal) delete modal.dataset.chatId;
+  });
+}
+
+async function handleRenameChatSubmit(event) {
+  event.preventDefault();
+  if (state.isAiTyping) {
+    toastError("Please wait for the current reply to finish.");
+    return;
+  }
+
+  const modal = el("rename-chat-modal");
+  const input = el("rename-chat-input");
+  if (!modal || !input) return;
+
+  const chatId = modal.dataset.chatId;
+  if (!chatId) return;
+
+  const title = input.value.trim();
+  if (!title) {
+    toastError("Chat name can't be empty.");
+    return;
+  }
+
+  const chat = state.aiChats.find(item => item.id === chatId);
+  if (!chat) return;
+
+  if (chat.title !== title) {
+    chat.title = title;
+    renderChatTabs();
+  }
+
+  closeRenameChatModal();
+
+  const { error } = await supabase
+    .from("set_chats")
+    .update({ title })
+    .eq("id", chatId);
+
+  if (error) {
+    console.error("Error renaming chat:", error);
+    toastError("Unable to rename chat.");
+  }
+}
+
+function closeChatTabMenu(menu) {
+  if (!menu || menu.classList.contains("hidden")) return;
+  menu.classList.add("animate-out");
+  setTimeout(() => {
+    menu.classList.add("hidden");
+    menu.classList.remove("animate-out");
+    menu.style.visibility = "";
+  }, 250);
+}
+
+function closeChatTabMenus(exceptMenu = null) {
+  document.querySelectorAll(".chat-tab-menu").forEach(menu => {
+    if (menu === exceptMenu) return;
+    closeChatTabMenu(menu);
+  });
+}
+
+function positionChatTabMenu(menu, anchor) {
+  if (!menu || !anchor) return;
+
+  if (!menu.dataset.portal) {
+    menu.dataset.portal = "true";
+    document.body.appendChild(menu);
+  }
+
+  menu.style.position = "fixed";
+  menu.style.visibility = "hidden";
+  menu.classList.remove("hidden");
+
+  const rect = anchor.getBoundingClientRect();
+  const menuWidth = menu.offsetWidth || 180;
+  const menuHeight = menu.offsetHeight || 0;
+
+  let left = rect.right - menuWidth;
+  left = Math.min(Math.max(8, left), window.innerWidth - menuWidth - 8);
+
+  let top = rect.bottom + 6;
+  if (top + menuHeight > window.innerHeight - 8) {
+    top = rect.top - menuHeight - 6;
+  }
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  menu.style.visibility = "";
+}
+
+function toggleChatTabMenu(menu, anchor) {
+  if (!menu) return;
+  if (menu.classList.contains("hidden")) {
+    closeChatTabMenus(menu);
+    positionChatTabMenu(menu, anchor);
+  } else {
+    closeChatTabMenu(menu);
+  }
+}
+
+function ensureChatTabMenuListeners() {
+  if (chatTabMenuListenersAttached) return;
+  chatTabMenuListenersAttached = true;
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (target?.closest?.(".chat-tab-menu") || target?.closest?.(".chat-tab-menu-toggle")) {
+      return;
+    }
+    closeChatTabMenus();
+  });
+
+  window.addEventListener("scroll", () => {
+    closeChatTabMenus();
+  }, { passive: true });
+
+  window.addEventListener("resize", () => {
+    closeChatTabMenus();
+  }, { passive: true });
 }
 
 // captureChatSelection removed in favor of updateChatSelection
@@ -26679,6 +26945,23 @@ function buildSingleValueElement(label, value) {
   return wrapper;
 }
 
+function renderActionPlaceholder() {
+  const card = document.createElement("div");
+  card.className = "chat-action-card chat-change-card chat-change-placeholder";
+
+  const text = document.createElement("div");
+  text.className = "chat-change-placeholder-text";
+  text.textContent = "Suggesting a change";
+
+  const dots = document.createElement("div");
+  dots.className = "typing-indicator chat-change-placeholder-dots";
+  dots.innerHTML = "<span></span><span></span><span></span>";
+
+  card.appendChild(text);
+  card.appendChild(dots);
+  return card;
+}
+
 function buildReorderPreview(payload) {
   const setSongs = getSortedSetSongs();
   const beforeLabels = setSongs.map(getSetSongDisplayName);
@@ -26908,6 +27191,16 @@ function updateChatControls() {
   const input = document.getElementById("chat-input-text");
   if (sendBtn) sendBtn.disabled = state.isAiTyping;
   if (input) input.disabled = state.isAiTyping;
+  document.querySelectorAll(".chat-tab, .chat-tab-menu-toggle").forEach(tab => {
+    if ("disabled" in tab) {
+      tab.disabled = state.isAiTyping;
+    }
+    tab.classList.toggle("disabled", state.isAiTyping);
+    if (tab.closest) {
+      const wrapper = tab.closest(".chat-tab-item");
+      if (wrapper) wrapper.classList.toggle("disabled", state.isAiTyping);
+    }
+  });
 }
 
 async function toggleAiChat(set) {
@@ -26916,7 +27209,7 @@ async function toggleAiChat(set) {
 
   if (state.isAiChatOpen) {
     // Open
-    await loadAiChatHistory(set.id);
+    await loadAiChatThreads(set.id);
     renderSetChatPanel(set);
     setTimeout(() => {
       const sidebar = el("ai-chat-sidebar");
@@ -26943,22 +27236,119 @@ async function toggleAiChat(set) {
   }
 }
 
-async function loadAiChatHistory(setId) {
+async function loadAiChatThreads(setId) {
   state.aiChatMessages = [];
   state.aiChatReplyContext = null;
   state.aiChatSelection = null;
   renderChatReplyPreview();
   hideChatSelectionAction();
 
-  // Fetch from DB (RLS ensures we only get our own)
-  const { data, error } = await supabase
-    .from("set_chat_messages")
+  const { data: chats, error: chatsError } = await supabase
+    .from("set_chats")
     .select("*")
     .eq("set_id", setId)
     .order("created_at", { ascending: true });
 
+  if (chatsError) {
+    console.error("Error loading chats:", chatsError);
+    toastError("Failed to load chats.");
+    return;
+  }
+
+  state.aiChats = chats || [];
+
+  if (state.aiChats.length === 0) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const created = await createAiChatRecord(setId, user.id, DEFAULT_CHAT_TITLE);
+    if (created) {
+      state.aiChats = [created];
+    }
+  }
+
+  if (!state.aiChatId || !state.aiChats.some(chat => chat.id === state.aiChatId)) {
+    state.aiChatId = state.aiChats[0]?.id || null;
+  }
+
+  if (state.aiChatId) {
+    await loadAiChatMessages(state.aiChatId);
+  }
+}
+
+async function createAiChatRecord(setId, userId, title) {
+  if (!setId || !userId) return null;
+
+  const { data, error } = await supabase
+    .from("set_chats")
+    .insert({
+      set_id: setId,
+      user_id: userId,
+      title: title || DEFAULT_CHAT_TITLE
+    })
+    .select("*")
+    .single();
+
   if (error) {
-    console.error("Error loading chat:", error);
+    console.error("Error creating chat:", error);
+    toastError("Unable to create a new chat.");
+    return null;
+  }
+
+  return data;
+}
+
+async function createAiChat(setId) {
+  if (state.isAiTyping) {
+    toastError("Please wait for the current reply to finish.");
+    return;
+  }
+  if (!setId) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const created = await createAiChatRecord(setId, user.id, DEFAULT_CHAT_TITLE);
+  if (!created) return;
+
+  state.aiChats = [...state.aiChats, created];
+  state.aiChatId = created.id;
+  await loadAiChatMessages(created.id);
+  renderChatTabs();
+}
+
+async function selectAiChat(chatId) {
+  if (!chatId || chatId === state.aiChatId) return;
+  if (state.isAiTyping) {
+    toastError("Please wait for the current reply to finish.");
+    return;
+  }
+
+  state.aiChatId = chatId;
+  state.aiChatMessages = [];
+  state.aiChatReplyContext = null;
+  state.aiChatSelection = null;
+  renderChatReplyPreview();
+  hideChatSelectionAction();
+
+  const container = document.getElementById("chat-messages-list");
+  if (container) renderChatMessages(container);
+
+  await loadAiChatMessages(chatId);
+  renderChatTabs();
+}
+
+async function loadAiChatMessages(chatId) {
+  if (!chatId) return;
+
+  const { data, error } = await supabase
+    .from("set_chat_messages")
+    .select("*")
+    .eq("chat_id", chatId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error loading chat messages:", error);
     toastError("Failed to load chat history.");
     return;
   }
@@ -26974,6 +27364,255 @@ async function loadAiChatHistory(setId) {
       content
     };
   });
+
+  const container = document.getElementById("chat-messages-list");
+  if (container) renderChatMessages(container);
+
+  if (state.selectedSet && !state.isAiTyping && shouldGenerateChatTitle(chatId)) {
+    void maybeRenameChatTitle(state.selectedSet, chatId);
+  }
+}
+
+async function deleteAiChat(chatId) {
+  if (!chatId) return;
+  if (state.isAiTyping) {
+    toastError("Please wait for the current reply to finish.");
+    return;
+  }
+  const { error } = await supabase
+    .from("set_chats")
+    .delete()
+    .eq("id", chatId);
+
+  if (error) {
+    console.error("Error deleting chat:", error);
+    toastError("Unable to delete chat.");
+    return;
+  }
+
+  state.aiChats = state.aiChats.filter(chat => chat.id !== chatId);
+
+  if (state.aiChatId === chatId) {
+    state.aiChatId = state.aiChats[0]?.id || null;
+    if (state.aiChatId) {
+      await loadAiChatMessages(state.aiChatId);
+    } else if (state.selectedSet?.id) {
+      await createAiChat(state.selectedSet.id);
+    }
+  }
+
+  renderChatTabs();
+}
+
+function renameAiChat(chatId) {
+  if (!chatId) return;
+  if (state.isAiTyping) {
+    toastError("Please wait for the current reply to finish.");
+    return;
+  }
+
+  openRenameChatModal(chatId);
+}
+
+async function maybeRenameChatTitle(set, chatId) {
+  if (!set || !chatId) return;
+  const chat = state.aiChats.find(item => item.id === chatId);
+  if (!chat || !isDefaultChatTitle(chat.title)) return;
+  if (!shouldGenerateChatTitle(chatId)) return;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+
+  const messagesForTitle = buildTitlePromptMessages(state.aiChatMessages);
+  if (!messagesForTitle.length) return;
+
+  const fallbackTitle = buildFallbackChatTitle(state.aiChatMessages);
+  const applyTitleLocally = (title) => {
+    const idx = state.aiChats.findIndex(item => item.id === chatId);
+    if (idx !== -1 && title && title !== state.aiChats[idx].title) {
+      state.aiChats[idx] = { ...state.aiChats[idx], title };
+      renderChatTabs();
+    }
+  };
+
+  let timeoutId = null;
+  try {
+    const controller = new AbortController();
+    timeoutId = setTimeout(() => controller.abort(), AI_CHAT_TITLE_TIMEOUT_MS);
+
+    const response = await fetch("https://pvqrxkbyjhgomwqwkedw.supabase.co/functions/v1/ai-chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+        "apikey": SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        mode: "title",
+        set_id: set.id,
+        chat_id: chatId,
+        messages: messagesForTitle
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`Chat title request failed: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    let title = "";
+
+    if (contentType.includes("text/event-stream")) {
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (!line.startsWith("data:")) continue;
+            const payloadText = line.replace("data:", "").trim();
+            if (payloadText === "[DONE]") {
+              break;
+            }
+            const data = safeJsonParse(payloadText);
+            const delta = data?.choices?.[0]?.delta?.content || data?.choices?.[0]?.message?.content || "";
+            title += delta;
+            if (title.length > 80) break;
+          }
+          if (title.length > 80) break;
+        }
+      }
+    } else {
+      const payload = await response.json();
+      title = typeof payload?.title === "string" ? payload.title.trim() : "";
+    }
+
+    title = title
+      .replace(/["'`]/g, "")
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const words = title.split(" ").filter(Boolean).slice(0, 4);
+    title = words.join(" ");
+
+    if (!title || isDefaultChatTitle(title)) {
+      throw new Error("Chat title was empty.");
+    }
+
+    applyTitleLocally(title);
+
+    const { error } = await supabase
+      .from("set_chats")
+      .update({ title })
+      .eq("id", chatId);
+
+    if (error) {
+      console.warn("Failed to persist chat title:", error);
+    }
+  } catch (err) {
+    console.warn("Chat title generation failed:", err);
+    if (isAbortError(err)) {
+      scheduleChatTitleRetry(set, chatId);
+      return;
+    }
+    if (fallbackTitle && !isDefaultChatTitle(fallbackTitle)) {
+      applyTitleLocally(fallbackTitle);
+      const { error } = await supabase
+        .from("set_chats")
+        .update({ title: fallbackTitle })
+        .eq("id", chatId);
+      if (error) {
+        console.warn("Failed to persist fallback chat title:", error);
+      }
+    }
+  } finally {
+    // Ensure timeout cleanup if fetch didn't resolve
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+function renderChatTabs() {
+  const tabs = document.getElementById("chat-tabs");
+  if (!tabs) return;
+
+  document.querySelectorAll(".chat-tab-menu[data-portal=\"true\"]").forEach(menu => menu.remove());
+
+  tabs.innerHTML = "";
+
+  state.aiChats.forEach((chat) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = `chat-tab-item ${chat.id === state.aiChatId ? "active" : ""}`;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chat-tab";
+    btn.textContent = chat.title || DEFAULT_CHAT_TITLE;
+    btn.disabled = state.isAiTyping;
+    btn.addEventListener("click", () => selectAiChat(chat.id));
+
+    const menuToggle = document.createElement("button");
+    menuToggle.type = "button";
+    menuToggle.className = "chat-tab-menu-toggle";
+    menuToggle.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
+    menuToggle.setAttribute("aria-label", "Chat options");
+    menuToggle.title = "Chat options";
+    menuToggle.disabled = state.isAiTyping;
+
+    const menu = document.createElement("div");
+    menu.className = "header-dropdown-menu chat-tab-menu hidden";
+    menu.innerHTML = `
+      <button type="button" class="header-dropdown-item" data-action="rename">
+        <i class="fa-solid fa-pen"></i>
+        <span>Rename</span>
+      </button>
+      <button type="button" class="header-dropdown-item" data-action="delete">
+        <i class="fa-solid fa-trash"></i>
+        <span>Delete</span>
+      </button>
+    `;
+
+    menuToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleChatTabMenu(menu, menuToggle);
+    });
+
+    menu.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const action = event.target.closest("[data-action]")?.dataset?.action;
+      if (!action) return;
+      closeChatTabMenus();
+      if (action === "rename") {
+        renameAiChat(chat.id);
+      } else if (action === "delete") {
+        deleteAiChat(chat.id);
+      }
+    });
+
+    wrapper.appendChild(btn);
+    wrapper.appendChild(menuToggle);
+    wrapper.appendChild(menu);
+    tabs.appendChild(wrapper);
+  });
+
+  const newBtn = document.createElement("button");
+  newBtn.type = "button";
+  newBtn.id = "chat-new-tab";
+  newBtn.className = "chat-tab new";
+  newBtn.disabled = state.isAiTyping;
+  newBtn.innerHTML = '<i class="fa-solid fa-plus"></i> New Chat';
+  newBtn.addEventListener("click", () => createAiChat(state.selectedSet?.id));
+  tabs.appendChild(newBtn);
+
+  ensureChatTabMenuListeners();
 }
 
 // Helper for chat layout
@@ -27088,6 +27727,7 @@ function renderSetChatPanel(set) {
       <h3><i class="fa-solid fa-wave-square" style="color: var(--accent-color)"></i> Trill</h3>
       <button class="btn icon-only" id="close-chat-btn"><i class="fa-solid fa-xmark"></i></button>
     </div>
+    <div class="chat-tabs" id="chat-tabs"></div>
     <div class="chat-messages" id="chat-messages-list"></div>
     <div class="chat-input-area">
       <div class="chat-reply-preview hidden" id="chat-reply-preview">
@@ -27168,6 +27808,7 @@ function renderSetChatPanel(set) {
 
   renderChatReplyPreview();
   updateChatControls();
+  renderChatTabs();
   renderChatMessages(messagesList);
 }
 
@@ -27196,7 +27837,21 @@ function renderChatMessages(container) {
     const { text, reply } = parseChatContent(msg.content);
     const { rawContent, actionBlocks } = extractActionBlocks(text);
     const actionSummary = buildActionSummary(actionBlocks);
-    const displayContent = rawContent || actionSummary;
+    let displayContent = rawContent || actionSummary;
+    let showActionPlaceholder = false;
+
+    const isStreamingAssistant = msg.role === "assistant"
+      && state.isAiTyping
+      && index === lastAssistantIndex;
+
+    if (!actionBlocks.length && isStreamingAssistant) {
+      const actionStart = findActionBlockStart(text);
+      if (actionStart !== -1) {
+        const trimmed = text.slice(0, actionStart).trim();
+        displayContent = trimmed;
+        showActionPlaceholder = true;
+      }
+    }
 
     if (reply && reply.text) {
       const replyEl = document.createElement("div");
@@ -27237,6 +27892,10 @@ function renderChatMessages(container) {
       bubble.className = "message-bubble markdown-body";
       bubble.innerHTML = contentHtml;
       msgEl.appendChild(bubble);
+    }
+
+    if (showActionPlaceholder) {
+      msgEl.appendChild(renderActionPlaceholder());
     }
 
     if (actionBlocks && actionBlocks.length) {
@@ -27292,7 +27951,7 @@ function renderChatMessages(container) {
 }
 
 
-async function streamAiResponse(set, messagesForAi, userId) {
+async function streamAiResponse(set, messagesForAi, userId, chatId) {
   const container = document.getElementById("chat-messages-list");
 
   state.isAiTyping = true;
@@ -27367,15 +28026,20 @@ async function streamAiResponse(set, messagesForAi, userId) {
       }
     }
 
-    if (userId) {
+    if (userId && chatId) {
       const { data, error } = await supabase.from("set_chat_messages").insert({
         set_id: set.id,
+        chat_id: chatId,
         user_id: userId,
         role: 'assistant',
         content: aiText
       }).select("id").single();
 
       if (!error && data) assistantMsg.id = data.id;
+    }
+
+    if (chatId && shouldGenerateChatTitle(chatId)) {
+      void maybeRenameChatTitle(set, chatId);
     }
 
   } catch (err) {
@@ -27393,6 +28057,10 @@ async function streamAiResponse(set, messagesForAi, userId) {
 
 async function sendMessageToAi(set, text) {
   if (state.isAiTyping) return;
+  if (!state.aiChatId) {
+    await createAiChat(set.id);
+    if (!state.aiChatId) return;
+  }
 
   const reply = state.aiChatReplyContext ? {
     role: state.aiChatReplyContext.role,
@@ -27412,6 +28080,7 @@ async function sendMessageToAi(set, text) {
 
   const { data, error } = await supabase.from("set_chat_messages").insert({
     set_id: set.id,
+    chat_id: state.aiChatId,
     user_id: user.id,
     role: 'user',
     content
@@ -27424,11 +28093,12 @@ async function sendMessageToAi(set, text) {
   renderChatReplyPreview();
 
   const messagesForAi = buildAiPayloadMessages(state.aiChatMessages);
-  await streamAiResponse(set, messagesForAi, user.id);
+  await streamAiResponse(set, messagesForAi, user.id, state.aiChatId);
 }
 
 async function regenerateAssistantMessage(set, assistantIndex) {
   if (state.isAiTyping) return;
+  if (!state.aiChatId) return;
 
   const history = state.aiChatMessages.slice(0, assistantIndex);
   const hasUserMessage = history.some(m => m.role === "user");
@@ -27441,7 +28111,7 @@ async function regenerateAssistantMessage(set, assistantIndex) {
   if (!user) return;
 
   const messagesForAi = buildAiPayloadMessages(history);
-  await streamAiResponse(set, messagesForAi, user.id);
+  await streamAiResponse(set, messagesForAi, user.id, state.aiChatId);
 }
 
 async function handleAiAction(actionBlock) {
