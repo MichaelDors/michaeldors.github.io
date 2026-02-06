@@ -667,6 +667,11 @@ main {
   vertical-align: middle;
 }
 
+.ai-generated-badge {
+  background: color-mix(in srgb, var(--accent-color) 80%, var(--bg-primary));
+  color: var(--bg-primary);
+}
+
 
 .no-assignments {
   color: var(--text-muted);
@@ -6177,6 +6182,12 @@ body.booting main {
   z-index: 1;
 }
 
+.ai-chat-fab__mesh--fast {
+  animation-duration: 3s;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
 .ai-chat-fab__icon {
   position: relative;
   z-index: 2;
@@ -6193,6 +6204,14 @@ body.booting main {
 
 .ai-chat-fab:active {
   transform: translateY(0) scale(0.98);
+}
+
+.ai-chat-fab:hover .ai-chat-fab__mesh--fast {
+  opacity: 0.45;
+}
+
+.ai-chat-fab--burst .ai-chat-fab__mesh--fast {
+  opacity: 0.7;
 }
 
 .ai-chat-fab:focus-visible {
@@ -6254,6 +6273,11 @@ body.booting main {
 
   .ai-chat-fab__mesh {
     animation: none;
+  }
+
+  .ai-chat-fab__mesh--fast {
+    animation: none;
+    opacity: 0 !important;
   }
 }
 

@@ -969,7 +969,8 @@ function loadAppDataFromCache(session) {
     state.people = data.people || [];
     state.userTeams = (data.userTeams || []).map(t => ({
       ...t,
-      ai_enabled: t.ai_enabled || false
+      ai_enabled: t.ai_enabled || false,
+      ai_chat_managers_only: t.ai_chat_managers_only || false
     }));
     state.currentTeamId = data.currentTeamId;
     state.pendingRequests = data.pendingRequests || [];
@@ -3842,14 +3843,45 @@ async function fetchProfile() {
             owner_id,
             daily_reminder_time,
             timezone,
-            ai_enabled
+            ai_enabled,
+            ai_chat_managers_only
           )
         `)
         .eq("id", state.session.user.id)
         .single();
     }, { timeout: 2000 });
 
-    const { data, error } = result;
+    let { data, error } = result;
+
+    if (error && error.message?.includes("ai_chat_managers_only")) {
+      console.warn('teams.ai_chat_managers_only column may not exist yet; retrying profile fetch without it');
+      const retryResult = await safeSupabaseOperation(async () => {
+        return await supabase
+          .from("profiles")
+          .select(`
+            id,
+            full_name,
+            email,
+            can_manage,
+            is_owner,
+            team_id,
+            profile_picture_path,
+            created_at,
+            team:team_id (
+              id,
+              name,
+              owner_id,
+              daily_reminder_time,
+              timezone,
+              ai_enabled
+            )
+          `)
+          .eq("id", state.session.user.id)
+          .single();
+      }, { timeout: 2000 });
+      data = retryResult.data;
+      error = retryResult.error;
+    }
 
     console.log('  - Query completed. Error:', error?.code || 'none');
     console.log('  - Data:', data ? 'found' : 'not found');
@@ -4053,9 +4085,26 @@ async function fetchUserTeams() {
 
   try {
     // Fetch all teams the user is a member of
-    let { data: teamMembers, error } = await supabase
-      .from("team_members")
-      .select(`
+    const selectVariants = [
+      `
+        team_id,
+        role,
+        is_owner,
+        can_manage,
+        team:team_id (
+          id,
+          name,
+          owner_id,
+          assignment_mode,
+          daily_reminder_time,
+          timezone,
+          require_publish,
+          itunes_indexing_enabled,
+          ai_enabled,
+          ai_chat_managers_only
+        )
+      `,
+      `
         team_id,
         role,
         is_owner,
@@ -4071,35 +4120,58 @@ async function fetchUserTeams() {
           itunes_indexing_enabled,
           ai_enabled
         )
-      `)
-      .eq("user_id", state.session.user.id)
-      .order("joined_at", { ascending: true });
+      `,
+      `
+        team_id,
+        role,
+        is_owner,
+        can_manage,
+        team:team_id (
+          id,
+          name,
+          owner_id,
+          assignment_mode,
+          daily_reminder_time,
+          timezone,
+          require_publish,
+          ai_enabled,
+          ai_chat_managers_only
+        )
+      `,
+      `
+        team_id,
+        role,
+        is_owner,
+        can_manage,
+        team:team_id (
+          id,
+          name,
+          owner_id,
+          assignment_mode,
+          daily_reminder_time,
+          timezone,
+          require_publish,
+          ai_enabled
+        )
+      `
+    ];
 
-    // Backward compatibility if migrations haven't been applied yet
-    if (error && error.message?.includes("itunes_indexing_enabled")) {
-      console.warn('Team iTunes indexing column may not exist yet, retrying without it');
-      const retry = await supabase
+    let teamMembers = null;
+    let error = null;
+    for (const select of selectVariants) {
+      const result = await supabase
         .from("team_members")
-        .select(`
-          team_id,
-          role,
-          is_owner,
-          can_manage,
-          team:team_id (
-            id,
-            name,
-            owner_id,
-            assignment_mode,
-            daily_reminder_time,
-            timezone,
-            require_publish,
-            ai_enabled
-          )
-        `)
+        .select(select)
         .eq("user_id", state.session.user.id)
         .order("joined_at", { ascending: true });
-      teamMembers = retry.data;
-      error = retry.error;
+
+      teamMembers = result.data;
+      error = result.error;
+      if (!error) break;
+      if (!error.message?.includes("ai_chat_managers_only") &&
+        !error.message?.includes("itunes_indexing_enabled")) {
+        break;
+      }
     }
 
     if (error) {
@@ -4115,6 +4187,8 @@ async function fetchUserTeams() {
           role: state.profile.is_owner ? 'owner' : (state.profile.can_manage ? 'manager' : 'member'),
           is_owner: state.profile.is_owner || false,
           can_manage: state.profile.can_manage || false,
+          ai_enabled: state.profile.team?.ai_enabled || false,
+          ai_chat_managers_only: state.profile.team?.ai_chat_managers_only || false,
         }];
         console.log('  - ✅ Using profile.team_id as fallback:', state.currentTeamId);
         updateTeamSwitcher();
@@ -4137,6 +4211,7 @@ async function fetchUserTeams() {
       require_publish: tm.team?.require_publish !== false, // Default to true
       itunes_indexing_enabled: tm.team?.itunes_indexing_enabled !== false, // Default to true
       ai_enabled: tm.team?.ai_enabled || false,
+      ai_chat_managers_only: tm.team?.ai_chat_managers_only || false,
     }));
 
     console.log('  - ✅ Found', state.userTeams.length, 'teams');
@@ -7641,16 +7716,53 @@ function getDaysUntil(dateString) {
   return diffDays;
 }
 
+function canChatWithTrill() {
+  const currentTeam = state.userTeams?.find(t => t.id === state.currentTeamId);
+  if (!currentTeam?.ai_enabled) return false;
+  if (currentTeam.ai_chat_managers_only && !isManager()) return false;
+  return true;
+}
+
+let aiChatFabPulseTimeout = null;
+
+function shouldReduceMotion() {
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function scheduleAiChatFabPulse(fab) {
+  if (!fab || shouldReduceMotion()) return;
+  if (aiChatFabPulseTimeout) {
+    clearTimeout(aiChatFabPulseTimeout);
+    aiChatFabPulseTimeout = null;
+  }
+
+  const minDelay = 5000;
+  const maxDelay = 12000;
+  const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+
+  aiChatFabPulseTimeout = setTimeout(() => {
+    if (!fab.isConnected) return;
+    fab.classList.add("ai-chat-fab--burst");
+    setTimeout(() => {
+      if (fab.isConnected) fab.classList.remove("ai-chat-fab--burst");
+    }, 1400);
+    scheduleAiChatFabPulse(fab);
+  }, delay);
+}
+
 function updateAiChatFab(set) {
   const detailView = el("set-detail");
   if (!detailView) return;
 
-  const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
-  const aiEnabled = currentTeam?.ai_enabled;
+  const canChat = canChatWithTrill();
   let fab = el("ai-chat-fab");
 
-  if (!aiEnabled || !set) {
+  if (!canChat || !set) {
     if (fab) fab.remove();
+    if (aiChatFabPulseTimeout) {
+      clearTimeout(aiChatFabPulseTimeout);
+      aiChatFabPulseTimeout = null;
+    }
     return;
   }
 
@@ -7663,6 +7775,7 @@ function updateAiChatFab(set) {
     fab.title = "Trill";
     fab.innerHTML = `
       <span class="ai-chat-fab__mesh"></span>
+      <span class="ai-chat-fab__mesh ai-chat-fab__mesh--fast"></span>
       <span class="ai-chat-fab__icon"><i class="fa-solid fa-wave-square"></i></span>
     `;
     detailView.appendChild(fab);
@@ -7673,6 +7786,8 @@ function updateAiChatFab(set) {
       toggleAiChat(state.selectedSet);
     }
   };
+
+  scheduleAiChatFabPulse(fab);
 }
 
 function showSetDetail(set) {
@@ -19034,6 +19149,22 @@ function isPdfResourceLink(link) {
     url.includes(".pdf");
 }
 
+const AI_CHART_TIMEOUT_MS = 45000;
+
+async function withTimeout(promise, ms, label = "Operation") {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`));
+    }, ms);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  }
+}
+
 function createLinkRow(link, index, key) {
   const div = document.createElement("div");
   div.className = "song-link-row draggable-item";
@@ -19197,6 +19328,14 @@ async function handleGenerateCadenceChart({ row, link, sectionKey, button } = {}
     return;
   }
 
+  console.log("AI Chart: start", {
+    songId,
+    resourceId: link.id,
+    sectionKey: sectionKey || null,
+    filePath: link.file_path || null,
+    url: link.url || null
+  });
+
   const existingResources = collectSongResources();
   const existingGeneralNumber = existingResources.find(r =>
     r.type === "chart" &&
@@ -19224,6 +19363,13 @@ async function handleGenerateCadenceChart({ row, link, sectionKey, button } = {}
     return;
   }
 
+  console.log("AI Chart: resolved key", {
+    resourceKey,
+    songKey,
+    selectedKey,
+    pdfUrl
+  });
+
   const setProcessing = (isProcessing) => {
     if (!button) return;
     button.dataset.processing = isProcessing ? "true" : "false";
@@ -19235,13 +19381,17 @@ async function handleGenerateCadenceChart({ row, link, sectionKey, button } = {}
   setProcessing(true);
 
   try {
+    console.log("AI Chart: extracting PDF text...");
     const rows = await extractPdfRowsFromUrl(pdfUrl);
     if (!rows || rows.length === 0) {
       throw new Error("No text could be extracted from the PDF.");
     }
 
+    console.log("AI Chart: extracted rows", { rowCount: rows.length });
     const prompt = buildAiChartPrompt(rows, { keyHint: selectedKey });
-    const { data, error } = await supabase.functions.invoke("ai-chart", {
+    console.log("AI Chart: prompt ready", { promptLength: prompt.length });
+
+    const invokePromise = supabase.functions.invoke("ai-chart", {
       body: {
         song_id: songId,
         resource_id: link.id,
@@ -19249,7 +19399,10 @@ async function handleGenerateCadenceChart({ row, link, sectionKey, button } = {}
       }
     });
 
+    const { data, error } = await withTimeout(invokePromise, AI_CHART_TIMEOUT_MS, "AI chart generation");
+
     if (error) {
+      console.error("AI Chart: edge function error", error);
       throw new Error(error.message || "AI request failed.");
     }
 
@@ -19258,6 +19411,7 @@ async function handleGenerateCadenceChart({ row, link, sectionKey, button } = {}
       throw new Error("AI response was empty.");
     }
 
+    console.log("AI Chart: AI response received", { contentLength: content.length });
     const parsed = parseAiChartJson(content);
     const doc = parsed?.doc || parsed;
     if (!doc || !Array.isArray(doc.lyricsLines) || !Array.isArray(doc.placements)) {
@@ -19273,8 +19427,10 @@ async function handleGenerateCadenceChart({ row, link, sectionKey, button } = {}
       return;
     }
 
+    console.log("AI Chart: converting to numbers", { selectedKey });
     const numberDoc = convertChordDocToNumberDoc(doc, selectedKey, songTitle);
 
+    console.log("AI Chart: saving chart");
     const saved = await saveSongChart({
       songId,
       scope: "general",
@@ -20881,7 +21037,12 @@ async function renderSongLinksDisplay(links, container) {
 
       const title = document.createElement("div");
       title.className = "song-link-title";
-      title.textContent = link.title || "Chord Chart";
+      const baseTitle = link.title || "Chord Chart";
+      if (link.generatedFromNumber || link.doc?.settings?.ai_generated) {
+        title.innerHTML = `${escapeHtml(baseTitle)} <span class="badge ai-generated-badge">AI Generated</span>`;
+      } else {
+        title.textContent = baseTitle;
+      }
 
       const subtitle = document.createElement("div");
       subtitle.className = "song-link-url";
@@ -21171,6 +21332,8 @@ function buildChartRow(chart, { songId, songTitle, readOnly = false, generated =
   if (chart?.id) div.dataset.chartId = chart.id;
 
   const label = generated ? "Generated Chord Chart" : chartDisplayLabel(chart);
+  const isAiGenerated = !!generated || !!chart?.doc?.settings?.ai_generated;
+  const aiBadgeHtml = isAiGenerated ? `<span class="badge ai-generated-badge">AI Generated</span>` : "";
   const subtitle = generated
     ? `Key: ${targetKey} • Auto-generated (read-only)`
     : `${chartScopeLabel(chart)} • ${chart.chart_type === "number" ? "Number chart" : "Chord chart"}`;
@@ -21184,7 +21347,7 @@ function buildChartRow(chart, { songId, songTitle, readOnly = false, generated =
         <i class="fa-solid fa-music" style="font-size: 1.1rem; color: var(--accent-color);"></i>
       </div>
       <div class="song-link-content" style="min-width:0;">
-        <div class="song-link-title">${escapeHtml(label)}</div>
+        <div class="song-link-title">${escapeHtml(label)}${aiBadgeHtml}</div>
         <div class="song-link-url">${escapeHtml(subtitle)}</div>
       </div>
     </div>
@@ -21275,7 +21438,7 @@ function buildChartRow(chart, { songId, songTitle, readOnly = false, generated =
 // Deprecated: injectSongChartsIntoSongLinksList is no longer needed 
 // as charts are now handled as standard resources within renderSongLinks.
 function injectSongChartsIntoSongLinksList({ songId, songTitle, charts, keys }) {
-  console.log("injectSongChartsIntoSongLinksList is deprecated/noop in new resource model");
+  // Deprecated/noop in new resource model (kept for backwards compatibility)
 }
 
 function normalizeKeyLabel(key) {
@@ -21629,6 +21792,7 @@ function convertChordDocToNumberDoc(doc, keyStr, title = "") {
     placements: convertedPlacements,
     settings: {
       ...(base.settings || {}),
+      ai_generated: true,
       layout: base?.settings?.layout || "one_column"
     }
   };
@@ -24250,7 +24414,9 @@ async function openTeamSettingsModal() {
     daily_reminder_time: '06:00:00',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     require_publish: true,
-    itunes_indexing_enabled: true
+    itunes_indexing_enabled: true,
+    ai_enabled: false,
+    ai_chat_managers_only: false
   };
 
   const render = (data) => {
@@ -24342,6 +24508,23 @@ async function openTeamSettingsModal() {
     if (aiEnabledCheckbox) {
       aiEnabledCheckbox.checked = data.ai_enabled || false;
     }
+
+    // Trill Chat: Managers Only
+    const aiChatManagersOnlyCheckbox = el("team-ai-chat-managers-only");
+    const syncAiChatManagersOnlyState = () => {
+      if (!aiChatManagersOnlyCheckbox) return;
+      const isEnabled = !!aiEnabledCheckbox?.checked;
+      aiChatManagersOnlyCheckbox.disabled = !isEnabled;
+    };
+    if (aiChatManagersOnlyCheckbox) {
+      aiChatManagersOnlyCheckbox.checked = data.ai_chat_managers_only || false;
+    }
+    if (aiEnabledCheckbox) {
+      aiEnabledCheckbox.onchange = () => {
+        syncAiChatManagersOnlyState();
+      };
+    }
+    syncAiChatManagersOnlyState();
   };
 
   // Render immediately with local data
@@ -24353,28 +24536,34 @@ async function openTeamSettingsModal() {
 
   // Fetch fresh data in background
   try {
-    let { data: freshData, error } = await supabase
-      .from("teams")
-      .select("id, name, assignment_mode, daily_reminder_time, timezone, require_publish, itunes_indexing_enabled, ai_enabled")
-      .eq("id", state.currentTeamId)
-      .single();
+    const selectVariants = [
+      "id, name, assignment_mode, daily_reminder_time, timezone, require_publish, itunes_indexing_enabled, ai_enabled, ai_chat_managers_only",
+      "id, name, assignment_mode, daily_reminder_time, timezone, require_publish, itunes_indexing_enabled, ai_enabled",
+      "id, name, assignment_mode, daily_reminder_time, timezone, require_publish, ai_enabled"
+    ];
+
+    let freshData = null;
+    let error = null;
+    for (const select of selectVariants) {
+      const result = await supabase
+        .from("teams")
+        .select(select)
+        .eq("id", state.currentTeamId)
+        .single();
+
+      freshData = result.data;
+      error = result.error;
+      if (!error) break;
+
+      if (!error.message?.includes("ai_chat_managers_only") &&
+        !error.message?.includes("itunes_indexing_enabled")) {
+        break;
+      }
+    }
 
     if (error) {
-      // Backward compatibility if migrations haven't been applied yet
-      if (error.message?.includes("itunes_indexing_enabled")) {
-        console.warn('Team iTunes indexing column may not exist yet; retrying without it');
-        const retry = await supabase
-          .from("teams")
-          .select("id, name, assignment_mode, daily_reminder_time, timezone, require_publish")
-          .eq("id", state.currentTeamId)
-          .single();
-        freshData = retry.data;
-        error = retry.error;
-      }
-      if (error) {
-        console.error("Error refreshing team details:", error);
-        return;
-      }
+      console.error("Error refreshing team details:", error);
+      return;
     }
 
     if (freshData) {
@@ -24388,7 +24577,9 @@ async function openTeamSettingsModal() {
         (freshData.timezone !== teamData.timezone) ||
         (freshData.require_publish !== teamData.require_publish) ||
         (freshData.itunes_indexing_enabled !== teamData.itunes_indexing_enabled) ||
-        (freshData.ai_enabled !== teamData.ai_enabled);
+        (freshData.ai_enabled !== teamData.ai_enabled) ||
+        (freshData.ai_chat_managers_only !== undefined &&
+          freshData.ai_chat_managers_only !== teamData.ai_chat_managers_only);
 
       // Update local state
       const stateTeam = state.userTeams.find(t => t.id === state.currentTeamId);
@@ -24423,6 +24614,7 @@ async function handleTeamSettingsSubmit(e) {
   const requirePublishCheckbox = el("team-require-publish");
   const itunesIndexingEnabledCheckbox = el("team-itunes-indexing-enabled");
   const aiEnabledCheckbox = el("team-ai-enabled");
+  const aiChatManagersOnlyCheckbox = el("team-ai-chat-managers-only");
 
   if (!nameInput || !teamAssignmentModeDropdown) return;
 
@@ -24437,6 +24629,7 @@ async function handleTeamSettingsSubmit(e) {
   const newRequirePublish = requirePublishCheckbox?.checked !== false; // Default to true
   const newItunesIndexingEnabled = itunesIndexingEnabledCheckbox?.checked !== false; // Default to true
   const newAiEnabled = aiEnabledCheckbox?.checked || false;
+  const newAiChatManagersOnly = aiChatManagersOnlyCheckbox?.checked || false;
 
   if (!newName) {
     toastError("Team name cannot be empty.");
@@ -24482,6 +24675,12 @@ async function handleTeamSettingsSubmit(e) {
     hasChanges = true;
   }
 
+  // Handle Trill Chat Managers Only
+  if (newAiChatManagersOnly !== (currentTeam?.ai_chat_managers_only || false)) {
+    updates.ai_chat_managers_only = newAiChatManagersOnly;
+    hasChanges = true;
+  }
+
   if (!hasChanges) {
     // No changes, just close modal
     closeTeamSettingsModal();
@@ -24494,6 +24693,15 @@ async function handleTeamSettingsSubmit(e) {
     .eq("id", state.currentTeamId);
 
   // Backward compatibility if migrations haven't been applied yet
+  if (error && error.message?.includes("ai_chat_managers_only") && updates.ai_chat_managers_only !== undefined) {
+    console.warn('teams.ai_chat_managers_only column may not exist yet; retrying save without it');
+    const { ai_chat_managers_only, ...retryUpdates } = updates;
+    const retry = await supabase
+      .from("teams")
+      .update(retryUpdates)
+      .eq("id", state.currentTeamId);
+    error = retry.error;
+  }
   if (error && error.message?.includes("itunes_indexing_enabled") && updates.itunes_indexing_enabled !== undefined) {
     console.warn('teams.itunes_indexing_enabled column may not exist yet; retrying save without it');
     const { itunes_indexing_enabled, ...retryUpdates } = updates;
@@ -24519,6 +24727,7 @@ async function handleTeamSettingsSubmit(e) {
     if (updates.require_publish !== undefined) currentTeam.require_publish = updates.require_publish;
     if (updates.itunes_indexing_enabled !== undefined) currentTeam.itunes_indexing_enabled = updates.itunes_indexing_enabled;
     if (updates.ai_enabled !== undefined) currentTeam.ai_enabled = updates.ai_enabled;
+    if (updates.ai_chat_managers_only !== undefined) currentTeam.ai_chat_managers_only = updates.ai_chat_managers_only;
 
     // Force update the current selected team ref in the list to trigger reactivity if any
     const teamIndex = state.userTeams.findIndex(t => t.id === state.currentTeamId);
@@ -27294,6 +27503,20 @@ function updateChatControls() {
 }
 
 async function toggleAiChat(set) {
+  if (!set) return;
+  const isOpening = !state.isAiChatOpen;
+  if (isOpening) {
+    const currentTeam = state.userTeams?.find(t => t.id === state.currentTeamId);
+    if (!currentTeam?.ai_enabled) {
+      toastError("Trill is disabled for this team.");
+      return;
+    }
+    if (currentTeam.ai_chat_managers_only && !isManager()) {
+      toastError("Only managers can chat with Trill for this team.");
+      return;
+    }
+  }
+
   state.isAiChatOpen = !state.isAiChatOpen;
   const main = document.querySelector('main');
 
@@ -27827,7 +28050,7 @@ function renderSetChatPanel(set) {
   sidebar.innerHTML = `
     <div class="chat-resize-handle"></div>
     <div class="chat-header">
-      <h3><i class="fa-solid fa-wave-square" style="color: var(--accent-color)"></i> Trill</h3>
+      <h3><i class="fa-solid fa-wave-square" style="color: var(--accent-color)"></i> Trill <span class="badge" style="background: var(--accent-color); color: var(--bg-primary); border: none; font-size: 0.7rem; padding: 2px 6px; margin-left: 0.5rem;">BETA</span></h3>
       <button class="btn icon-only" id="close-chat-btn"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="chat-tabs" id="chat-tabs"></div>
