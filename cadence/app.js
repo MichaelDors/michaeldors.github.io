@@ -28371,6 +28371,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
   const container = document.getElementById("chat-messages-list");
   const requestId = createTrillRequestId();
   const t0 = nowMs();
+  let typingEl = null;
 
   state.isAiTyping = true;
   updateChatControls();
@@ -28384,6 +28385,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
     typing.innerHTML = `<div class="message-bubble"><span></span><span></span><span></span></div>`;
     container.appendChild(typing);
     container.scrollTop = container.scrollHeight;
+    typingEl = typing;
   }
 
   let titleRequested = false;
@@ -28422,15 +28424,30 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
       throw new Error(`Trill Request Failed: ${errorText}`);
     }
 
+    const responseModel = response.headers.get("x-ai-model") || "";
+    const responseTier = response.headers.get("x-ai-tier") || "";
+    const isDeepseek = /deepseek/i.test(responseModel) || (responseTier || "").toLowerCase() === "smart";
+
+    if (typingEl) {
+      if (isDeepseek) {
+        typingEl.classList.add("ai-thinking");
+        typingEl.innerHTML = `
+          <div class="message-bubble ai-thinking-bubble">
+            <div class="ai-thinking-text">Thinking longer for a better answer</div>
+            <div class="ai-thinking-dots"><span></span><span></span><span></span></div>
+          </div>
+        `;
+      } else {
+        typingEl.remove();
+        typingEl = null;
+      }
+    }
+
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let aiText = "";
     let sawFirstChunk = false;
     let sawFirstToken = false;
-
-    if (container && container.lastChild && container.lastChild.classList.contains("typing-indicator")) {
-      container.lastChild.remove();
-    }
 
     const assistantMsg = { role: 'assistant', content: "" };
     state.aiChatMessages.push(assistantMsg);
@@ -28452,17 +28469,23 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
           try {
             const data = JSON.parse(dataStr);
             const content = data.choices[0]?.delta?.content || "";
-            if (content && !sawFirstToken) {
-              sawFirstToken = true;
-              logTrillTiming(requestId, "stream:first_token", t0);
-            }
-            aiText += content;
-            assistantMsg.content = aiText;
-            if (container) renderChatMessages(container);
+            if (content) {
+              if (!sawFirstToken) {
+                sawFirstToken = true;
+                logTrillTiming(requestId, "stream:first_token", t0);
+                if (typingEl) {
+                  typingEl.remove();
+                  typingEl = null;
+                }
+              }
+              aiText += content;
+              assistantMsg.content = aiText;
+              if (container) renderChatMessages(container);
 
-            if (!titleRequested && chatId && shouldGenerateChatTitle(chatId) && aiText.length >= 60) {
-              titleRequested = true;
-              void maybeRenameChatTitle(set, chatId);
+              if (!titleRequested && chatId && shouldGenerateChatTitle(chatId) && aiText.length >= 60) {
+                titleRequested = true;
+                void maybeRenameChatTitle(set, chatId);
+              }
             }
           } catch (e) {
             // Ignore partial
@@ -28491,8 +28514,9 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
   } catch (err) {
     console.error(err);
     logTrillTiming(requestId, "error", t0, { message: err?.message || String(err) });
-    if (container && container.lastChild && container.lastChild.classList.contains("typing-indicator")) {
-      container.lastChild.remove();
+    if (typingEl) {
+      typingEl.remove();
+      typingEl = null;
     }
     toastError("Trill is unavailable right now.");
   } finally {

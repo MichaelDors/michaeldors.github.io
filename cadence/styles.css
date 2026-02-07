@@ -6126,6 +6126,50 @@ body.booting main {
   }
 }
 
+.typing-indicator.ai-thinking .message-bubble {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ai-thinking-text {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+}
+
+.ai-thinking-dots {
+  display: inline-flex;
+  align-items: center;
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .ai-thinking-text {
+    background: linear-gradient(110deg, var(--text-secondary) 0%, var(--accent-color) 45%, var(--text-secondary) 80%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: ai-shimmer 2.6s ease-in-out infinite;
+  }
+}
+
+@keyframes ai-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-thinking-text {
+    animation: none;
+  }
+}
+
 .btn-ai-chat-generated {
   margin-right: 0.5rem;
 }
