@@ -26375,6 +26375,25 @@ function isAbortError(error) {
   return error && (error.name === "AbortError" || String(error).includes("AbortError"));
 }
 
+function nowMs() {
+  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+    return performance.now();
+  }
+  return Date.now();
+}
+
+function createTrillRequestId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `trill_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function logTrillTiming(requestId, label, t0, extra = {}) {
+  const ms = Math.round(nowMs() - t0);
+  console.log(`[Trill Timing][${requestId}] ${label}`, { ms, ...extra });
+}
+
 function getChatTitleStatus(chatId) {
   return aiChatTitleStatus.get(chatId) || "idle";
 }
@@ -26825,6 +26844,10 @@ function normalizeActionBlocks(payload) {
   return [];
 }
 
+function isActionsEnvelope(payload) {
+  return payload && typeof payload === "object" && !Array.isArray(payload) && Array.isArray(payload.actions);
+}
+
 function findJsonBlock(text) {
   if (!text) return null;
   let inString = false;
@@ -26902,6 +26925,12 @@ function extractActionBlocks(contentText) {
       rawContent = `${before}${after}`;
       fenceRegex.lastIndex = 0;
       removedFence = true;
+    } else if (isActionsEnvelope(parsed)) {
+      const before = rawContent.slice(0, match.index);
+      const after = rawContent.slice(fenceRegex.lastIndex);
+      rawContent = `${before}${after}`;
+      fenceRegex.lastIndex = 0;
+      removedFence = true;
     }
   }
 
@@ -26913,6 +26942,8 @@ function extractActionBlocks(contentText) {
       if (normalized.length > 0) {
         actionBlocks.push(...normalized);
         rawJsonBlocks.push(jsonBlock.jsonText);
+        rawContent = `${rawContent.slice(0, jsonBlock.start)}${rawContent.slice(jsonBlock.end)}`;
+      } else if (isActionsEnvelope(parsed)) {
         rawContent = `${rawContent.slice(0, jsonBlock.start)}${rawContent.slice(jsonBlock.end)}`;
       }
     }
@@ -28338,6 +28369,8 @@ function renderChatMessages(container) {
 
 async function streamAiResponse(set, messagesForAi, userId, chatId) {
   const container = document.getElementById("chat-messages-list");
+  const requestId = createTrillRequestId();
+  const t0 = nowMs();
 
   state.isAiTyping = true;
   updateChatControls();
@@ -28355,6 +28388,11 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
 
   let titleRequested = false;
   try {
+    logTrillTiming(requestId, "request:start", t0, {
+      set_id: set?.id,
+      chat_id: chatId,
+      message_count: Array.isArray(messagesForAi) ? messagesForAi.length : 0
+    });
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) throw new Error("No active session");
@@ -28368,8 +28406,14 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
       },
       body: JSON.stringify({
         set_id: set.id,
-        messages: messagesForAi
+        messages: messagesForAi,
+        request_id: requestId
       })
+    });
+    logTrillTiming(requestId, "response:headers", t0, {
+      status: response.status,
+      content_type: response.headers.get("content-type"),
+      request_id: response.headers.get("x-request-id") || null
     });
 
     if (!response.ok) {
@@ -28381,6 +28425,8 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let aiText = "";
+    let sawFirstChunk = false;
+    let sawFirstToken = false;
 
     if (container && container.lastChild && container.lastChild.classList.contains("typing-indicator")) {
       container.lastChild.remove();
@@ -28392,6 +28438,10 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      if (!sawFirstChunk) {
+        sawFirstChunk = true;
+        logTrillTiming(requestId, "stream:first_chunk", t0);
+      }
       const chunk = decoder.decode(value);
 
       const lines = chunk.split("\n");
@@ -28402,6 +28452,10 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
           try {
             const data = JSON.parse(dataStr);
             const content = data.choices[0]?.delta?.content || "";
+            if (content && !sawFirstToken) {
+              sawFirstToken = true;
+              logTrillTiming(requestId, "stream:first_token", t0);
+            }
             aiText += content;
             assistantMsg.content = aiText;
             if (container) renderChatMessages(container);
@@ -28416,6 +28470,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
         }
       }
     }
+    logTrillTiming(requestId, "stream:done", t0, { chars: aiText.length });
 
     if (userId && chatId) {
       const { data, error } = await supabase.from("set_chat_messages").insert({
@@ -28435,6 +28490,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
 
   } catch (err) {
     console.error(err);
+    logTrillTiming(requestId, "error", t0, { message: err?.message || String(err) });
     if (container && container.lastChild && container.lastChild.classList.contains("typing-indicator")) {
       container.lastChild.remove();
     }
