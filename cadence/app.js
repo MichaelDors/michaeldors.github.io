@@ -126,6 +126,7 @@ const state = {
   isPasswordReset: isRecovery, // Set flag immediately if this is a password reset link
   isMemberView: false, // Track if manager is viewing as member
   hasRestoredTab: false, // Prevent tab reset on subsequent showApp calls
+  justBecameVisible: false, // True briefly after browser tab becomes visible; suppresses ripple and avoids unnecessary re-renders
   currentTeamId: null, // Current team the user is viewing/working with
   userTeams: [], // Array of all teams the user is a member of
   teamAssignmentMode: 'per_set', // Team-wide assignment mode (default: per_set)
@@ -1571,11 +1572,28 @@ function bindEvents() {
     updateAuthUI();
   });
 
-  // Auto-recovery from background throttling
-  // This handles the case where the user leaves the tab, background throttling causes a timeout/error,
-  // and then when they come back, we want to immediately check if the DB is actually fine.
+  // Why we listen to visibilitychange:
+  // 1) Analytics (startPageTimeTracking): pause/resume time-on-page when tab is hidden/visible so we don't count background time.
+  // 2) DB error overlay: when user returns to the tab, if the overlay was showing (e.g. from throttling), check DB health and dismiss if fine.
+  // 3) Smoother return: suppress ripple/pfp updates briefly so switching browser tabs back doesn't re-animate or flash.
   document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible") {
+      state.justBecameVisible = true;
+      if (state._justBecameVisibleTimeout) clearTimeout(state._justBecameVisibleTimeout);
+      state._justBecameVisibleTimeout = setTimeout(() => {
+        state.justBecameVisible = false;
+        state._justBecameVisibleTimeout = null;
+        updateUserProfilePicture(); // One refresh after window so pfp is correct if it changed in background
+      }, 2500);
+
+      // Strip ripple-item so browser tab switch doesn't replay the animation (browser often restarts paused animations)
+      document.querySelectorAll(".ripple-item").forEach((el) => {
+        el.classList.remove("ripple-item");
+        el.style.opacity = "1";
+        el.style.transform = "";
+        el.style.filter = "";
+      });
+
       const overlay = el('database-error-overlay');
       // If overlay is showing when user comes back
       if (overlay && !overlay.classList.contains('hidden')) {
@@ -1586,6 +1604,13 @@ function bindEvents() {
           hideDatabaseError();
         }
       }
+    }
+  });
+
+  // Remove ripple-item class after animation ends so elements don't keep the class (cleanup)
+  document.addEventListener("animationend", (e) => {
+    if (e.target.classList?.contains("ripple-item") && e.animationName === "ripple-in") {
+      e.target.classList.remove("ripple-item");
     }
   });
 
@@ -4985,7 +5010,8 @@ async function loadSets() {
   }
 
   state.isLoadingSets = false;
-  renderSets(true);
+  // Don't animate when data is just loaded (e.g. after browser tab focus, realtime, or passive refresh)
+  renderSets(false);
 
   // Load and render pending requests
   await loadPendingRequests();
@@ -5306,8 +5332,8 @@ function renderPendingRequests(requests) {
 
   requests.forEach((request, index) => {
     const item = document.createElement("div");
-    item.className = "pending-request-item ripple-item";
-    item.style.animationDelay = `${(index * 0.05) + 0.1}s`;
+    item.className = "pending-request-item" + (wasHidden ? " ripple-item" : "");
+    if (wasHidden) item.style.animationDelay = `${(index * 0.05) + 0.1}s`;
     item.style.cursor = "pointer";
     item.onclick = () => {
       // Find the full set object from state to ensure we have all details (songs, times, etc.)
@@ -6521,6 +6547,7 @@ function getSkeletonLoader(count = 3, type = 'card') {
 }
 
 function renderSets(animate = true) {
+  if (state.justBecameVisible) animate = false;
   setsList.innerHTML = "";
   if (yourSetsList) yourSetsList.innerHTML = "";
 
@@ -6604,6 +6631,12 @@ function renderSets(animate = true) {
 
 function switchTab(tabName, options = {}) {
   const { preserveSetDetail = false } = options;
+  // User-initiated in-app tab switch: always allow ripple (clear browser-tab-return suppression)
+  state.justBecameVisible = false;
+  if (state._justBecameVisibleTimeout) {
+    clearTimeout(state._justBecameVisibleTimeout);
+    state._justBecameVisibleTimeout = null;
+  }
   // Stop tracking time on previous tab
   stopPageTimeTracking();
 
@@ -6687,9 +6720,11 @@ function switchTab(tabName, options = {}) {
     startPageTimeTracking(pageNameMap[tabName], { team_id: state.currentTeamId });
   }
 
-  // Load data if switching to tabs
+  // Re-render active tab so user sees ripple on switch (Songs/People already do; Sets was missing)
   if (tabName === "songs") {
     renderSongCatalog();
+  } else if (tabName === "sets") {
+    renderSets(true);
   } else if (tabName === "people") {
     // Only fetch if we don't have data, OR if we want to background refresh.
     // To prevent double animation/jank, maybe we only fetch if we don't have data?
@@ -6712,14 +6747,14 @@ function switchTab(tabName, options = {}) {
   }
 }
 
-function refreshActiveTab(animate = true) {
+function refreshActiveTab(animate = false) {
   // Get the currently active tab
   const activeTabBtn = document.querySelector(".tab-btn.active");
   if (!activeTabBtn) return;
 
   const activeTab = activeTabBtn.dataset.tab;
 
-  // Re-render the active tab content
+  // Re-render the active tab content (animate only when user-initiated or something changed)
   if (activeTab === "sets") {
     renderSets(animate);
   } else if (activeTab === "songs") {
@@ -6731,10 +6766,10 @@ function refreshActiveTab(animate = true) {
     renderPeople(animate);
   }
 
-  // If set detail view is open, refresh it too
+  // If set detail view is open, refresh it too (no ripple on passive refresh)
   const setDetailView = el("set-detail");
   if (setDetailView && !setDetailView.classList.contains("hidden") && state.selectedSet) {
-    renderSetDetailSongs(state.selectedSet);
+    renderSetDetailSongs(state.selectedSet, false);
   }
 }
 
@@ -7040,6 +7075,7 @@ async function loadPeople() {
 }
 
 function renderPeople(animate = true) {
+  if (state.justBecameVisible) animate = false;
   const peopleList = el("people-list");
   if (!peopleList) return;
 
@@ -7791,6 +7827,12 @@ function updateAiChatFab(set) {
 }
 
 function showSetDetail(set) {
+  // User-initiated: always allow ripple for set detail content
+  state.justBecameVisible = false;
+  if (state._justBecameVisibleTimeout) {
+    clearTimeout(state._justBecameVisibleTimeout);
+    state._justBecameVisibleTimeout = null;
+  }
   // Stop tracking time on previous page
   stopPageTimeTracking();
 
@@ -8036,14 +8078,15 @@ function showSetDetail(set) {
     switchSetDetailTab("songs");
   }
 
-  // Render songs
-  renderSetDetailSongs(set);
+  // Render songs (animate: user just opened set detail)
+  renderSetDetailSongs(set, true);
 
   // Check for and render pending requests (assignments) for this set
   renderSetDetailPendingRequests(set);
 }
 
-function renderSetDetailSongs(set) {
+function renderSetDetailSongs(set, animate = false) {
+  if (state.justBecameVisible) animate = false;
   const songsList = el("detail-songs-list");
   songsList.innerHTML = "";
   // Reset drag setup flag since we're re-rendering
@@ -8110,8 +8153,10 @@ function renderSetDetailSongs(set) {
           headerWrapper.dataset.setSongId = setSong.id;
           headerWrapper.dataset.sequenceOrder = setSong.sequence_order;
           headerWrapper.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin: 2rem 0 1rem 0; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; position: relative;";
-          headerWrapper.classList.add("ripple-item");
-          headerWrapper.style.animationDelay = `${index * 0.03}s`;
+          if (animate) {
+            headerWrapper.classList.add("ripple-item");
+            headerWrapper.style.animationDelay = `${index * 0.03}s`;
+          }
           headerWrapper.draggable = false; // Will be set to true when dragging from handle
 
           // Add drag handle for managers (positioned on the left)
@@ -8186,8 +8231,10 @@ function renderSetDetailSongs(set) {
         const card = songNode.querySelector(".set-song-card");
         card.dataset.setSongId = setSong.id;
         card.dataset.sequenceOrder = setSong.sequence_order;
-        card.classList.add("ripple-item");
-        card.style.animationDelay = `${index * 0.03}s`;
+        if (animate) {
+          card.classList.add("ripple-item");
+          card.style.animationDelay = `${index * 0.03}s`;
+        }
 
         // Only make draggable for managers
         const dragHandle = songNode.querySelector(".drag-handle");
@@ -9183,7 +9230,7 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
       const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
       if (updatedSet) {
         state.selectedSet = updatedSet;
-        renderSetDetailSongs(updatedSet);
+        renderSetDetailSongs(updatedSet, true);
       }
     }
     return false;
@@ -9228,7 +9275,7 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
       const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
       if (updatedSet) {
         state.selectedSet = updatedSet;
-        renderSetDetailSongs(updatedSet);
+        renderSetDetailSongs(updatedSet, true);
       }
     }
     return false;
@@ -9276,7 +9323,7 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
       const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
       if (updatedSet) {
         state.selectedSet = updatedSet;
-        renderSetDetailSongs(updatedSet);
+        renderSetDetailSongs(updatedSet, true);
       }
     }
     return false;
@@ -9295,7 +9342,7 @@ async function updateSongOrder(orderedItems, shouldRerender = true) {
         console.log("Updated set songs order:", updatedSet.set_songs.map(s => ({ id: s.id, title: s.song?.title, order: s.sequence_order })));
       }
       state.selectedSet = updatedSet;
-      renderSetDetailSongs(updatedSet);
+      renderSetDetailSongs(updatedSet, true);
     } else {
       console.error("Could not find updated set after reload");
     }
@@ -11288,7 +11335,7 @@ async function removeSongFromSet(setSongId, setId) {
     const updatedSet = state.sets.find(s => s.id === setId);
     if (updatedSet) {
       state.selectedSet = updatedSet;
-      renderSetDetailSongs(updatedSet);
+      renderSetDetailSongs(updatedSet, true);
     }
   }
 }
@@ -11833,7 +11880,7 @@ async function handleAddTagToSong(event) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
     if (updatedSet) {
       state.selectedSet = updatedSet;
-      renderSetDetailSongs(updatedSet);
+      renderSetDetailSongs(updatedSet, true);
     }
   }
 }
@@ -12267,7 +12314,7 @@ async function handleAddSongToSet(event) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
     if (updatedSet) {
       state.selectedSet = updatedSet;
-      renderSetDetailSongs(updatedSet);
+      renderSetDetailSongs(updatedSet, true);
     }
   }
 }
@@ -12413,7 +12460,7 @@ async function handleAddSectionToSet(event) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
     if (updatedSet) {
       state.selectedSet = updatedSet;
-      renderSetDetailSongs(updatedSet);
+      renderSetDetailSongs(updatedSet, true);
     }
   }
 }
@@ -12477,7 +12524,7 @@ async function handleAddSectionHeaderToSet(event) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
     if (updatedSet) {
       state.selectedSet = updatedSet;
-      renderSetDetailSongs(updatedSet);
+      renderSetDetailSongs(updatedSet, true);
     }
   }
 }
@@ -13449,7 +13496,7 @@ async function handleEditSetSongSubmit(event) {
     const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
     if (updatedSet) {
       state.selectedSet = updatedSet;
-      renderSetDetailSongs(updatedSet);
+      renderSetDetailSongs(updatedSet, true);
     }
   }
 }
@@ -13704,7 +13751,7 @@ async function deleteSong(songId) {
         const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
         if (updatedSet) {
           state.selectedSet = updatedSet;
-          renderSetDetailSongs(updatedSet);
+          renderSetDetailSongs(updatedSet, true);
         }
       }
     }
@@ -15180,6 +15227,7 @@ function filterSongs(songs, queryRaw) {
 let currentSongRenderId = 0;
 
 async function renderSongCatalog(animate = true) {
+  if (state.justBecameVisible) animate = false;
   const list = el("songs-catalog-list");
   if (!list) return;
 
@@ -16621,7 +16669,7 @@ async function runItunesIndexRefreshOnce() {
       }
       if (state.selectedSet) {
         try {
-          renderSetDetailSongs(state.selectedSet);
+          renderSetDetailSongs(state.selectedSet, false);
         } catch (e) {
           // Non-fatal if set detail view isn't active
         }
@@ -20415,7 +20463,7 @@ async function handleSongEditSubmit(event) {
         detailView.classList.remove("hidden");
       }
       // Refresh the songs list in the set detail view
-      renderSetDetailSongs(preservedSelectedSet);
+      renderSetDetailSongs(preservedSelectedSet, false);
     }
 
     // Refresh the song modal options and select the new song
@@ -20457,7 +20505,7 @@ async function handleSongEditSubmit(event) {
       const updatedSet = state.sets.find(s => s.id === state.selectedSet.id);
       if (updatedSet) {
         state.selectedSet = updatedSet;
-        renderSetDetailSongs(updatedSet);
+        renderSetDetailSongs(updatedSet, true);
       }
     }
 
@@ -23997,23 +24045,26 @@ function renderPieChart(accepted, declined, pending, total) {
   addDonutHole();
 }
 
-// Update user profile picture in header
+// Update user profile picture in header (skips when path unchanged or tab just became visible to avoid grey flash)
 async function updateUserProfilePicture() {
   const profilePictureEl = el("user-profile-picture");
   if (!profilePictureEl) return;
+  if (state.justBecameVisible) return; // Don't touch pfp when user just returned to tab (avoids flash)
 
-  const profilePicturePath = state.profile?.profile_picture_path;
+  const profilePicturePath = state.profile?.profile_picture_path ?? "";
+  if (profilePictureEl.dataset.currentPath === profilePicturePath) return; // Already showing this path, no update
 
   if (profilePicturePath) {
-    // Get signed URL for profile picture from profile pictures bucket
     const url = await getFileUrl(profilePicturePath, PROFILE_PICTURES_BUCKET);
     if (url) {
       profilePictureEl.innerHTML = `<img src="${url}" alt="Profile picture" style="width: 100%; height: 100%; object-fit: cover;">`;
+      profilePictureEl.dataset.currentPath = profilePicturePath;
       return;
     }
   }
 
   // Fallback to initials or icon
+  profilePictureEl.dataset.currentPath = "";
   const fullName = state.profile?.full_name;
   if (fullName) {
     const initials = fullName
@@ -26288,10 +26339,7 @@ function renderSetDetailPendingRequests(set) {
     container.innerHTML = '';
 
     const banner = document.createElement('div');
-    // Add ripple animation
-    banner.classList.add('ripple-item');
-    banner.style.animationDelay = '0.05s';
-
+    // No ripple: banner is shown when pending requests exist; animation only when something changed / user-initiated
     banner.style.background = 'var(--bg-secondary)';
     banner.style.padding = '1rem';
     banner.style.borderRadius = '1rem';
