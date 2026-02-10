@@ -54,13 +54,14 @@ function ensurePdfWorker() {
   window.__isInviteLink = window.__hasAccessToken && !window.__isRecovery;
 
   // Detect "just verified" state from common patterns:
-  // - Supabase email confirmation links often include type=signup in the hash
+  // - Supabase email confirmation links include type=signup in the hash
+  //   (often WITH an access_token; we still treat that as "just verified")
   // - You may also choose to add ?email_confirmed=true to the redirect URL
   const hashType = hashParams.get('type');
   const emailConfirmedQuery =
     searchParams.get('email_confirmed') === 'true' ||
     searchParams.get('verified') === 'true';
-  window.__justVerifiedEmail = (hashType === 'signup' && !window.__hasAccessToken) || emailConfirmedQuery;
+  window.__justVerifiedEmail = (hashType === 'signup') || emailConfirmedQuery;
 
   // Team invite link support:
   // - We allow managers to generate reusable invite links (with optional limits/expiration)
@@ -226,7 +227,10 @@ const state = {
   aiChatEmptyPrompts: [],
   aiChatEmptyPromptsChatId: null,
   trillDebugLastRequest: null, // { requestId, payload, status: 'ok'|'error', error?, responseModel?, responseTier? }
-  trillDebugSuggestionErrors: [] // { action, message, payload?, timestamp } — last N suggestion/action errors
+  trillDebugSuggestionErrors: [], // { action, message, payload?, timestamp } — last N suggestion/action errors
+  // Team invite links
+  activeInviteCode: window.__inviteCode || null,
+  hasShownInviteJoinToast: false
 };
 
 // PostHog tracking helper - safely tracks events even if PostHog isn't loaded yet
@@ -4275,6 +4279,11 @@ async function applyActiveInviteCode() {
   const code = state.activeInviteCode || window.__inviteCode;
   if (!code) return;
   if (!state.session?.user) return;
+  if (state.hasShownInviteJoinToast) {
+    // We've already successfully applied an invite link in this session.
+    // Do not attempt to consume again or show additional toasts.
+    return;
+  }
 
   console.log('🔗 applyActiveInviteCode() - attempting to use code:', code);
 
@@ -4297,7 +4306,10 @@ async function applyActiveInviteCode() {
       if (state.userTeams.some(t => t.id === result.teamId)) {
         await switchTeam(result.teamId);
       }
-      toastSuccess("You've joined the team from the invite link.");
+      if (!state.hasShownInviteJoinToast) {
+        toastSuccess("You've joined the team from the invite link.");
+        state.hasShownInviteJoinToast = true;
+      }
     }
   } finally {
     // Clear invite code from state, storage, and URL so it can't be reused accidentally
