@@ -230,6 +230,8 @@ const state = {
     timeTrackingIntervals: {}, // Track intervals for each page/modal
     sessionId: null
   },
+  // Team invite link management
+  teamInviteLinks: [],
   chordCharts: {
     // songId -> { loadedAt: number, charts: any[] }
     cache: new Map(),
@@ -14164,6 +14166,9 @@ function openInviteModal(prefilledName = null) {
   }
   el("invite-message").textContent = "";
 
+  // Load existing invite links for this team into the manager section
+  void loadTeamInviteLinks();
+
   // Set up email check listener on blur
   const emailInput = el("invite-email");
   if (emailInput) {
@@ -14578,6 +14583,228 @@ async function ensurePendingInviteRecord(email, fullName) {
     .upsert(payload, { onConflict: "email" });
   if (error) {
     console.error("Error recording pending invite:", error);
+  }
+}
+
+async function loadTeamInviteLinks() {
+  const listEl = el("invite-links-list");
+  if (!listEl) return;
+
+  if (!state.currentTeamId) {
+    listEl.textContent = "No team selected.";
+    state.teamInviteLinks = [];
+    return;
+  }
+
+  listEl.textContent = "Loading invite links…";
+
+  const { data, error } = await supabase
+    .from("team_invite_links")
+    .select("id, token, use_count, max_uses, expires_at, revoked, created_at")
+    .eq("team_id", state.currentTeamId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error loading team invite links:", error);
+    listEl.textContent = "Unable to load invite links. Check console for details.";
+    return;
+  }
+
+  state.teamInviteLinks = data || [];
+  renderTeamInviteLinks();
+}
+
+function renderTeamInviteLinks() {
+  const listEl = el("invite-links-list");
+  if (!listEl) return;
+
+  const links = state.teamInviteLinks || [];
+  listEl.innerHTML = "";
+
+  if (!links.length) {
+    listEl.textContent = "No invite links yet for this team.";
+    return;
+  }
+
+  const baseUrl = `${window.location.origin}${window.location.pathname}`;
+
+  for (const link of links) {
+    const row = document.createElement("div");
+    row.className = "session-item invite-link-row";
+    if (link.revoked) {
+      row.classList.add("invite-link-row--revoked");
+    }
+    row.dataset.inviteId = link.id;
+
+    const token = link.token || link.id;
+    const fullUrl = buildInviteLinkUrl(token);
+    const shortUrl = `${baseUrl}#…${String(token).slice(0, 8)}`;
+
+    const usesText =
+      (link.use_count || 0) +
+      " / " +
+      (link.max_uses != null ? link.max_uses : "∞");
+
+    let expiresDisplay = "No expiration";
+    let expiresInputValue = "";
+    if (link.expires_at) {
+      const d = new Date(link.expires_at);
+      if (!Number.isNaN(d.getTime())) {
+        expiresInputValue = d.toISOString().slice(0, 10);
+        expiresDisplay = d.toLocaleDateString();
+      }
+    }
+
+    const createdDisplay = link.created_at
+      ? new Date(link.created_at).toLocaleDateString()
+      : "";
+
+    // Usage percentage for progress bar
+    let percent = 0;
+    if (link.max_uses && link.max_uses > 0) {
+      percent = Math.min(100, Math.round(((link.use_count || 0) / link.max_uses) * 100));
+    }
+
+    // Color based on how full the usage is
+    let usageColor = "var(--accent-color)";
+    if (percent >= 80) usageColor = "var(--error-color)";
+    else if (percent >= 50) usageColor = "#f97316"; // orange-ish
+
+    row.innerHTML = `
+      <div class="session-info">
+        <div class="session-details">
+          <h4>
+            Invite link
+            ${link.revoked ? '<span class="current-session-badge" style="background: rgba(148,163,184,0.3); color: var(--text-secondary);">Revoked</span>' : ""}
+          </h4>
+          <div class="invite-link-usage">
+            Usage ${usesText}
+            ${createdDisplay ? ` • Created ${createdDisplay}` : ""}
+          </div>
+          <div class="invite-link-usage-bar">
+            <div class="invite-link-usage-bar-fill" style="width: ${percent}%; background-color: ${usageColor};"></div>
+          </div>
+          <p class="invite-link-url">${shortUrl}</p>
+        </div>
+      </div>
+      <div class="invite-link-controls">
+        <div class="invite-link-controls__inputs">
+          <label>
+            <span>Max people</span>
+            <input type="number" min="1" class="invite-link-max-input" value="${link.max_uses ?? ""}" placeholder="No limit" />
+          </label>
+          <label>
+            <span>Expires on</span>
+            <input type="date" class="invite-link-expires-input" value="${expiresInputValue}" />
+          </label>
+        </div>
+        <div class="invite-link-controls__buttons">
+          <button type="button" class="btn small secondary invite-link-copy-btn" data-token="${token}">
+            Copy
+          </button>
+          <button type="button" class="btn small primary invite-link-revoke-btn">
+            ${link.revoked ? "Reinstate" : "Revoke"}
+          </button>
+        </div>
+      </div>
+    `;
+
+    listEl.appendChild(row);
+  }
+
+  // Attach listeners
+  listEl.querySelectorAll(".invite-link-copy-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const token = btn.getAttribute("data-token");
+      if (!token) return;
+      const link = buildInviteLinkUrl(token);
+      try {
+        await navigator.clipboard.writeText(link);
+        toastSuccess("Invite link copied to clipboard.");
+      } catch (err) {
+        console.error("Error copying invite link:", err);
+        toastError("Unable to copy invite link. You can still select and copy it manually.");
+      }
+    });
+  });
+
+  // Auto-save when editing limits/expiration
+  listEl.querySelectorAll(".invite-link-max-input, .invite-link-expires-input").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const row = input.closest(".invite-link-row");
+      if (!row) return;
+      const inviteId = row.dataset.inviteId;
+      if (!inviteId) return;
+
+      const maxInput = row.querySelector(".invite-link-max-input");
+      const expiresInput = row.querySelector(".invite-link-expires-input");
+
+      let maxUses = null;
+      if (maxInput && maxInput.value) {
+        const parsed = parseInt(maxInput.value, 10);
+        if (!Number.isNaN(parsed) && parsed > 0) {
+          maxUses = parsed;
+        } else {
+          toastError("Max people must be a positive number.");
+          return;
+        }
+      }
+
+      let expiresAt = null;
+      if (expiresInput && expiresInput.value) {
+        const d = new Date(expiresInput.value);
+        if (Number.isNaN(d.getTime())) {
+          toastError("Expiration date is invalid.");
+          return;
+        }
+        d.setHours(23, 59, 59, 999);
+        expiresAt = d.toISOString();
+      }
+
+      try {
+        await updateTeamInviteLink(inviteId, {
+          max_uses: maxUses,
+          expires_at: expiresAt,
+        });
+        await loadTeamInviteLinks();
+        toastSuccess("Invite link updated.");
+      } catch (err) {
+        console.error("Error updating invite link:", err);
+        toastError("Unable to update invite link. Check console for details.");
+      }
+    });
+  });
+
+  listEl.querySelectorAll(".invite-link-revoke-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest(".invite-link-row");
+      if (!row) return;
+      const inviteId = row.dataset.inviteId;
+      if (!inviteId) return;
+
+      const isCurrentlyRevoked = row.classList.contains("invite-link-row--revoked");
+      const newRevoked = !isCurrentlyRevoked;
+
+      try {
+        await updateTeamInviteLink(inviteId, { revoked: newRevoked });
+        await loadTeamInviteLinks();
+        toastSuccess(newRevoked ? "Invite link revoked." : "Invite link reactivated.");
+      } catch (err) {
+        console.error("Error updating invite link revoked state:", err);
+        toastError("Unable to update invite link status. Check console for details.");
+      }
+    });
+  });
+}
+
+async function updateTeamInviteLink(inviteId, updates) {
+  if (!inviteId) return;
+  const { error } = await supabase
+    .from("team_invite_links")
+    .update(updates)
+    .eq("id", inviteId);
+  if (error) {
+    throw error;
   }
 }
 
