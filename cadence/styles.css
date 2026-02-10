@@ -6177,7 +6177,8 @@ body.booting main {
 
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
   .ai-thinking-gradient {
-    background: linear-gradient(110deg, var(--text-secondary) 0%, var(--accent-color) 45%, var(--text-secondary) 80%);
+    /* Match Trill FAB mesh: pink → cyan → peach */
+    background: linear-gradient(135deg, #ffb0e0 0%, #72d6ff 45%, #ffc890 85%, #ffb8e8 100%);
     background-size: 220% 100%;
     -webkit-background-clip: text;
     background-clip: text;
@@ -6209,8 +6210,9 @@ body.booting main {
   transform-style: preserve-3d;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  animation: ai-thinking-wave 2.4s ease infinite;
-  animation-delay: var(--wave-delay, 0s);
+  --glow-color: rgba(255, 176, 224, 0.6);
+  animation: ai-thinking-wave 2.4s ease infinite, ai-thinking-glow-cycle 4s ease-in-out infinite;
+  animation-delay: var(--wave-delay, 0s), 0s;
 }
 
 @keyframes ai-thinking-wave {
@@ -6221,13 +6223,13 @@ body.booting main {
   12% {
     transform: translate3d(2px, -1px, 2px) scale(1.18) rotateY(6deg);
     text-shadow:
-      0 0 6px color-mix(in srgb, var(--accent-color) 50%, transparent),
-      0 0 10px color-mix(in srgb, var(--accent-color) 25%, transparent);
+      0 0 6px var(--glow-color),
+      0 0 12px color-mix(in srgb, var(--glow-color) 40%, transparent);
   }
   15% {
     text-shadow:
-      0 0 2px color-mix(in srgb, var(--accent-color) 60%, transparent),
-      0 0 8px color-mix(in srgb, var(--accent-color) 35%, transparent);
+      0 0 2px var(--glow-color),
+      0 0 10px color-mix(in srgb, var(--glow-color) 50%, transparent);
   }
   24% {
     transform: translate3d(0, 0, 0) scale(1) rotateY(0);
@@ -6236,6 +6238,19 @@ body.booting main {
   36%,
   100% {
     transform: translate3d(0, 0, 0) scale(1) rotateY(0);
+  }
+}
+
+/* Cycle glow through FAB colors: pink → cyan → peach → pink */
+@keyframes ai-thinking-glow-cycle {
+  0%, 100% {
+    --glow-color: rgba(255, 176, 224, 0.65);
+  }
+  33% {
+    --glow-color: rgba(114, 214, 255, 0.65);
+  }
+  66% {
+    --glow-color: rgba(255, 208, 120, 0.65);
   }
 }
 
@@ -6262,6 +6277,7 @@ body.booting main {
 
   .ai-thinking-wave .ai-thinking-word span {
     animation: none;
+    --glow-color: rgba(255, 176, 224, 0.5);
   }
 }
 
