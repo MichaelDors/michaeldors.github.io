@@ -57,11 +57,25 @@ function ensurePdfWorker() {
   // - Supabase email confirmation links include type=signup in the hash
   //   (often WITH an access_token; we still treat that as "just verified")
   // - You may also choose to add ?email_confirmed=true to the redirect URL
+  // - In some cases, clicking the link again can show an otp_expired error
+  //   even though the email is already confirmed; we still want to prompt
+  //   the user to log in in that scenario.
   const hashType = hashParams.get('type');
+  const hashErrorCode = hashParams.get('error_code');
+  const hashErrorDescription = (hashParams.get('error_description') || "").toLowerCase();
+
   const emailConfirmedQuery =
     searchParams.get('email_confirmed') === 'true' ||
     searchParams.get('verified') === 'true';
-  window.__justVerifiedEmail = (hashType === 'signup') || emailConfirmedQuery;
+
+  const looksLikeExpiredEmailLink =
+    hashErrorCode === 'otp_expired' ||
+    hashErrorDescription.includes('email link is invalid or has expired');
+
+  window.__justVerifiedEmail =
+    (hashType === 'signup') ||
+    emailConfirmedQuery ||
+    looksLikeExpiredEmailLink;
 
   // Team invite link support:
   // - We allow managers to generate reusable invite links (with optional limits/expiration)
