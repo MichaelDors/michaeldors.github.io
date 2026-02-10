@@ -5449,6 +5449,17 @@ body.booting main {
   gap: 0.5rem;
 }
 
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.chat-header-actions .btn.small {
+  padding: 0.35rem;
+  font-size: 0.85rem;
+}
+
 .chat-tabs {
   display: flex;
   border-bottom: 1px solid var(--border-color);
@@ -6095,7 +6106,9 @@ body.booting main {
   background: var(--bg-card-hover);
 }
 
-.typing-indicator span {
+/* Only style the three bouncing dots, not character spans inside .ai-thinking-text */
+.typing-indicator .message-bubble > span,
+.typing-indicator .ai-thinking-dots span {
   display: inline-block;
   width: 6px;
   height: 6px;
@@ -6105,11 +6118,13 @@ body.booting main {
   animation: typing 1.4s infinite ease-in-out both;
 }
 
-.typing-indicator span:nth-child(1) {
+.typing-indicator .message-bubble > span:nth-child(1),
+.typing-indicator .ai-thinking-dots span:nth-child(1) {
   animation-delay: -0.32s;
 }
 
-.typing-indicator span:nth-child(2) {
+.typing-indicator .message-bubble > span:nth-child(2),
+.typing-indicator .ai-thinking-dots span:nth-child(2) {
   animation-delay: -0.16s;
 }
 
@@ -6133,9 +6148,95 @@ body.booting main {
 }
 
 .ai-thinking-text {
+  position: relative;
+  display: grid;
   font-weight: 600;
   letter-spacing: 0.01em;
+  line-height: 1.35;
   color: var(--text-secondary);
+  perspective: 80px;
+  transform-style: preserve-3d;
+}
+
+/* Both layers in same grid cell so they overlap exactly */
+.ai-thinking-gradient,
+.ai-thinking-wave {
+  grid-area: 1 / 1;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+/* Layer 1: one gradient across the whole message (single text node = clip works) */
+.ai-thinking-gradient {
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  color: var(--text-secondary);
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .ai-thinking-gradient {
+    background: linear-gradient(110deg, var(--text-secondary) 0%, var(--accent-color) 45%, var(--text-secondary) 80%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: ai-shimmer 2.6s ease-in-out infinite;
+  }
+}
+
+/* Layer 2: transparent wave overlay (we see gradient through it); words wrap as units */
+.ai-thinking-wave {
+  pointer-events: none;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.ai-thinking-word {
+  display: inline-block;
+}
+
+.ai-thinking-wave .ai-thinking-word span {
+  position: relative;
+  display: inline-block;
+  transition: transform 0.3s ease;
+  transform-origin: 100% 50%;
+  transform-style: preserve-3d;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: ai-thinking-wave 2.4s ease infinite;
+  animation-delay: var(--wave-delay, 0s);
+}
+
+@keyframes ai-thinking-wave {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotateY(0);
+    text-shadow: 0 0 0 transparent;
+  }
+  12% {
+    transform: translate3d(2px, -1px, 2px) scale(1.18) rotateY(6deg);
+    text-shadow:
+      0 0 6px color-mix(in srgb, var(--accent-color) 50%, transparent),
+      0 0 10px color-mix(in srgb, var(--accent-color) 25%, transparent);
+  }
+  15% {
+    text-shadow:
+      0 0 2px color-mix(in srgb, var(--accent-color) 60%, transparent),
+      0 0 8px color-mix(in srgb, var(--accent-color) 35%, transparent);
+  }
+  24% {
+    transform: translate3d(0, 0, 0) scale(1) rotateY(0);
+    text-shadow: 0 0 0 transparent;
+  }
+  36%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotateY(0);
+  }
 }
 
 .ai-thinking-dots {
@@ -6143,16 +6244,6 @@ body.booting main {
   align-items: center;
 }
 
-@supports ((-webkit-background-clip: text) or (background-clip: text)) {
-  .ai-thinking-text {
-    background: linear-gradient(110deg, var(--text-secondary) 0%, var(--accent-color) 45%, var(--text-secondary) 80%);
-    background-size: 220% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: ai-shimmer 2.6s ease-in-out infinite;
-  }
-}
 
 @keyframes ai-shimmer {
   0% {
@@ -6165,7 +6256,11 @@ body.booting main {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ai-thinking-text {
+  .ai-thinking-gradient {
+    animation: none;
+  }
+
+  .ai-thinking-wave .ai-thinking-word span {
     animation: none;
   }
 }

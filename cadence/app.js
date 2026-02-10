@@ -187,7 +187,9 @@ const state = {
   aiChatReplyContext: null, // { role, text }
   aiChatSelection: null, // { messageIndex, role, text }
   aiChatEmptyPrompts: [],
-  aiChatEmptyPromptsChatId: null
+  aiChatEmptyPromptsChatId: null,
+  trillDebugLastRequest: null, // { requestId, payload, status: 'ok'|'error', error?, responseModel?, responseTier? }
+  trillDebugSuggestionErrors: [] // { action, message, payload?, timestamp } — last N suggestion/action errors
 };
 
 // PostHog tracking helper - safely tracks events even if PostHog isn't loaded yet
@@ -991,30 +993,34 @@ function loadAppDataFromCache(session) {
   }
 }
 
-/* Helper to safely check MFA with timeout */
-async function checkMfaRequirements(session) {
+/* Helper to safely check MFA with timeout
+ * options.fromPasswordLogin: when true (e.g. from handleAuth), skip optimistic shortcuts
+ *   so we always determine MFA from server and show challenge if needed (avoids 406s).
+ */
+async function checkMfaRequirements(session, options = {}) {
   if (!supabase.auth.mfa) return false;
+  const strict = options.fromPasswordLogin === true;
 
   try {
-    console.log("🔒 Checking MFA status...");
+    console.log("🔒 Checking MFA status...", strict ? "(strict: from password login)" : "");
     const cacheKey = `cadence_mfa_factors_${session.user.id}`;
 
-    // 0. PRIORITY OPTIMIZATION: Check Cached App Data FIRST
-    // The user wants instant load. If we have data, we show it and check MFA in background.
-    const hasCachedAppData = loadAppDataFromCache(session);
-    if (hasCachedAppData) {
-      console.log("⏩ Optimistic MFA check: Cached app data found. Allowing access while verifying in background.");
-      // Verification in background to catch any security changes
-      checkMfaInBackground(session, cacheKey);
-      return false; // Allow access immediately (Fail Open for UI speed)
+    // 0. PRIORITY OPTIMIZATION: Check Cached App Data FIRST (skip when strict)
+    if (!strict) {
+      const hasCachedAppData = loadAppDataFromCache(session);
+      if (hasCachedAppData) {
+        console.log("⏩ Optimistic MFA check: Cached app data found. Allowing access while verifying in background.");
+        checkMfaInBackground(session, cacheKey);
+        return false; // Allow access immediately (Fail Open for UI speed)
+      }
+    } else {
+      console.log("  - Strict check: skipping cached-app-data shortcut.");
     }
 
     // 1. Check AAL (Fast, local check)
-    // If user is already AAL2 verified, we don't need to check factors
     let aalResult = null;
     try {
       console.log("  - Checking AAL...");
-      // Add timeout to AAL check
       const aalTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("AAL check timed out")), 2000));
       const { data: aal, error: aalError } = await Promise.race([
         supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
@@ -1028,27 +1034,36 @@ async function checkMfaRequirements(session) {
       aalResult = aal; // Store result
     } catch (aalErr) {
       console.warn("  - AAL check failed or timed out:", aalErr);
-      console.log("⚠️ AAL check timed out. Failing OPEN to prevent lockout.");
-      return false;
+      if (strict) {
+        console.log("  - Strict check: AAL timeout; continuing to factor check (do not fail open).");
+        // Continue to factor check instead of allowing access
+      } else {
+        console.log("⚠️ AAL check timed out. Failing OPEN to prevent lockout.");
+        return false;
+      }
     }
 
-    // 2. OPTIMIZATION: Check '0 factors' Cache for Non-MFA users
-    // If we confidently know the user has 0 verified factors, skip network call
-    const cachedCount = localStorage.getItem(cacheKey);
-
-    if (cachedCount === '0') {
-      console.log("⏩ Optimistic MFA check: Cache says 0 factors. Allowing access while verifying in background.");
-      checkMfaInBackground(session, cacheKey);
-      return false; // Allow access immediately
+    // 2. OPTIMIZATION: Check '0 factors' Cache (skip when strict to avoid stale cache)
+    if (!strict) {
+      const cachedCount = localStorage.getItem(cacheKey);
+      if (cachedCount === '0') {
+        console.log("⏩ Optimistic MFA check: Cache says 0 factors. Allowing access while verifying in background.");
+        checkMfaInBackground(session, cacheKey);
+        return false; // Allow access immediately
+      }
     }
 
-    // 3. Network Check (Slower, fallback)
+    // 3. Network Check
     console.log("  - Verification required (no cached app data or MFA potentially active). Verifying...");
     return await verifyMfaAndCache(session, cacheKey);
 
   } catch (err) {
     console.warn("⚠️ MFA Check skipped/failed (Fail Open):", err);
-    return false; // Fail open
+    if (strict) {
+      console.warn("  - Strict check: treating failure as MFA required to avoid 406.");
+      return true; // Fail closed when we just came from password login
+    }
+    return false; // Fail open for non-strict (e.g. page reload)
   }
 }
 
@@ -3224,11 +3239,12 @@ async function handleAuth(event) {
     if (!error && signInData.session) {
       console.log('✅ Sign in successful!');
 
-      // MFA CHECK
-      const mfaRequired = await checkMfaRequirements(signInData.session);
+      // MFA CHECK (strict: we just signed in with password, so always determine from server)
+      const mfaRequired = await checkMfaRequirements(signInData.session, { fromPasswordLogin: true });
 
       if (mfaRequired) {
-        setAuthMessage("Two-factor authentication required.");
+        showAuthGate();
+        setAuthMessage("Two-factor authentication required.", false);
         openMfaChallengeModal({
           onSuccess: () => loadDataAndShowApp(signInData.session)
         });
@@ -26180,8 +26196,11 @@ function openMfaChallengeModal(options = {}) {
   if (input) input.value = "";
   el("mfa-error-message").classList.add("hidden");
 
-  modal.classList.remove("hidden");
-  if (input) input.focus();
+  // Defer to next frame so modal appears after any same-tick auth updates (e.g. onAuthStateChange)
+  requestAnimationFrame(() => {
+    if (modal) modal.classList.remove("hidden");
+    if (input) requestAnimationFrame(() => input.focus());
+  });
 }
 
 async function handleMfaChallengeSubmit(e) {
@@ -26440,6 +26459,80 @@ function createTrillRequestId() {
 function logTrillTiming(requestId, label, t0, extra = {}) {
   const ms = Math.round(nowMs() - t0);
   console.log(`[Trill Timing][${requestId}] ${label}`, { ms, ...extra });
+}
+
+const TRILL_DEBUG_SUGGESTION_ERRORS_MAX = 30;
+
+function pushTrillSuggestionError(action, message, payload) {
+  if (!Array.isArray(state.trillDebugSuggestionErrors)) state.trillDebugSuggestionErrors = [];
+  state.trillDebugSuggestionErrors.push({
+    action: action || "unknown",
+    message: typeof message === "string" ? message : String(message ?? ""),
+    payload: payload != null ? payload : undefined,
+    timestamp: new Date().toISOString()
+  });
+  if (state.trillDebugSuggestionErrors.length > TRILL_DEBUG_SUGGESTION_ERRORS_MAX) {
+    state.trillDebugSuggestionErrors = state.trillDebugSuggestionErrors.slice(-TRILL_DEBUG_SUGGESTION_ERRORS_MAX);
+  }
+}
+
+function getTrillDebugLog() {
+  const lines = [];
+  lines.push("=== Trill Chat Debug Log ===");
+  lines.push("Timestamp: " + new Date().toISOString());
+  const set = state.selectedSet;
+  if (set) {
+    lines.push("Set ID: " + set.id);
+    lines.push("Set name: " + (set.name || "(none)"));
+  } else {
+    lines.push("Set: (none selected)");
+  }
+  lines.push("Chat ID: " + (state.aiChatId || "(none)"));
+  const chat = state.aiChats.find(c => c && c.id === state.aiChatId);
+  if (chat) lines.push("Chat title: " + (chat.title || "(none)"));
+  if (state.aiChatReplyContext && state.aiChatReplyContext.text) {
+    lines.push("");
+    lines.push("--- Reply context ---");
+    lines.push("Replying to: " + (state.aiChatReplyContext.role || "unknown"));
+    lines.push("Quoted text: " + state.aiChatReplyContext.text);
+  }
+  lines.push("");
+  lines.push("--- Messages ---");
+  state.aiChatMessages.forEach((msg, i) => {
+    if (!msg) return;
+    const role = msg.role || "unknown";
+    const content = typeof msg.content === "string"
+      ? msg.content
+      : serializeChatContentForAi(msg.content);
+    lines.push("[" + (i + 1) + "] " + role + ":");
+    lines.push(content);
+    lines.push("");
+  });
+  const suggestionErrors = state.trillDebugSuggestionErrors;
+  if (suggestionErrors && suggestionErrors.length > 0) {
+    lines.push("--- Suggestion / action errors ---");
+    suggestionErrors.forEach((entry, i) => {
+      lines.push("[" + (i + 1) + "] " + (entry.timestamp || "") + " action=" + (entry.action || "?") + ": " + (entry.message || ""));
+      if (entry.payload != null && typeof entry.payload === "object") {
+        lines.push("    payload: " + JSON.stringify(entry.payload));
+      }
+    });
+    lines.push("");
+  }
+  const last = state.trillDebugLastRequest;
+  if (last) {
+    lines.push("--- Last request ---");
+    lines.push("Request ID: " + last.requestId);
+    lines.push("Status: " + last.status);
+    if (last.error) lines.push("Error: " + last.error);
+    if (last.responseModel) lines.push("Response model: " + last.responseModel);
+    if (last.responseTier) lines.push("Response tier: " + last.responseTier);
+    if (last.payload) {
+      lines.push("Payload (sent to API):");
+      lines.push(JSON.stringify(last.payload, null, 2));
+    }
+  }
+  return lines.join("\n");
 }
 
 function getChatTitleStatus(chatId) {
@@ -27409,7 +27502,7 @@ function renderActionItem(action) {
   }
 
   if (type === "change_key") {
-    const oldKey = setSong?.key || "";
+    const oldKey = setSong ? (setSong.key || setSong.song?.song_key || "") : "";
     const newKey = payload.new_key || payload.key || "";
     item.appendChild(buildDiffElement("Key", oldKey, newKey));
   } else if (type === "add_note") {
@@ -28130,7 +28223,11 @@ function renderSetChatPanel(set) {
     <div class="chat-resize-handle"></div>
     <div class="chat-header">
       <h3><i class="fa-solid fa-wave-square" style="color: var(--accent-color)"></i> Trill <span class="badge" style="background: var(--accent-color); color: var(--bg-primary); border: none; font-size: 0.7rem; padding: 2px 6px; margin-left: 0.5rem;">BETA</span></h3>
-      <button class="btn icon-only" id="close-chat-btn"><i class="fa-solid fa-xmark"></i></button>
+      <div class="chat-header-actions">
+        <button class="btn icon-only small ghost" id="copy-trill-debug-btn" title="Copy debug log" aria-label="Copy debug log"><i class="fa-solid fa-bug"></i></button>
+        <button class="btn icon-only small ghost" id="preview-thinking-btn" title="Preview thinking animation" aria-label="Preview thinking animation"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+        <button class="btn icon-only" id="close-chat-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
     </div>
     <div class="chat-tabs" id="chat-tabs"></div>
     <div class="chat-messages" id="chat-messages-list"></div>
@@ -28161,6 +28258,68 @@ function renderSetChatPanel(set) {
   });
 
   sidebar.querySelector("#close-chat-btn").addEventListener("click", () => toggleAiChat(set));
+
+  const copyDebugBtn = sidebar.querySelector("#copy-trill-debug-btn");
+  if (copyDebugBtn) {
+    copyDebugBtn.addEventListener("click", () => {
+      const log = getTrillDebugLog();
+      navigator.clipboard.writeText(log).then(() => {
+        if (typeof toastSuccess === "function") toastSuccess("Debug log copied to clipboard");
+      }).catch(() => {
+        if (typeof toastError === "function") toastError("Could not copy debug log");
+      });
+    });
+  }
+
+  const previewThinkingBtn = sidebar.querySelector("#preview-thinking-btn");
+  if (previewThinkingBtn) {
+    previewThinkingBtn.addEventListener("click", () => {
+      const list = document.getElementById("chat-messages-list");
+      if (!list) return;
+      const existing = list.querySelector(".ai-thinking-preview");
+      if (existing) {
+        existing.remove();
+        return;
+      }
+      const thinkingPhrase = "Thinking longer for a better answer";
+      const wrap = document.createElement("div");
+      wrap.className = "chat-message assistant typing-indicator ai-thinking ai-thinking-preview";
+      wrap.innerHTML = `
+        <div class="message-bubble ai-thinking-bubble">
+          <div class="ai-thinking-text">
+            <div class="ai-thinking-gradient" aria-hidden="true">${thinkingPhrase}</div>
+            <div class="ai-thinking-wave"></div>
+          </div>
+          <div class="ai-thinking-dots"><span></span><span></span><span></span></div>
+        </div>
+      `;
+      const waveEl = wrap.querySelector(".ai-thinking-wave");
+      if (waveEl) {
+        const words = thinkingPhrase.trim().split(/\s+/);
+        let charIndex = 0;
+        words.forEach((word, i) => {
+          const wordSpan = document.createElement("span");
+          wordSpan.className = "ai-thinking-word";
+          for (const ch of word) {
+            const charSpan = document.createElement("span");
+            charSpan.textContent = ch;
+            charSpan.style.setProperty("--wave-delay", `${charIndex * 0.05}s`);
+            charIndex++;
+            wordSpan.appendChild(charSpan);
+          }
+          waveEl.appendChild(wordSpan);
+          if (i < words.length - 1) waveEl.appendChild(document.createTextNode(" "));
+        });
+      }
+      list.appendChild(wrap);
+      wrap.scrollIntoView({ behavior: "smooth" });
+      wrap.title = "Click to dismiss";
+      const remove = () => { wrap.remove(); };
+      wrap.style.cursor = "pointer";
+      wrap.addEventListener("click", remove);
+      setTimeout(remove, 8000);
+    });
+  }
 
   const sendBtn = sidebar.querySelector("#send-chat-btn");
   const input = sidebar.querySelector("#chat-input-text");
@@ -28436,6 +28595,9 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
     typingEl = typing;
   }
 
+  const requestPayload = { set_id: set.id, messages: messagesForAi, request_id: requestId };
+  state.trillDebugLastRequest = { requestId, payload: requestPayload, status: "pending" };
+
   let titleRequested = false;
   try {
     logTrillTiming(requestId, "request:start", t0, {
@@ -28454,11 +28616,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
         "Authorization": `Bearer ${session.access_token}`,
         "apikey": SUPABASE_ANON_KEY
       },
-      body: JSON.stringify({
-        set_id: set.id,
-        messages: messagesForAi,
-        request_id: requestId
-      })
+      body: JSON.stringify(requestPayload)
     });
     logTrillTiming(requestId, "response:headers", t0, {
       status: response.status,
@@ -28469,22 +28627,53 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Trill API Error:", response.status, errorText);
+      if (state.trillDebugLastRequest) {
+        state.trillDebugLastRequest.status = "error";
+        state.trillDebugLastRequest.error = `HTTP ${response.status}: ${errorText}`;
+      }
       throw new Error(`Trill Request Failed: ${errorText}`);
     }
 
     const responseModel = response.headers.get("x-ai-model") || "";
     const responseTier = response.headers.get("x-ai-tier") || "";
+    if (state.trillDebugLastRequest) {
+      state.trillDebugLastRequest.status = "ok";
+      state.trillDebugLastRequest.responseModel = responseModel;
+      state.trillDebugLastRequest.responseTier = responseTier;
+    }
     const isDeepseek = /deepseek/i.test(responseModel) || (responseTier || "").toLowerCase() === "smart";
 
     if (typingEl) {
       if (isDeepseek) {
         typingEl.classList.add("ai-thinking");
+        const thinkingPhrase = "Thinking longer for a better answer";
         typingEl.innerHTML = `
           <div class="message-bubble ai-thinking-bubble">
-            <div class="ai-thinking-text">Thinking longer for a better answer</div>
+            <div class="ai-thinking-text">
+              <div class="ai-thinking-gradient" aria-hidden="true">${thinkingPhrase}</div>
+              <div class="ai-thinking-wave"></div>
+            </div>
             <div class="ai-thinking-dots"><span></span><span></span><span></span></div>
           </div>
         `;
+        const waveEl = typingEl.querySelector(".ai-thinking-wave");
+        if (waveEl) {
+          const words = thinkingPhrase.trim().split(/\s+/);
+          let charIndex = 0;
+          words.forEach((word, i) => {
+            const wordSpan = document.createElement("span");
+            wordSpan.className = "ai-thinking-word";
+            for (const ch of word) {
+              const charSpan = document.createElement("span");
+              charSpan.textContent = ch;
+              charSpan.style.setProperty("--wave-delay", `${charIndex * 0.05}s`);
+              charIndex++;
+              wordSpan.appendChild(charSpan);
+            }
+            waveEl.appendChild(wordSpan);
+            if (i < words.length - 1) waveEl.appendChild(document.createTextNode(" "));
+          });
+        }
       } else {
         typingEl.remove();
         typingEl = null;
@@ -28562,6 +28751,10 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
   } catch (err) {
     console.error(err);
     logTrillTiming(requestId, "error", t0, { message: err?.message || String(err) });
+    if (state.trillDebugLastRequest) {
+      state.trillDebugLastRequest.status = "error";
+      state.trillDebugLastRequest.error = (err?.message || String(err)) || "Unknown error";
+    }
     if (typingEl) {
       typingEl.remove();
       typingEl = null;
@@ -28641,10 +28834,12 @@ async function handleAiAction(actionBlock) {
   if (action === 'reorder_songs') {
     const { orderIds, uniqueIds } = resolveReorderIds(payload);
     if (!orderIds || orderIds.length === 0) {
+      pushTrillSuggestionError("reorder_songs", "Reorder proposal is missing the new order list.", payload);
       toastError("Reorder proposal is missing the new order list.");
       return false;
     }
     if (!state.selectedSet) {
+      pushTrillSuggestionError("reorder_songs", "No set selected.", payload);
       toastError("No set selected.");
       return false;
     }
@@ -28656,10 +28851,12 @@ async function handleAiAction(actionBlock) {
     const missingIds = allIds.filter(id => !dedupedIds.includes(id));
 
     if (unknownIds.length > 0) {
+      pushTrillSuggestionError("reorder_songs", "Reorder proposal contains unknown items.", payload);
       toastError("Reorder proposal contains unknown items.");
       return false;
     }
     if (missingIds.length > 0) {
+      pushTrillSuggestionError("reorder_songs", "Reorder proposal is missing some items. Please regenerate the suggestion.", payload);
       toastError("Reorder proposal is missing some items. Please regenerate the suggestion.");
       return false;
     }
@@ -28673,10 +28870,12 @@ async function handleAiAction(actionBlock) {
     const setSongId = setSong?.id;
     const newKey = payload.new_key || payload.key;
     if (!setSongId) {
+      pushTrillSuggestionError("change_key", "Key change proposal is missing a target. Ask the assistant to include a set_song_id.", payload);
       toastError("Key change proposal is missing a target. Ask the assistant to include a set_song_id.");
       return false;
     }
     if (!newKey) {
+      pushTrillSuggestionError("change_key", "Key change proposal is missing the new key.", payload);
       toastError("Key change proposal is missing the new key.");
       return false;
     }
@@ -28688,6 +28887,7 @@ async function handleAiAction(actionBlock) {
 
     if (error) {
       console.error("Trill key change failed:", error);
+      pushTrillSuggestionError("change_key", "Unable to change key.", { payload, dbError: error?.message });
       toastError("Unable to change key.");
       return false;
     }
@@ -28704,10 +28904,12 @@ async function handleAiAction(actionBlock) {
     const setSongId = setSong?.id;
     const note = payload.note || payload.text || "";
     if (!setSongId) {
+      pushTrillSuggestionError("add_note", "Note proposal is missing a target. Ask the assistant to include a set_song_id.", payload);
       toastError("Note proposal is missing a target. Ask the assistant to include a set_song_id.");
       return false;
     }
     if (!note.trim()) {
+      pushTrillSuggestionError("add_note", "Note proposal is missing note text.", payload);
       toastError("Note proposal is missing note text.");
       return false;
     }
@@ -28724,6 +28926,7 @@ async function handleAiAction(actionBlock) {
 
     if (error) {
       console.error("Trill note update failed:", error);
+      pushTrillSuggestionError("add_note", "Unable to add note.", { payload, dbError: error?.message });
       toastError("Unable to add note.");
       return false;
     }
@@ -28739,6 +28942,7 @@ async function handleAiAction(actionBlock) {
     const setSong = resolveSetSongFromPayload(payload);
     const setSongId = setSong?.id;
     if (!setSongId) {
+      pushTrillSuggestionError("remove_song", "Remove proposal is missing a target. Ask the assistant to include a set_song_id.", payload);
       toastError("Remove proposal is missing a target. Ask the assistant to include a set_song_id.");
       return false;
     }
@@ -28746,6 +28950,7 @@ async function handleAiAction(actionBlock) {
     const { error } = await supabase.from('set_songs').delete().eq('id', setSongId);
     if (error) {
       console.error("Trill remove song failed:", error);
+      pushTrillSuggestionError("remove_song", "Unable to remove song.", { payload, dbError: error?.message });
       toastError("Unable to remove song.");
       return false;
     }
