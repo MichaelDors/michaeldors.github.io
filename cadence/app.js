@@ -50,8 +50,17 @@ function ensurePdfWorker() {
   const searchParams = url.searchParams;
 
   window.__hasAccessToken = hashParams.get('access_token');
-  window.__isRecovery = hashParams.get('type') === 'recovery';
-  window.__isInviteLink = window.__hasAccessToken && !window.__isRecovery;
+  const hashType = hashParams.get('type');
+  window.__isRecovery = hashType === 'recovery';
+  // Treat links with access_token as "invite links" only when they are NOT:
+  // - recovery links
+  // - email confirmation links (type=signup)
+  // This ensures we don't incorrectly show the password-setup flow after a
+  // normal email+password signup confirmation.
+  window.__isInviteLink =
+    !!window.__hasAccessToken &&
+    !window.__isRecovery &&
+    hashType !== 'signup';
 
   // Detect "just verified" state from common patterns:
   // - Supabase email confirmation links include type=signup in the hash
@@ -60,7 +69,6 @@ function ensurePdfWorker() {
   // - In some cases, clicking the link again can show an otp_expired error
   //   even though the email is already confirmed; we still want to prompt
   //   the user to log in in that scenario.
-  const hashType = hashParams.get('type');
   const hashErrorCode = hashParams.get('error_code');
   const hashErrorDescription = (hashParams.get('error_description') || "").toLowerCase();
 
