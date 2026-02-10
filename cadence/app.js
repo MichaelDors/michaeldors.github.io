@@ -40,7 +40,7 @@ function ensurePdfWorker() {
   }
 }
 
-// Check for access_token in URL BEFORE creating Supabase client
+// Check for access_token / invite_code in URL BEFORE creating Supabase client
 // This way we can intercept it before detectSessionInUrl processes it
 // IMPORTANT: This must run synchronously at module load time, before Supabase client is created
 (function () {
@@ -49,6 +49,27 @@ function ensurePdfWorker() {
   window.__hasAccessToken = hashParams.get('access_token');
   window.__isRecovery = hashParams.get('type') === 'recovery';
   window.__isInviteLink = window.__hasAccessToken && !window.__isRecovery;
+
+  // Team invite link support:
+  // - We allow managers to generate reusable invite links (with optional limits/expiration)
+  // - When a user lands on the app with an invite_code in the URL, we need to remember it
+  //   even if the Supabase auth flow later replaces the URL hash.
+  let inviteCodeFromHash = hashParams.get('invite_code');
+  try {
+    const STORAGE_KEY = 'cadence_active_invite_code';
+    if (inviteCodeFromHash) {
+      // Store the latest invite code so it survives redirects
+      window.__inviteCode = inviteCodeFromHash;
+      window.localStorage.setItem(STORAGE_KEY, inviteCodeFromHash);
+    } else {
+      // No invite_code in current URL; fall back to any code we previously stored
+      const storedCode = window.localStorage.getItem(STORAGE_KEY);
+      window.__inviteCode = storedCode || null;
+    }
+  } catch (e) {
+    // localStorage might be unavailable (e.g. privacy mode); fail soft
+    window.__inviteCode = inviteCodeFromHash || null;
+  }
 
   // Initialize theme early (basic accent color support only for pre-init)
   // Full robust application happens in initTheme() later
@@ -86,6 +107,7 @@ function ensurePdfWorker() {
   console.log('🔍 Pre-init check - hasAccessToken:', !!window.__hasAccessToken);
   console.log('🔍 Pre-init check - isRecovery:', window.__isRecovery);
   console.log('🔍 Pre-init check - isInviteLink:', window.__isInviteLink);
+  console.log('🔍 Pre-init check - inviteCode:', window.__inviteCode || '(none)');
 })();
 
 const hasAccessToken = window.__hasAccessToken;
@@ -122,6 +144,8 @@ const state = {
     inFlight: false,
     teamId: null,
   },
+  // Team invite links
+  activeInviteCode: window.__inviteCode || null,
   isPasswordSetup: isInviteLink, // Set flag immediately if this is an invite link
   isPasswordReset: isRecovery, // Set flag immediately if this is a password reset link
   isMemberView: false, // Track if manager is viewing as member
@@ -1866,6 +1890,8 @@ function bindEvents() {
 
   // In-app invite modal
   el("invite-form")?.addEventListener("submit", handleInviteSubmit);
+  el("generate-invite-link")?.addEventListener("click", handleGenerateInviteLinkClick);
+  el("copy-invite-link")?.addEventListener("click", handleCopyInviteLinkClick);
   el("close-edit-person-modal")?.addEventListener("click", () => closeEditPersonModal());
   el("cancel-edit-person")?.addEventListener("click", () => closeEditPersonModal());
   el("edit-person-form")?.addEventListener("submit", handleEditPersonSubmit);
@@ -2952,10 +2978,26 @@ function updateAuthUI() {
   const heading = authGate?.querySelector("h2");
   const description = authGate?.querySelector("p:first-of-type");
 
+  // If the user arrived via an invite link (but hasn't set up a password yet),
+  // make the copy clearly about joining a team instead of leading one.
+  const hasInviteContext = !!state.activeInviteCode || !!window.__inviteCode || isInviteLink;
+
   if (isSignUpMode) {
-    if (heading) heading.textContent = "Team Leader Signup";
-    if (description) description.textContent = "Sign up and create a new team. If you're joining a team, ask your team leader to invite you instead.";
-    if (authSubmitBtn) authSubmitBtn.textContent = "Create Team";
+    if (hasInviteContext) {
+      if (heading) heading.textContent = "Join Your Band on Cadence";
+      if (description) {
+        description.textContent =
+          "Create your account to join your band’s Cadence workspace from this invite link.";
+      }
+      if (authSubmitBtn) authSubmitBtn.textContent = "Join Band";
+    } else {
+      if (heading) heading.textContent = "Team Leader Signup";
+      if (description) {
+        description.textContent =
+          "Sign up and create a new team. If you're joining a team, ask your team leader to invite you instead.";
+      }
+      if (authSubmitBtn) authSubmitBtn.textContent = "Create Team";
+    }
   } else {
     if (heading) heading.textContent = "Login";
     if (description) description.textContent = "Sign in with your email and password.";
@@ -2967,9 +3009,17 @@ function updateAuthUI() {
   const toggleParagraph = toggleSignup?.parentElement;
   if (toggleParagraph && toggleSignup) {
     toggleParagraph.style.display = "block";
-    toggleSignup.textContent = isSignUpMode
-      ? "Already have an account? Sign in"
-      : "Team leader? Create a team";
+    const hasInviteContext = !!state.activeInviteCode || !!window.__inviteCode || isInviteLink;
+    // When arriving from an invite link, just show a simple "Sign up" CTA instead of team-leader wording.
+    if (hasInviteContext) {
+      toggleSignup.textContent = isSignUpMode
+        ? "Already have an account? Sign in"
+        : "Sign up";
+    } else {
+      toggleSignup.textContent = isSignUpMode
+        ? "Already have an account? Sign in"
+        : "Team leader? Create a team";
+    }
   }
 }
 
@@ -2999,7 +3049,46 @@ async function handleAuth(event) {
   toggleAuthButton(true);
 
   if (isSignUpMode) {
-    // Team leader signup - create account and team
+    const hasInviteContext = !!state.activeInviteCode || !!window.__inviteCode || isInviteLink;
+
+    if (hasInviteContext) {
+      // Invite-link signup: create an account only.
+      // Team membership will be handled automatically after they verify and log in,
+      // via applyActiveInviteCode() / consumeTeamInviteLink().
+      setAuthMessage("Creating your account…");
+
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (signUpError) {
+        console.error('Signup error (invite link):', signUpError);
+
+        if (signUpError.status === 429 || signUpError.message?.includes('security purposes')) {
+          const waitTimeMatch = signUpError.message?.match(/(\d+)\s+seconds?/);
+          const waitTime = waitTimeMatch ? waitTimeMatch[1] : 'a few';
+          setAuthMessage(`Too many signup attempts. Please wait ${waitTime} seconds before trying again.`, true);
+        } else {
+          setAuthMessage(signUpError.message || "Unable to create account. Please try again.", true);
+        }
+
+        toggleAuthButton(false);
+        return;
+      }
+
+      if (!signUpData.user) {
+        setAuthMessage("Unable to create account. Please try again.", true);
+        toggleAuthButton(false);
+        return;
+      }
+
+      setAuthMessage("Account created! Please check your email to verify your account. Once you log in, you'll be added to the team from this invite.", false);
+      toggleAuthButton(false);
+      return;
+    }
+
+    // Team leader signup (no invite link) - create account and team
     setAuthMessage("Creating team...");
 
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -4114,6 +4203,167 @@ async function fetchProfile() {
   }
 
   console.log('  - ✅ fetchProfile() completed. Final state.profile:', state.profile);
+
+  // After profile and teams are loaded, attempt to apply any active invite link.
+  // This allows users to:
+  // - click an invite link first (storing invite_code)
+  // - complete email authentication
+  // - then automatically join the team associated with that invite link,
+  //   subject to max-uses and expiration rules.
+  try {
+    await applyActiveInviteCode();
+  } catch (err) {
+    console.error('  - ❌ Error applying active invite code:', err);
+  }
+}
+
+async function applyActiveInviteCode() {
+  const code = state.activeInviteCode || window.__inviteCode;
+  if (!code) return;
+  if (!state.session?.user) return;
+
+  console.log('🔗 applyActiveInviteCode() - attempting to use code:', code);
+
+  try {
+    const result = await consumeTeamInviteLink(code, state.session.user.id);
+
+    if (!result) {
+      // Nothing to do
+      return;
+    }
+
+    if (result.errorMessage) {
+      toastError(result.errorMessage);
+      return;
+    }
+
+    if (result.teamId) {
+      // Refresh teams and switch to the invited team if possible
+      await fetchUserTeams();
+      if (state.userTeams.some(t => t.id === result.teamId)) {
+        await switchTeam(result.teamId);
+      }
+      toastSuccess("You've joined the team from the invite link.");
+    }
+  } finally {
+    // Clear invite code from state, storage, and URL so it can't be reused accidentally
+    clearActiveInviteCodeFromUrl();
+    state.activeInviteCode = null;
+    try {
+      window.localStorage.removeItem('cadence_active_invite_code');
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+
+async function consumeTeamInviteLink(code, userId) {
+  if (!code || !userId) return null;
+
+  // Fetch the invite link record and ensure it's valid
+  const { data: invite, error } = await supabase
+    .from("team_invite_links")
+    .select("id, team_id, max_uses, use_count, expires_at, revoked")
+    .eq("token", code)
+    .maybeSingle();
+
+  if (error) {
+    console.error("❌ Error loading invite link:", error);
+    return { errorMessage: "Unable to use this invite link. Please ask for a new one." };
+  }
+
+  if (!invite) {
+    return { errorMessage: "This invite link is invalid or has been deleted." };
+  }
+
+  if (invite.revoked) {
+    return { errorMessage: "This invite link has been revoked." };
+  }
+
+  const now = new Date();
+  if (invite.expires_at) {
+    const expiresAt = new Date(invite.expires_at);
+    if (!Number.isNaN(expiresAt.getTime()) && expiresAt < now) {
+      return { errorMessage: "This invite link has expired." };
+    }
+  }
+
+  if (invite.max_uses && invite.use_count >= invite.max_uses) {
+    return { errorMessage: "This invite link has already been used the maximum number of times." };
+  }
+
+  // Increment use_count optimistically. For strict concurrency control you can
+  // replace this with a Postgres RPC that enforces the limit in a transaction.
+  const { data: updated, error: updateError } = await supabase
+    .from("team_invite_links")
+    .update({ use_count: (invite.use_count || 0) + 1 })
+    .eq("id", invite.id)
+    .select("team_id")
+    .single();
+
+  if (updateError) {
+    console.error("❌ Error updating invite usage:", updateError);
+    return { errorMessage: "Unable to use this invite link right now. Please try again." };
+  }
+
+  const teamId = updated?.team_id || invite.team_id;
+  if (!teamId) {
+    return { errorMessage: "This invite link is misconfigured. Please ask your band leader to regenerate it." };
+  }
+
+  // Add the user to the team, reusing the same pattern as email invites.
+  let addError = null;
+  const { error: rpcError } = await supabase
+    .rpc('add_team_member', {
+      p_team_id: teamId,
+      p_user_id: userId,
+      p_role: 'member',
+      p_is_owner: false,
+      p_can_manage: false
+    });
+
+  addError = rpcError || null;
+
+  if (addError && (addError.code === '42883' || addError.message?.includes('function'))) {
+    // add_team_member function not available; fall back to direct insert
+    const { error: directError } = await supabase
+      .from("team_members")
+      .insert({
+        team_id: teamId,
+        user_id: userId,
+        role: 'member',
+        is_owner: false,
+        can_manage: false
+      });
+
+    if (directError && directError.code !== '23505') {
+      console.error("❌ Error adding user to team via invite link:", directError);
+      return { errorMessage: "Unable to add you to this team. Please ask your band leader to check team settings." };
+    }
+  } else if (addError && addError.code !== '23505') {
+    console.error("❌ Error adding user to team via invite link (RPC):", addError);
+    return { errorMessage: "Unable to add you to this team. Please ask your band leader to check team settings." };
+  }
+
+  return { teamId };
+}
+
+function clearActiveInviteCodeFromUrl() {
+  const url = new URL(window.location.href);
+  const hash = url.hash || "";
+  if (!hash.includes("invite_code")) return;
+
+  const params = new URLSearchParams(hash.substring(1));
+  params.delete("invite_code");
+  const newHash = params.toString();
+
+  const newUrl =
+    url.origin +
+    url.pathname +
+    url.search +
+    (newHash ? `#${newHash}` : "");
+
+  window.history.replaceState(null, "", newUrl);
 }
 
 async function fetchUserTeams() {
@@ -13855,6 +14105,19 @@ function closeInviteModal() {
     el("invite-form").reset();
     el("invite-message").textContent = "";
 
+    // Reset invite link UI
+    const linkEl = el("invite-link-value");
+    const copyBtn = el("copy-invite-link");
+    const maxUsesInput = el("invite-max-uses");
+    const expiresAtInput = el("invite-expires-at");
+    if (linkEl) linkEl.textContent = "";
+    if (copyBtn) {
+      copyBtn.disabled = true;
+      delete copyBtn.dataset.inviteLink;
+    }
+    if (maxUsesInput) maxUsesInput.value = "";
+    if (expiresAtInput) expiresAtInput.value = "";
+
     // Hide name field
     const nameLabel = el("invite-name-label");
     if (nameLabel) {
@@ -14210,6 +14473,144 @@ async function ensurePendingInviteRecord(email, fullName) {
   if (error) {
     console.error("Error recording pending invite:", error);
   }
+}
+
+// Invite Link Functions
+async function handleGenerateInviteLinkClick() {
+  if (!isManager()) return;
+
+  const messageEl = el("invite-message");
+  const maxUsesInput = el("invite-max-uses");
+  const expiresAtInput = el("invite-expires-at");
+
+  let maxUses = null;
+  if (maxUsesInput && maxUsesInput.value) {
+    const parsed = parseInt(maxUsesInput.value, 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      if (messageEl) {
+        messageEl.textContent = "Max people must be a positive number.";
+        messageEl.classList.add("error-text");
+        messageEl.classList.remove("muted");
+      }
+      return;
+    }
+    maxUses = parsed;
+  }
+
+  let expiresAt = null;
+  if (expiresAtInput && expiresAtInput.value) {
+    // Interpret date as local end-of-day to be generous
+    const date = new Date(expiresAtInput.value);
+    if (Number.isNaN(date.getTime())) {
+      if (messageEl) {
+        messageEl.textContent = "Expiration date is invalid.";
+        messageEl.classList.add("error-text");
+        messageEl.classList.remove("muted");
+      }
+      return;
+    }
+    date.setHours(23, 59, 59, 999);
+    expiresAt = date.toISOString();
+  }
+
+  try {
+    const link = await createTeamInviteLink({ maxUses, expiresAt });
+    const linkEl = el("invite-link-value");
+    const copyBtn = el("copy-invite-link");
+
+    if (linkEl) {
+      linkEl.textContent = link;
+    }
+    if (copyBtn) {
+      copyBtn.disabled = false;
+      copyBtn.dataset.inviteLink = link;
+    }
+    if (messageEl) {
+      messageEl.textContent = "Invite link generated. Share it with your band members.";
+      messageEl.classList.remove("error-text");
+      messageEl.classList.add("muted");
+    }
+  } catch (error) {
+    console.error("Error generating invite link:", error);
+    if (messageEl) {
+      messageEl.textContent =
+        error?.message || "Unable to generate invite link. Please try again.";
+      messageEl.classList.add("error-text");
+      messageEl.classList.remove("muted");
+    }
+  }
+}
+
+async function handleCopyInviteLinkClick() {
+  const copyBtn = el("copy-invite-link");
+  const linkEl = el("invite-link-value");
+  const messageEl = el("invite-message");
+
+  const link = copyBtn?.dataset.inviteLink || linkEl?.textContent || "";
+  if (!link) return;
+
+  try {
+    await navigator.clipboard.writeText(link);
+    if (messageEl) {
+      messageEl.textContent = "Invite link copied to clipboard.";
+      messageEl.classList.remove("error-text");
+      messageEl.classList.add("muted");
+    }
+  } catch (error) {
+    console.error("Error copying invite link:", error);
+    if (messageEl) {
+      messageEl.textContent = "Unable to copy invite link. You can still select and copy it manually.";
+      messageEl.classList.add("error-text");
+      messageEl.classList.remove("muted");
+    }
+  }
+}
+
+async function createTeamInviteLink({ maxUses = null, expiresAt = null } = {}) {
+  if (!state.currentTeamId) {
+    throw new Error("You need to select a team before creating an invite link.");
+  }
+
+  // The backend should provide a team_invite_links table with at least:
+  // - id (uuid, primary key)
+  // - team_id (uuid, FK)
+  // - created_by (uuid)
+  // - token (text or uuid, unique) – used in the URL as invite_code
+  // - max_uses (integer, nullable)
+  // - use_count (integer, default 0)
+  // - expires_at (timestamptz, nullable)
+  // - revoked (boolean, default false)
+  const payload = {
+    team_id: state.currentTeamId,
+    created_by: state.profile?.id || null,
+    max_uses: maxUses,
+    expires_at: expiresAt,
+  };
+
+  const { data, error } = await supabase
+    .from("team_invite_links")
+    .insert(payload)
+    .select("id, token")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const token = data.token || data.id;
+  const link = buildInviteLinkUrl(token);
+
+  // Remember the latest link in state for convenience
+  state.activeInviteCode = token;
+
+  return link;
+}
+
+function buildInviteLinkUrl(token) {
+  const baseUrl = `${window.location.origin}${window.location.pathname}`;
+  const encoded = encodeURIComponent(token);
+  // Keep invite_code in the hash so we don't interfere with Supabase's query params
+  return `${baseUrl}#invite_code=${encoded}`;
 }
 
 // Edit Person Functions

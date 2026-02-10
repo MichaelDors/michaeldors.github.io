@@ -1094,9 +1094,40 @@
           <p class="muted small-text">They'll receive an email invite to create their account and join the team.</p>
         </label>
         <p class="muted small-text" id="invite-message"></p>
-        <div class="modal-actions">
-          <button type="button" class="btn ghost" id="cancel-invite">Cancel</button>
-          <button type="submit" class="btn primary">Send Invite</button>
+        <div class="modal-actions invite-modal-actions">
+          <div class="invite-modal-actions__left">
+            <button type="button" class="btn ghost" id="cancel-invite">Cancel</button>
+            <button type="submit" class="btn primary">Send Email Invite</button>
+          </div>
+        </div>
+
+        <div class="invite-link-section">
+          <div class="invite-link-section__divider">
+            <span>or</span>
+          </div>
+          <p class="muted small-text">
+            Generate an invite link that you can share directly.
+            You can limit how many people can use it and when it expires.
+          </p>
+          <div class="invite-link-section__grid">
+            <label>
+              Max people who can use this link
+              <input type="number" id="invite-max-uses" min="1" placeholder="No limit" />
+            </label>
+            <label>
+              Link expires on
+              <input type="date" id="invite-expires-at" />
+            </label>
+          </div>
+          <div class="invite-link-section__actions">
+            <button type="button" class="btn secondary" id="generate-invite-link">
+              Generate Invite Link
+            </button>
+            <button type="button" class="btn ghost" id="copy-invite-link" disabled>
+              Copy Invite Link
+            </button>
+          </div>
+          <p class="muted small-text invite-link-section__value" id="invite-link-value"></p>
         </div>
       </form>
     </div>
