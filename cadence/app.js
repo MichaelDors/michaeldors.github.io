@@ -44,11 +44,23 @@ function ensurePdfWorker() {
 // This way we can intercept it before detectSessionInUrl processes it
 // IMPORTANT: This must run synchronously at module load time, before Supabase client is created
 (function () {
-  const urlHash = window.location.hash;
+  const url = new URL(window.location.href);
+  const urlHash = url.hash;
   const hashParams = new URLSearchParams(urlHash.substring(1));
+  const searchParams = url.searchParams;
+
   window.__hasAccessToken = hashParams.get('access_token');
   window.__isRecovery = hashParams.get('type') === 'recovery';
   window.__isInviteLink = window.__hasAccessToken && !window.__isRecovery;
+
+  // Detect "just verified" state from common patterns:
+  // - Supabase email confirmation links often include type=signup in the hash
+  // - You may also choose to add ?email_confirmed=true to the redirect URL
+  const hashType = hashParams.get('type');
+  const emailConfirmedQuery =
+    searchParams.get('email_confirmed') === 'true' ||
+    searchParams.get('verified') === 'true';
+  window.__justVerifiedEmail = (hashType === 'signup' && !window.__hasAccessToken) || emailConfirmedQuery;
 
   // Team invite link support:
   // - We allow managers to generate reusable invite links (with optional limits/expiration)
@@ -108,6 +120,7 @@ function ensurePdfWorker() {
   console.log('🔍 Pre-init check - isRecovery:', window.__isRecovery);
   console.log('🔍 Pre-init check - isInviteLink:', window.__isInviteLink);
   console.log('🔍 Pre-init check - inviteCode:', window.__inviteCode || '(none)');
+  console.log('🔍 Pre-init check - justVerifiedEmail:', window.__justVerifiedEmail || false);
 })();
 
 const hasAccessToken = window.__hasAccessToken;
@@ -2708,6 +2721,47 @@ function showAuthGate() {
   setAuthMessage("");
   isSignUpMode = false;
   updateAuthUI();
+
+  // If the user has just come back from verifying their email, show a clear,
+  // emphasized message prompting them to log in.
+  if (window.__justVerifiedEmail) {
+    setAuthMessage("You've successfully verified your email — log in to get started!", false);
+    if (authMessage) {
+      authMessage.classList.add("auth-message--emphasis");
+      authMessage.classList.remove("muted");
+    }
+
+    // Clear the flag and any email_confirmed-style query params so it doesn't
+    // keep showing on future visits.
+    try {
+      const url = new URL(window.location.href);
+      const hashParams = new URLSearchParams(url.hash.substring(1));
+      const searchParams = url.searchParams;
+
+      if (hashParams.get('type') === 'signup') {
+        hashParams.delete('type');
+      }
+      if (searchParams.has('email_confirmed')) {
+        searchParams.delete('email_confirmed');
+      }
+      if (searchParams.has('verified')) {
+        searchParams.delete('verified');
+      }
+
+      const newHash = hashParams.toString();
+      const newSearch = searchParams.toString();
+      const newUrl =
+        url.origin +
+        url.pathname +
+        (newSearch ? `?${newSearch}` : "") +
+        (newHash ? `#${newHash}` : "");
+      window.history.replaceState(null, "", newUrl);
+    } catch (e) {
+      // ignore
+    }
+
+    window.__justVerifiedEmail = false;
+  }
 
   // Ensure login form is shown (not forgot password form)
   showLoginForm();

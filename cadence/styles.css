@@ -6783,6 +6783,12 @@ body.booting main {
   }
 }
 
+/* Auth page highlighted message (e.g., after email verification) */
+#auth-message.auth-message--emphasis {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
 /* Invite modal – invite links */
 .invite-modal-actions {
   align-items: center;
