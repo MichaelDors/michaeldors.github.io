@@ -4328,7 +4328,10 @@ async function applyActiveInviteCode() {
       if (state.userTeams.some(t => t.id === result.teamId)) {
         await switchTeam(result.teamId);
       }
-      if (!state.hasShownInviteJoinToast) {
+      // Only show the "joined team" toast when this invite actually caused a
+      // new membership to be created (not when the user was already on the team
+      // or when they were just switching teams from an invite URL).
+      if (!state.hasShownInviteJoinToast && !result.alreadyMember) {
         toastSuccess("You've joined the team from the invite link.");
         state.hasShownInviteJoinToast = true;
       }
@@ -4397,6 +4400,21 @@ async function consumeTeamInviteLink(code, userId) {
   const teamId = updated?.team_id || invite.team_id;
   if (!teamId) {
     return { errorMessage: "This invite link is misconfigured. Please ask your band leader to regenerate it." };
+  }
+
+  // If the user is already a member of this team, don't try to add again and
+  // don't treat this as a "just joined" event. We still return the teamId so
+  // the client can optionally switch to that team, but we won't show the
+  // "joined from invite link" toast.
+  const { data: existingMember, error: existingMemberError } = await supabase
+    .from("team_members")
+    .select("id")
+    .eq("team_id", teamId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!existingMemberError && existingMember) {
+    return { teamId, alreadyMember: true };
   }
 
   // Add the user to the team, reusing the same pattern as email invites.
