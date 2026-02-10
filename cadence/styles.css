@@ -1,5 +1,6 @@
 :root {
   --accent-color: #ff7b51;
+  --song-title-tint-rgb: 255 255 255;
   --accent-light: color-mix(in srgb, var(--accent-color) 20%, black);
   --accent-lighter: color-mix(in srgb, var(--accent-color) 10%, black);
 
