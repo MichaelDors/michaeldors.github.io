@@ -16036,6 +16036,23 @@ const loadImageWithFallback = async (url) => {
 // Track which songs are currently loading album art to prevent duplicate calls
 const loadingAlbumArt = new Set();
 
+function setSongDetailsTitleTint(content, hexColor = null) {
+  const songTitleEl = content?.querySelector?.(".song-details-header-content .song-details-title");
+  if (!songTitleEl) return;
+
+  if (!hexColor || !/^#[0-9a-fA-F]{6}$/.test(hexColor)) {
+    songTitleEl.classList.remove("song-details-title--album-tinted");
+    songTitleEl.style.removeProperty("--song-title-tint-rgb");
+    return;
+  }
+
+  const r = parseInt(hexColor.slice(1, 3), 16);
+  const g = parseInt(hexColor.slice(3, 5), 16);
+  const b = parseInt(hexColor.slice(5, 7), 16);
+  songTitleEl.style.setProperty("--song-title-tint-rgb", `${r} ${g} ${b}`);
+  songTitleEl.classList.add("song-details-title--album-tinted");
+}
+
 /**
  * Display album art in the song details modal
  * @param {HTMLElement} content - The modal content element
@@ -16095,8 +16112,10 @@ async function displayAlbumArt(content, albumArtData, song) {
 
         // Use a more vibrant shadow with the extracted color
         img.style.boxShadow = `0 12px 80px rgba(${r}, ${g}, ${b}, ${mainOpacity}), 0 6px 80px rgba(${r}, ${g}, ${b}, ${secondaryOpacity})`;
+        setSongDetailsTitleTint(content, vibrantColor);
         console.log('Applied vibrant color shadow:', vibrantColor);
       } else {
+        setSongDetailsTitleTint(content, null);
         console.log('No vibrant color found, using default shadow');
       }
     } catch (err) {
@@ -18122,6 +18141,7 @@ function showSongAlbumArtLoadingPlaceholder(content) {
 
   if (imgEl) imgEl.style.display = "none";
   if (noImageEl) noImageEl.classList.add("hidden");
+  setSongDetailsTitleTint(content, null);
 }
 
 function collapseSongAlbumArt(content) {
@@ -18145,6 +18165,7 @@ function collapseSongAlbumArt(content) {
       container.style.display = "none";
     }
   }, 380);
+  setSongDetailsTitleTint(content, null);
 }
 
 async function refreshOpenSongDetailsAlbumArtFromIndexRefresh(updatedRowsById) {
@@ -18198,6 +18219,7 @@ function showSongAlbumArtNoImagePlaceholder(content) {
   }
   if (imgEl) imgEl.style.display = "none";
   if (noImageEl) noImageEl.classList.remove("hidden");
+  setSongDetailsTitleTint(content, null);
 }
 
 async function openSectionDetailsModal(setSong) {
