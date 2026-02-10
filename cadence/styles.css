@@ -2101,6 +2101,11 @@ textarea {
   font-weight: 700;
   margin: 0 0 1.5rem 0;
   color: var(--text-primary);
+  transition: color 0.24s ease;
+}
+
+.song-details-title.song-details-title--album-tinted {
+  color: color-mix(in srgb, var(--text-primary) 94%, rgb(var(--song-title-tint-rgb, 255 255 255)) 6%);
 }
 
 .song-album-art-container {
