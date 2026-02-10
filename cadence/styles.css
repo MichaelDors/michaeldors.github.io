@@ -2105,7 +2105,7 @@ textarea {
 }
 
 .song-details-title.song-details-title--album-tinted {
-  color: color-mix(in srgb, var(--text-primary) 94%, rgb(var(--song-title-tint-rgb, 255 255 255)) 6%);
+  color: color-mix(in srgb, var(--text-primary) 50%, rgb(var(--song-title-tint-rgb, 255 255 255)) 50%);
 }
 
 .song-album-art-container {
@@ -2465,7 +2465,7 @@ textarea {
 
 .detail-label {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: color-mix(in srgb, var(--text-muted) 50%, rgb(var(--song-title-tint-rgb, 255 255 255)) 50%);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 500;
@@ -2473,7 +2473,7 @@ textarea {
 
 .detail-value {
   font-size: 1.25rem;
-  color: var(--text-primary);
+  color: color-mix(in srgb, var(--text-primary) 50%, rgb(var(--song-title-tint-rgb, 255 255 255)) 50%);
   font-weight: 600;
 }
 
