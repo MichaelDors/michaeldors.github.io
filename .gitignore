@@ -1,2 +1,4 @@
 .DS_Store
 cadence/migration_add_team_creation_function.sql
+*.md
+*.sql
