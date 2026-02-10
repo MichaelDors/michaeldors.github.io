@@ -16036,21 +16036,109 @@ const loadImageWithFallback = async (url) => {
 // Track which songs are currently loading album art to prevent duplicate calls
 const loadingAlbumArt = new Set();
 
+function parseHexOrRgbColor(colorValue) {
+  if (!colorValue || typeof colorValue !== "string") return null;
+  const color = colorValue.trim();
+  if (!color) return null;
+
+  const hexMatch = color.match(/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+  if (hexMatch) {
+    const hex = hexMatch[1];
+    if (hex.length === 3 || hex.length === 4) {
+      return {
+        r: parseInt(hex[0] + hex[0], 16),
+        g: parseInt(hex[1] + hex[1], 16),
+        b: parseInt(hex[2] + hex[2], 16),
+      };
+    }
+    // Ignore alpha component when present.
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16),
+    };
+  }
+
+  const rgbMatch = color.match(/^rgba?\(\s*([0-9.]+)[,\s]+([0-9.]+)[,\s]+([0-9.]+)/i);
+  if (rgbMatch) {
+    return {
+      r: Math.max(0, Math.min(255, Math.round(Number(rgbMatch[1])))),
+      g: Math.max(0, Math.min(255, Math.round(Number(rgbMatch[2])))),
+      b: Math.max(0, Math.min(255, Math.round(Number(rgbMatch[3])))),
+    };
+  }
+
+  return null;
+}
+
+function rgbToHex({ r, g, b }) {
+  return `#${[r, g, b].map(v => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function getRelativeLuminance({ r, g, b }) {
+  const toLinear = (channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.04045
+      ? normalized / 12.92
+      : Math.pow((normalized + 0.055) / 1.055, 2.4);
+  };
+
+  const lr = toLinear(r);
+  const lg = toLinear(g);
+  const lb = toLinear(b);
+  return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+}
+
+function isDarkSongDetailsContext() {
+  const rootStyles = getComputedStyle(document.documentElement);
+  const bgPrimary = rootStyles.getPropertyValue("--bg-primary").trim();
+  const bgRgb = parseHexOrRgbColor(bgPrimary) || parseHexOrRgbColor(getComputedStyle(document.body).backgroundColor);
+  if (!bgRgb) return false;
+  return getRelativeLuminance(bgRgb) < 0.45;
+}
+
+function getReadableSongDetailsTint(hexColor) {
+  const rgb = parseHexOrRgbColor(hexColor);
+  if (!rgb) return hexColor;
+
+  // Preserve light mode behavior exactly; only normalize in dark contexts.
+  if (!isDarkSongDetailsContext()) return hexColor;
+
+  const luminance = getRelativeLuminance(rgb);
+  const minTintLuminance = 0.32;
+  if (luminance >= minTintLuminance) return hexColor;
+
+  // Lift very dark colors toward white so subtle text tint keeps contrast.
+  const blendTowardWhite = Math.min(0.65, Math.max(0.2, (minTintLuminance - luminance) / Math.max(minTintLuminance, 0.001)));
+  const boosted = {
+    r: Math.round(rgb.r + (255 - rgb.r) * blendTowardWhite),
+    g: Math.round(rgb.g + (255 - rgb.g) * blendTowardWhite),
+    b: Math.round(rgb.b + (255 - rgb.b) * blendTowardWhite),
+  };
+  return rgbToHex(boosted);
+}
+
 function setSongDetailsTitleTint(content, hexColor = null) {
+  if (!content) return;
   const songTitleEl = content?.querySelector?.(".song-details-header-content .song-details-title");
-  if (!songTitleEl) return;
 
   if (!hexColor || !/^#[0-9a-fA-F]{6}$/.test(hexColor)) {
-    songTitleEl.classList.remove("song-details-title--album-tinted");
-    songTitleEl.style.removeProperty("--song-title-tint-rgb");
+    if (songTitleEl) {
+      songTitleEl.classList.remove("song-details-title--album-tinted");
+    }
+    content.style.removeProperty("--song-title-tint-rgb");
     return;
   }
 
-  const r = parseInt(hexColor.slice(1, 3), 16);
-  const g = parseInt(hexColor.slice(3, 5), 16);
-  const b = parseInt(hexColor.slice(5, 7), 16);
-  songTitleEl.style.setProperty("--song-title-tint-rgb", `${r} ${g} ${b}`);
-  songTitleEl.classList.add("song-details-title--album-tinted");
+  const readableTintHex = getReadableSongDetailsTint(hexColor);
+  const r = parseInt(readableTintHex.slice(1, 3), 16);
+  const g = parseInt(readableTintHex.slice(3, 5), 16);
+  const b = parseInt(readableTintHex.slice(5, 7), 16);
+  // Set on shared content container so metadata rows can access the tint variable too.
+  content.style.setProperty("--song-title-tint-rgb", `${r} ${g} ${b}`);
+  if (songTitleEl) {
+    songTitleEl.classList.add("song-details-title--album-tinted");
+  }
 }
 
 /**
