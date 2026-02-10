@@ -28222,7 +28222,7 @@ function renderSetChatPanel(set) {
   sidebar.innerHTML = `
     <div class="chat-resize-handle"></div>
     <div class="chat-header">
-      <h3><i class="fa-solid fa-wave-square" style="color: var(--accent-color)"></i> Trill <span class="badge" style="background: var(--accent-color); color: var(--bg-primary); border: none; font-size: 0.7rem; padding: 2px 6px; margin-left: 0.5rem;">BETA</span></h3>
+      <h3><i class="fa-solid fa-wave-square trill-logo-icon"></i> <span class="trill-title-text">Trill</span> <span class="badge trill-badge">BETA</span></h3>
       <div class="chat-header-actions">
         <button class="btn icon-only small ghost" id="copy-trill-debug-btn" title="Copy debug log" aria-label="Copy debug log"><i class="fa-solid fa-bug"></i></button>
         <button class="btn icon-only small ghost" id="preview-thinking-btn" title="Preview thinking animation" aria-label="Preview thinking animation"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
@@ -28241,7 +28241,11 @@ function renderSetChatPanel(set) {
       </div>
       <div class="chat-input-row">
         <textarea class="chat-input" id="chat-input-text" placeholder="Ask Trill"></textarea>
-        <button class="btn primary icon-only" id="send-chat-btn"><i class="fa-solid fa-paper-plane"></i></button>
+        <button class="btn primary icon-only ai-chat-send-btn" id="send-chat-btn" type="button">
+          <span class="ai-chat-send-btn__mesh"></span>
+          <span class="ai-chat-send-btn__mesh ai-chat-send-btn__mesh--fast"></span>
+          <span class="ai-chat-send-btn__icon"><i class="fa-solid fa-paper-plane"></i></span>
+        </button>
       </div>
       <div class="chat-disclaimer muted">Trill uses AI and can be wrong. Double-check important info.</div>
     </div>
