@@ -2106,15 +2106,15 @@ textarea {
 }
 
 .song-details-title.song-details-title--album-tinted {
-  color: color-mix(in srgb, var(--text-primary) 94%, rgb(var(--song-title-tint-rgb, 255 255 255)) 6%);
+  color: color-mix(in srgb, var(--text-primary) 50%, rgb(var(--song-title-tint-rgb, 255 255 255)) 50%);
 }
 
 .song-details-content.song-details-content--album-tinted .detail-label {
-  color: color-mix(in srgb, var(--text-muted) 92%, rgb(var(--song-title-tint-rgb, 255 255 255)) 8%);
+  color: color-mix(in srgb, var(--text-muted) 50%, rgb(var(--song-title-tint-rgb, 255 255 255)) 50%);
 }
 
 .song-details-content.song-details-content--album-tinted .detail-value {
-  color: color-mix(in srgb, var(--text-primary) 95%, rgb(var(--song-title-tint-rgb, 255 255 255)) 5%);
+  color: color-mix(in srgb, var(--text-primary) 50%, rgb(var(--song-title-tint-rgb, 255 255 255)) 50%);
 }
 
 .song-album-art-container {
