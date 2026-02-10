@@ -16037,20 +16037,26 @@ const loadImageWithFallback = async (url) => {
 const loadingAlbumArt = new Set();
 
 function setSongDetailsTitleTint(content, hexColor = null) {
+  if (!content) return;
   const songTitleEl = content?.querySelector?.(".song-details-header-content .song-details-title");
-  if (!songTitleEl) return;
 
   if (!hexColor || !/^#[0-9a-fA-F]{6}$/.test(hexColor)) {
-    songTitleEl.classList.remove("song-details-title--album-tinted");
-    songTitleEl.style.removeProperty("--song-title-tint-rgb");
+    if (songTitleEl) {
+      songTitleEl.classList.remove("song-details-title--album-tinted");
+    }
+    content.classList.remove("song-details-content--album-tinted");
+    content.style.removeProperty("--song-title-tint-rgb");
     return;
   }
 
   const r = parseInt(hexColor.slice(1, 3), 16);
   const g = parseInt(hexColor.slice(3, 5), 16);
   const b = parseInt(hexColor.slice(5, 7), 16);
-  songTitleEl.style.setProperty("--song-title-tint-rgb", `${r} ${g} ${b}`);
-  songTitleEl.classList.add("song-details-title--album-tinted");
+  content.style.setProperty("--song-title-tint-rgb", `${r} ${g} ${b}`);
+  content.classList.add("song-details-content--album-tinted");
+  if (songTitleEl) {
+    songTitleEl.classList.add("song-details-title--album-tinted");
+  }
 }
 
 /**

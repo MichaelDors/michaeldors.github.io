@@ -1,5 +1,6 @@
 :root {
   --accent-color: #ff7b51;
+  --song-title-tint-rgb: 255 255 255;
   --accent-light: color-mix(in srgb, var(--accent-color) 20%, black);
   --accent-lighter: color-mix(in srgb, var(--accent-color) 10%, black);
 
@@ -2108,6 +2109,14 @@ textarea {
   color: color-mix(in srgb, var(--text-primary) 94%, rgb(var(--song-title-tint-rgb, 255 255 255)) 6%);
 }
 
+.song-details-content.song-details-content--album-tinted .detail-label {
+  color: color-mix(in srgb, var(--text-muted) 92%, rgb(var(--song-title-tint-rgb, 255 255 255)) 8%);
+}
+
+.song-details-content.song-details-content--album-tinted .detail-value {
+  color: color-mix(in srgb, var(--text-primary) 95%, rgb(var(--song-title-tint-rgb, 255 255 255)) 5%);
+}
+
 .song-album-art-container {
   display: flex;
   justify-content: center;
@@ -2469,12 +2478,14 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 500;
+  transition: color 0.24s ease;
 }
 
 .detail-value {
   font-size: 1.25rem;
   color: var(--text-primary);
   font-weight: 600;
+  transition: color 0.24s ease;
 }
 
 .section-title {
