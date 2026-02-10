@@ -189,7 +189,13 @@ const state = {
   aiChatEmptyPrompts: [],
   aiChatEmptyPromptsChatId: null,
   trillDebugLastRequest: null, // { requestId, payload, status: 'ok'|'error', error?, responseModel?, responseTier? }
-  trillDebugSuggestionErrors: [] // { action, message, payload?, timestamp } — last N suggestion/action errors
+  trillDebugSuggestionErrors: [], // { action, message, payload?, timestamp } — last N suggestion/action errors
+  // Trill tab (full-page): all chats, view state, and set context for current chat
+  trillAllChats: [], // { id, title, set_id, created_at } — all chats for current team
+  trillView: 'home', // 'home' | 'folder' | 'chat'
+  trillFolderId: null, // null | 'general' | setId — which folder when in folder view, or where we came from in chat (for Back)
+  trillChatSearch: '',
+  trillChatSet: null, // set object or null when current Trill chat is general
 };
 
 // PostHog tracking helper - safely tracks events even if PostHog isn't loaded yet
@@ -6723,12 +6729,20 @@ function switchTab(tabName, options = {}) {
   el("sets-tab").classList.toggle("hidden", tabName !== "sets");
   el("songs-tab").classList.toggle("hidden", tabName !== "songs");
   el("people-tab").classList.toggle("hidden", tabName !== "people");
+  const trillTab = el("trill-tab");
+  if (trillTab) trillTab.classList.toggle("hidden", tabName !== "trill");
+
+  // Trill tab: load and render when switching to it
+  if (tabName === "trill") {
+    loadTrillPage();
+  }
 
   // Map tab names to page names for tracking
   const pageNameMap = {
     'sets': 'Sets',
     'songs': 'Songs',
-    'people': 'People'
+    'people': 'People',
+    'trill': 'Trill'
   };
 
   // Start tracking time on new tab (will stop previous tab automatically)
@@ -6741,6 +6755,8 @@ function switchTab(tabName, options = {}) {
     renderSongCatalog();
   } else if (tabName === "sets") {
     renderSets(true);
+  } else if (tabName === "trill") {
+    // Already handled in loadTrillPage above
   } else if (tabName === "people") {
     // Only fetch if we don't have data, OR if we want to background refresh.
     // To prevent double animation/jank, maybe we only fetch if we don't have data?
@@ -6780,6 +6796,8 @@ function refreshActiveTab(animate = false) {
     // if a load is already in progress or just completed.
     // If we need to force reload, we should call loadPeople() explicitly elsewhere.
     renderPeople(animate);
+  } else if (activeTab === "trill") {
+    loadTrillPage();
   }
 
   // If set detail view is open, refresh it too (no ripple on passive refresh)
@@ -6787,6 +6805,329 @@ function refreshActiveTab(animate = false) {
   if (setDetailView && !setDetailView.classList.contains("hidden") && state.selectedSet) {
     renderSetDetailSongs(state.selectedSet, false);
   }
+}
+
+function getActiveChatMessagesContainer() {
+  const trillTab = el("trill-tab");
+  const trillView = el("trill-chat-view");
+  if (trillTab && !trillTab.classList.contains("hidden") && trillView && !trillView.classList.contains("hidden")) {
+    return el("trill-chat-messages-list");
+  }
+  return el("chat-messages-list");
+}
+
+function getActiveSetForChat() {
+  const trillTab = el("trill-tab");
+  const trillView = el("trill-chat-view");
+  if (trillTab && !trillTab.classList.contains("hidden") && trillView && !trillView.classList.contains("hidden")) {
+    return state.trillChatSet;
+  }
+  return state.selectedSet;
+}
+
+function getActiveChatInput() {
+  const trillTab = el("trill-tab");
+  const trillView = el("trill-chat-view");
+  if (trillTab && !trillTab.classList.contains("hidden") && trillView && !trillView.classList.contains("hidden")) {
+    return el("trill-chat-input-text");
+  }
+  return el("chat-input-text");
+}
+
+async function loadTrillPage() {
+  const home = el("trill-home");
+  const folderView = el("trill-folder-view");
+  const chatView = el("trill-chat-view");
+  if (!canChatWithTrill()) {
+    if (home) home.classList.remove("hidden");
+    if (folderView) folderView.classList.add("hidden");
+    if (chatView) chatView.classList.add("hidden");
+    const foldersEl = el("trill-folders");
+    if (foldersEl) foldersEl.innerHTML = "<p class=\"muted\">Trill is disabled for this team or your role.</p>";
+    renderTrillSidebar();
+    attachTrillTabListeners();
+    return;
+  }
+  await loadTrillChats();
+  renderTrillSidebar();
+  if (state.aiChatId && state.trillAllChats.some(c => c.id === state.aiChatId)) {
+    state.trillView = "chat";
+    const chat = state.trillAllChats.find(c => c.id === state.aiChatId);
+    if (chat) {
+      state.trillFolderId = chat.set_id ? chat.set_id : "general";
+      state.trillChatSet = resolveTrillChatSet(chat);
+    }
+    if (home) home.classList.add("hidden");
+    if (folderView) folderView.classList.add("hidden");
+    if (chatView) chatView.classList.remove("hidden");
+    renderTrillHome();
+    updateTrillBreadcrumb();
+    const container = el("trill-chat-messages-list");
+    if (container) renderChatMessages(container);
+  } else {
+    state.aiChatId = null;
+    state.trillChatSet = null;
+    state.trillFolderId = null;
+    showTrillHome();
+  }
+  attachTrillTabListeners();
+}
+
+async function loadTrillChats() {
+  state.trillAllChats = [];
+  const teamId = state.currentTeamId;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const setIds = (state.sets || []).map(s => s.id);
+  if (setIds.length > 0) {
+    const { data: setChats, error } = await supabase
+      .from("set_chats")
+      .select("id, title, set_id, created_at, team_id, sets(name)")
+      .in("set_id", setIds)
+      .order("created_at", { ascending: false });
+    if (!error && setChats) state.trillAllChats.push(...setChats);
+  }
+  // General chats: scoped by BOTH user and team
+  if (teamId != null) {
+    const { data: generalChats, error: generalError } = await supabase
+      .from("set_chats")
+      .select("id, title, set_id, created_at, team_id")
+      .is("set_id", null)
+      .eq("user_id", user.id)
+      .eq("team_id", teamId)
+      .order("created_at", { ascending: false });
+    if (!generalError && generalChats) {
+      state.trillAllChats.push(...generalChats);
+    }
+  }
+  state.trillAllChats.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
+
+function getTrillChatsFiltered() {
+  let list = state.trillAllChats || [];
+  const q = (state.trillChatSearch || "").trim().toLowerCase();
+  if (q) list = list.filter(c => (c.title || "").toLowerCase().includes(q));
+  return list;
+}
+
+function renderTrillSidebar() {
+  const listEl = el("trill-chat-list");
+  if (!listEl) return;
+  const chats = getTrillChatsFiltered();
+  listEl.innerHTML = "";
+  chats.forEach(chat => {
+    const setName = chat.set_id ? (chat.sets?.name ?? chat.set?.name ?? (state.sets || []).find(s => s.id === chat.set_id)?.name ?? "Set") : null;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "trill-chat-list-item" + (chat.id === state.aiChatId ? " active" : "");
+    btn.dataset.chatId = chat.id;
+    btn.innerHTML = `<span class="trill-chat-list-item-title">${escapeHtml(chat.title || "New Chat")}</span>${setName ? `<span class="trill-chat-list-item-set-badge" title="${escapeHtml(setName)}">${escapeHtml(setName)}</span>` : ""}`;
+    btn.addEventListener("click", () => selectTrillChat(chat.id));
+    listEl.appendChild(btn);
+  });
+}
+
+function getTrillChatsInFolder(folderId) {
+  const list = state.trillAllChats || [];
+  if (folderId === "general") return list.filter(c => !c.set_id);
+  return list.filter(c => c.set_id === folderId);
+}
+
+function showTrillHome() {
+  state.trillView = "home";
+  state.trillFolderId = null;
+  const home = el("trill-home");
+  const folderView = el("trill-folder-view");
+  const chatView = el("trill-chat-view");
+  if (home) home.classList.remove("hidden");
+  if (folderView) folderView.classList.add("hidden");
+  if (chatView) chatView.classList.add("hidden");
+  renderTrillHome();
+}
+
+function showTrillFolderView(folderId) {
+  state.trillView = "folder";
+  state.trillFolderId = folderId;
+  const home = el("trill-home");
+  const folderView = el("trill-folder-view");
+  const chatView = el("trill-chat-view");
+  if (home) home.classList.add("hidden");
+  if (folderView) folderView.classList.remove("hidden");
+  if (chatView) chatView.classList.add("hidden");
+
+  const folderName = folderId === "general" ? "General" : (state.sets || []).find(s => s.id === folderId)?.name || "Folder";
+  const breadcrumbEl = el("trill-folder-breadcrumb");
+  if (breadcrumbEl) {
+    breadcrumbEl.innerHTML = `<a href="#" data-trill-nav="home">Trill</a> <span class="trill-breadcrumb-sep">›</span> <span class="trill-breadcrumb-set">${escapeHtml(folderName)}</span>`;
+    breadcrumbEl.querySelector('[data-trill-nav="home"]')?.addEventListener("click", (e) => { e.preventDefault(); showTrillHome(); });
+  }
+  const labelEl = el("trill-folder-new-label");
+  if (labelEl) labelEl.textContent = folderName;
+
+  const container = el("trill-folder-chats");
+  if (!container) return;
+  const chats = getTrillChatsInFolder(folderId);
+  container.innerHTML = "";
+  chats.forEach(chat => {
+    const set = chat.set_id ? (state.sets || []).find(s => s.id === chat.set_id) : null;
+    const dateStr = chat.created_at ? new Date(chat.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "trill-folder-chat-item" + (chat.id === state.aiChatId ? " active" : "");
+    row.innerHTML = `<span class="trill-folder-chat-item-title">${escapeHtml(chat.title || "New Chat")}</span>${dateStr ? `<span class="trill-folder-chat-item-date">${escapeHtml(dateStr)}</span>` : ""}`;
+    row.addEventListener("click", () => selectTrillChat(chat.id));
+    container.appendChild(row);
+  });
+
+  const newBtn = el("trill-new-chat-in-folder-btn");
+  if (newBtn) {
+    newBtn.onclick = () => createTrillChat(folderId);
+  }
+}
+
+function renderTrillHome() {
+  const breadcrumb = el("trill-breadcrumb");
+  if (breadcrumb) breadcrumb.textContent = "Trill";
+  const foldersEl = el("trill-folders");
+  if (!foldersEl) return;
+  foldersEl.innerHTML = "";
+  const general = document.createElement("button");
+  general.type = "button";
+  general.className = "trill-folder trill-folder-general";
+  general.dataset.folder = "general";
+  general.innerHTML = `<div class="trill-folder-icon"><i class="fa-solid fa-comments"></i></div><div class="trill-folder-content"><div class="trill-folder-name">General</div><p class="trill-folder-desc">Chats not tied to a set</p></div>`;
+  general.addEventListener("click", () => showTrillFolderView("general"));
+  foldersEl.appendChild(general);
+  (state.sets || []).forEach(set => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "trill-folder";
+    btn.dataset.folder = set.id;
+    btn.innerHTML = `<div class="trill-folder-icon"><i class="fa-solid fa-list-ul"></i></div><div class="trill-folder-content"><div class="trill-folder-name">${escapeHtml(set.name)}</div><p class="trill-folder-desc">Chats for this set</p></div>`;
+    btn.addEventListener("click", () => showTrillFolderView(set.id));
+    foldersEl.appendChild(btn);
+  });
+}
+
+function getTrillCurrentChat() {
+  return state.aiChatId ? (state.trillAllChats || []).find(c => c.id === state.aiChatId) : null;
+}
+
+function getTrillSetDisplayName(chat) {
+  if (!chat?.set_id) return "General";
+  const fromChat = chat?.sets?.name ?? chat?.set?.name;
+  return state.trillChatSet?.name ?? fromChat ?? (state.sets || []).find(s => s.id === chat.set_id)?.name ?? "Set";
+}
+
+function updateTrillBreadcrumb() {
+  const breadcrumb = el("trill-chat-breadcrumb");
+  if (!breadcrumb) return;
+  const chat = getTrillCurrentChat();
+  const folderId = chat?.set_id ? chat.set_id : (state.aiChatId ? "general" : null);
+  const folderName = getTrillSetDisplayName(chat);
+  if (!folderId && !state.aiChatId) {
+    breadcrumb.innerHTML = "Trill";
+    return;
+  }
+  breadcrumb.innerHTML = `<a href="#" data-trill-nav="home">Trill</a> <span class="trill-breadcrumb-sep">›</span> <span class="trill-breadcrumb-set" data-trill-nav="folder">${escapeHtml(folderName)}</span>`;
+  breadcrumb.querySelector('[data-trill-nav="home"]')?.addEventListener("click", (e) => { e.preventDefault(); showTrillHome(); });
+  breadcrumb.querySelector('[data-trill-nav="folder"]')?.addEventListener("click", () => showTrillFolderView(folderId));
+}
+
+function resolveTrillChatSet(chat) {
+  if (!chat?.set_id) return null;
+  const fromSets = (state.sets || []).find(s => s.id === chat.set_id);
+  if (fromSets) return fromSets;
+  return { id: chat.set_id, name: chat.sets?.name ?? chat.set?.name ?? "Set" };
+}
+
+async function selectTrillChat(chatId) {
+  if (state.isAiTyping) return;
+  const chat = state.trillAllChats.find(c => c.id === chatId);
+  if (!chat) return;
+  state.aiChatId = chatId;
+  state.trillChatSet = resolveTrillChatSet(chat);
+  state.trillFolderId = chat.set_id ? chat.set_id : "general";
+  state.trillView = "chat";
+  state.aiChatMessages = [];
+  state.aiChatReplyContext = null;
+  state.aiChatSelection = null;
+  renderChatReplyPreview();
+  hideChatSelectionAction();
+  const home = el("trill-home");
+  const folderView = el("trill-folder-view");
+  const view = el("trill-chat-view");
+  if (home) home.classList.add("hidden");
+  if (folderView) folderView.classList.add("hidden");
+  if (view) view.classList.remove("hidden");
+  updateTrillBreadcrumb();
+  await loadAiChatMessages(chatId);
+  const container = el("trill-chat-messages-list");
+  if (container) renderChatMessages(container);
+  renderTrillSidebar();
+  focusTrillInput();
+}
+
+function focusTrillInput() {
+  const input = el("trill-chat-input-text");
+  if (input) input.focus();
+}
+
+let trillTabListenersAttached = false;
+function attachTrillTabListeners() {
+  if (trillTabListenersAttached) return;
+  trillTabListenersAttached = true;
+  el("trill-new-chat-btn")?.addEventListener("click", () => createTrillChat("general"));
+  el("trill-chat-search")?.addEventListener("input", (e) => { state.trillChatSearch = (e.target.value || "").trim(); renderTrillSidebar(); });
+  el("trill-send-chat-btn")?.addEventListener("click", () => sendMessageFromTrillTab());
+  el("trill-chat-input-text")?.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageFromTrillTab(); } });
+  el("trill-clear-reply-btn")?.addEventListener("click", () => clearChatReplyContext());
+  el("trill-chat-back-btn")?.addEventListener("click", () => {
+    if (state.trillFolderId) showTrillFolderView(state.trillFolderId);
+    else showTrillHome();
+  });
+  el("trill-folder-back-btn")?.addEventListener("click", () => showTrillHome());
+}
+
+async function createTrillChat(folder) {
+  if (state.isAiTyping) return;
+  const userId = (await supabase.auth.getUser()).data?.user?.id;
+  if (!userId) return;
+  const setId = folder === "general" ? null : folder;
+  const teamId = state.currentTeamId;
+  const created = await createAiChatRecord(setId, userId, DEFAULT_CHAT_TITLE, teamId);
+  if (!created) return;
+  state.trillAllChats = [created, ...state.trillAllChats];
+  state.aiChatId = created.id;
+  state.trillChatSet = resolveTrillChatSet(created);
+  state.trillFolderId = folder === "general" ? "general" : folder;
+  state.trillView = "chat";
+  state.aiChatMessages = [];
+  await loadAiChatMessages(created.id);
+  const home = el("trill-home");
+  const folderView = el("trill-folder-view");
+  const view = el("trill-chat-view");
+  if (home) home.classList.add("hidden");
+  if (folderView) folderView.classList.add("hidden");
+  if (view) view.classList.remove("hidden");
+  updateTrillBreadcrumb();
+  renderTrillSidebar();
+  const container = el("trill-chat-messages-list");
+  if (container) renderChatMessages(container);
+  focusTrillInput();
+}
+
+function sendMessageFromTrillTab() {
+  const input = el("trill-chat-input-text");
+  const text = input?.value?.trim();
+  if (!text) return;
+  if (!state.aiChatId) {
+    const folder = state.trillFolderId || "general";
+    createTrillChat(folder).then(() => sendMessageFromTrillTab());
+    return;
+  }
+  sendMessageToAi(state.trillChatSet, text);
+  if (input) input.value = "";
 }
 
 async function loadPeople() {
@@ -26901,22 +27242,39 @@ function updateChatSelection(container) {
 }
 
 function renderChatReplyPreview() {
+  const reply = state.aiChatReplyContext;
+  const labelText = reply?.text ? `Replying to ${reply.role === "assistant" ? "assistant" : reply.role}` : "";
+  const textContent = reply?.text ? clampChatText(reply.text, 200) : "";
+
   const preview = document.getElementById("chat-reply-preview");
   const label = document.getElementById("chat-reply-label");
   const textEl = document.getElementById("chat-reply-text");
-  if (!preview || !label || !textEl) return;
-
-  const reply = state.aiChatReplyContext;
-  if (!reply || !reply.text) {
-    preview.classList.add("hidden");
-    label.textContent = "";
-    textEl.textContent = "";
-    return;
+  if (preview && label && textEl) {
+    if (!reply || !reply.text) {
+      preview.classList.add("hidden");
+      label.textContent = "";
+      textEl.textContent = "";
+    } else {
+      label.textContent = labelText;
+      textEl.textContent = textContent;
+      preview.classList.remove("hidden");
+    }
   }
 
-  label.textContent = `Replying to ${reply.role === "assistant" ? "assistant" : reply.role}`;
-  textEl.textContent = clampChatText(reply.text, 200);
-  preview.classList.remove("hidden");
+  const trillPreview = document.getElementById("trill-chat-reply-preview");
+  const trillLabel = document.getElementById("trill-chat-reply-label");
+  const trillText = document.getElementById("trill-chat-reply-text");
+  if (trillPreview && trillLabel && trillText) {
+    if (!reply || !reply.text) {
+      trillPreview.classList.add("hidden");
+      trillLabel.textContent = "";
+      trillText.textContent = "";
+    } else {
+      trillLabel.textContent = labelText;
+      trillText.textContent = textContent;
+      trillPreview.classList.remove("hidden");
+    }
+  }
 }
 
 function clearChatReplyContext() {
@@ -27772,6 +28130,10 @@ function updateChatControls() {
   const input = document.getElementById("chat-input-text");
   if (sendBtn) sendBtn.disabled = state.isAiTyping;
   if (input) input.disabled = state.isAiTyping;
+  const trillSendBtn = document.getElementById("trill-send-chat-btn");
+  const trillInput = document.getElementById("trill-chat-input-text");
+  if (trillSendBtn) trillSendBtn.disabled = state.isAiTyping;
+  if (trillInput) trillInput.disabled = state.isAiTyping;
   document.querySelectorAll(".chat-tab, .chat-tab-menu-toggle").forEach(tab => {
     if ("disabled" in tab) {
       tab.disabled = state.isAiTyping;
@@ -27871,20 +28233,28 @@ async function loadAiChatThreads(setId) {
   }
 }
 
-async function createAiChatRecord(setId, userId, title) {
-  if (!setId || !userId) return null;
+async function createAiChatRecord(setId, userId, title, teamId) {
+  if (!userId) return null;
+
+  const payload = {
+    user_id: userId,
+    title: title || DEFAULT_CHAT_TITLE
+  };
+  payload.set_id = setId ?? null;
+  if (teamId != null) payload.team_id = teamId;
 
   const { data, error } = await supabase
     .from("set_chats")
-    .insert({
-      set_id: setId,
-      user_id: userId,
-      title: title || DEFAULT_CHAT_TITLE
-    })
+    .insert(payload)
     .select("*")
     .single();
 
   if (error) {
+    if (payload.team_id != null && (error.code === "42703" || error.message?.includes("team_id"))) {
+      delete payload.team_id;
+      const retry = await supabase.from("set_chats").insert(payload).select("*").single();
+      if (!retry.error) return retry.data;
+    }
     console.error("Error creating chat:", error);
     toastError("Unable to create a new chat.");
     return null;
@@ -28015,7 +28385,7 @@ function renameAiChat(chatId) {
 
 async function maybeRenameChatTitle(set, chatId) {
   if (!set || !chatId) return;
-  const chat = state.aiChats.find(item => item.id === chatId);
+  const chat = state.aiChats.find(item => item.id === chatId) ?? (state.trillAllChats || []).find(item => item.id === chatId);
   if (!chat || !isDefaultChatTitle(chat.title)) return;
   if (!shouldGenerateChatTitle(chatId)) return;
 
@@ -28032,10 +28402,16 @@ async function maybeRenameChatTitle(set, chatId) {
 
   const fallbackTitle = buildFallbackChatTitle(state.aiChatMessages);
   const applyTitleLocally = (title) => {
-    const idx = state.aiChats.findIndex(item => item.id === chatId);
-    if (idx !== -1 && title && title !== state.aiChats[idx].title) {
-      state.aiChats[idx] = { ...state.aiChats[idx], title };
+    if (!title) return;
+    const aiIdx = state.aiChats.findIndex(item => item.id === chatId);
+    if (aiIdx !== -1 && title !== state.aiChats[aiIdx].title) {
+      state.aiChats[aiIdx] = { ...state.aiChats[aiIdx], title };
       renderChatTabs();
+    }
+    const trillIdx = (state.trillAllChats || []).findIndex(item => item.id === chatId);
+    if (trillIdx !== -1 && title !== state.trillAllChats[trillIdx].title) {
+      state.trillAllChats[trillIdx] = { ...state.trillAllChats[trillIdx], title };
+      if (typeof renderTrillSidebar === "function") renderTrillSidebar();
     }
   };
 
@@ -28546,15 +28922,14 @@ function renderChatMessages(container) {
         pill.disabled = state.isAiTyping;
         pill.addEventListener("click", () => {
           if (state.isAiTyping) return;
-          if (!state.selectedSet) {
-            toastError("No set selected.");
+          const activeSet = getActiveSetForChat();
+          if (!activeSet && !state.aiChatId) {
+            toastError("Start a chat first.");
             return;
           }
-          const input = document.getElementById("chat-input-text");
-          if (input) {
-            input.value = prompt;
-          }
-          void sendMessageToAi(state.selectedSet, prompt);
+          const input = getActiveChatInput();
+          if (input) input.value = prompt;
+          void sendMessageToAi(activeSet, prompt);
           if (input) input.value = "";
         });
         pillsWrap.appendChild(pill);
@@ -28657,7 +29032,7 @@ function renderChatMessages(container) {
         state.aiChatSelection = null;
         renderChatReplyPreview();
 
-        const input = document.getElementById("chat-input-text");
+        const input = getActiveChatInput();
         if (input) input.focus();
       });
       actions.appendChild(replyBtn);
@@ -28669,11 +29044,7 @@ function renderChatMessages(container) {
         regenBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Regenerate';
         regenBtn.disabled = state.isAiTyping;
         regenBtn.addEventListener("click", () => {
-          if (!state.selectedSet) {
-            toastError("No set selected.");
-            return;
-          }
-          regenerateAssistantMessage(state.selectedSet, index);
+          regenerateAssistantMessage(getActiveSetForChat(), index);
         });
         actions.appendChild(regenBtn);
       }
@@ -28689,7 +29060,7 @@ function renderChatMessages(container) {
 
 
 async function streamAiResponse(set, messagesForAi, userId, chatId) {
-  const container = document.getElementById("chat-messages-list");
+  const container = getActiveChatMessagesContainer();
   const requestId = createTrillRequestId();
   const t0 = nowMs();
   let typingEl = null;
@@ -28709,7 +29080,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
     typingEl = typing;
   }
 
-  const requestPayload = { set_id: set.id, messages: messagesForAi, request_id: requestId };
+  const requestPayload = { set_id: set?.id ?? null, messages: messagesForAi, request_id: requestId };
   state.trillDebugLastRequest = { requestId, payload: requestPayload, status: "pending" };
 
   let titleRequested = false;
@@ -28847,8 +29218,9 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
     logTrillTiming(requestId, "stream:done", t0, { chars: aiText.length });
 
     if (userId && chatId) {
+      const setId = set?.id ?? null;
       const { data, error } = await supabase.from("set_chat_messages").insert({
-        set_id: set.id,
+        set_id: setId,
         chat_id: chatId,
         user_id: userId,
         role: 'assistant',
@@ -28884,7 +29256,18 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
 async function sendMessageToAi(set, text) {
   if (state.isAiTyping) return;
   if (!state.aiChatId) {
-    await createAiChat(set.id);
+    const setId = set?.id ?? null;
+    if (setId === null) {
+      const userId = (await supabase.auth.getUser()).data?.user?.id;
+      if (!userId) return;
+      const created = await createAiChatRecord(null, userId, DEFAULT_CHAT_TITLE, state.currentTeamId);
+      if (created) {
+        state.aiChatId = created.id;
+        state.trillAllChats = [created, ...(state.trillAllChats || [])];
+      }
+    } else {
+      await createAiChat(set.id);
+    }
     if (!state.aiChatId) return;
   }
 
@@ -28898,14 +29281,14 @@ async function sendMessageToAi(set, text) {
   const userMsg = { role: 'user', content };
   state.aiChatMessages.push(userMsg);
 
-  const container = document.getElementById("chat-messages-list");
+  const container = getActiveChatMessagesContainer();
   if (container) renderChatMessages(container);
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
   const { data, error } = await supabase.from("set_chat_messages").insert({
-    set_id: set.id,
+    set_id: set?.id ?? null,
     chat_id: state.aiChatId,
     user_id: user.id,
     role: 'user',

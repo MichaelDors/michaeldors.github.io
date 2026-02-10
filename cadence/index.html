@@ -288,6 +288,9 @@
         <button class="tab-btn" data-tab="people">
           <div id="anim-people" class="lottie-icon"></div> Team
         </button>
+        <button class="tab-btn" data-tab="trill">
+          <i class="fa-solid fa-wave-square" style="font-size: 1.1rem;"></i> Trill
+        </button>
       </div>
 
       <div id="sets-tab" class="tab-content">
@@ -391,6 +394,66 @@
           </label>
         </div>
         <div id="people-list" class="people-grid"></div>
+      </div>
+
+      <div id="trill-tab" class="tab-content hidden trill-tab">
+        <div class="trill-layout">
+          <aside class="trill-sidebar">
+            <div class="trill-sidebar-header">
+              <button type="button" class="btn primary trill-new-chat-btn" id="trill-new-chat-btn">
+                <i class="fa-solid fa-plus"></i> New chat
+              </button>
+            </div>
+            <div class="trill-sidebar-search">
+              <i class="fa-solid fa-magnifying-glass trill-search-icon"></i>
+              <input type="text" id="trill-chat-search" class="trill-chat-search-input" placeholder="Search chats" />
+            </div>
+            <div class="trill-chat-list" id="trill-chat-list"></div>
+          </aside>
+          <div class="trill-main">
+            <div id="trill-home" class="trill-home">
+              <div class="trill-breadcrumb" id="trill-breadcrumb">Trill</div>
+              <h2 class="trill-home-title">Chat with Trill</h2>
+              <p class="trill-home-subtitle muted">Pick a folder or start a new chat from the sidebar.</p>
+              <div class="trill-folders" id="trill-folders"></div>
+            </div>
+            <div id="trill-folder-view" class="trill-folder-view hidden">
+              <div class="trill-folder-view-header">
+                <div class="trill-breadcrumb trill-breadcrumb-nav" id="trill-folder-breadcrumb"></div>
+                <button type="button" class="btn ghost small trill-back-btn" id="trill-folder-back-btn" aria-label="Back to home"><i class="fa-solid fa-arrow-left"></i> Home</button>
+              </div>
+              <div class="trill-folder-chats" id="trill-folder-chats"></div>
+              <div class="trill-folder-view-actions">
+                <button type="button" class="btn primary" id="trill-new-chat-in-folder-btn"><i class="fa-solid fa-plus"></i> New chat in <span id="trill-folder-new-label">folder</span></button>
+              </div>
+            </div>
+            <div id="trill-chat-view" class="trill-chat-view hidden">
+              <div class="trill-chat-view-header">
+                <button type="button" class="btn ghost small trill-back-btn" id="trill-chat-back-btn" aria-label="Back"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                <div class="trill-breadcrumb trill-breadcrumb-inline trill-breadcrumb-nav" id="trill-chat-breadcrumb"></div>
+              </div>
+              <div class="trill-chat-messages" id="trill-chat-messages-list"></div>
+              <div class="trill-chat-input-area">
+                <div class="chat-reply-preview hidden" id="trill-chat-reply-preview">
+                  <div class="chat-reply-info">
+                    <div class="chat-reply-label" id="trill-chat-reply-label"></div>
+                    <div class="chat-reply-text" id="trill-chat-reply-text"></div>
+                  </div>
+                  <button type="button" class="btn ghost small icon-only" id="trill-clear-reply-btn"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="trill-chat-input-row">
+                  <textarea class="chat-input trill-chat-input" id="trill-chat-input-text" placeholder="Ask Trill"></textarea>
+                  <button type="button" class="btn primary icon-only ai-chat-send-btn" id="trill-send-chat-btn">
+                    <span class="ai-chat-send-btn__mesh"></span>
+                    <span class="ai-chat-send-btn__mesh ai-chat-send-btn__mesh--fast"></span>
+                    <span class="ai-chat-send-btn__icon"><i class="fa-solid fa-paper-plane"></i></span>
+                  </button>
+                </div>
+                <div class="chat-disclaimer muted">Trill uses AI and can be wrong. Double-check important info.</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 

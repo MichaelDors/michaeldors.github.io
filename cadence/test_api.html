@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GetSongBPM API Test</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            padding: 2rem;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #f4f4f4;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #0070f3;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        #output {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #eee;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            overflow-x: auto;
+            min-height: 100px;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>GetSongBPM API Tester</h1>
+
+        <label for="apiKey">API Key</label>
+        <input type="text" id="apiKey" placeholder="Enter your GetSongBPM API Key">
+
+        <label for="songTitle">Song Title</label>
+        <input type="text" id="songTitle" placeholder="e.g. Heaven Knows I Tried" value="Heaven Knows I Tried">
+
+        <div style="margin-bottom: 1rem;">
+            <input type="checkbox" id="simpleMode" style="width: auto;">
+            <label for="simpleMode" style="display: inline;">Simple Mode (type=song, lookup=title only)</label>
+        </div>
+
+        <button onclick="testApi()">Test API (Browser)</button>
+
+        <div id="output">Results will appear here...</div>
+
+        <h3>Terminal Command (Bypass CORS/Browser Limits)</h3>
+        <p>Browsers block "spoofing" headers like Referer. Run this in your terminal to truly test if the Key works with
+            the domain:</p>
+        <textarea id="curlOutput" style="width: 100%; height: 100px; font-family: monospace; margin-bottom: 1rem;"
+            readonly></textarea>
+        <button onclick="copyCurl()">Copy Command</button>
+    </div>
+
+    <script>
+        function updateCurl() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const songTitle = document.getElementById('songTitle').value.trim();
+            const simpleMode = document.getElementById('simpleMode').checked;
+
+            let url;
+            if (simpleMode) {
+                const encodedQuery = encodeURIComponent(songTitle);
+                url = `https://api.getsong.co/search/?api_key=${apiKey}&type=song&lookup=${encodedQuery}`;
+            } else {
+                const searchQuery = `song:${songTitle}`;
+                const encodedQuery = encodeURIComponent(searchQuery);
+                url = `https://api.getsong.co/search/?api_key=${apiKey}&type=both&lookup=${encodedQuery}`;
+            }
+
+            const curl = `curl -v "${url}" \\
+  -H "Referer: https://michaeldors.com/cadence" \\
+  -H "Origin: https://michaeldors.com" \\
+  -H "X-API-KEY: ${apiKey}"`;
+
+            document.getElementById('curlOutput').value = curl;
+        }
+
+        document.getElementById('apiKey').addEventListener('input', updateCurl);
+        document.getElementById('apiKey').addEventListener('input', updateCurl);
+        document.getElementById('songTitle').addEventListener('input', updateCurl);
+        document.getElementById('simpleMode').addEventListener('change', updateCurl);
+        // Initial call to populate curl command on load
+        document.addEventListener('DOMContentLoaded', updateCurl);
+
+
+        function copyCurl() {
+            const copyText = document.getElementById("curlOutput");
+            copyText.select();
+            document.execCommand("copy");
+            alert("Copied to clipboard! Paste into your terminal.");
+        }
+
+        async function testApi() {
+            updateCurl();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const songTitle = document.getElementById('songTitle').value.trim();
+            const output = document.getElementById('output');
+
+            if (!apiKey) {
+                output.innerHTML = '<span class="error">Please enter an API Key.</span>';
+                return;
+            }
+
+            output.innerHTML = 'Testing in Browser (Might fail due to CORS)...';
+
+            try {
+                // Construct the URL 
+                let url;
+                if (document.getElementById('simpleMode').checked) {
+                    const encodedQuery = encodeURIComponent(songTitle);
+                    url = `https://api.getsong.co/search/?api_key=${apiKey}&type=song&lookup=${encodedQuery}`;
+                } else {
+                    const searchQuery = `song:${songTitle}`;
+                    const encodedQuery = encodeURIComponent(searchQuery);
+                    url = `https://api.getsong.co/search/?api_key=${apiKey}&type=both&lookup=${encodedQuery}`;
+                }
+
+                output.innerHTML += `\nRequest URL: ${url}\n`;
+
+                const headers = {
+                    'Accept': 'application/json',
+                    'X-API-KEY': apiKey
+                    // Note: Browsers FORBID setting Referer/Origin manually in JS.
+                };
+
+                const response = await fetch(url, { headers });
+
+                output.innerHTML += `Status: ${response.status} ${response.statusText}\n`;
+
+                const text = await response.text();
+                output.innerHTML += `Response Body:\n${text}`;
+
+                try {
+                    const json = JSON.parse(text);
+                    if (json.error) {
+                        output.innerHTML += `\n\n<span class="error">API Error: ${json.error}</span>`;
+                    } else if (response.ok) {
+                        output.innerHTML += `\n\n<span class="success">Success! Key is valid.</span>`;
+                    }
+                } catch (e) {
+                    // Not JSON
+                }
+
+            } catch (err) {
+                output.innerHTML += `\n<span class="error">Network/System Error: ${err.message}</span>`;
+                console.error(err);
+                if (err.message.includes("Failed to fetch")) {
+                    output.innerHTML += `\n\n⚠️ "Failed to fetch" often means a CORS error. GetSongBPM might not allow browser requests. Check the browser console (F12) Network tab to confirm if it was a 401 or a generic CORS block.`;
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
