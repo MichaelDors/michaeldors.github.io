@@ -4300,12 +4300,21 @@ async function fetchProfile() {
 }
 
 async function applyActiveInviteCode() {
-  const code = state.activeInviteCode || window.__inviteCode;
+  // Resolve code from state, window, or localStorage so it survives redirects
+  // (e.g. after signup → email verification → login; the hash may no longer contain invite_code).
+  const STORAGE_KEY = 'cadence_active_invite_code';
+  let code = state.activeInviteCode || window.__inviteCode;
+  if (!code && typeof localStorage !== 'undefined') {
+    code = localStorage.getItem(STORAGE_KEY);
+    if (code) {
+      state.activeInviteCode = code;
+      window.__inviteCode = code;
+    }
+  }
   if (!code) return;
   if (!state.session?.user) return;
   if (state.hasShownInviteJoinToast) {
     // We've already successfully applied an invite link in this session.
-    // Do not attempt to consume again or show additional toasts.
     return;
   }
 
@@ -4315,38 +4324,36 @@ async function applyActiveInviteCode() {
     const result = await consumeTeamInviteLink(code, state.session.user.id);
 
     if (!result) {
-      // Nothing to do
       return;
     }
 
     if (result.errorMessage) {
       toastError(result.errorMessage);
+      // Leave code in localStorage so they can retry (e.g. after refresh or clicking link again).
       return;
     }
 
     if (result.teamId) {
-      // Refresh teams and switch to the invited team if possible
       await fetchUserTeams();
       if (state.userTeams.some(t => t.id === result.teamId)) {
         await switchTeam(result.teamId);
       }
-      // Only show the "joined team" toast when this invite actually caused a
-      // new membership to be created (not when the user was already on the team
-      // or when they were just switching teams from an invite URL).
       if (!state.hasShownInviteJoinToast && !result.alreadyMember) {
         toastSuccess("You've joined the team from the invite link.");
         state.hasShownInviteJoinToast = true;
       }
+      // Only clear stored invite code after we've successfully applied it (joined or already member).
+      clearActiveInviteCodeFromUrl();
+      state.activeInviteCode = null;
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        // ignore
+      }
     }
-  } finally {
-    // Clear invite code from state, storage, and URL so it can't be reused accidentally
-    clearActiveInviteCodeFromUrl();
-    state.activeInviteCode = null;
-    try {
-      window.localStorage.removeItem('cadence_active_invite_code');
-    } catch (e) {
-      // ignore
-    }
+  } catch (err) {
+    console.error('❌ Error applying invite code:', err);
+    // Leave code in localStorage so they can retry later or click the link again.
   }
 }
 
