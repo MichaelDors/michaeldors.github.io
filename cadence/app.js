@@ -1594,6 +1594,31 @@ async function init() {
   } else if (!session) {
     console.log('❌ No session in init, calling showAuthGate()');
     showAuthGate();
+
+    // When user lands after email verification, Supabase may still be processing the hash.
+    // Run a delayed session check so we load the app (and apply invite code) without requiring a reload.
+    setTimeout(async () => {
+      if (state.session) return; // Already have session (e.g. from onAuthStateChange)
+      const { data: { session: delayedSession } } = await supabase.auth.getSession();
+      if (delayedSession && !state.session) {
+        console.log('✅ Session found on delayed check (e.g. after email verification). Loading app...');
+        state.session = delayedSession;
+        try {
+          const mfaRequired = await checkMfaRequirements(delayedSession);
+          if (mfaRequired) {
+            showAuthGate();
+            setAuthMessage("Two-factor authentication required.", false);
+            openMfaChallengeModal({
+              onSuccess: () => loadDataAndShowApp(delayedSession)
+            });
+          } else {
+            await loadDataAndShowApp(delayedSession);
+          }
+        } catch (err) {
+          console.error('Delayed session load error:', err);
+        }
+      }
+    }, 1500);
   } else {
     // Session exists but isProcessingSession is true?
     console.log('⏳ Session already being processed by auth state change handler');
@@ -2747,7 +2772,9 @@ function showAuthGate() {
   if (userInfo) userInfo.classList.add("hidden");
   if (createSetBtn) createSetBtn.classList.add("hidden");
   setAuthMessage("");
-  isSignUpMode = false;
+  // When user arrived via a join-team invite link (not logged in), default to sign up
+  const hasJoinTeamInvite = !!(state.activeInviteCode || window.__inviteCode);
+  isSignUpMode = hasJoinTeamInvite;
   updateAuthUI();
 
   // If the user has just come back from verifying their email, show a clear,
@@ -12769,6 +12796,48 @@ async function handleAddSectionToSet(event) {
     // Check if assigned users have already accepted this set (for per-song mode)
     const set = state.selectedSet;
     const assignmentMode = getSetAssignmentMode(set);
+
+    // For per-song mode, compute who is newly assigned to this set (across all songs) so we only email them once
+    let newSongRecipients = [];
+    if (assignmentMode === 'per_song') {
+      const { data: existingSetSongAssignments, error: existingSetSongErr } = await supabase
+        .from("song_assignments")
+        .select(`
+          person_id,
+          pending_invite_id,
+          person_email,
+          set_song:set_song_id ( set_id )
+        `)
+        .eq("set_song.set_id", set.id);
+
+      if (existingSetSongErr) {
+        console.error("Error fetching existing song assignments for notifications:", existingSetSongErr);
+      } else {
+        const existingKeys = new Set(
+          (existingSetSongAssignments || [])
+            .map((row) => getAssignmentIdentityKeyFromDbRow(row))
+            .filter(Boolean)
+        );
+
+        const currentKeys = new Map();
+        assignments.forEach((a) => {
+          const key = getAssignmentIdentityKeyFromFormAssignment(a);
+          if (!key) return;
+          if (!currentKeys.has(key)) {
+            currentKeys.set(key, {
+              key,
+              person_id: a.person_id || null,
+              pending_invite_id: a.pending_invite_id || null,
+              person_email: a.person_email || null,
+            });
+          }
+        });
+
+        newSongRecipients = Array.from(currentKeys.values()).filter(
+          (r) => !existingKeys.has(r.key)
+        );
+      }
+    }
 
     // For per-song sets, check if each assigned person has already accepted this set
     const assignmentsToInsert = await Promise.all(assignments.map(async (assignment) => {
