@@ -3192,7 +3192,7 @@ async function handleAuth(event) {
         return;
       }
 
-      setAuthMessage("Account created! Please check your email to verify your account. Once you log in, you'll be added to the team from this invite.", false);
+      showCheckEmailState("Account created! Please check your email to verify your account. Once you log in, you'll be added to the team from this invite.");
       toggleAuthButton(false);
       return;
     }
@@ -3420,7 +3420,7 @@ async function handleAuth(event) {
     // Update local profileData object with team_id
     profileData.team_id = teamData.id;
 
-    setAuthMessage("Team created! Please check your email to verify your account.", false);
+    showCheckEmailState("Team created! Please check your email to verify your account.");
     toggleAuthButton(false);
     // Don't auto-login - they need to verify email first
     return;
@@ -3563,6 +3563,17 @@ function setAuthMessage(message, isError = false) {
   authMessage.textContent = message;
   authMessage.classList.toggle("error-text", Boolean(isError));
   authMessage.classList.toggle("muted", !isError);
+  authMessage.classList.remove("auth-message--check-email");
+  if (authGate) authGate.classList.remove("auth-gate--check-email");
+}
+
+/** Show the "check your email" state: dim form, disable interaction, emphasize message */
+function showCheckEmailState(message) {
+  if (!authMessage || !authGate) return;
+  authMessage.textContent = message;
+  authMessage.classList.remove("error-text", "muted");
+  authMessage.classList.add("auth-message--check-email");
+  authGate.classList.add("auth-gate--check-email");
 }
 
 function setPasswordSetupMessage(message, isError = false) {
@@ -3615,11 +3626,12 @@ function showLoginForm() {
     forgotPasswordMessage.classList.remove("error-text", "muted");
   }
 
-  // Clear auth message
+  // Clear auth message and check-email state
   if (authMessage) {
     authMessage.textContent = "";
-    authMessage.classList.remove("error-text", "muted");
+    authMessage.classList.remove("error-text", "muted", "auth-message--check-email");
   }
+  if (authGate) authGate.classList.remove("auth-gate--check-email");
 }
 
 async function handleForgotPasswordSubmit() {

@@ -6789,6 +6789,26 @@ body.booting main {
   font-weight: 600;
 }
 
+/* Auth gate: "check your email" step – dim form and make message the focus */
+.auth-gate--check-email #login-form-container > *:not(#auth-message) {
+  opacity: 0.45;
+  pointer-events: none;
+  user-select: none;
+}
+
+#auth-message.auth-message--check-email {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent-color);
+  margin: 1.25rem 0;
+  padding: 1.25rem;
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 35%, transparent);
+  text-align: center;
+  line-height: 1.4;
+}
+
 /* Invite modal – invite links */
 .invite-modal-actions {
   align-items: center;
