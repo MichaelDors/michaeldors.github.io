@@ -257,6 +257,28 @@ const state = {
   hasShownInviteJoinToast: false
 };
 
+// Global guard: warn if Trill is still generating a response when the user
+// attempts to close or reload the tab. This runs alongside any existing
+// beforeunload handlers and only activates while AI streaming is in progress.
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", (e) => {
+    try {
+      // Only warn if Trill chat is actively streaming a response
+      if (!state || !state.isAiTyping) return;
+
+      // If another handler has already set a message, don't override it
+      if (e.returnValue) return;
+
+      const message = "Trill is still generating a response. Are you sure you want to leave?";
+      e.preventDefault();
+      e.returnValue = message;
+      return message;
+    } catch {
+      // Fail silently so we never block navigation due to an unexpected error
+    }
+  });
+}
+
 // PostHog tracking helper - safely tracks events even if PostHog isn't loaded yet
 function trackPostHogEvent(eventName, properties = {}) {
   if (typeof window === 'undefined') {
@@ -16102,6 +16124,13 @@ async function renderSongCatalog(animate = true) {
 
   // Create a snapshot of songs to work with (prevents race conditions during async operations)
   const songsSnapshot = [...deduplicatedSongs];
+
+  // Update total song count in the Songs tab header
+  const songsCountEl = el("songs-count");
+  if (songsCountEl) {
+    const totalSongs = songsSnapshot.length;
+    songsCountEl.textContent = totalSongs ? ` (${totalSongs})` : " (0)";
+  }
 
   const searchInput = el("songs-tab-search");
   const searchTermRaw = searchInput ? searchInput.value.trim() : "";
