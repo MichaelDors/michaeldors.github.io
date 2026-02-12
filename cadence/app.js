@@ -7518,6 +7518,13 @@ function renderPeople(animate = true) {
     teamNameHeader.classList.add("hidden");
   }
 
+  // Update team member count next to the Team Members heading
+  const teamMemberCountEl = el("team-member-count");
+  if (teamMemberCountEl) {
+    const totalMembers = Array.isArray(state.people) ? state.people.length : 0;
+    teamMemberCountEl.textContent = totalMembers ? ` (${totalMembers})` : " (0)";
+  }
+
   // Show/hide leave team button
   const leaveTeamBtn = el("btn-leave-team");
   if (leaveTeamBtn && currentTeam) {
@@ -18405,7 +18412,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             <span class="detail-value">${escapeHtml(selectedKey)}</span>
           </div>` : ''}
           ${hasKeys && !isSingleKeyMatch ? `<div class="detail-item">
-            <span class="detail-label">Keys</span>
+            <span class="detail-label">${keysArray.length === 1 ? 'Key' : 'Keys'}</span>
             <span class="detail-value">${keysArray.map(k => escapeHtml(k.key)).join(", ")}</span>
           </div>` : ''}
           ${(!hasKeys && songWithResources.suggested_song_key) ? `<div class="detail-item">
