@@ -600,6 +600,7 @@ const userInfo = el("user-info");
 const userName = el("user-name");
 const createSetBtn = el("btn-create-set");
 const setsList = el("sets-list");
+const yourSetsSection = el("your-sets-section");
 const yourSetsList = el("your-sets-list");
 const setModal = el("set-modal");
 const songModal = el("song-modal");
@@ -6973,15 +6974,15 @@ function renderSets(animate = true) {
 
   if (state.isLoadingSets && state.sets.length === 0) {
     setsList.innerHTML = getSkeletonLoader(3, 'card');
+    if (yourSetsSection) yourSetsSection.classList.remove("hidden");
     if (yourSetsList) yourSetsList.innerHTML = getSkeletonLoader(1, 'card');
     return;
   }
 
   if (!state.sets.length) {
     setsList.innerHTML = `<p class="muted">No sets scheduled yet.</p>`;
-    if (yourSetsList) {
-      yourSetsList.innerHTML = `<p class="muted">You haven't been assigned to or pinned any sets yet.</p>`;
-    }
+    if (yourSetsSection) yourSetsSection.classList.add("hidden");
+    if (yourSetsList) yourSetsList.innerHTML = "";
     return;
   }
 
@@ -7033,10 +7034,15 @@ function renderSets(animate = true) {
   }
 
   // Render "Your Sets" section AFTER "All Sets" so we can use them as reference
-  if (yourSetsList) {
+  if (yourSetsSection && yourSetsList) {
     if (yourSets.length === 0) {
-      yourSetsList.innerHTML = `<p class="muted">You haven't been assigned to or pinned any sets yet.</p>`;
+      // Hide the entire "Your Sets" section when the user has no assignments or pinned sets
+      yourSetsSection.classList.add("hidden");
+      yourSetsList.innerHTML = "";
     } else {
+      // Ensure the section is visible when there are sets to show
+      yourSetsSection.classList.remove("hidden");
+      yourSetsList.innerHTML = "";
       yourSets.forEach((set, index) => {
         renderSetCard(set, yourSetsList, index, animate, baseDelay);
       });
@@ -16348,6 +16354,15 @@ async function renderSongCatalog(animate = true) {
           const set = state.sets.find(s => String(s.id) === String(setId));
           if (set) {
             showSetDetail(set);
+            // When navigating from the song list, ensure the set detail view
+            // scrolls to the top of the set details section.
+            // Use a small timeout so layout has time to update.
+            setTimeout(() => {
+              const detailSection = document.getElementById("set-detail");
+              if (detailSection) {
+                detailSection.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }, 50);
           }
         }
       });
