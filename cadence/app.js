@@ -17381,11 +17381,11 @@ function setupAlbumArtTilt(container) {
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
 
-      const rotateX = (y - centerY) / centerY * -10; // Max 10 degrees
-      const rotateY = (x - centerX) / centerX * 10; // Max 10 degrees
+      const rotateX = (y - centerY) / centerY * -12; // Max 10 degrees
+      const rotateY = (x - centerX) / centerX * 12; // Max 10 degrees
 
       // Apply transform to container so pseudo-elements move with it
-      container.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+      container.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.08, 1.08, 1.08)`;
     });
   });
 
