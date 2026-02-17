@@ -8716,10 +8716,15 @@ function renderSetDetailSongs(set, animate = false) {
         }
 
         if (isTagItem) {
-          // Render as tag
+          // Render as tag: song title + part chip (no " - Chorus" plain text)
           const tagSongTitle = setSong.song?.title ?? "Untitled";
-          const partName = setSong.title || "Untitled Part";
-          songNode.querySelector(".song-title").textContent = `${tagSongTitle} - ${partName}`;
+          const partName = resolveTagPartName(tagInfo.tagType, tagInfo.customValue) || setSong.title || "Tag";
+          const titleEl = songNode.querySelector(".song-title");
+          titleEl.textContent = tagSongTitle;
+          const chip = document.createElement("span");
+          chip.className = "set-song-part-chip";
+          chip.textContent = partName;
+          titleEl.appendChild(chip);
 
           // Add tag indicator class
           card.classList.add("set-song-tag-card");
@@ -28661,16 +28666,7 @@ function updateChatControls() {
   const input = document.getElementById("chat-input-text");
   if (sendBtn) sendBtn.disabled = state.isAiTyping;
   if (input) input.disabled = state.isAiTyping;
-  document.querySelectorAll(".chat-tab, .chat-tab-menu-toggle").forEach(tab => {
-    if ("disabled" in tab) {
-      tab.disabled = state.isAiTyping;
-    }
-    tab.classList.toggle("disabled", state.isAiTyping);
-    if (tab.closest) {
-      const wrapper = tab.closest(".chat-tab-item");
-      if (wrapper) wrapper.classList.toggle("disabled", state.isAiTyping);
-    }
-  });
+  // Chat tabs stay enabled so user can switch chats while a reply is generating
 }
 
 async function toggleAiChat(set) {
@@ -28805,10 +28801,7 @@ async function createAiChat(setId) {
 
 async function selectAiChat(chatId) {
   if (!chatId || chatId === state.aiChatId) return;
-  if (state.isAiTyping) {
-    toastError("Please wait for the current reply to finish.");
-    return;
-  }
+  // Allow switching chats while a reply is generating (send/new chat stay disabled)
 
   state.aiChatId = chatId;
   state.aiChatMessages = [];
@@ -29053,7 +29046,6 @@ function renderChatTabs() {
     btn.type = "button";
     btn.className = "chat-tab";
     btn.textContent = chat.title || DEFAULT_CHAT_TITLE;
-    btn.disabled = state.isAiTyping;
     btn.addEventListener("click", () => selectAiChat(chat.id));
 
     const menuToggle = document.createElement("button");
@@ -29062,7 +29054,6 @@ function renderChatTabs() {
     menuToggle.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
     menuToggle.setAttribute("aria-label", "Chat options");
     menuToggle.title = "Chat options";
-    menuToggle.disabled = state.isAiTyping;
 
     const menu = document.createElement("div");
     menu.className = "header-dropdown-menu chat-tab-menu hidden";
@@ -29359,6 +29350,36 @@ function renderSetChatPanel(set) {
   const messagesList = sidebar.querySelector("#chat-messages-list");
   messagesList.addEventListener("mouseup", () => updateChatSelection(messagesList));
   messagesList.addEventListener("keyup", () => updateChatSelection(messagesList));
+  function openSetItemDetailsForLink(linkOrWrapper) {
+    const link = linkOrWrapper.classList.contains("trill-set-item-link")
+      ? linkOrWrapper
+      : linkOrWrapper.querySelector(".trill-set-item-link");
+    const setSongId = link?.dataset?.setSongId;
+    if (!setSongId) return;
+    const setSong = getSetSongById(setSongId);
+    if (!setSong) return;
+    const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
+    const isSection = !setSong.song_id && !tagInfo;
+    if (isSection) {
+      openSectionDetailsModal(setSong);
+    } else if (setSong.song) {
+      openSongDetailsModal(setSong.song, setSong.key || null, setSong);
+    }
+  }
+  messagesList.addEventListener("click", (e) => {
+    const linkOrWrapper = e.target.closest(".trill-set-item-link-wrapper") || e.target.closest(".trill-set-item-link");
+    if (!linkOrWrapper) return;
+    e.preventDefault();
+    openSetItemDetailsForLink(linkOrWrapper);
+  });
+  messagesList.addEventListener("keydown", (e) => {
+    const linkOrWrapper = e.target.closest(".trill-set-item-link-wrapper") || e.target.closest(".trill-set-item-link");
+    if (!linkOrWrapper) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openSetItemDetailsForLink(linkOrWrapper);
+    }
+  });
 
   ensureChatSelectionAction();
   if (!chatSelectionListenersAttached) {
@@ -29396,6 +29417,105 @@ function pickRandomChatPrompts(allPrompts, count) {
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   return pool.slice(0, Math.min(count, pool.length));
+}
+
+/**
+ * Build match entries for linkify: each set item can have multiple match strings (e.g. tag full name + song title).
+ * Returns [{ name, setSong, linkText, partName }] sorted by name length descending.
+ */
+function getSetItemMatchEntries() {
+  const setSongs = getSortedSetSongs();
+  const entries = [];
+  for (const setSong of setSongs) {
+    const fullName = getSetSongDisplayName(setSong);
+    const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
+    if (tagInfo) {
+      const partName = resolveTagPartName(tagInfo.tagType, tagInfo.customValue) || setSong.title || "Tag";
+      const songTitle = setSong.song?.title ?? "Untitled";
+      const fullDisplay = `${songTitle} — ${partName}`;
+      const fullDisplayHyphen = `${songTitle} - ${partName}`;
+      if (fullDisplay.trim()) entries.push({ name: fullDisplay, setSong, linkText: songTitle, partName });
+      if (fullDisplayHyphen.trim() && fullDisplayHyphen !== fullDisplay) {
+        entries.push({ name: fullDisplayHyphen, setSong, linkText: songTitle, partName });
+      }
+      if (songTitle.trim() && songTitle !== fullDisplay) {
+        entries.push({ name: songTitle, setSong, linkText: songTitle, partName });
+      }
+    } else if (setSong.song_id) {
+      const name = setSong.song?.title || "Untitled Song";
+      if (name.trim()) entries.push({ name, setSong, linkText: name, partName: null });
+    } else {
+      const name = setSong.title || "Untitled Section";
+      if (name.trim()) entries.push({ name, setSong, linkText: name, partName: null });
+    }
+  }
+  entries.sort((a, b) => b.name.length - a.name.length);
+  return entries;
+}
+
+/**
+ * Wrap set item names in the bubble with clickable spans that open the set item details modal.
+ * Tags show song title + a chip for the part (e.g. "Chorus"); tags also match when Trill says just the song title.
+ */
+function linkifySetItemNamesInElement(bubble) {
+  if (!state.selectedSet) return;
+  const entries = getSetItemMatchEntries();
+  if (entries.length === 0) return;
+
+  const walker = document.createTreeWalker(bubble, NodeFilter.SHOW_TEXT, null, false);
+  const textNodes = [];
+  let n;
+  while ((n = walker.nextNode())) textNodes.push(n);
+
+  for (const node of textNodes) {
+    const text = node.textContent;
+    if (!text || !text.trim()) continue;
+    const matches = [];
+    for (const { name, setSong, linkText, partName } of entries) {
+      const escaped = String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+      const re = new RegExp(escaped, "gi");
+      let match;
+      while ((match = re.exec(text)) !== null) {
+        const start = match.index;
+        const end = start + match[0].length;
+        const overlaps = matches.some((m) => start < m.end && end > m.start);
+        if (!overlaps) matches.push({ start, end, setSong, linkText, partName, matchedText: match[0] });
+      }
+    }
+    matches.sort((a, b) => a.start - b.start);
+    if (matches.length === 0) continue;
+
+    const fragment = document.createDocumentFragment();
+    let lastEnd = 0;
+    for (const m of matches) {
+      if (m.start > lastEnd) {
+        fragment.appendChild(document.createTextNode(text.slice(lastEnd, m.start)));
+      }
+      const link = document.createElement("span");
+      link.className = "trill-set-item-link";
+      link.dataset.setSongId = m.setSong.id;
+      link.textContent = m.linkText;
+      link.setAttribute("role", "button");
+      link.setAttribute("tabindex", "0");
+      if (m.partName) {
+        const wrapper = document.createElement("span");
+        wrapper.className = "trill-set-item-link-wrapper";
+        wrapper.appendChild(link);
+        const chip = document.createElement("span");
+        chip.className = "trill-set-item-chip";
+        chip.textContent = m.partName;
+        wrapper.appendChild(chip);
+        fragment.appendChild(wrapper);
+      } else {
+        fragment.appendChild(link);
+      }
+      lastEnd = m.end;
+    }
+    if (lastEnd < text.length) {
+      fragment.appendChild(document.createTextNode(text.slice(lastEnd)));
+    }
+    node.parentNode.replaceChild(fragment, node);
+  }
 }
 
 function renderChatMessages(container) {
@@ -29525,6 +29645,7 @@ function renderChatMessages(container) {
       const bubble = document.createElement("div");
       bubble.className = "message-bubble markdown-body";
       bubble.innerHTML = contentHtml;
+      if (msg.role === "assistant") linkifySetItemNamesInElement(bubble);
       msgEl.appendChild(bubble);
     }
 
@@ -29590,6 +29711,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
   const requestId = createTrillRequestId();
   const t0 = nowMs();
   let typingEl = null;
+  let assistantMsg = null;
 
   state.isAiTyping = true;
   updateChatControls();
@@ -29697,7 +29819,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
     let sawFirstChunk = false;
     let sawFirstToken = false;
 
-    const assistantMsg = { role: 'assistant', content: "" };
+    assistantMsg = { role: 'assistant', content: "" };
     state.aiChatMessages.push(assistantMsg);
 
     while (true) {
@@ -29728,7 +29850,7 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
               }
               aiText += content;
               assistantMsg.content = aiText;
-              if (container) renderChatMessages(container);
+              if (container && state.aiChatId === chatId) renderChatMessages(container);
 
               if (!titleRequested && chatId && shouldGenerateChatTitle(chatId) && aiText.length >= 60) {
                 titleRequested = true;
@@ -29774,7 +29896,12 @@ async function streamAiResponse(set, messagesForAi, userId, chatId) {
   } finally {
     state.isAiTyping = false;
     updateChatControls();
-    if (container) renderChatMessages(container);
+    if (container) {
+      if (assistantMsg && state.aiChatId === chatId && !state.aiChatMessages.some(m => m === assistantMsg)) {
+        state.aiChatMessages.push(assistantMsg);
+      }
+      renderChatMessages(container);
+    }
   }
 }
 
