@@ -20289,6 +20289,9 @@ function createLinkRow(link, index, key) {
           if (titleInput && !titleInput.value) {
             titleInput.value = file.name;
           }
+
+          // Keep this resource row in view after selection
+          div.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
       });
     }
@@ -20649,6 +20652,15 @@ function addFileUploadToSection(key) {
   sectionContent.appendChild(linkRow);
   if (isManager()) setupLinkDragAndDrop(linkRow, sectionContent);
   updateLinkOrder(sectionContent);
+
+  // Scroll the new upload row into view and auto-open the file picker
+  linkRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const fileInput = linkRow.querySelector(".song-link-file-input");
+  if (fileInput) {
+    requestAnimationFrame(() => {
+      fileInput.click();
+    });
+  }
 }
 
 // Replaces collectSongLinks
