@@ -1,6 +1,7 @@
 :root {
   --accent-color: #ff7b51;
   --song-title-tint-rgb: 255 255 255;
+  --song-tint-rgb: 255 255 255;
   --accent-light: color-mix(in srgb, var(--accent-color) 20%, black);
   --accent-lighter: color-mix(in srgb, var(--accent-color) 10%, black);
 
@@ -28,6 +29,8 @@
   --chart-pending-color: #f59e0b;
 
   --starburst-accent-color: #000000;
+
+  --song-details-modal-bg: color-mix(in srgb, var(--bg-card) 42%, rgb(var(--song-tint-rgb, 0 0 0)) 7%);
 
   /* Allow native controls to adapt */
   color-scheme: dark light;
@@ -92,6 +95,8 @@
     --album-art-shadow-opacity-secondary: 0.40;
     --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
     --glass-backdrop: blur(5.1px);
+
+    --song-details-modal-bg: color-mix(in srgb, var(--bg-card) 95%, rgb(var(--song-tint-rgb, 255 255 255)) 5%);
   }
 
 
@@ -1551,6 +1556,7 @@ main {
 
 #song-details-modal .modal-content {
   max-width: 800px;
+  background: var(--song-details-modal-bg);
 }
 
 .modal-content {
@@ -4089,6 +4095,8 @@ i {
 
 @media (prefers-color-scheme: light) {
   /* Previous manual overrides removed in favor of variables defined in :root */
+
+
 
   .header-dropdown-item:hover,
   .searchable-dropdown-option:hover,

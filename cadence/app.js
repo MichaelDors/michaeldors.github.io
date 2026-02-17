@@ -16970,7 +16970,7 @@ function isDarkSongDetailsContext() {
   return getRelativeLuminance(bgRgb) < 0.45;
 }
 
-function getReadableSongDetailsTint(hexColor) {
+function getReadableSongDetailsTint(content, hexColor) {
   const rgb = parseHexOrRgbColor(hexColor);
   if (!rgb) return hexColor;
 
@@ -16991,6 +16991,8 @@ function getReadableSongDetailsTint(hexColor) {
   return rgbToHex(boosted);
 }
 
+const root = document.documentElement;
+
 function setSongDetailsTitleTint(content, hexColor = null) {
   if (!content) return;
   const songTitleEl = content?.querySelector?.(".song-details-header-content .song-details-title");
@@ -16999,16 +17001,18 @@ function setSongDetailsTitleTint(content, hexColor = null) {
     if (songTitleEl) {
       songTitleEl.classList.remove("song-details-title--album-tinted");
     }
-    content.style.removeProperty("--song-title-tint-rgb");
+    root.style.removeProperty("--song-title-tint-rgb");
+    root.style.removeProperty("--song-tint-rgb");
     return;
   }
 
-  const readableTintHex = getReadableSongDetailsTint(hexColor);
+  const readableTintHex = getReadableSongDetailsTint(content, hexColor);
   const r = parseInt(readableTintHex.slice(1, 3), 16);
   const g = parseInt(readableTintHex.slice(3, 5), 16);
   const b = parseInt(readableTintHex.slice(5, 7), 16);
-  // Set on shared content container so metadata rows can access the tint variable too.
-  content.style.setProperty("--song-title-tint-rgb", `${r} ${g} ${b}`);
+  const rgbSpace = `${r} ${g} ${b}`;
+  root.style.setProperty("--song-title-tint-rgb", rgbSpace);
+  root.style.setProperty("--song-tint-rgb", rgbSpace);
   if (songTitleEl) {
     songTitleEl.classList.add("song-details-title--album-tinted");
   }
@@ -29146,8 +29150,10 @@ function renderSetChatPanel(set) {
     sidebar = document.createElement("div");
     sidebar.id = "ai-chat-sidebar";
     sidebar.className = "chat-sidebar hidden";
-    // Set default width explicitly for logic
-    sidebar.style.width = "400px";
+    // Restore saved width (min 300, max 800), default 400
+    const savedW = parseInt(localStorage.getItem("cadence-trill-chat-width"), 10);
+    const initialW = Number.isNaN(savedW) ? 400 : Math.max(300, Math.min(800, savedW));
+    sidebar.style.width = `${initialW}px`;
     document.body.appendChild(sidebar);
 
     // Initial positioning check (if opened first time)
@@ -29192,6 +29198,12 @@ function renderSetChatPanel(set) {
       if (sidebar.dataset.resizing === "true") {
         sidebar.dataset.resizing = "false";
         document.body.style.cursor = '';
+
+        // Persist width for next time
+        const px = parseInt(sidebar.style.width, 10);
+        if (!Number.isNaN(px)) {
+          try { localStorage.setItem("cadence-trill-chat-width", String(px)); } catch (_) {}
+        }
 
         // Re-enable transition
         const main = document.querySelector('main');
