@@ -18398,7 +18398,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             ${canUploadAlbumArt ? `
             <div class="album-art-overlay-controls" id="album-art-overlay-controls" style="position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.5rem; opacity: 0; transition: opacity 0.2s;">
               <label for="album-art-upload-input" class="btn small secondary" style="cursor: pointer; margin: 0; padding: 0.4rem 0.6rem;" title="Upload album art">
-                <i class="fa-solid fa-upload"></i>
+                <i class="fa-solid fa-upload album-art-overlay-icon"></i>
               </label>
               ${songWithLinks.album_art_override_path ? `
               <button type="button" class="btn small ghost" id="remove-album-art-btn" style="margin: 0; padding: 0.4rem 0.6rem;" title="Remove custom album art">

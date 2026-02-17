@@ -2332,6 +2332,13 @@ textarea {
   transform: scale(1.05);
 }
 
+/* Make the upload album art icon dynamically contrast with the blurred background */
+.album-art-overlay-icon {
+  color: #ffffff;
+  mix-blend-mode: difference;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.7));
+}
+
 /* Album Art Full Screen Modal */
 .album-art-modal {
   position: fixed;
