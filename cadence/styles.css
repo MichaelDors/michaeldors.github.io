@@ -96,7 +96,7 @@
     --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
     --glass-backdrop: blur(5.1px);
 
-    --song-details-modal-bg: color-mix(in srgb, var(--bg-card) 95%, rgb(var(--song-tint-rgb, 255 255 255)) 5%);
+    --song-details-modal-bg: var(--bg-card);
   }
 
 
