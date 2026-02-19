@@ -1595,6 +1595,7 @@ main {
   overflow-y: auto;
   margin: auto;
   box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6);
+  overflow-x: hidden;
 }
 
 .modal.closing .modal-content {
@@ -1762,19 +1763,81 @@ textarea {
   gap: 0.75rem;
 }
 
+/* Progressive blur: smooth ramp, solid after top ~1/3 of the action bar */
+.modal .modal-content:has(.modal-actions) {
+  position: relative;
+}
+
+.modal .modal-content .modal-actions {
+  --actions-blur-overlap: 2rem;
+  --actions-blur-end: 34%;
+  isolation: isolate;
+}
+
+.modal .modal-content .modal-actions::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(-1 * var(--actions-blur-overlap));
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg-card) 0%, transparent) 0%,
+    color-mix(in srgb, var(--bg-card) 18%, transparent) 18%,
+    color-mix(in srgb, var(--bg-card) 55%, transparent) var(--actions-blur-end),
+    var(--bg-card) 100%
+  );
+  mask: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.35) 14%,
+    rgba(0, 0, 0, 1) var(--actions-blur-end),
+    rgba(0, 0, 0, 1) 100%
+  );
+  -webkit-mask: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.35) 14%,
+    rgba(0, 0, 0, 1) var(--actions-blur-end),
+    rgba(0, 0, 0, 1) 100%
+  );
+}
+
+.modal .modal-content .modal-actions > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Edit account modal: inner scroll body needs overlap for blur to show */
+#edit-account-modal .modal-content form {
+  position: relative;
+}
+
+#edit-account-modal .modal-content form > div:first-of-type {
+  padding-bottom: 6rem;
+}
+
+#edit-account-modal .modal-content form .modal-actions {
+  margin-top: -3rem;
+}
+
 /* Sticky Save/Cancel footer for overflowing modals */
 .modal .modal-content .modal-actions {
+  order: 2;
   position: sticky;
-  /* modal-content has 2rem padding; stick to actual bottom edge */
   bottom: -2rem;
   z-index: 5000;
-  background: var(--bg-card);
-  border-top: 1px solid var(--border-color);
-  padding-top: 1.5rem;
+  background: transparent;
+  padding-top: 0.5rem;
   padding-bottom: 2rem;
   padding-left: 2rem;
   padding-right: 2rem;
-  margin-top: 1.5rem;
+  margin-top: 0;
   margin-left: -2rem;
   margin-right: -2rem;
   margin-bottom: 0;
