@@ -8669,6 +8669,36 @@ function showSetDetail(set) {
   renderSetDetailPendingRequests(set);
 }
 
+function isInteractiveSongCardTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      "button, a, input, select, textarea, audio, video, .drag-handle, .assignment-pill, .song-link-display, .badge-relevancy"
+    )
+  );
+}
+
+function attachSongCardDetailsInteraction(card, openDetailsFn) {
+  if (!card || typeof openDetailsFn !== "function") return;
+
+  card.classList.add("song-card-clickable");
+  card.setAttribute("role", "button");
+  card.tabIndex = 0;
+
+  card.addEventListener("click", (e) => {
+    if (isInteractiveSongCardTarget(e.target)) return;
+    openDetailsFn();
+  });
+
+  card.addEventListener("keydown", (e) => {
+    if (isInteractiveSongCardTarget(e.target)) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openDetailsFn();
+    }
+  });
+}
+
 function renderSetDetailSongs(set, animate = false) {
   if (state.justBecameVisible) animate = false;
   const songsList = el("detail-songs-list");
@@ -8877,7 +8907,7 @@ function renderSetDetailSongs(set, animate = false) {
           if (durationLabel) sectionMetaParts.push({ html: true, value: durationLabel.html ? `Length: ${durationLabel.value}` : `Length: ${durationLabel}` });
           safeJoinMeta(songNode.querySelector(".song-meta"), sectionMetaParts);
           songNode.querySelector(".song-notes").textContent = setSong.notes || "";
-          // View Details button will be set up later in the code
+          // Details interaction is wired after the card is fully built
 
           // Display section links if they exist
           const sectionResources = setSong.song_resources || [];
@@ -9220,19 +9250,12 @@ function renderSetDetailSongs(set, animate = false) {
           }
         }
 
-        // Add view details button (for songs, tags, and sections)
-        const viewDetailsBtn = songNode.querySelector(".view-song-details-btn");
-        if (viewDetailsBtn && setSong.song && !isSection) {
-          viewDetailsBtn.dataset.songId = setSong.song.id;
-          viewDetailsBtn.addEventListener("click", () => {
+        if (setSong.song && !isSection) {
+          attachSongCardDetailsInteraction(card, () => {
             openSongDetailsModal(setSong.song, setSong.key || null, setSong);
           });
-        } else if (viewDetailsBtn && isSection) {
-          // Set up section details button
-          viewDetailsBtn.style.display = "";
-          viewDetailsBtn.textContent = "View Details";
-          viewDetailsBtn.dataset.setSongId = setSong.id;
-          viewDetailsBtn.addEventListener("click", () => {
+        } else if (isSection) {
+          attachSongCardDetailsInteraction(card, () => {
             openSectionDetailsModal(setSong);
           });
         }
@@ -15860,7 +15883,6 @@ async function searchSongResources(searchTerm, existingResults) {
             ${matchContextHtml}
           </div>
           <div class="set-song-actions song-card-actions">
-            <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
             ${isManager() ? `
             <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
             <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
@@ -15869,13 +15891,9 @@ async function searchSongResources(searchTerm, existingResults) {
         </div>
       `;
 
-      // Attach event listeners
-      const viewDetailsBtn = div.querySelector(".view-song-details-catalog-btn");
-      if (viewDetailsBtn) {
-        viewDetailsBtn.addEventListener("click", () => {
-          openSongDetailsModal(song);
-        });
-      }
+      attachSongCardDetailsInteraction(div, () => {
+        openSongDetailsModal(song);
+      });
 
       const editBtn = div.querySelector(".edit-song-btn");
       if (editBtn) {
@@ -16068,7 +16086,6 @@ async function searchSongResources(searchTerm, existingResults) {
                   </div>
                 </div>
                 <div class="set-song-actions song-card-actions">
-                  <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
                   ${isManager() ? `
                   <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
                   <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
@@ -16077,13 +16094,9 @@ async function searchSongResources(searchTerm, existingResults) {
               </div>
             `;
 
-            // Attach event listeners
-            const viewDetailsBtn = div.querySelector(".view-song-details-catalog-btn");
-            if (viewDetailsBtn) {
-              viewDetailsBtn.addEventListener("click", () => {
-                openSongDetailsModal(song);
-              });
-            }
+            attachSongCardDetailsInteraction(div, () => {
+              openSongDetailsModal(song);
+            });
 
             const editBtn = div.querySelector(".edit-song-btn");
             if (editBtn) {
@@ -16513,7 +16526,6 @@ async function renderSongCatalog(animate = true) {
           </div>
         </div>
         <div class="set-song-actions song-card-actions">
-          <button class="btn small secondary view-song-details-catalog-btn" data-song-id="${song.id}">View Details</button>
           ${isManager() ? `
           <button class="btn small secondary edit-song-btn" data-song-id="${song.id}">Edit</button>
           <button class="btn small ghost delete-song-btn" data-song-id="${song.id}">Delete</button>
@@ -16522,12 +16534,9 @@ async function renderSongCatalog(animate = true) {
       </div >
   `;
 
-    const viewDetailsBtn = div.querySelector(".view-song-details-catalog-btn");
-    if (viewDetailsBtn) {
-      viewDetailsBtn.addEventListener("click", () => {
-        openSongDetailsModal(song);
-      });
-    }
+    attachSongCardDetailsInteraction(div, () => {
+      openSongDetailsModal(song);
+    });
 
     const relevancyBadge = div.querySelector(".badge-relevancy");
     if (relevancyBadge) {
