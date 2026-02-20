@@ -6519,7 +6519,10 @@ async function openPersonDetailsModal(person) {
   if (nameEl) nameEl.textContent = fullName;
   if (emailEl) {
     if (person.email) {
-      emailEl.innerHTML = `<a href="mailto:${escapeHtml(person.email)}" style="color: inherit; text-decoration: none;">${escapeHtml(person.email)}</a>`;
+      emailEl.innerHTML = renderMailtoWithCopy(person.email, {
+        linkClass: "person-details-email-link"
+      });
+      bindMailtoCopyButtons(emailEl);
       emailEl.style.display = "block";
     } else {
       emailEl.style.display = "none";
@@ -7837,21 +7840,19 @@ function renderPeople(animate = true) {
           ? (searchTermRaw && person.email.toLowerCase().includes(searchTerm)
             ? highlightMatch(person.email, searchTermRaw)
             : escapeHtml(person.email))
-          : null;
+          : "";
+        const emailLinkHtml = person.email
+          ? renderMailtoWithCopy(person.email, {
+            labelHtml: highlightedEmail || escapeHtml(person.email),
+            linkClass: "person-email-link"
+          })
+          : '<span class="muted" style="font-size: 0.9rem;">No email</span>';
 
         div.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: start; width: 100%; gap: 0.5rem;">
             <div style="flex: 1; min-width: 0; overflow: hidden;">
               <h3 class="person-name" style="margin: 0 0 0.5rem 0;">${highlightedName}</h3>
-              ${highlightedEmail ? `
-                <a href="mailto:${escapeHtml(person.email)}" class="person-email-link" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
-                  ${highlightedEmail}
-                </a>
-              ` : person.email ? `
-                <a href="mailto:${escapeHtml(person.email)}" class="person-email-link" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
-                  ${escapeHtml(person.email)}
-                </a>
-              ` : '<span class="muted" style="font-size: 0.9rem;">No email</span>'}
+              ${emailLinkHtml}
               <div style="margin-top: 0.5rem;">
                 ${person.is_owner ? '<span class="person-role" style="background: var(--accent-color); color: var(--bg-primary);">Owner</span>' : person.can_manage ? '<span class="person-role">Manager</span>' : '<span class="person-role">Member</span>'}
               </div>
@@ -7878,6 +7879,8 @@ function renderPeople(animate = true) {
             </div>
           </div>
         `;
+
+        bindMailtoCopyButtons(div);
 
         // Person menu button and handlers
         const menuBtn = div.querySelector(".person-menu-btn");
@@ -22698,6 +22701,51 @@ function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+function renderMailtoWithCopy(email, options = {}) {
+  if (!email) return "";
+
+  const {
+    labelHtml = escapeHtml(email),
+    linkClass = ""
+  } = options;
+
+  const safeEmail = escapeHtml(email);
+  const classes = ["mailto-copy-link", linkClass].filter(Boolean).join(" ");
+
+  return `
+    <span class="mailto-copy-shell">
+      <a href="mailto:${safeEmail}" class="${classes}">${labelHtml}</a>
+      <button type="button" class="mailto-copy-btn" data-email="${safeEmail}" aria-label="Copy email address" title="Copy email address">
+        <i class="fa-regular fa-copy"></i>
+      </button>
+    </span>
+  `;
+}
+
+function bindMailtoCopyButtons(root = document) {
+  if (!root || typeof root.querySelectorAll !== "function") return;
+
+  root.querySelectorAll(".mailto-copy-btn:not([data-copy-bound])").forEach((button) => {
+    button.dataset.copyBound = "1";
+
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const email = button.getAttribute("data-email");
+      if (!email) return;
+
+      try {
+        await navigator.clipboard.writeText(email);
+        toastSuccess("Email copied to clipboard.");
+      } catch (error) {
+        console.error("Error copying email:", error);
+        toastError("Unable to copy email. You can still select and copy it manually.");
+      }
+    });
+  });
 }
 
 

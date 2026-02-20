@@ -1021,6 +1021,90 @@ main {
   white-space: nowrap;
 }
 
+.mailto-copy-shell {
+  --mailto-copy-shift: 1.45rem;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding-left: 0;
+  overflow: hidden;
+  transition: padding-left 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mailto-copy-shell:hover,
+.mailto-copy-shell:focus-within {
+  padding-left: var(--mailto-copy-shift);
+}
+
+.mailto-copy-link {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    color 0.2s ease,
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mailto-copy-shell:hover .mailto-copy-link,
+.mailto-copy-shell:focus-within .mailto-copy-link {
+  transform: translateX(0.12rem);
+}
+
+.mailto-copy-btn {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translate(0.42rem, -50%) scale(0.62);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  will-change: transform, opacity, filter;
+  transition:
+    opacity 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.46s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.2s ease;
+  filter: blur(16px);
+}
+
+.mailto-copy-shell:hover .mailto-copy-btn,
+.mailto-copy-shell:focus-within .mailto-copy-btn {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(0, -50%) scale(1);
+  filter: blur(0px);
+}
+
+.mailto-copy-btn:hover {
+  color: var(--accent-color);
+}
+
+.mailto-copy-btn:focus-visible {
+  outline: 1px solid var(--border-light);
+  outline-offset: 1px;
+  color: var(--accent-color);
+}
+
+.mailto-copy-btn:active {
+  transform: translate(0, -50%) scale(0.93);
+}
+
 .person-email-link {
   color: var(--text-muted);
   text-decoration: none;
@@ -1031,6 +1115,19 @@ main {
 .person-email-link:hover {
   color: var(--accent-color);
   text-decoration: underline;
+}
+
+.person-details-email-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mailto-copy-shell,
+  .mailto-copy-link,
+  .mailto-copy-btn {
+    transition: none;
+  }
 }
 
 .person-email {
@@ -3436,7 +3533,8 @@ i {
 #close-chat-btn i,
 #send-chat-btn i,
 .ai-chat-fab__icon i,
-.chat-change-item-action-btn i {
+.chat-change-item-action-btn i,
+.mailto-copy-btn i {
   margin-right: 0px !important;
 }
 
