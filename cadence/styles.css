@@ -1105,6 +1105,38 @@ main {
   transform: translate(0, -50%) scale(0.93);
 }
 
+.mailto-action-menu {
+  min-width: 220px;
+  max-width: min(280px, calc(100vw - 16px));
+  z-index: 12000;
+}
+
+@media (max-width: 768px) {
+  .mailto-copy-shell {
+    padding-left: 0 !important;
+    transition: none;
+  }
+
+  .mailto-copy-shell:hover,
+  .mailto-copy-shell:focus-within {
+    padding-left: 0;
+  }
+
+  .mailto-copy-shell .mailto-copy-link {
+    transform: none !important;
+    transition: color 0.2s ease;
+  }
+
+  /* Mobile uses the action dropdown instead of hover/copy-icon affordance. */
+  .mailto-copy-shell .mailto-copy-btn {
+    display: none;
+  }
+
+  .mailto-action-menu .header-dropdown-item {
+    padding: 0.85rem 1rem;
+  }
+}
+
 .person-email-link {
   color: var(--text-muted);
   text-decoration: none;

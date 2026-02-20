@@ -22703,6 +22703,9 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+let activeMailtoActionMenu = null;
+let mailtoActionMenuListenersAttached = false;
+
 function renderMailtoWithCopy(email, options = {}) {
   if (!email) return "";
 
@@ -22715,8 +22718,8 @@ function renderMailtoWithCopy(email, options = {}) {
   const classes = ["mailto-copy-link", linkClass].filter(Boolean).join(" ");
 
   return `
-    <span class="mailto-copy-shell">
-      <a href="mailto:${safeEmail}" class="${classes}">${labelHtml}</a>
+    <span class="mailto-copy-shell" data-email="${safeEmail}">
+      <a href="mailto:${safeEmail}" class="${classes}" data-email="${safeEmail}">${labelHtml}</a>
       <button type="button" class="mailto-copy-btn" data-email="${safeEmail}" aria-label="Copy email address" title="Copy email address">
         <i class="fa-regular fa-copy"></i>
       </button>
@@ -22724,26 +22727,164 @@ function renderMailtoWithCopy(email, options = {}) {
   `;
 }
 
+async function copyEmailToClipboard(email) {
+  if (!email) return;
+
+  try {
+    await navigator.clipboard.writeText(email);
+    toastSuccess("Email copied to clipboard.");
+  } catch (error) {
+    console.error("Error copying email:", error);
+    toastError("Unable to copy email. You can still select and copy it manually.");
+  }
+}
+
+function closeMailtoActionMenu(options = {}) {
+  const { immediate = false } = options;
+  if (!activeMailtoActionMenu) return;
+
+  const menu = activeMailtoActionMenu;
+  activeMailtoActionMenu = null;
+
+  if (immediate) {
+    menu.remove();
+    return;
+  }
+
+  menu.classList.add("animate-out");
+  setTimeout(() => {
+    menu.remove();
+  }, 250);
+}
+
+function ensureMailtoActionMenuListeners() {
+  if (mailtoActionMenuListenersAttached) return;
+  mailtoActionMenuListenersAttached = true;
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (target?.closest?.(".mailto-action-menu") || target?.closest?.(".mailto-copy-shell")) {
+      return;
+    }
+    closeMailtoActionMenu();
+  });
+
+  window.addEventListener("scroll", () => closeMailtoActionMenu(), { passive: true });
+  window.addEventListener("resize", () => closeMailtoActionMenu(), { passive: true });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeMailtoActionMenu();
+    }
+  });
+}
+
+function openMobileMailtoActionMenu(email, anchorEl) {
+  if (!email || !anchorEl || !isMobileDevice()) return;
+
+  ensureMailtoActionMenuListeners();
+  closeMailtoActionMenu({ immediate: true });
+
+  const menu = document.createElement("div");
+  menu.className = "header-dropdown-menu mailto-action-menu";
+  menu.innerHTML = `
+    <button type="button" class="header-dropdown-item" data-mailto-action="copy">
+      <i class="fa-solid fa-copy"></i>
+      Copy email address
+    </button>
+    <button type="button" class="header-dropdown-item" data-mailto-action="send">
+      <i class="fa-solid fa-envelope"></i>
+      Send email
+    </button>
+  `;
+
+  document.body.appendChild(menu);
+
+  menu.style.position = "fixed";
+  menu.style.right = "auto";
+  menu.style.left = "0";
+  menu.style.top = "0";
+  menu.style.visibility = "hidden";
+
+  const rect = anchorEl.getBoundingClientRect();
+  const menuWidth = menu.offsetWidth || 220;
+  const menuHeight = menu.offsetHeight || 0;
+
+  let left = rect.left + (rect.width / 2) - (menuWidth / 2);
+  left = Math.min(Math.max(8, left), window.innerWidth - menuWidth - 8);
+
+  let top = rect.bottom + 8;
+  if (top + menuHeight > window.innerHeight - 8) {
+    top = rect.top - menuHeight - 8;
+  }
+  top = Math.max(8, top);
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  menu.style.visibility = "";
+
+  const copyBtn = menu.querySelector("[data-mailto-action=\"copy\"]");
+  copyBtn?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeMailtoActionMenu();
+    await copyEmailToClipboard(email);
+  });
+
+  const sendBtn = menu.querySelector("[data-mailto-action=\"send\"]");
+  sendBtn?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeMailtoActionMenu();
+    window.location.href = `mailto:${encodeURIComponent(email)}`;
+  });
+
+  activeMailtoActionMenu = menu;
+}
+
 function bindMailtoCopyButtons(root = document) {
   if (!root || typeof root.querySelectorAll !== "function") return;
 
-  root.querySelectorAll(".mailto-copy-btn:not([data-copy-bound])").forEach((button) => {
-    button.dataset.copyBound = "1";
+  root.querySelectorAll(".mailto-copy-shell:not([data-mailto-bound])").forEach((shell) => {
+    shell.dataset.mailtoBound = "1";
 
-    button.addEventListener("click", async (event) => {
+    const link = shell.querySelector(".mailto-copy-link");
+    const button = shell.querySelector(".mailto-copy-btn");
+
+    const getEmail = () => {
+      return (
+        shell.getAttribute("data-email") ||
+        link?.getAttribute("data-email") ||
+        button?.getAttribute("data-email") ||
+        ""
+      );
+    };
+
+    link?.addEventListener("click", (event) => {
+      if (!isMobileDevice()) {
+        closeMailtoActionMenu({ immediate: true });
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      const email = getEmail();
+      if (!email) return;
+      openMobileMailtoActionMenu(email, shell);
+    });
+
+    button?.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
 
-      const email = button.getAttribute("data-email");
+      const email = getEmail();
       if (!email) return;
 
-      try {
-        await navigator.clipboard.writeText(email);
-        toastSuccess("Email copied to clipboard.");
-      } catch (error) {
-        console.error("Error copying email:", error);
-        toastError("Unable to copy email. You can still select and copy it manually.");
+      if (isMobileDevice()) {
+        openMobileMailtoActionMenu(email, shell);
+        return;
       }
+
+      await copyEmailToClipboard(email);
     });
   });
 }
