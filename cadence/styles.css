@@ -1463,6 +1463,10 @@ main {
   perspective: 1200px;
 }
 
+.set-add-song-cover-stack.is-entry-pending {
+  pointer-events: none;
+}
+
 .set-add-song-cover-stack::before {
   content: "";
   position: absolute;
@@ -1503,17 +1507,18 @@ main {
   cursor: pointer;
   transform-origin: 50% 96%;
   will-change: transform;
-  transition: transform 0.5s cubic-bezier(0.2, 0.98, 0.3, 1), filter 0.38s ease;
+  transition: transform 0.5s cubic-bezier(0.2, 0.98, 0.3, 1), filter 0.38s ease, opacity 0.34s ease;
+  opacity: 1;
   transform:
     translate3d(
       calc(-50% + var(--cover-base-x, 0px) + var(--cover-drift-x, 0px)),
-      calc(var(--cover-base-y, 0px) + var(--cover-drift-y, 0px)),
+      calc(var(--cover-base-y, 0px) + var(--cover-drift-y, 0px) + var(--cover-entry-y, 0px)),
       0
     )
     rotate(var(--cover-base-rot, 0deg))
     rotateX(var(--cover-tilt-x, 0deg))
     rotateY(var(--cover-tilt-y, 0deg))
-    scale(var(--cover-hover-scale, 1));
+    scale(calc(var(--cover-hover-scale, 1) * var(--cover-entry-scale, 1)));
 }
 
 .set-add-song-cover.song-album-art-container::before,
@@ -1559,6 +1564,15 @@ main {
 
 .set-add-song-cover.has-image .set-add-song-cover-fallback {
   opacity: 0;
+}
+
+.set-add-song-cover.is-cleared .set-add-song-cover-image.song-album-art,
+.set-add-song-cover.is-cleared .set-add-song-cover-fallback {
+  opacity: 0 !important;
+}
+
+.set-add-song-cover.is-cleared {
+  opacity: 0 !important;
 }
 
 .set-add-song-cover-stack.is-hovering .set-add-song-cover {

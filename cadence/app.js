@@ -8411,6 +8411,22 @@ function updateAiChatFab(set) {
 }
 
 function showSetDetail(set) {
+  const previousSetId = state.selectedSet?.id ? String(state.selectedSet.id) : "";
+  const detailView = el("set-detail");
+  const wasDetailVisible = Boolean(detailView && !detailView.classList.contains("hidden"));
+  const nextSetId = set?.id ? String(set.id) : "";
+  const isSameSetRefresh = Boolean(wasDetailVisible && previousSetId && previousSetId === nextSetId);
+  if (!isSameSetRefresh && nextSetId) {
+    const nextCoverEntryRequestId = (Number(state._setDetailCoverEntryRequestId) || 0) + 1;
+    state._setDetailCoverEntryRequestId = nextCoverEntryRequestId;
+    state._pendingSetDetailCoverEntry = {
+      setId: nextSetId,
+      requestId: nextCoverEntryRequestId,
+      requestedAt: Date.now(),
+      consumed: false
+    };
+  }
+
   // User-initiated: always allow ripple for set detail content
   state.justBecameVisible = false;
   if (state._justBecameVisibleTimeout) {
@@ -8426,7 +8442,6 @@ function showSetDetail(set) {
     localStorage.setItem('cadence-selected-set-id', set.id.toString());
   }
   const dashboard = el("dashboard");
-  const detailView = el("set-detail");
 
   dashboard.classList.add("hidden");
   detailView.classList.remove("hidden");
@@ -8662,8 +8677,8 @@ function showSetDetail(set) {
     switchSetDetailTab("songs");
   }
 
-  // Render songs (animate: user just opened set detail)
-  renderSetDetailSongs(set, true);
+  // Render songs with entry animation only on actual set-open (not same-set refreshes).
+  renderSetDetailSongs(set, !isSameSetRefresh);
 
   // Check for and render pending requests (assignments) for this set
   renderSetDetailPendingRequests(set);
@@ -8811,6 +8826,13 @@ function setupSetDetailAddSongCoverInteraction(addSongHalf, coverStack) {
   let targetBiasY = 0;
   let currentBiasX = 0;
   let currentBiasY = 0;
+  const interactionBoundAt = Date.now();
+  const interactionWarmupMs = 420;
+  const pointerMoveActivationDelta = 1.6;
+  let hasPrimedPointerMove = false;
+  let hasInteractionArmed = false;
+  let lastPointerX = null;
+  let lastPointerY = null;
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -8907,6 +8929,7 @@ function setupSetDetailAddSongCoverInteraction(addSongHalf, coverStack) {
   };
 
   const setActiveFromEvent = (event) => {
+    if (coverStack.classList.contains("is-entry-pending")) return false;
     const activeCover = event.target?.closest?.(".set-add-song-cover");
     if (!activeCover || !coverStack.contains(activeCover)) return false;
 
@@ -8923,7 +8946,37 @@ function setupSetDetailAddSongCoverInteraction(addSongHalf, coverStack) {
     return true;
   };
 
+  coverStack.addEventListener("pointerenter", (event) => {
+    hasPrimedPointerMove = false;
+    lastPointerX = event.clientX;
+    lastPointerY = event.clientY;
+  });
+
   coverStack.addEventListener("pointermove", (event) => {
+    if (coverStack.classList.contains("is-entry-pending")) return;
+    if ((Date.now() - interactionBoundAt) < interactionWarmupMs) return;
+    const activeCover = event.target?.closest?.(".set-add-song-cover");
+    const isOverCover = Boolean(activeCover && coverStack.contains(activeCover));
+
+    if (!hasPrimedPointerMove) {
+      hasPrimedPointerMove = true;
+      lastPointerX = event.clientX;
+      lastPointerY = event.clientY;
+      return;
+    }
+
+    const deltaX = lastPointerX === null ? 0 : (event.clientX - lastPointerX);
+    const deltaY = lastPointerY === null ? 0 : (event.clientY - lastPointerY);
+    const pointerDelta = Math.hypot(deltaX, deltaY);
+    lastPointerX = event.clientX;
+    lastPointerY = event.clientY;
+    if (!hasInteractionArmed) {
+      if (!isOverCover || pointerDelta < pointerMoveActivationDelta) return;
+      hasInteractionArmed = true;
+    }
+
+    if (!isOverCover && targetActiveIndex < 0) return;
+
     if (!setActiveFromEvent(event)) {
       scheduleSoftReset();
       return;
@@ -8933,11 +8986,19 @@ function setupSetDetailAddSongCoverInteraction(addSongHalf, coverStack) {
 
   coverStack.addEventListener("pointerleave", () => {
     clearResetTimer();
+    hasPrimedPointerMove = false;
+    hasInteractionArmed = false;
+    lastPointerX = null;
+    lastPointerY = null;
     resetInteraction();
   });
 
   coverStack.addEventListener("pointercancel", () => {
     clearResetTimer();
+    hasPrimedPointerMove = false;
+    hasInteractionArmed = false;
+    lastPointerX = null;
+    lastPointerY = null;
     resetInteraction();
   });
 }
@@ -8954,44 +9015,95 @@ async function hydrateSetDetailAddSongCoverStack(coverStack, songs, renderToken)
       const song = songsById.get(String(songId));
       if (!song) return;
 
+      const imgEl = coverNode.querySelector(".set-add-song-cover-image");
+      if (!imgEl) return;
+
+      // Always clear visual state first to avoid showing stale art before this cover resolves.
+      coverNode.classList.remove("has-image");
+      coverNode.classList.add("is-cleared");
+      imgEl.removeAttribute("src");
+
       try {
         const albumArt = await getAlbumArt(song, song.title || "", { disableItunesFallback: true });
-        if (!albumArt?.small) return;
         if (coverStack.dataset.coverToken !== renderToken || !coverNode.isConnected) return;
-
-        const imgEl = coverNode.querySelector(".set-add-song-cover-image");
-        if (!imgEl) return;
+        if (!albumArt?.small) {
+          coverNode.classList.remove("has-image");
+          return;
+        }
 
         imgEl.crossOrigin = "anonymous";
         imgEl.referrerPolicy = "no-referrer-when-downgrade";
-        imgEl.addEventListener(
-          "load",
-          () => {
+        await new Promise((resolve) => {
+          let settled = false;
+          let imageReadyTimeoutId = null;
+          let onLoad = null;
+          let onError = null;
+          let didLoad = false;
+
+          const settle = () => {
+            if (settled) return;
+            settled = true;
+            if (imageReadyTimeoutId) {
+              window.clearTimeout(imageReadyTimeoutId);
+              imageReadyTimeoutId = null;
+            }
+            if (onLoad) imgEl.removeEventListener("load", onLoad);
+            if (onError) imgEl.removeEventListener("error", onError);
+            resolve();
+          };
+
+          const applyResolvedState = () => {
             if (coverStack.dataset.coverToken !== renderToken || !coverNode.isConnected) return;
-            coverNode.classList.add("has-image");
-          },
-          { once: true }
-        );
-        imgEl.addEventListener(
-          "error",
-          () => {
-            if (coverNode.isConnected) coverNode.classList.remove("has-image");
-          },
-          { once: true }
-        );
-        imgEl.src = albumArt.small;
+            if (didLoad) {
+              coverNode.classList.add("has-image");
+            } else {
+              coverNode.classList.remove("has-image");
+            }
+          };
+
+          onLoad = () => {
+            didLoad = imgEl.naturalWidth > 0;
+            applyResolvedState();
+            settle();
+          };
+
+          onError = () => {
+            didLoad = false;
+            applyResolvedState();
+            settle();
+          };
+
+          imgEl.addEventListener("load", onLoad);
+          imgEl.addEventListener("error", onError);
+          imageReadyTimeoutId = window.setTimeout(() => {
+            didLoad = false;
+            applyResolvedState();
+            settle();
+          }, 2600);
+          imgEl.src = albumArt.small;
+
+          if (imgEl.complete) {
+            didLoad = imgEl.naturalWidth > 0;
+            applyResolvedState();
+            settle();
+          }
+        });
       } catch (error) {
+        if (coverStack.dataset.coverToken === renderToken && coverNode.isConnected) {
+          coverNode.classList.remove("has-image");
+        }
         console.warn("Failed to load set detail cover stack art:", error);
       }
     })
   );
 }
 
-function renderSetDetailAddSongCoverStack(addSongHalf, songs) {
+function renderSetDetailAddSongCoverStack(addSongHalf, songs, animateEntry = true, entryRequestId = "") {
   const coverStack = addSongHalf?.querySelector(".set-add-song-cover-stack");
   if (!coverStack || !Array.isArray(songs) || songs.length < 2) return;
 
   const renderToken = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const selectedSetId = state.selectedSet?.id ? String(state.selectedSet.id) : "";
   coverStack.dataset.coverToken = renderToken;
   coverStack.innerHTML = "";
 
@@ -8999,6 +9111,11 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs) {
     if (coverStack.dataset.coverToken !== renderToken || !coverStack.isConnected) return;
 
     const isMobileViewport = Boolean(window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
+    const shouldAnimateEntry = Boolean(animateEntry) && !shouldReduceMotion();
+    const entryInitialLift = isMobileViewport ? 20 : 24;
+    const entryInitialScale = 0.88;
+    const entryStaggerMs = isMobileViewport ? 70 : 82;
+    const entryDurationMs = 560;
     const stackWidth = Math.max(coverStack.clientWidth, 220);
     const spread = (() => {
       if (isMobileViewport && songs.length <= 3) {
@@ -9014,11 +9131,21 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs) {
     const centerIndex = (songs.length - 1) / 2;
     const jitterRangeX = isMobileViewport ? 6 : 10;
     const jitterRangeY = isMobileViewport ? 1 : 2;
+    coverStack.classList.toggle("is-entry-pending", shouldAnimateEntry);
+    if (shouldAnimateEntry) {
+      state._setDetailCoverEntry = {
+        token: renderToken,
+        setId: selectedSetId,
+        requestId: entryRequestId || null,
+        startedAt: Date.now()
+      };
+    }
 
     songs.forEach((song, index) => {
       const cover = document.createElement("div");
       cover.className = "set-add-song-cover song-album-art-container";
       cover.dataset.songId = String(song.id);
+      cover.classList.add("is-cleared");
 
       const jitterX = Math.floor(Math.random() * ((jitterRangeX * 2) + 1)) - jitterRangeX;
       const jitterY = Math.floor(Math.random() * ((jitterRangeY * 2) + 1)) - jitterRangeY;
@@ -9042,6 +9169,17 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs) {
       cover.dataset.coverIndex = String(index);
       cover.dataset.baseZ = String(zOrder[index] || (index + 1));
       cover.style.zIndex = String(zOrder[index] || (index + 1));
+      if (shouldAnimateEntry) {
+        cover.style.setProperty("--cover-entry-y", `${entryInitialLift}px`);
+        cover.style.setProperty("--cover-entry-scale", `${entryInitialScale}`);
+        cover.style.opacity = "0";
+        cover.style.transitionDelay = `${index * entryStaggerMs}ms`;
+      } else {
+        cover.style.removeProperty("transition-delay");
+        cover.style.setProperty("--cover-entry-y", "0px");
+        cover.style.setProperty("--cover-entry-scale", "1");
+        cover.style.opacity = "1";
+      }
 
       const fallback = document.createElement("div");
       fallback.className = "set-add-song-cover-fallback";
@@ -9058,12 +9196,130 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs) {
       coverStack.appendChild(cover);
     });
 
-    setupSetDetailAddSongCoverInteraction(addSongHalf, coverStack);
-    void hydrateSetDetailAddSongCoverStack(coverStack, songs, renderToken);
+    const coverHydrationPromise = hydrateSetDetailAddSongCoverStack(coverStack, songs, renderToken);
+    let interactionBound = false;
+    const bindCoverInteraction = () => {
+      if (interactionBound) return;
+      interactionBound = true;
+      setupSetDetailAddSongCoverInteraction(addSongHalf, coverStack);
+    };
+
+    if (shouldAnimateEntry) {
+      const revealCovers = Array.from(coverStack.querySelectorAll(".set-add-song-cover"));
+      const entryStartDelayMs = 150;
+      const maxWaitForCoverLoadMs = 2800;
+      const coverLoadBarrierPromise = Promise.race([
+        coverHydrationPromise.catch(() => undefined),
+        new Promise((resolve) => window.setTimeout(resolve, maxWaitForCoverLoadMs))
+      ]);
+
+      const canAnimateEntry = () =>
+        coverStack.dataset.coverToken === renderToken && coverStack.isConnected;
+      const clearEntryState = () => {
+        const activeEntry = state._setDetailCoverEntry;
+        if (activeEntry?.token === renderToken) {
+          state._setDetailCoverEntry = null;
+        }
+        coverStack.classList.remove("is-entry-pending");
+        window.setTimeout(bindCoverInteraction, 90);
+      };
+
+      const revealEntry = () => {
+        if (!canAnimateEntry()) return;
+        // Ensure initial entry state is committed before we transition to final positions.
+        coverStack.getBoundingClientRect();
+        requestAnimationFrame(() => {
+          if (!canAnimateEntry()) return;
+          revealCovers.forEach((cover) => {
+            if (!cover.isConnected) return;
+            cover.classList.remove("is-cleared");
+            cover.style.setProperty("--cover-entry-y", "0px");
+            cover.style.setProperty("--cover-entry-scale", "1");
+            cover.style.opacity = "1";
+          });
+        });
+        const settleDelay = entryDurationMs + (Math.max(0, revealCovers.length - 1) * entryStaggerMs) + 70;
+        window.setTimeout(() => {
+          if (!canAnimateEntry()) return;
+          revealCovers.forEach((cover) => {
+            if (cover.isConnected) cover.style.transitionDelay = "0ms";
+          });
+          clearEntryState();
+        }, settleDelay);
+      };
+
+      coverLoadBarrierPromise.then(() => {
+        if (!canAnimateEntry()) return;
+        window.setTimeout(revealEntry, entryStartDelayMs);
+      });
+    }
+
+    if (!shouldAnimateEntry) {
+      void coverHydrationPromise.then(() => {
+        if (coverStack.dataset.coverToken !== renderToken || !coverStack.isConnected) return;
+        const covers = Array.from(coverStack.querySelectorAll(".set-add-song-cover"));
+        covers.forEach((cover) => {
+          cover.classList.remove("is-cleared");
+          cover.style.transitionDelay = "0ms";
+          cover.style.setProperty("--cover-entry-y", "0px");
+          cover.style.setProperty("--cover-entry-scale", "1");
+          cover.style.opacity = "1";
+        });
+        coverStack.classList.remove("is-entry-pending");
+        bindCoverInteraction();
+      });
+    }
   });
 }
 
 function renderSetDetailSongs(set, animate = false) {
+  const setId = set?.id ? String(set.id) : "";
+  const pendingCoverEntry = state._pendingSetDetailCoverEntry;
+  const hasPendingCoverEntry = Boolean(
+    pendingCoverEntry?.setId === setId &&
+    pendingCoverEntry?.consumed !== true
+  );
+  const pendingCoverEntryRequestId = hasPendingCoverEntry
+    ? String(
+      pendingCoverEntry.requestId ||
+      pendingCoverEntry.requestedAt ||
+      `legacy-${setId || "set"}`
+    )
+    : "";
+  const shouldAnimateCoverEntry = hasPendingCoverEntry;
+  const activeCoverEntry = state._setDetailCoverEntry;
+  const activeCoverEntryRequestId = String(activeCoverEntry?.requestId || "");
+  const hasActiveCoverEntryLock = Boolean(activeCoverEntry?.setId && activeCoverEntry.setId === setId);
+  const coverEntryGuardMs = 5200;
+  if (shouldAnimateCoverEntry && !animate && hasActiveCoverEntryLock && activeCoverEntryRequestId === pendingCoverEntryRequestId) {
+    const elapsed = Date.now() - (activeCoverEntry.startedAt || 0);
+    // Keep passive refreshes from rebuilding while an open-triggered cover entry is in-flight.
+    if (elapsed < coverEntryGuardMs) {
+      return;
+    }
+  }
+  if (!shouldAnimateCoverEntry && !animate && activeCoverEntry?.setId && activeCoverEntry.setId === setId) {
+    const elapsed = Date.now() - (activeCoverEntry.startedAt || 0);
+    // Avoid tearing down/rebuilding the stack while the cover entry animation is still running.
+    if (elapsed < coverEntryGuardMs) {
+      return;
+    }
+  }
+  if (shouldAnimateCoverEntry) {
+    const samePendingLock =
+      activeCoverEntry?.setId === setId &&
+      activeCoverEntryRequestId === pendingCoverEntryRequestId;
+    if (!samePendingLock) {
+      state._setDetailCoverEntry = {
+        token: activeCoverEntry?.token || `pending-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        setId,
+        requestId: pendingCoverEntryRequestId,
+        startedAt: Date.now()
+      };
+    } else if (!activeCoverEntry?.startedAt) {
+      activeCoverEntry.startedAt = Date.now();
+    }
+  }
   if (state.justBecameVisible) animate = false;
   const songsList = el("detail-songs-list");
   songsList.innerHTML = "";
@@ -9634,6 +9890,7 @@ function renderSetDetailSongs(set, animate = false) {
   }
 
   // Add "Add Song/Section" card at the end for managers
+  let didRenderCoverStack = false;
   if (isManager()) {
     const songCatalogSongs = Array.isArray(state.songs)
       ? state.songs.filter((song) => song?.id)
@@ -9679,10 +9936,33 @@ function renderSetDetailSongs(set, animate = false) {
     songsList.appendChild(addCard);
     if (showAddSongCoverStack) {
       const addSongHalf = addCard.querySelector(".add-song-half");
-      renderSetDetailAddSongCoverStack(addSongHalf, addSongCoverSongs);
+      const shouldAnimateCoverStackNow = shouldAnimateCoverEntry && Boolean(pendingCoverEntryRequestId);
+      if (shouldAnimateCoverStackNow && state._pendingSetDetailCoverEntry?.setId === setId) {
+        state._pendingSetDetailCoverEntry.consumed = true;
+      }
+      renderSetDetailAddSongCoverStack(
+        addSongHalf,
+        addSongCoverSongs,
+        shouldAnimateCoverStackNow,
+        pendingCoverEntryRequestId
+      );
+      didRenderCoverStack = true;
+      if (shouldAnimateCoverStackNow && state._pendingSetDetailCoverEntry?.setId === setId && state._pendingSetDetailCoverEntry?.consumed) {
+        state._pendingSetDetailCoverEntry = null;
+      }
     }
   } else if (!set.set_songs?.length) {
     songsList.innerHTML = '<p class="muted">No songs or sections added to this set yet.</p>';
+  }
+
+  if (shouldAnimateCoverEntry && !didRenderCoverStack) {
+    const currentCoverEntry = state._setDetailCoverEntry;
+    if (currentCoverEntry?.setId === setId) {
+      state._setDetailCoverEntry = null;
+    }
+    if (!state.isLoadingSongs && state._pendingSetDetailCoverEntry?.setId === setId) {
+      state._pendingSetDetailCoverEntry = null;
+    }
   }
 
   updateServiceLengthDisplay(set);
@@ -9711,6 +9991,8 @@ function hideSetDetail() {
   dashboard.classList.remove("hidden");
   detailView.classList.add("hidden");
   state.selectedSet = null;
+  state._pendingSetDetailCoverEntry = null;
+  state._setDetailCoverEntry = null;
   // Clear saved set ID from localStorage
   localStorage.removeItem('cadence-selected-set-id');
 
