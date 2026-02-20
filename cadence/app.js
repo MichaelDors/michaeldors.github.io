@@ -8699,6 +8699,358 @@ function attachSongCardDetailsInteraction(card, openDetailsFn) {
   });
 }
 
+function pickRandomItems(items, count) {
+  const pool = Array.isArray(items) ? items.slice() : [];
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, Math.min(count, pool.length));
+}
+
+function normalizeSetDetailCoverKey(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      return `${parsed.origin}${parsed.pathname}`.toLowerCase();
+    } catch (_) {
+      return raw.toLowerCase();
+    }
+  }
+  return raw.toLowerCase();
+}
+
+function getSetDetailSongCoverKey(song) {
+  const overridePath = normalizeSetDetailCoverKey(song?.album_art_override_path);
+  if (overridePath) return `override:${overridePath}`;
+
+  const smallUrl = normalizeSetDetailCoverKey(song?.album_art_small_url);
+  if (smallUrl) return `small:${smallUrl}`;
+
+  const largeUrl = normalizeSetDetailCoverKey(song?.album_art_large_url);
+  if (largeUrl) return `large:${largeUrl}`;
+
+  return "";
+}
+
+function getSetDetailAddSongCoverSongs(allSongs) {
+  const songs = Array.isArray(allSongs) ? allSongs.filter((song) => song?.id) : [];
+  if (songs.length < 5) return [];
+
+  const songsWithKnownCover = songs.filter((song) => Boolean(getSetDetailSongCoverKey(song)));
+  const songsWithoutKnownCover = songs.filter((song) => !getSetDetailSongCoverKey(song));
+
+  const selectedSongs = [];
+  const selectedSongIds = new Set();
+  const usedCoverKeys = new Set();
+
+  const shuffledKnownCovers = pickRandomItems(songsWithKnownCover, songsWithKnownCover.length);
+  const shuffledUnknownCovers = pickRandomItems(songsWithoutKnownCover, songsWithoutKnownCover.length);
+
+  for (const song of shuffledKnownCovers) {
+    const coverKey = getSetDetailSongCoverKey(song);
+    if (!coverKey || usedCoverKeys.has(coverKey)) continue;
+    selectedSongs.push(song);
+    selectedSongIds.add(String(song.id));
+    usedCoverKeys.add(coverKey);
+    if (selectedSongs.length === 5) return selectedSongs;
+  }
+
+  for (const song of shuffledUnknownCovers) {
+    const songId = String(song.id);
+    if (selectedSongIds.has(songId)) continue;
+    selectedSongs.push(song);
+    selectedSongIds.add(songId);
+    if (selectedSongs.length === 5) return selectedSongs;
+  }
+
+  // Only allow duplicate cover art after we run out of unique-cover options.
+  for (const song of shuffledKnownCovers) {
+    const songId = String(song.id);
+    if (selectedSongIds.has(songId)) continue;
+    selectedSongs.push(song);
+    selectedSongIds.add(songId);
+    if (selectedSongs.length === 5) return selectedSongs;
+  }
+
+  const shuffledAllSongs = pickRandomItems(songs, songs.length);
+  for (const song of shuffledAllSongs) {
+    const songId = String(song.id);
+    if (selectedSongIds.has(songId)) continue;
+    selectedSongs.push(song);
+    selectedSongIds.add(songId);
+    if (selectedSongs.length === 5) break;
+  }
+
+  return selectedSongs.slice(0, 5);
+}
+
+function getSetDetailCoverFallbackInitial(songTitle) {
+  const safeTitle = String(songTitle || "").trim();
+  const match = safeTitle.match(/[A-Za-z0-9]/);
+  return match ? match[0].toUpperCase() : "?";
+}
+
+function setupSetDetailAddSongCoverInteraction(addSongHalf, coverStack) {
+  if (!addSongHalf || !coverStack) return;
+  if (!(window.matchMedia && window.matchMedia("(hover: hover)").matches) || shouldReduceMotion()) return;
+  if (coverStack.dataset.coverStackInteractionBound === "1") return;
+  coverStack.dataset.coverStackInteractionBound = "1";
+
+  const covers = Array.from(coverStack.querySelectorAll(".set-add-song-cover"));
+  if (!covers.length) return;
+
+  let rafId = null;
+  let resetTimer = null;
+  let targetActiveIndex = -1;
+  let currentActiveIndex = -1;
+  let targetBiasX = 0;
+  let targetBiasY = 0;
+  let currentBiasX = 0;
+  let currentBiasY = 0;
+
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+  const clearResetTimer = () => {
+    if (!resetTimer) return;
+    clearTimeout(resetTimer);
+    resetTimer = null;
+  };
+
+  const applyTransforms = () => {
+    const isActive = currentActiveIndex > -0.15;
+
+    covers.forEach((cover) => {
+      const baseZ = cover.dataset.baseZ || "1";
+      cover.style.zIndex = baseZ;
+      if (!isActive) {
+        cover.style.setProperty("--cover-drift-x", "0px");
+        cover.style.setProperty("--cover-drift-y", "0px");
+        cover.style.setProperty("--cover-tilt-x", "0deg");
+        cover.style.setProperty("--cover-tilt-y", "0deg");
+        cover.style.setProperty("--cover-hover-scale", "1");
+        return;
+      }
+
+      const coverIndex = Number(cover.dataset.coverIndex || "0");
+      const distance = coverIndex - currentActiveIndex;
+      const absDistance = Math.abs(distance);
+      const primary = clamp(1 - absDistance, 0, 1);
+      const secondary = clamp(1 - (absDistance / 2.6), 0, 1);
+      const direction = distance === 0 ? 0 : (distance > 0 ? 1 : -1);
+
+      const fanSpread = direction * 5.2 * secondary;
+      const fanLift = -1.6 * secondary;
+      const fanTilt = direction * 0.8 * secondary;
+
+      const peekDirection = targetBiasX >= 0 ? 1 : -1;
+      const activeShiftX = (peekDirection * 4.2 + currentBiasX * 2.4) * primary;
+      const activeShiftY = (-7.2 + currentBiasY * 0.9) * primary;
+
+      const driftX = fanSpread + activeShiftX;
+      const driftY = fanLift + activeShiftY;
+      const tiltX = (-2.3 * currentBiasY) * primary;
+      const tiltY = fanTilt + (4.1 * currentBiasX * primary);
+      const hoverScale = 1 + (0.026 * primary);
+
+      cover.style.setProperty("--cover-drift-x", `${driftX.toFixed(2)}px`);
+      cover.style.setProperty("--cover-drift-y", `${driftY.toFixed(2)}px`);
+      cover.style.setProperty("--cover-tilt-x", `${tiltX.toFixed(2)}deg`);
+      cover.style.setProperty("--cover-tilt-y", `${tiltY.toFixed(2)}deg`);
+      cover.style.setProperty("--cover-hover-scale", hoverScale.toFixed(3));
+    });
+
+    coverStack.classList.toggle("is-hovering", isActive);
+  };
+
+  const stepAnimation = () => {
+    rafId = null;
+
+    const activeEase = targetActiveIndex < 0 ? 0.16 : 0.24;
+    currentActiveIndex += (targetActiveIndex - currentActiveIndex) * activeEase;
+    currentBiasX += (targetBiasX - currentBiasX) * 0.2;
+    currentBiasY += (targetBiasY - currentBiasY) * 0.2;
+
+    applyTransforms();
+
+    const stillEasing =
+      Math.abs(targetActiveIndex - currentActiveIndex) > 0.01 ||
+      Math.abs(targetBiasX - currentBiasX) > 0.01 ||
+      Math.abs(targetBiasY - currentBiasY) > 0.01;
+    const shouldKeepRunning = targetActiveIndex >= 0 || stillEasing;
+    if (shouldKeepRunning) {
+      rafId = requestAnimationFrame(stepAnimation);
+    }
+  };
+
+  const ensureAnimationLoop = () => {
+    if (rafId) return;
+    rafId = requestAnimationFrame(stepAnimation);
+  };
+
+  const resetInteraction = () => {
+    targetActiveIndex = -1;
+    targetBiasX = 0;
+    targetBiasY = 0;
+    ensureAnimationLoop();
+  };
+
+  const scheduleSoftReset = () => {
+    if (resetTimer) return;
+    resetTimer = setTimeout(() => {
+      resetTimer = null;
+      resetInteraction();
+    }, 70);
+  };
+
+  const setActiveFromEvent = (event) => {
+    const activeCover = event.target?.closest?.(".set-add-song-cover");
+    if (!activeCover || !coverStack.contains(activeCover)) return false;
+
+    const nextIndex = covers.indexOf(activeCover);
+    if (nextIndex < 0) return false;
+    clearResetTimer();
+    targetActiveIndex = nextIndex;
+
+    const activeRect = activeCover.getBoundingClientRect();
+    if (!activeRect.width || !activeRect.height) return false;
+
+    targetBiasX = Math.max(-1, Math.min(1, ((event.clientX - activeRect.left) / activeRect.width) * 2 - 1));
+    targetBiasY = Math.max(-1, Math.min(1, ((event.clientY - activeRect.top) / activeRect.height) * 2 - 1));
+    return true;
+  };
+
+  coverStack.addEventListener("pointermove", (event) => {
+    if (!setActiveFromEvent(event)) {
+      scheduleSoftReset();
+      return;
+    }
+    ensureAnimationLoop();
+  });
+
+  coverStack.addEventListener("pointerleave", () => {
+    clearResetTimer();
+    resetInteraction();
+  });
+
+  coverStack.addEventListener("pointercancel", () => {
+    clearResetTimer();
+    resetInteraction();
+  });
+}
+
+async function hydrateSetDetailAddSongCoverStack(coverStack, songs, renderToken) {
+  if (!coverStack || !Array.isArray(songs)) return;
+
+  const songsById = new Map(songs.map((song) => [String(song.id), song]));
+  const coverNodes = Array.from(coverStack.querySelectorAll(".set-add-song-cover"));
+
+  await Promise.all(
+    coverNodes.map(async (coverNode) => {
+      const songId = coverNode.dataset.songId;
+      const song = songsById.get(String(songId));
+      if (!song) return;
+
+      try {
+        const albumArt = await getAlbumArt(song, song.title || "", { disableItunesFallback: true });
+        if (!albumArt?.small) return;
+        if (coverStack.dataset.coverToken !== renderToken || !coverNode.isConnected) return;
+
+        const imgEl = coverNode.querySelector(".set-add-song-cover-image");
+        if (!imgEl) return;
+
+        imgEl.crossOrigin = "anonymous";
+        imgEl.referrerPolicy = "no-referrer-when-downgrade";
+        imgEl.addEventListener(
+          "load",
+          () => {
+            if (coverStack.dataset.coverToken !== renderToken || !coverNode.isConnected) return;
+            coverNode.classList.add("has-image");
+          },
+          { once: true }
+        );
+        imgEl.addEventListener(
+          "error",
+          () => {
+            if (coverNode.isConnected) coverNode.classList.remove("has-image");
+          },
+          { once: true }
+        );
+        imgEl.src = albumArt.small;
+      } catch (error) {
+        console.warn("Failed to load set detail cover stack art:", error);
+      }
+    })
+  );
+}
+
+function renderSetDetailAddSongCoverStack(addSongHalf, songs) {
+  const coverStack = addSongHalf?.querySelector(".set-add-song-cover-stack");
+  if (!coverStack || !Array.isArray(songs) || songs.length !== 5) return;
+
+  const renderToken = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  coverStack.dataset.coverToken = renderToken;
+  coverStack.innerHTML = "";
+
+  requestAnimationFrame(() => {
+    if (coverStack.dataset.coverToken !== renderToken || !coverStack.isConnected) return;
+
+    const stackWidth = Math.max(coverStack.clientWidth, 220);
+    const spread = Math.max(74, Math.min(126, stackWidth * 0.3));
+    const step = (spread * 2) / (songs.length - 1);
+    const zOrder = pickRandomItems([11, 12, 13, 14, 15], songs.length);
+    const centerIndex = (songs.length - 1) / 2;
+
+    songs.forEach((song, index) => {
+      const cover = document.createElement("div");
+      cover.className = "set-add-song-cover song-album-art-container";
+      cover.dataset.songId = String(song.id);
+
+      const jitterX = Math.floor(Math.random() * 21) - 10;
+      const jitterY = Math.floor(Math.random() * 5) - 2;
+      const baseX = -spread + (step * index) + jitterX;
+      const distanceFromCenter = Math.abs(index - centerIndex);
+      const edgeFactor = centerIndex > 0 ? (distanceFromCenter / centerIndex) : 0;
+      // Fan profile: keep middle covers a bit lower and lift outer covers into available space.
+      const verticalProfile = 2 - (edgeFactor * 10);
+      const baseY = verticalProfile + jitterY;
+      const baseRotation = Math.floor(Math.random() * 36) - 18;
+
+      const seedHash = Math.abs(stringToHash(`${song.id}:${song.title || ""}`));
+      const hueA = seedHash % 360;
+      const hueB = (hueA + 48 + (seedHash % 80)) % 360;
+
+      cover.style.setProperty("--cover-base-x", `${baseX.toFixed(1)}px`);
+      cover.style.setProperty("--cover-base-y", `${baseY.toFixed(1)}px`);
+      cover.style.setProperty("--cover-base-rot", `${baseRotation}deg`);
+      cover.style.setProperty("--cover-fallback-hue-a", `${hueA}`);
+      cover.style.setProperty("--cover-fallback-hue-b", `${hueB}`);
+      cover.dataset.coverIndex = String(index);
+      cover.dataset.baseZ = String(zOrder[index] || (index + 1));
+      cover.style.zIndex = String(zOrder[index] || (index + 1));
+
+      const fallback = document.createElement("div");
+      fallback.className = "set-add-song-cover-fallback";
+      fallback.textContent = getSetDetailCoverFallbackInitial(song.title);
+
+      const img = document.createElement("img");
+      img.className = "song-album-art set-add-song-cover-image";
+      img.alt = `Album art for ${song.title || "song"}`;
+      img.loading = "lazy";
+      img.decoding = "async";
+
+      cover.appendChild(fallback);
+      cover.appendChild(img);
+      coverStack.appendChild(cover);
+    });
+
+    setupSetDetailAddSongCoverInteraction(addSongHalf, coverStack);
+    void hydrateSetDetailAddSongCoverStack(coverStack, songs, renderToken);
+  });
+}
+
 function renderSetDetailSongs(set, animate = false) {
   if (state.justBecameVisible) animate = false;
   const songsList = el("detail-songs-list");
@@ -9271,20 +9623,29 @@ function renderSetDetailSongs(set, animate = false) {
 
   // Add "Add Song/Section" card at the end for managers
   if (isManager()) {
+    const songCatalogSongs = Array.isArray(state.songs)
+      ? state.songs.filter((song) => song?.id)
+      : [];
+    const addSongCoverSongs = songCatalogSongs.length >= 5
+      ? getSetDetailAddSongCoverSongs(songCatalogSongs)
+      : [];
+    const showAddSongCoverStack = addSongCoverSongs.length === 5;
+
     const addCard = document.createElement("div");
     addCard.className = "card set-song-card add-song-card";
     addCard.innerHTML = `
-      <div style="display: flex; min-height: 150px;">
-        <div class="add-item-half add-song-half" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; cursor: pointer; position: relative;">
-          <div style="font-size: 2rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-compact-disc"></i></div>
-          <h4 style="margin: 0; color: var(--text-primary); font-weight: 600;">Add Song</h4>
-          <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">From catalog</p>
+      <div class="add-song-section-grid">
+        <div class="add-item-half add-song-half ${showAddSongCoverStack ? "add-song-half--with-covers" : ""}">
+          <div class="add-item-icon"><i class="fa-solid fa-compact-disc"></i></div>
+          <h4 class="add-item-title">Add Song</h4>
+          <p class="add-item-subtitle">From catalog</p>
+          ${showAddSongCoverStack ? '<div class="set-add-song-cover-stack" aria-hidden="true"></div>' : ""}
         </div>
-        <div style="width: 1px; background: var(--border-color); margin: 1rem 0;"></div>
-        <div class="add-item-half add-section-half" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; cursor: pointer; position: relative;">
-          <div style="font-size: 2rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-microphone-lines"></i></div>
-          <h4 style="margin: 0; color: var(--text-primary); font-weight: 600;">Add Section</h4>
-          <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;">Custom section</p>
+        <div class="add-item-divider"></div>
+        <div class="add-item-half add-section-half">
+          <div class="add-item-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+          <h4 class="add-item-title">Add Section</h4>
+          <p class="add-item-subtitle">Custom section</p>
         </div>
       </div>
     `;
@@ -9301,6 +9662,10 @@ function renderSetDetailSongs(set, animate = false) {
       }
     });
     songsList.appendChild(addCard);
+    if (showAddSongCoverStack) {
+      const addSongHalf = addCard.querySelector(".add-song-half");
+      renderSetDetailAddSongCoverStack(addSongHalf, addSongCoverSongs);
+    }
   } else if (!set.set_songs?.length) {
     songsList.innerHTML = '<p class="muted">No songs or sections added to this set yet.</p>';
   }
@@ -29564,12 +29929,7 @@ function renderSetChatPanel(set) {
 
 
 function pickRandomChatPrompts(allPrompts, count) {
-  const pool = Array.isArray(allPrompts) ? allPrompts.slice() : [];
-  for (let i = pool.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool.slice(0, Math.min(count, pool.length));
+  return pickRandomItems(allPrompts, count);
 }
 
 /**
