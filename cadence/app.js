@@ -8411,6 +8411,7 @@ function updateAiChatFab(set) {
 }
 
 function showSetDetail(set) {
+  state._setDetailCoverLifecycleId = Number(state._setDetailCoverLifecycleId) || 0;
   const previousSetId = state.selectedSet?.id ? String(state.selectedSet.id) : "";
   const detailView = el("set-detail");
   const wasDetailVisible = Boolean(detailView && !detailView.classList.contains("hidden"));
@@ -9103,6 +9104,7 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs, animateEntry = tru
   if (!coverStack || !Array.isArray(songs) || songs.length < 2) return;
 
   const renderToken = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const renderLifecycleId = Number(state._setDetailCoverLifecycleId) || 0;
   const selectedSetId = state.selectedSet?.id ? String(state.selectedSet.id) : "";
   coverStack.dataset.coverToken = renderToken;
   coverStack.innerHTML = "";
@@ -9183,7 +9185,7 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs, animateEntry = tru
 
       const fallback = document.createElement("div");
       fallback.className = "set-add-song-cover-fallback";
-      fallback.textContent = getSetDetailCoverFallbackInitial(song.title);
+      fallback.textContent = "";
 
       const img = document.createElement("img");
       img.className = "song-album-art set-add-song-cover-image";
@@ -9207,14 +9209,20 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs, animateEntry = tru
     if (shouldAnimateEntry) {
       const revealCovers = Array.from(coverStack.querySelectorAll(".set-add-song-cover"));
       const entryStartDelayMs = 150;
+      const minEntryPrepMs = isMobileViewport ? 240 : 300;
       const maxWaitForCoverLoadMs = 2800;
+      const entrySetupAt = (typeof performance !== "undefined" && performance.now)
+        ? performance.now()
+        : Date.now();
       const coverLoadBarrierPromise = Promise.race([
         coverHydrationPromise.catch(() => undefined),
         new Promise((resolve) => window.setTimeout(resolve, maxWaitForCoverLoadMs))
       ]);
 
       const canAnimateEntry = () =>
-        coverStack.dataset.coverToken === renderToken && coverStack.isConnected;
+        coverStack.dataset.coverToken === renderToken &&
+        coverStack.isConnected &&
+        (Number(state._setDetailCoverLifecycleId) || 0) === renderLifecycleId;
       const clearEntryState = () => {
         const activeEntry = state._setDetailCoverEntry;
         if (activeEntry?.token === renderToken) {
@@ -9230,12 +9238,15 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs, animateEntry = tru
         coverStack.getBoundingClientRect();
         requestAnimationFrame(() => {
           if (!canAnimateEntry()) return;
-          revealCovers.forEach((cover) => {
-            if (!cover.isConnected) return;
-            cover.classList.remove("is-cleared");
-            cover.style.setProperty("--cover-entry-y", "0px");
-            cover.style.setProperty("--cover-entry-scale", "1");
-            cover.style.opacity = "1";
+          requestAnimationFrame(() => {
+            if (!canAnimateEntry()) return;
+            revealCovers.forEach((cover) => {
+              if (!cover.isConnected) return;
+              cover.classList.remove("is-cleared");
+              cover.style.setProperty("--cover-entry-y", "0px");
+              cover.style.setProperty("--cover-entry-scale", "1");
+              cover.style.opacity = "1";
+            });
           });
         });
         const settleDelay = entryDurationMs + (Math.max(0, revealCovers.length - 1) * entryStaggerMs) + 70;
@@ -9250,13 +9261,22 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs, animateEntry = tru
 
       coverLoadBarrierPromise.then(() => {
         if (!canAnimateEntry()) return;
-        window.setTimeout(revealEntry, entryStartDelayMs);
+        const now = (typeof performance !== "undefined" && performance.now)
+          ? performance.now()
+          : Date.now();
+        const elapsedSinceSetup = Math.max(0, now - entrySetupAt);
+        const revealDelay = Math.max(entryStartDelayMs, minEntryPrepMs - elapsedSinceSetup);
+        window.setTimeout(revealEntry, revealDelay);
       });
     }
 
     if (!shouldAnimateEntry) {
       void coverHydrationPromise.then(() => {
-        if (coverStack.dataset.coverToken !== renderToken || !coverStack.isConnected) return;
+        if (
+          coverStack.dataset.coverToken !== renderToken ||
+          !coverStack.isConnected ||
+          (Number(state._setDetailCoverLifecycleId) || 0) !== renderLifecycleId
+        ) return;
         const covers = Array.from(coverStack.querySelectorAll(".set-add-song-cover"));
         covers.forEach((cover) => {
           cover.classList.remove("is-cleared");
@@ -9971,6 +9991,7 @@ function renderSetDetailSongs(set, animate = false) {
 function hideSetDetail() {
   // Stop tracking time on set detail
   stopPageTimeTracking();
+  state._setDetailCoverLifecycleId = (Number(state._setDetailCoverLifecycleId) || 0) + 1;
 
   closeHeaderDropdown();
   if (state.isAiChatOpen) {
@@ -9993,6 +10014,11 @@ function hideSetDetail() {
   state.selectedSet = null;
   state._pendingSetDetailCoverEntry = null;
   state._setDetailCoverEntry = null;
+  const songsList = el("detail-songs-list");
+  if (songsList) {
+    songsList.innerHTML = "";
+    delete songsList.dataset.dragSetup;
+  }
   // Clear saved set ID from localStorage
   localStorage.removeItem('cadence-selected-set-id');
 

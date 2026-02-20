@@ -1551,14 +1551,9 @@ main {
   justify-content: center;
   font-weight: 700;
   font-size: 1.2rem;
-  color: rgba(255, 255, 255, 0.9);
-  background:
-    linear-gradient(
-      140deg,
-      hsl(var(--cover-fallback-hue-a, 212) 76% 62%),
-      hsl(var(--cover-fallback-hue-b, 278) 72% 52%)
-    );
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  color: transparent;
+  background: var(--accent-color);
+  text-shadow: none;
   transition: opacity 0.22s ease;
 }
 
