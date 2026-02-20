@@ -1445,7 +1445,14 @@ main {
   padding-bottom: 5.1rem;
 }
 
+.add-song-half--with-covers:hover .set-add-song-cover-stack::before {
+  opacity:0;
+}
+
 .set-add-song-cover-stack {
+  --cover-stack-shelf-color: color-mix(in srgb, var(--text-primary) 24%, transparent);
+  --cover-stack-shelf-highlight: color-mix(in srgb, var(--text-primary) 48%, transparent);
+  --cover-stack-shelf-shadow: color-mix(in srgb, var(--text-primary) 14%, transparent);
   position: absolute;
   left: 0;
   right: 0;
@@ -1455,6 +1462,31 @@ main {
   pointer-events: auto;
   perspective: 1200px;
 }
+
+.set-add-song-cover-stack::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 90%;
+  height: 1.5px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent-color) 12%,
+    var(--accent-color) 50%,
+    var(--accent-color) 88%,
+    transparent 100%
+    );
+  pointer-events: none;
+  z-index: 52;
+  opacity:1;
+  transition: opacity 0.5s ease;
+}
+
+
 
 .set-add-song-cover.song-album-art-container {
   position: absolute;
@@ -3125,6 +3157,7 @@ textarea {
   }
 
   .set-add-song-cover-stack {
+    --cover-stack-underline-width: clamp(96px, 42%, 144px);
     height: 92px;
   }
 
