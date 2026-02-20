@@ -3203,6 +3203,37 @@ textarea {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
+
+  /* Song details modal is fullscreen on mobile; stretch resources tint to the bottom */
+  #song-details-modal .song-details-content.song-details-content--has-resources {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 100%;
+    padding-bottom: 0;
+  }
+
+  #song-details-modal .song-details-content.song-details-content--has-resources > .song-details-section {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 100%;
+  }
+
+  #song-details-modal .song-details-content.song-details-content--has-resources .resources-section-wrapper {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    margin-bottom: 0;
+  }
+
+  #song-details-modal .song-details-content.song-details-content--has-resources .resources-content-area {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding-bottom: 4rem;
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* Custom Searchable Dropdown */

@@ -8735,9 +8735,10 @@ function getSetDetailSongCoverKey(song) {
   return "";
 }
 
-function getSetDetailAddSongCoverSongs(allSongs) {
+function getSetDetailAddSongCoverSongs(allSongs, desiredCount = 5) {
+  const requestedCount = Math.max(1, Number.parseInt(desiredCount, 10) || 5);
   const songs = Array.isArray(allSongs) ? allSongs.filter((song) => song?.id) : [];
-  if (songs.length < 5) return [];
+  if (songs.length < requestedCount) return [];
 
   const songsWithKnownCover = songs.filter((song) => Boolean(getSetDetailSongCoverKey(song)));
   const songsWithoutKnownCover = songs.filter((song) => !getSetDetailSongCoverKey(song));
@@ -8755,7 +8756,7 @@ function getSetDetailAddSongCoverSongs(allSongs) {
     selectedSongs.push(song);
     selectedSongIds.add(String(song.id));
     usedCoverKeys.add(coverKey);
-    if (selectedSongs.length === 5) return selectedSongs;
+    if (selectedSongs.length === requestedCount) return selectedSongs;
   }
 
   for (const song of shuffledUnknownCovers) {
@@ -8763,7 +8764,7 @@ function getSetDetailAddSongCoverSongs(allSongs) {
     if (selectedSongIds.has(songId)) continue;
     selectedSongs.push(song);
     selectedSongIds.add(songId);
-    if (selectedSongs.length === 5) return selectedSongs;
+    if (selectedSongs.length === requestedCount) return selectedSongs;
   }
 
   // Only allow duplicate cover art after we run out of unique-cover options.
@@ -8772,7 +8773,7 @@ function getSetDetailAddSongCoverSongs(allSongs) {
     if (selectedSongIds.has(songId)) continue;
     selectedSongs.push(song);
     selectedSongIds.add(songId);
-    if (selectedSongs.length === 5) return selectedSongs;
+    if (selectedSongs.length === requestedCount) return selectedSongs;
   }
 
   const shuffledAllSongs = pickRandomItems(songs, songs.length);
@@ -8781,10 +8782,10 @@ function getSetDetailAddSongCoverSongs(allSongs) {
     if (selectedSongIds.has(songId)) continue;
     selectedSongs.push(song);
     selectedSongIds.add(songId);
-    if (selectedSongs.length === 5) break;
+    if (selectedSongs.length === requestedCount) break;
   }
 
-  return selectedSongs.slice(0, 5);
+  return selectedSongs.slice(0, requestedCount);
 }
 
 function getSetDetailCoverFallbackInitial(songTitle) {
@@ -8988,7 +8989,7 @@ async function hydrateSetDetailAddSongCoverStack(coverStack, songs, renderToken)
 
 function renderSetDetailAddSongCoverStack(addSongHalf, songs) {
   const coverStack = addSongHalf?.querySelector(".set-add-song-cover-stack");
-  if (!coverStack || !Array.isArray(songs) || songs.length !== 5) return;
+  if (!coverStack || !Array.isArray(songs) || songs.length < 2) return;
 
   const renderToken = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   coverStack.dataset.coverToken = renderToken;
@@ -8997,19 +8998,30 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs) {
   requestAnimationFrame(() => {
     if (coverStack.dataset.coverToken !== renderToken || !coverStack.isConnected) return;
 
+    const isMobileViewport = Boolean(window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
     const stackWidth = Math.max(coverStack.clientWidth, 220);
-    const spread = Math.max(74, Math.min(126, stackWidth * 0.3));
-    const step = (spread * 2) / (songs.length - 1);
+    const spread = (() => {
+      if (isMobileViewport && songs.length <= 3) {
+        return Math.max(34, Math.min(62, stackWidth * 0.16));
+      }
+      if (isMobileViewport) {
+        return Math.max(52, Math.min(88, stackWidth * 0.2));
+      }
+      return Math.max(74, Math.min(126, stackWidth * 0.3));
+    })();
+    const step = (spread * 2) / Math.max(1, songs.length - 1);
     const zOrder = pickRandomItems([11, 12, 13, 14, 15], songs.length);
     const centerIndex = (songs.length - 1) / 2;
+    const jitterRangeX = isMobileViewport ? 6 : 10;
+    const jitterRangeY = isMobileViewport ? 1 : 2;
 
     songs.forEach((song, index) => {
       const cover = document.createElement("div");
       cover.className = "set-add-song-cover song-album-art-container";
       cover.dataset.songId = String(song.id);
 
-      const jitterX = Math.floor(Math.random() * 21) - 10;
-      const jitterY = Math.floor(Math.random() * 5) - 2;
+      const jitterX = Math.floor(Math.random() * ((jitterRangeX * 2) + 1)) - jitterRangeX;
+      const jitterY = Math.floor(Math.random() * ((jitterRangeY * 2) + 1)) - jitterRangeY;
       const baseX = -spread + (step * index) + jitterX;
       const distanceFromCenter = Math.abs(index - centerIndex);
       const edgeFactor = centerIndex > 0 ? (distanceFromCenter / centerIndex) : 0;
@@ -9626,10 +9638,13 @@ function renderSetDetailSongs(set, animate = false) {
     const songCatalogSongs = Array.isArray(state.songs)
       ? state.songs.filter((song) => song?.id)
       : [];
-    const addSongCoverSongs = songCatalogSongs.length >= 5
-      ? getSetDetailAddSongCoverSongs(songCatalogSongs)
+    const isMobileViewport = Boolean(window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
+    const desiredCoverCount = isMobileViewport ? 3 : 5;
+    const minimumSongsForCoverStack = desiredCoverCount;
+    const addSongCoverSongs = songCatalogSongs.length >= minimumSongsForCoverStack
+      ? getSetDetailAddSongCoverSongs(songCatalogSongs, desiredCoverCount)
       : [];
-    const showAddSongCoverStack = addSongCoverSongs.length === 5;
+    const showAddSongCoverStack = addSongCoverSongs.length === desiredCoverCount;
 
     const addCard = document.createElement("div");
     addCard.className = "card set-song-card add-song-card";
@@ -18890,6 +18905,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   const hasGeneratedKeyCharts = !!(generalChart && generalChart.chart_type === "number" && hasKeys);
   const hasAnyCharts = !!(allGeneralCharts.length > 0 || keyCharts.length > 0 || hasGeneratedKeyCharts);
   const hasResources = hasLinks || hasAnyCharts;
+  content.classList.toggle("song-details-content--has-resources", hasResources);
   const itunesFetchDisabled = !!songWithResources.itunes_fetch_disabled;
   const teamItunesDisabled = (state.userTeams?.find?.(t => t.id === state.currentTeamId)?.itunes_indexing_enabled === false);
   const itunesUnavailable = itunesFetchDisabled || teamItunesDisabled;
@@ -19602,6 +19618,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 
 function closeSongDetailsModal() {
   const modal = el("song-details-modal");
+  const content = el("song-details-content");
   if (modal) {
     // Stop all audio players in the modal BEFORE animation starts (optional, but cleaner)
     const audioPlayers = modal.querySelectorAll("audio");
@@ -19612,6 +19629,7 @@ function closeSongDetailsModal() {
 
     closeModalWithAnimation(modal, () => {
       state.currentSongDetailsId = null;
+      content?.classList.remove("song-details-content--has-resources");
     });
   }
 }
@@ -19718,6 +19736,7 @@ async function openSectionDetailsModal(setSong) {
   const title = el("song-details-title");
 
   if (!modal || !content) return;
+  content.classList.remove("song-details-content--has-resources");
 
   title.textContent = setSong.title || "Section Details";
 
