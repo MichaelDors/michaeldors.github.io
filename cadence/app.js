@@ -155,6 +155,37 @@ const fac = new FastAverageColor();
 
 let supabase = null;
 
+const SONG_SORT_STORAGE_KEY = "cadence-song-sort-option";
+const SONG_SORT_OPTIONS = new Set(["relevancy", "newest", "oldest", "alphabetical"]);
+
+function normalizeSongSortOption(sortOption) {
+  return SONG_SORT_OPTIONS.has(sortOption) ? sortOption : "relevancy";
+}
+
+function getStoredSongSortOption() {
+  const fallbackSort = "relevancy";
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return fallbackSort;
+    const storedSort = window.localStorage.getItem(SONG_SORT_STORAGE_KEY);
+    return normalizeSongSortOption(storedSort);
+  } catch (_) {
+    // localStorage may be unavailable in some privacy contexts
+    return fallbackSort;
+  }
+}
+
+function saveSongSortOption(sortOption) {
+  const normalizedSort = normalizeSongSortOption(sortOption);
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem(SONG_SORT_STORAGE_KEY, normalizedSort);
+    }
+  } catch (_) {
+    // localStorage may be unavailable; fail soft
+  }
+  return normalizedSort;
+}
+
 const state = {
   session: null,
   profile: null,
@@ -221,7 +252,7 @@ const state = {
     tempFactorId: null
   },
   lottieAnimations: {},
-  songSortOption: "relevancy", // Default sort: relevancy, newest, oldest, alphabetical
+  songSortOption: getStoredSongSortOption(), // Sort persisted locally (relevancy, newest, oldest, alphabetical)
   // PostHog analytics tracking state
   analytics: {
     sessionStartTime: null,
@@ -2024,6 +2055,115 @@ function bindEvents() {
   });
 
   // Songs tab sort dropdown items
+  const songSortLabelMap = {
+    relevancy: "Relevancy",
+    newest: "Newest",
+    oldest: "Oldest",
+    alphabetical: "Alphabetical"
+  };
+
+  const SONGS_SORT_UI_ANIMATION_MS = 420;
+  let songsSortUiAnimationToken = 0;
+  let songsSortUiCleanupTimeout = null;
+
+  const getSongSortLabel = (sortOption) => {
+    return songSortLabelMap[sortOption] || songSortLabelMap.relevancy;
+  };
+
+  const cleanupSongsSortUiAnimation = () => {
+    const controlsRow = el("songs-controls-row");
+    const searchShell = el("songs-search-shell");
+    const sortToggle = el("btn-songs-sort-toggle");
+    const labelEl = el("songs-sort-label");
+
+    controlsRow?.classList.remove("songs-sort-animating");
+    searchShell?.classList.remove("songs-sort-resizing");
+    sortToggle?.classList.remove("songs-sort-resizing");
+    labelEl?.classList.remove("sort-label-blur-in", "sort-label-blur-out");
+
+    if (searchShell) {
+      searchShell.style.width = "";
+      searchShell.style.flex = "";
+    }
+    if (sortToggle) {
+      sortToggle.style.width = "";
+    }
+  };
+
+  const setSongSortLabel = (sortOption, animate = false) => {
+    const labelEl = el("songs-sort-label");
+    if (!labelEl) return;
+
+    const nextText = `Sort: ${getSongSortLabel(sortOption)}`;
+    const controlsRow = el("songs-controls-row");
+    const searchShell = el("songs-search-shell");
+    const sortToggle = el("btn-songs-sort-toggle");
+    const canAnimate = animate &&
+      !shouldReduceMotion() &&
+      controlsRow &&
+      searchShell &&
+      sortToggle;
+
+    if (!canAnimate) {
+      labelEl.textContent = nextText;
+      return;
+    }
+
+    songsSortUiAnimationToken += 1;
+    const animationToken = songsSortUiAnimationToken;
+
+    if (songsSortUiCleanupTimeout) {
+      clearTimeout(songsSortUiCleanupTimeout);
+      songsSortUiCleanupTimeout = null;
+    }
+    cleanupSongsSortUiAnimation();
+
+    const rowWidth = controlsRow.getBoundingClientRect().width;
+    const initialSearchWidth = searchShell.getBoundingClientRect().width;
+    const initialSortWidth = sortToggle.getBoundingClientRect().width;
+    if (!rowWidth || !initialSearchWidth || !initialSortWidth) {
+      labelEl.textContent = nextText;
+      return;
+    }
+
+    const computedStyles = window.getComputedStyle(controlsRow);
+    const gap = parseFloat(computedStyles.columnGap || computedStyles.gap || "0") || 0;
+
+    controlsRow.classList.add("songs-sort-animating");
+    searchShell.style.flex = "0 0 auto";
+    searchShell.style.width = `${initialSearchWidth}px`;
+    sortToggle.style.width = `${initialSortWidth}px`;
+    labelEl.classList.add("sort-label-blur-out");
+
+    setTimeout(() => {
+      if (animationToken !== songsSortUiAnimationToken) return;
+
+      labelEl.classList.remove("sort-label-blur-out");
+      labelEl.textContent = nextText;
+
+      sortToggle.style.width = "auto";
+      const targetSortWidth = sortToggle.getBoundingClientRect().width;
+      const targetSearchWidth = Math.max(0, rowWidth - gap - targetSortWidth);
+      sortToggle.style.width = `${initialSortWidth}px`;
+
+      labelEl.classList.add("sort-label-blur-in");
+
+      requestAnimationFrame(() => {
+        if (animationToken !== songsSortUiAnimationToken) return;
+        searchShell.classList.add("songs-sort-resizing");
+        sortToggle.classList.add("songs-sort-resizing");
+        searchShell.style.width = `${targetSearchWidth}px`;
+        sortToggle.style.width = `${targetSortWidth}px`;
+      });
+
+      songsSortUiCleanupTimeout = setTimeout(() => {
+        if (animationToken !== songsSortUiAnimationToken) return;
+        cleanupSongsSortUiAnimation();
+        songsSortUiCleanupTimeout = null;
+      }, SONGS_SORT_UI_ANIMATION_MS + 80);
+    }, 120);
+  };
+
   const updateSortSelection = () => {
     document.querySelectorAll("#songs-sort-dropdown-menu .header-dropdown-item").forEach(item => {
       if (item.dataset.sort === (state.songSortOption || "relevancy")) {
@@ -2037,20 +2177,16 @@ function bindEvents() {
   document.querySelectorAll("#songs-sort-dropdown-menu .header-dropdown-item").forEach(item => {
     item.addEventListener("click", (e) => {
       e.stopPropagation();
-      const sortOption = item.dataset.sort;
-      state.songSortOption = sortOption;
 
-      // Update label
-      const labelMap = {
-        relevancy: "Relevancy",
-        newest: "Newest",
-        oldest: "Oldest",
-        alphabetical: "Alphabetical"
-      };
-      const labelEl = el("songs-sort-label");
-      if (labelEl) {
-        labelEl.textContent = `Sort: ${labelMap[sortOption]}`;
+      const sortOption = normalizeSongSortOption(item.dataset.sort);
+      const previousSortOption = normalizeSongSortOption(state.songSortOption);
+      const didSortChange = sortOption !== previousSortOption;
+      state.songSortOption = sortOption;
+      if (didSortChange) {
+        saveSongSortOption(sortOption);
       }
+
+      setSongSortLabel(sortOption, didSortChange);
 
       // Update selection visual
       updateSortSelection();
@@ -2062,8 +2198,10 @@ function bindEvents() {
         menu.classList.remove("animate-out");
       }
 
-      // Re-render songs
-      renderSongCatalog(false);
+      // Re-render songs with ripple animation when sort order changes
+      if (didSortChange) {
+        renderSongCatalog(true);
+      }
     });
   });
 
@@ -2082,16 +2220,7 @@ function bindEvents() {
 
   // Initialize sort label
   const updateSortLabel = () => {
-    const labelMap = {
-      relevancy: "Relevancy",
-      newest: "Newest",
-      oldest: "Oldest",
-      alphabetical: "Alphabetical"
-    };
-    const labelEl = el("songs-sort-label");
-    if (labelEl) {
-      labelEl.textContent = `Sort: ${labelMap[state.songSortOption || "relevancy"]}`;
-    }
+    setSongSortLabel(state.songSortOption || "relevancy", false);
   };
   updateSortLabel();
 
@@ -9181,6 +9310,21 @@ function hideSetDetail() {
   state.selectedSet = null;
   // Clear saved set ID from localStorage
   localStorage.removeItem('cadence-selected-set-id');
+
+  // User-initiated close: allow Sets tab animation (ripple + lottie) when returning to dashboard
+  state.justBecameVisible = false;
+  if (state._justBecameVisibleTimeout) {
+    clearTimeout(state._justBecameVisibleTimeout);
+    state._justBecameVisibleTimeout = null;
+  }
+  // Play Sets tab lottie
+  if (state.lottieAnimations?.sets) {
+    state.lottieAnimations.sets.goToAndPlay(0, true);
+  }
+  // Re-render Sets tab with ripple animation after dashboard is visible
+  requestAnimationFrame(() => {
+    renderSets(true);
+  });
 
   // Recalculate assignment pills to show actual assignments instead of "+X more"
   // Use a small delay to ensure the dashboard is visible and layout is complete

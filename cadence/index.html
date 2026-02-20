@@ -343,17 +343,16 @@
               Song</button>
           </div>
         </div>
-        <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center;">
-          <label style="flex: 1;">
-            <input type="text" id="songs-tab-search"
-              placeholder="Search songs by title, BPM, key, time signature, or duration"
-              style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 3rem; color: var(--text-primary); font-size: 1rem;" />
+        <div id="songs-controls-row" class="songs-controls-row">
+          <label id="songs-search-shell" class="songs-search-shell">
+            <input type="text" id="songs-tab-search" class="songs-search-input"
+              placeholder="Search songs by title, BPM, key, time signature, or duration" />
           </label>
-          <div class="header-dropdown-container" id="songs-sort-dropdown-container" style="position: relative;">
-            <button id="btn-songs-sort-toggle" class="btn secondary" type="button" style="white-space: nowrap;">
+          <div class="header-dropdown-container songs-sort-dropdown-container" id="songs-sort-dropdown-container">
+            <button id="btn-songs-sort-toggle" class="btn secondary songs-sort-toggle" type="button">
               <i class="fa-solid fa-sort"></i>
-              <span id="songs-sort-label">Sort: Relevancy</span>
-              <i class="fa-solid fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.75rem;"></i>
+              <span id="songs-sort-label" class="songs-sort-label-text">Sort: Relevancy</span>
+              <i class="fa-solid fa-chevron-down songs-sort-chevron"></i>
             </button>
             <div class="header-dropdown-menu hidden" id="songs-sort-dropdown-menu">
               <button type="button" class="header-dropdown-item" data-sort="relevancy">
