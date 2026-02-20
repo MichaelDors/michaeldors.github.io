@@ -1483,7 +1483,7 @@ main {
   pointer-events: none;
   z-index: 52;
   opacity:1;
-  transition: opacity 0.5s ease;
+  transition: opacity 1.5s ease;
 }
 
 
