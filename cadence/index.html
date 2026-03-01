@@ -89,6 +89,15 @@
     </div>
   </div>
 
+  <div id="member-view-banner"
+    style="background: var(--accent-color) !important; color: var(--bg-primary) !important; padding: 0.75rem 2rem !important;"
+    class="member-view-banner hidden">
+    <div class="member-view-banner-content" style="display: flex; align-items: center; justify-content: space-between;">
+      <span style="text-align: left;">You're in member view and cannot currently manage</span>
+      <button id="btn-exit-member-view" class="btn secondary small" style="margin-left: 2rem;">Exit</button>
+    </div>
+  </div>
+
   <header class="app-header">
     <div>
       <h1><i class="fa-solid fa-ticket" style="color: var(--accent-color);"></i> Cadence</h1>
@@ -174,15 +183,6 @@
       </div>
     </div>
   </header>
-
-  <div id="member-view-banner"
-    style="background: var(--accent-color) !important; color: var(--bg-primary) !important; padding: 0.75rem 2rem !important;"
-    class="member-view-banner hidden">
-    <div class="member-view-banner-content" style="display: flex; align-items: center; justify-content: space-between;">
-      <span style="text-align: left;">You're in member view and cannot currently manage</span>
-      <button id="btn-exit-member-view" class="btn secondary small" style="margin-left: 2rem;">Exit</button>
-    </div>
-  </div>
 
   <main>
     <section id="auth-gate" class="card">

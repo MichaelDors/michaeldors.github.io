@@ -203,6 +203,7 @@ const state = {
   creatingSongFromModal: false,
   expandedSets: new Set(),
   currentSongDetailsId: null, // Track which song is open in details modal
+  currentSongDetailsContext: null, // { selectedKey, setSongId, setSongSnapshot }
   // iTunes indexing refresh (only used while songs are awaiting background iTunes metadata indexing)
   itunesIndexRefresh: {
     isRunning: false,
@@ -1994,7 +1995,7 @@ function bindEvents() {
     }
   });
 
-  el("btn-exit-member-view")?.addEventListener("click", () => {
+  el("btn-exit-member-view")?.addEventListener("click", async () => {
     state.isMemberView = false;
     showApp();
     // Refresh current view (could be dashboard or set detail)
@@ -2004,6 +2005,9 @@ function bindEvents() {
     } else {
       refreshActiveTab();
     }
+
+    // If a song details modal is already open, re-render it so manager-only controls are restored.
+    await refreshOpenSongDetailsModalForPermissions();
   });
   el("close-invite-modal")?.addEventListener("click", () => closeInviteModal());
   el("cancel-invite")?.addEventListener("click", () => closeInviteModal());
@@ -8754,6 +8758,61 @@ function getSetDetailSongCoverKey(song) {
   return "";
 }
 
+const SET_DETAIL_ADD_SONG_COVER_LAYOUT = Object.freeze({
+  mobileBreakpointPx: 768,
+  minCount: 2,
+  desktop: Object.freeze({
+    coverSize: 84,
+    preferredStep: 56,
+    hoverOutset: 24,
+    maxCount: 8
+  }),
+  mobile: Object.freeze({
+    coverSize: 72,
+    preferredStep: 44,
+    hoverOutset: 20,
+    maxCount: 6
+  })
+});
+
+function isSetDetailAddSongCoverMobileViewport() {
+  return Boolean(
+    window.matchMedia &&
+    window.matchMedia(`(max-width: ${SET_DETAIL_ADD_SONG_COVER_LAYOUT.mobileBreakpointPx}px)`).matches
+  );
+}
+
+function getSetDetailAddSongCoverLayoutMetrics(rawStackWidth, isMobileViewport = isSetDetailAddSongCoverMobileViewport()) {
+  const profile = isMobileViewport
+    ? SET_DETAIL_ADD_SONG_COVER_LAYOUT.mobile
+    : SET_DETAIL_ADD_SONG_COVER_LAYOUT.desktop;
+  const numericWidth = Number(rawStackWidth) || 0;
+  const minimumUsefulWidth = profile.coverSize + (profile.hoverOutset * 2);
+  const stackWidth = Math.max(numericWidth, minimumUsefulWidth);
+  const maxSpread = Math.max(0, (stackWidth / 2) - (profile.coverSize / 2) - profile.hoverOutset);
+  return {
+    isMobileViewport,
+    stackWidth,
+    maxSpread,
+    ...profile
+  };
+}
+
+function getSetDetailAddSongCoverDesiredCount(addSongHalf, songPoolSize = 0) {
+  const availableSongs = Math.max(0, Number.parseInt(songPoolSize, 10) || 0);
+  if (availableSongs < SET_DETAIL_ADD_SONG_COVER_LAYOUT.minCount) return availableSongs;
+
+  const stackNode = addSongHalf?.querySelector?.(".set-add-song-cover-stack");
+  const measuredWidth = stackNode?.clientWidth || addSongHalf?.clientWidth || 0;
+  const metrics = getSetDetailAddSongCoverLayoutMetrics(measuredWidth);
+  const widthBasedCount = Math.floor((metrics.maxSpread * 2) / metrics.preferredStep) + 1;
+  const desiredCount = Math.max(
+    SET_DETAIL_ADD_SONG_COVER_LAYOUT.minCount,
+    Math.min(metrics.maxCount, widthBasedCount)
+  );
+  return Math.min(availableSongs, desiredCount);
+}
+
 function getSetDetailAddSongCoverSongs(allSongs, desiredCount = 5) {
   const requestedCount = Math.max(1, Number.parseInt(desiredCount, 10) || 5);
   const songs = Array.isArray(allSongs) ? allSongs.filter((song) => song?.id) : [];
@@ -9030,19 +9089,24 @@ async function hydrateSetDetailAddSongCoverStack(coverStack, songs, renderToken)
       try {
         const albumArt = await getAlbumArt(song, song.title || "", { disableItunesFallback: true });
         if (coverStack.dataset.coverToken !== renderToken || !coverNode.isConnected) return;
-        if (!albumArt?.small) {
+        const coverUrl = albumArt?.small || albumArt?.large;
+        if (!coverUrl) {
           coverNode.classList.remove("has-image");
           return;
         }
 
-        imgEl.crossOrigin = "anonymous";
-        imgEl.referrerPolicy = "no-referrer-when-downgrade";
         await new Promise((resolve) => {
           let settled = false;
           let imageReadyTimeoutId = null;
           let onLoad = null;
           let onError = null;
           let didLoad = false;
+          const onLateLoad = () => {
+            if (coverStack.dataset.coverToken !== renderToken || !coverNode.isConnected) return;
+            if (imgEl.naturalWidth > 0) {
+              coverNode.classList.add("has-image");
+            }
+          };
 
           const settle = () => {
             if (settled) return;
@@ -9079,12 +9143,14 @@ async function hydrateSetDetailAddSongCoverStack(coverStack, songs, renderToken)
 
           imgEl.addEventListener("load", onLoad);
           imgEl.addEventListener("error", onError);
+          // Keep a fallback listener so slow images can still appear after timeout.
+          imgEl.addEventListener("load", onLateLoad, { once: true });
           imageReadyTimeoutId = window.setTimeout(() => {
             didLoad = false;
             applyResolvedState();
             settle();
-          }, 2600);
-          imgEl.src = albumArt.small;
+          }, 6000);
+          imgEl.src = coverUrl;
 
           if (imgEl.complete) {
             didLoad = imgEl.naturalWidth > 0;
@@ -9115,26 +9181,20 @@ function renderSetDetailAddSongCoverStack(addSongHalf, songs, animateEntry = tru
   requestAnimationFrame(() => {
     if (coverStack.dataset.coverToken !== renderToken || !coverStack.isConnected) return;
 
-    const isMobileViewport = Boolean(window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
+    const isMobileViewport = isSetDetailAddSongCoverMobileViewport();
+    const layoutMetrics = getSetDetailAddSongCoverLayoutMetrics(coverStack.clientWidth, isMobileViewport);
     const shouldAnimateEntry = Boolean(animateEntry) && !shouldReduceMotion();
     const entryInitialLift = isMobileViewport ? 20 : 24;
     const entryInitialScale = 0.88;
     const entryStaggerMs = isMobileViewport ? 70 : 82;
     const entryDurationMs = 560;
-    const stackWidth = Math.max(coverStack.clientWidth, 220);
-    const spread = (() => {
-      if (isMobileViewport && songs.length <= 3) {
-        return Math.max(34, Math.min(62, stackWidth * 0.16));
-      }
-      if (isMobileViewport) {
-        return Math.max(52, Math.min(88, stackWidth * 0.2));
-      }
-      return Math.max(74, Math.min(126, stackWidth * 0.3));
-    })();
-    const step = (spread * 2) / Math.max(1, songs.length - 1);
+    const preferredSpread = (layoutMetrics.preferredStep * Math.max(0, songs.length - 1)) / 2;
+    const spread = Math.max(0, Math.min(layoutMetrics.maxSpread, preferredSpread));
+    const step = songs.length > 1 ? ((spread * 2) / (songs.length - 1)) : 0;
     const zOrder = pickRandomItems([11, 12, 13, 14, 15], songs.length);
     const centerIndex = (songs.length - 1) / 2;
-    const jitterRangeX = isMobileViewport ? 6 : 10;
+    const horizontalSlack = Math.max(0, layoutMetrics.maxSpread - spread);
+    const jitterRangeX = Math.max(0, Math.floor(Math.min(isMobileViewport ? 4 : 6, horizontalSlack * 0.75)));
     const jitterRangeY = isMobileViewport ? 1 : 2;
     coverStack.classList.toggle("is-entry-pending", shouldAnimateEntry);
     if (shouldAnimateEntry) {
@@ -9918,23 +9978,16 @@ function renderSetDetailSongs(set, animate = false) {
     const songCatalogSongs = Array.isArray(state.songs)
       ? state.songs.filter((song) => song?.id)
       : [];
-    const isMobileViewport = Boolean(window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
-    const desiredCoverCount = isMobileViewport ? 3 : 5;
-    const minimumSongsForCoverStack = desiredCoverCount;
-    const addSongCoverSongs = songCatalogSongs.length >= minimumSongsForCoverStack
-      ? getSetDetailAddSongCoverSongs(songCatalogSongs, desiredCoverCount)
-      : [];
-    const showAddSongCoverStack = addSongCoverSongs.length === desiredCoverCount;
 
     const addCard = document.createElement("div");
     addCard.className = "card set-song-card add-song-card";
     addCard.innerHTML = `
       <div class="add-song-section-grid">
-        <div class="add-item-half add-song-half ${showAddSongCoverStack ? "add-song-half--with-covers" : ""}">
+        <div class="add-item-half add-song-half">
           <div class="add-item-icon"><i class="fa-solid fa-compact-disc"></i></div>
           <h4 class="add-item-title">Add Song</h4>
           <p class="add-item-subtitle">From catalog</p>
-          ${showAddSongCoverStack ? '<div class="set-add-song-cover-stack" aria-hidden="true"></div>' : ""}
+          <div class="set-add-song-cover-stack" aria-hidden="true"></div>
         </div>
         <div class="add-item-divider"></div>
         <div class="add-item-half add-section-half">
@@ -9957,8 +10010,17 @@ function renderSetDetailSongs(set, animate = false) {
       }
     });
     songsList.appendChild(addCard);
-    if (showAddSongCoverStack) {
-      const addSongHalf = addCard.querySelector(".add-song-half");
+
+    const addSongHalf = addCard.querySelector(".add-song-half");
+    const coverStackNode = addSongHalf?.querySelector(".set-add-song-cover-stack");
+    const desiredCoverCount = getSetDetailAddSongCoverDesiredCount(addSongHalf, songCatalogSongs.length);
+    const showAddSongCoverStack = desiredCoverCount >= SET_DETAIL_ADD_SONG_COVER_LAYOUT.minCount;
+    const addSongCoverSongs = showAddSongCoverStack
+      ? getSetDetailAddSongCoverSongs(songCatalogSongs, desiredCoverCount)
+      : [];
+
+    if (showAddSongCoverStack && addSongCoverSongs.length === desiredCoverCount && addSongHalf) {
+      addSongHalf.classList.add("add-song-half--with-covers");
       const shouldAnimateCoverStackNow = shouldAnimateCoverEntry && Boolean(pendingCoverEntryRequestId);
       if (shouldAnimateCoverStackNow && state._pendingSetDetailCoverEntry?.setId === setId) {
         state._pendingSetDetailCoverEntry.consumed = true;
@@ -9973,6 +10035,8 @@ function renderSetDetailSongs(set, animate = false) {
       if (shouldAnimateCoverStackNow && state._pendingSetDetailCoverEntry?.setId === setId && state._pendingSetDetailCoverEntry?.consumed) {
         state._pendingSetDetailCoverEntry = null;
       }
+    } else if (coverStackNode) {
+      coverStackNode.remove();
     }
   } else if (!set.set_songs?.length) {
     songsList.innerHTML = '<p class="muted">No songs or sections added to this set yet.</p>';
@@ -18271,12 +18335,15 @@ async function getAlbumArt(song, songTitle, options = {}) {
     }
   }
 
-  // Check database for indexed iTunes album art
-  if (song?.album_art_small_url && song?.album_art_large_url) {
+  // Check database for indexed iTunes album art.
+  // Older rows may only have one URL populated, so gracefully mirror whichever exists.
+  if (song?.album_art_small_url || song?.album_art_large_url) {
+    const small = song.album_art_small_url || song.album_art_large_url;
+    const large = song.album_art_large_url || song.album_art_small_url;
     console.log('🎵 Using database-stored iTunes album art');
     return {
-      small: song.album_art_small_url,
-      large: song.album_art_large_url,
+      small,
+      large,
       isOverride: false
     };
   }
@@ -19110,6 +19177,43 @@ async function fetchAlbumArt(songTitle) {
   }
 }
 
+function resolveCurrentSongDetailsSetSongContext() {
+  const setSongId = state.currentSongDetailsContext?.setSongId;
+  if (setSongId === null || setSongId === undefined) {
+    return state.currentSongDetailsContext?.setSongSnapshot || null;
+  }
+
+  const matchesSetSongId = (setSong) => String(setSong?.id) === String(setSongId);
+
+  if (Array.isArray(state.currentSetSongs)) {
+    const currentSetMatch = state.currentSetSongs.find(matchesSetSongId);
+    if (currentSetMatch) return currentSetMatch;
+  }
+
+  if (Array.isArray(state.selectedSet?.set_songs)) {
+    const selectedSetMatch = state.selectedSet.set_songs.find(matchesSetSongId);
+    if (selectedSetMatch) return selectedSetMatch;
+  }
+
+  return state.currentSongDetailsContext?.setSongSnapshot || null;
+}
+
+async function refreshOpenSongDetailsModalForPermissions() {
+  const modal = el("song-details-modal");
+  if (!modal || modal.classList.contains("hidden")) return;
+
+  const songId = state.currentSongDetailsId;
+  if (!songId) return;
+
+  const song =
+    (Array.isArray(state.songs) && state.songs.find(s => String(s?.id) === String(songId))) ||
+    { id: songId };
+  const selectedKey = state.currentSongDetailsContext?.selectedKey || null;
+  const setSongContext = resolveCurrentSongDetailsSetSongContext();
+
+  await openSongDetailsModal(song, selectedKey, setSongContext);
+}
+
 async function openSongDetailsModal(song, selectedKey = null, setSongContext = null) {
   if (!song) return;
 
@@ -19121,6 +19225,11 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 
   // Track which song is open
   state.currentSongDetailsId = song.id;
+  state.currentSongDetailsContext = {
+    selectedKey: selectedKey || null,
+    setSongId: setSongContext?.id || null,
+    setSongSnapshot: setSongContext || null
+  };
 
   title.textContent = "Song Details";
 
@@ -19940,6 +20049,7 @@ function closeSongDetailsModal() {
 
     closeModalWithAnimation(modal, () => {
       state.currentSongDetailsId = null;
+      state.currentSongDetailsContext = null;
       content?.classList.remove("song-details-content--has-resources");
     });
   }
@@ -29083,6 +29193,40 @@ function findJsonBlock(text) {
   return null;
 }
 
+function sanitizeActionNarrativeText(rawText) {
+  if (!rawText) return "";
+
+  const blockedLinePatterns = [
+    /\bset_song_id\b/i,
+    /\bset[\s_-]*song[\s_-]*id\b/i,
+    /\bresource_id\b/i,
+    /\bnew_order\b/i,
+    /\bpayload\b/i,
+    /\bactions?\b\s*:/i,
+    /\bid\s*:\s*["']?[a-z0-9-]+["']?\s*$/i,
+    /here(?:'s| is)\s+the\s+json/i,
+    /\bjson\s+(?:to|for)\b/i,
+    /\bjson block\b/i,
+    /^```/
+  ];
+
+  const lines = String(rawText).split(/\r?\n/);
+  const kept = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (kept.length > 0 && kept[kept.length - 1] !== "") kept.push("");
+      continue;
+    }
+    if (blockedLinePatterns.some(pattern => pattern.test(trimmed))) continue;
+    kept.push(line);
+  }
+
+  while (kept.length > 0 && kept[0] === "") kept.shift();
+  while (kept.length > 0 && kept[kept.length - 1] === "") kept.pop();
+  return kept.join("\n").trim();
+}
+
 function extractActionBlocks(contentText) {
   let rawContent = typeof contentText === "string" ? contentText : String(contentText ?? "");
   const actionBlocks = [];
@@ -29130,8 +29274,13 @@ function extractActionBlocks(contentText) {
     rawContent = rawContent.trim();
   }
 
+  const trimmedRawContent = rawContent.trim();
+  const displayRawContent = actionBlocks.length > 0
+    ? sanitizeActionNarrativeText(trimmedRawContent)
+    : trimmedRawContent;
+
   return {
-    rawContent: rawContent.trim(),
+    rawContent: displayRawContent,
     actionBlocks,
     rawActionJson: rawJsonBlocks.length ? rawJsonBlocks.join("\n\n") : null
   };
@@ -29152,6 +29301,40 @@ function normalizeMatchString(value) {
   return value.trim().toLowerCase();
 }
 
+function alphaRefToOneBasedIndex(value) {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  if (!/^[A-Z]+$/.test(normalized)) return null;
+  let index = 0;
+  for (let i = 0; i < normalized.length; i += 1) {
+    index = (index * 26) + (normalized.charCodeAt(i) - 64);
+  }
+  return index > 0 ? index : null;
+}
+
+function parseCompactSetSongRef(value) {
+  if (value === undefined || value === null || value === "") return null;
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.round(value);
+  }
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const numericMatch = raw.match(/^(?:#|item[_\-\s]*|song[_\-\s]*|set[_\-\s]*song[_\-\s]*|setsong[_\-\s]*|ss[_\-\s]*|s[_\-\s]*|i[_\-\s]*)?(\d+)$/i);
+  if (numericMatch) {
+    return Number(numericMatch[1]);
+  }
+
+  const alphaMatch = raw.match(/^(?:item[_\-\s]*|song[_\-\s]*|set[_\-\s]*song[_\-\s]*|setsong[_\-\s]*|ss[_\-\s]*|s[_\-\s]*|i[_\-\s]*)?([A-Za-z]+)$/i);
+  if (alphaMatch) {
+    return alphaRefToOneBasedIndex(alphaMatch[1]);
+  }
+
+  return null;
+}
+
 function resolveSetSongByIndex(indexValue, setSongs = getSortedSetSongs()) {
   if (indexValue === undefined || indexValue === null || indexValue === "") return null;
   const indexNum = Number(indexValue);
@@ -29163,16 +29346,25 @@ function resolveSetSongByIndex(indexValue, setSongs = getSortedSetSongs()) {
   return null;
 }
 
+function resolveSetSongByCompactRef(value, setSongs = getSortedSetSongs()) {
+  const compactRef = parseCompactSetSongRef(value);
+  if (compactRef === null) return null;
+  return resolveSetSongByIndex(compactRef, setSongs);
+}
+
 function resolveSetSongFromPayload(payload) {
   if (!payload || typeof payload !== "object") return null;
 
+  const setSongs = getSortedSetSongs();
   const directId = payload.set_song_id || payload.setSongId || payload.id;
   if (directId) {
     const directMatch = getSetSongById(directId);
     if (directMatch) return directMatch;
+
+    const compactMatch = resolveSetSongByCompactRef(directId, setSongs);
+    if (compactMatch) return compactMatch;
   }
 
-  const setSongs = getSortedSetSongs();
   const indexCandidates = [
     directId,
     payload.index,
@@ -29184,7 +29376,7 @@ function resolveSetSongFromPayload(payload) {
   ];
 
   for (const candidate of indexCandidates) {
-    const byIndex = resolveSetSongByIndex(candidate, setSongs);
+    const byIndex = resolveSetSongByCompactRef(candidate, setSongs) || resolveSetSongByIndex(candidate, setSongs);
     if (byIndex) return byIndex;
   }
 
@@ -29293,21 +29485,15 @@ function resolveReorderIds(payload) {
   let resolved = normalized.slice();
   let usedIndexMapping = false;
 
-  const unknownIds = resolved.filter(id => !knownIds.has(id));
-  if (unknownIds.length > 0) {
-    const numeric = resolved.map(value => Number(value));
-    if (numeric.every(value => Number.isFinite(value))) {
-      const min = Math.min(...numeric);
-      const max = Math.max(...numeric);
-      if (min >= 1 && max <= setSongs.length) {
-        resolved = numeric.map(value => String(setSongs[value - 1]?.id)).filter(Boolean);
-        usedIndexMapping = true;
-      } else if (min >= 0 && max < setSongs.length) {
-        resolved = numeric.map(value => String(setSongs[value]?.id)).filter(Boolean);
-        usedIndexMapping = true;
-      }
+  resolved = resolved.map(id => {
+    if (knownIds.has(id)) return id;
+    const byCompactRef = resolveSetSongByCompactRef(id, setSongs);
+    if (byCompactRef?.id) {
+      usedIndexMapping = true;
+      return String(byCompactRef.id);
     }
-  }
+    return id;
+  });
 
   const uniqueIds = [];
   const seen = new Set();
@@ -29323,7 +29509,6 @@ function resolveReorderIds(payload) {
   if (missingIds.length > 0) warnings.push(`Missing ${missingIds.length} item${missingIds.length === 1 ? "" : "s"} from the reorder list.`);
   if (stillUnknownIds.length > 0) warnings.push(`Contains ${stillUnknownIds.length} unknown item${stillUnknownIds.length === 1 ? "" : "s"}.`);
   if (resolved.length !== uniqueIds.length) warnings.push("Contains duplicate items; duplicates will be ignored.");
-  if (usedIndexMapping) warnings.push("Interpreted reorder list as setlist positions (index numbers).");
 
   return { orderIds: resolved, uniqueIds, warnings, usedIndexMapping };
 }

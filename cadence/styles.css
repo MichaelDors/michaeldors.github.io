@@ -1582,9 +1582,10 @@ main {
   --cover-stack-shelf-color: color-mix(in srgb, var(--text-primary) 24%, transparent);
   --cover-stack-shelf-highlight: color-mix(in srgb, var(--text-primary) 48%, transparent);
   --cover-stack-shelf-shadow: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  --cover-stack-edge-inset: clamp(20px, 8%, 34px);
   position: absolute;
-  left: 0;
-  right: 0;
+  left: var(--cover-stack-edge-inset);
+  right: var(--cover-stack-edge-inset);
   bottom: 0;
   height: 106px;
   overflow: hidden;
@@ -3295,6 +3296,7 @@ textarea {
   }
 
   .set-add-song-cover-stack {
+    --cover-stack-edge-inset: clamp(14px, 7vw, 24px);
     --cover-stack-underline-width: clamp(96px, 42%, 144px);
     height: 92px;
   }
