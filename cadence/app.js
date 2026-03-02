@@ -2536,7 +2536,7 @@ function bindEvents() {
   el("close-chart-editor")?.addEventListener("click", () => closeChordChartEditor());
   el("btn-chart-viewer-edit")?.addEventListener("click", () => {
     const active = state.chordCharts.active;
-    if (active && active.songId && (isManager() || isOwner())) {
+    if (active && active.songId && !active.readOnly && (isManager() || isOwner())) {
       closeChordChartViewer();
       // Ensure we pass the key and other details correctly
       openChordChartEditor({
@@ -24541,7 +24541,8 @@ function openChordChartViewerFromResource(resource) {
   if (subtitleEl) subtitleEl.textContent = subtitle + (readOnly ? " • Read-only (auto-generated)" : "");
 
   if (editBtn) {
-    if (isManager() || isOwner()) {
+    const canEditFromViewer = (isManager() || isOwner()) && !readOnly;
+    if (canEditFromViewer) {
       editBtn.classList.remove("hidden");
     } else {
       editBtn.classList.add("hidden");
