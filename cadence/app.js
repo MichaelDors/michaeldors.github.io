@@ -2260,6 +2260,10 @@ function bindEvents() {
       if (setsTab && !setsTab.classList.contains("hidden")) {
         recalculateAllAssignmentPills();
       }
+      const setDetailView = el("set-detail");
+      if (setDetailView && !setDetailView.classList.contains("hidden")) {
+        recalculateSetDetailAssignmentPills();
+      }
     }, 150);
   });
 
@@ -6922,6 +6926,55 @@ function recalculateAllAssignmentPills() {
   });
 }
 
+function collapseSetDetailAssignmentPills(assignmentsWrap, pills) {
+  if (!assignmentsWrap || !Array.isArray(pills) || pills.length <= 1) return;
+
+  assignmentsWrap.querySelectorAll(".assignment-more-pill").forEach((pill) => pill.remove());
+
+  const connectedPills = pills.filter((pill) => pill && pill.isConnected && pill.closest(".assignments") === assignmentsWrap);
+  if (connectedPills.length <= 1) return;
+
+  connectedPills.forEach((pill) => {
+    pill.style.display = "";
+  });
+
+  const firstTop = connectedPills[0].offsetTop;
+  if (!Number.isFinite(firstTop)) return;
+
+  let firstWrappedIndex = connectedPills.findIndex((pill) => pill.offsetTop > firstTop + 1);
+  if (firstWrappedIndex === -1) return;
+
+  for (let i = firstWrappedIndex; i < connectedPills.length; i += 1) {
+    connectedPills[i].style.display = "none";
+  }
+
+  let hiddenCount = connectedPills.length - firstWrappedIndex;
+  const morePill = document.createElement("span");
+  morePill.className = "assignment-pill assignment-more-pill";
+  morePill.textContent = `+${hiddenCount} more`;
+  morePill.style.pointerEvents = "none";
+  morePill.style.cursor = "default";
+  assignmentsWrap.appendChild(morePill);
+
+  while (morePill.offsetTop > firstTop + 1 && firstWrappedIndex > 0) {
+    firstWrappedIndex -= 1;
+    connectedPills[firstWrappedIndex].style.display = "none";
+    hiddenCount += 1;
+    morePill.textContent = `+${hiddenCount} more`;
+  }
+}
+
+function recalculateSetDetailAssignmentPills() {
+  const songsList = el("detail-songs-list");
+  if (!songsList) return;
+
+  const wrappers = songsList.querySelectorAll('.assignments[data-has-collapsible-pills="true"]');
+  wrappers.forEach((assignmentsWrap) => {
+    const pills = Array.isArray(assignmentsWrap._assignmentPills) ? assignmentsWrap._assignmentPills : [];
+    collapseSetDetailAssignmentPills(assignmentsWrap, pills);
+  });
+}
+
 function renderSetCard(set, container, index = 0, animate = true, baseDelay = 0) {
   const template = document.getElementById("set-card-template");
   const node = template.content.cloneNode(true);
@@ -7098,7 +7151,10 @@ function renderSetCard(set, container, index = 0, animate = true, baseDelay = 0)
             if (assignment.songId) {
               const songForModal =
                 assignment.song || { id: assignment.songId, title: assignment.songTitle };
-              await openSongDetailsModal(songForModal, assignment.selectedKey || null);
+              const setSongContext = set.set_songs?.find(
+                (setSong) => String(setSong?.id) === String(assignment.setSongId)
+              ) || null;
+              await openSongDetailsModal(songForModal, assignment.selectedKey || null, setSongContext);
             }
           });
         }
@@ -8303,6 +8359,9 @@ function switchSetDetailTab(tabName) {
     songsTab.classList.remove("hidden");
     if (assignmentsTab) assignmentsTab.classList.add("hidden");
     timesTab.classList.add("hidden");
+    requestAnimationFrame(() => {
+      recalculateSetDetailAssignmentPills();
+    });
   } else if (tabName === "assignments") {
     songsTab.classList.add("hidden");
     if (assignmentsTab) assignmentsTab.classList.remove("hidden");
@@ -9878,15 +9937,20 @@ function renderSetDetailSongs(set, animate = false) {
         const assignmentSongTitle = assignmentSourceSetSong?.song_id
           ? (assignmentSourceSetSong.song?.title || assignmentSourceSetSong.title || "Unknown Song")
           : (assignmentSourceSetSong?.title || setSong.title || "Unknown Section");
+        const assignmentPillRoots = [];
 
         // Hide assignments section completely when in per-set mode
         if (assignmentMode === 'per_set') {
           assignmentsWrap.style.display = 'none';
+          delete assignmentsWrap.dataset.hasCollapsiblePills;
+          delete assignmentsWrap._assignmentPills;
         } else {
           assignmentsWrap.style.display = '';
           if (!displayAssignments.length) {
             assignmentsWrap.innerHTML =
               '<span class="muted">No assignments yet.</span>';
+            delete assignmentsWrap.dataset.hasCollapsiblePills;
+            delete assignmentsWrap._assignmentPills;
           } else {
             displayAssignments.forEach((assignment) => {
               const pill = document
@@ -9966,8 +10030,19 @@ function renderSetDetailSongs(set, animate = false) {
                 });
               }
 
+              if (pillRoot) {
+                assignmentPillRoots.push(pillRoot);
+              }
               assignmentsWrap.appendChild(pill);
             });
+
+            if (assignmentPillRoots.length > 1) {
+              assignmentsWrap.dataset.hasCollapsiblePills = "true";
+              assignmentsWrap._assignmentPills = assignmentPillRoots;
+            } else {
+              delete assignmentsWrap.dataset.hasCollapsiblePills;
+              delete assignmentsWrap._assignmentPills;
+            }
           }
         }
 
@@ -10011,6 +10086,10 @@ function renderSetDetailSongs(set, animate = false) {
 
         songsList.appendChild(songNode);
       });
+
+    requestAnimationFrame(() => {
+      recalculateSetDetailAssignmentPills();
+    });
 
     // Setup drag and drop for songs (managers only)
     if (isManager()) {
@@ -19260,6 +19339,61 @@ async function refreshOpenSongDetailsModalForPermissions() {
   await openSongDetailsModal(song, selectedKey, setSongContext);
 }
 
+function getSongDetailsAssignmentPersonName(assignment) {
+  return (
+    assignment?.person?.full_name ||
+    assignment?.pending_invite?.full_name ||
+    assignment?.person_name ||
+    assignment?.person_email ||
+    assignment?.pending_invite?.email ||
+    "Unassigned"
+  );
+}
+
+function renderSongDetailsAssignmentsList(assignments, container) {
+  if (!container || !Array.isArray(assignments) || assignments.length === 0) return;
+
+  const sortedAssignments = [...assignments].sort((a, b) => {
+    const roleA = (a?.role || "Unassigned").toLowerCase();
+    const roleB = (b?.role || "Unassigned").toLowerCase();
+    if (roleA !== roleB) return roleA.localeCompare(roleB);
+
+    const nameA = getSongDetailsAssignmentPersonName(a).toLowerCase();
+    const nameB = getSongDetailsAssignmentPersonName(b).toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+
+  sortedAssignments.forEach((assignment) => {
+    const assignmentDiv = document.createElement("div");
+    assignmentDiv.style.marginBottom = "0.75rem";
+    assignmentDiv.style.padding = "0.75rem";
+    assignmentDiv.style.border = "1px solid var(--border-color)";
+    assignmentDiv.style.borderRadius = "0.5rem";
+
+    const role = document.createElement("div");
+    role.style.fontWeight = "600";
+    role.style.marginBottom = "0.25rem";
+    role.textContent = assignment?.role || "Unassigned";
+
+    const person = document.createElement("div");
+    person.style.color = "var(--text-secondary)";
+    person.textContent = getSongDetailsAssignmentPersonName(assignment);
+
+    const assignmentStatus = assignment?.status || "pending";
+    if (assignmentStatus !== "accepted") {
+      const statusBadge = document.createElement("span");
+      statusBadge.className = `assignment-status-badge ${assignmentStatus}`;
+      statusBadge.textContent = assignmentStatus === "declined" ? "Declined" : "Pending";
+      statusBadge.style.marginLeft = "0.5rem";
+      person.appendChild(statusBadge);
+    }
+
+    assignmentDiv.appendChild(role);
+    assignmentDiv.appendChild(person);
+    container.appendChild(assignmentDiv);
+  });
+}
+
 async function openSongDetailsModal(song, selectedKey = null, setSongContext = null) {
   if (!song) return;
 
@@ -19346,7 +19480,55 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
     linksByKey[link.key].push(link);
   });
 
+  const assignmentSourceSetSong = getAssignmentSourceSetSong(setSongContext, state.selectedSet);
+  let songDetailsAssignments = Array.isArray(assignmentSourceSetSong?.song_assignments)
+    ? [...assignmentSourceSetSong.song_assignments]
+    : [];
+
+  const shouldRefreshSongDetailsAssignments =
+    !!assignmentSourceSetSong?.id &&
+    (
+      songDetailsAssignments.length === 0 ||
+      songDetailsAssignments.some((assignment) =>
+        (assignment?.person_id && !assignment?.person?.full_name) ||
+        (assignment?.pending_invite_id && !assignment?.pending_invite?.email)
+      )
+    );
+
+  if (shouldRefreshSongDetailsAssignments) {
+    const { data: refreshedSetSong } = await supabase
+      .from("set_songs")
+      .select(`
+        id,
+        song_assignments(
+          id,
+          person_id,
+          person_name,
+          person_email,
+          pending_invite_id,
+          role,
+          status,
+          person:person_id(
+            id,
+            full_name
+          ),
+          pending_invite:pending_invite_id(
+            id,
+            full_name,
+            email
+          )
+        )
+      `)
+      .eq("id", assignmentSourceSetSong.id)
+      .single();
+
+    if (refreshedSetSong?.song_assignments) {
+      songDetailsAssignments = refreshedSetSong.song_assignments;
+    }
+  }
+
   const hasLinks = links.length > 0;
+  const hasSongAssignments = songDetailsAssignments.length > 0;
   const hasKeys = (songWithResources.song_keys || []).length > 0;
   const keysArray = songWithResources.song_keys || [];
   const singleKey = keysArray.length === 1 ? keysArray[0].key : null;
@@ -19371,7 +19553,8 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   const hasGeneratedKeyCharts = !!(generalChart && generalChart.chart_type === "number" && hasKeys);
   const hasAnyCharts = !!(allGeneralCharts.length > 0 || keyCharts.length > 0 || hasGeneratedKeyCharts);
   const hasResources = hasLinks || hasAnyCharts;
-  content.classList.toggle("song-details-content--has-resources", hasResources);
+  const hasAccentContent = hasResources || hasSongAssignments;
+  content.classList.toggle("song-details-content--has-resources", hasAccentContent);
   const itunesFetchDisabled = !!songWithResources.itunes_fetch_disabled;
   const teamItunesDisabled = (state.userTeams?.find?.(t => t.id === state.currentTeamId)?.itunes_indexing_enabled === false);
   const itunesUnavailable = itunesFetchDisabled || teamItunesDisabled;
@@ -19502,7 +19685,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         </div>
        ` : ''}
 
-        ${hasResources ? `
+        ${hasAccentContent ? `
         <div class="resources-section-wrapper">
           <div class="resources-wave-divider">
             <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
@@ -19520,10 +19703,18 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             </svg>
           </div>
           <div class="resources-content-area">
+            ${hasResources ? `
             <div class="song-details-section">
               <h1 class="section-title" style="margin-top:0.5rem; font-size:2rem;">Resources & Links</h1>
               <div class="song-details-links"></div>
             </div>
+            ` : ''}
+            ${hasSongAssignments ? `
+            <div class="song-details-section">
+              <h1 class="section-title" style="margin-top:${hasResources ? "2rem" : "0.5rem"}; font-size:2rem;">Assignments</h1>
+              <div class="song-details-assignments"></div>
+            </div>
+            ` : ''}
           </div>
         </div>
         ` : ''
@@ -19794,6 +19985,11 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         linksContainer.appendChild(otherKeysSection);
       }
     }
+  }
+
+  if (hasSongAssignments) {
+    const assignmentsContainer = content.querySelector(".song-details-assignments");
+    renderSongDetailsAssignmentsList(songDetailsAssignments, assignmentsContainer);
   }
 
   const modalClickTrackBtn = content.querySelector(".song-click-track .click-track-btn");
