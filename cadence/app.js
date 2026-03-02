@@ -2640,6 +2640,15 @@ function bindEvents() {
         doc: active.chart.doc,
       });
       active.chart.id = saved.id;
+      console.log("[chart] saved resource", {
+        supabaseUrl: SUPABASE_URL,
+        id: saved?.id,
+        song_id: saved?.song_id,
+        team_id: saved?.team_id,
+        scope: saved?.scope,
+        chart_type: saved?.chart_type,
+        song_key: saved?.song_key ?? null,
+      });
       toastSuccess("Chord chart saved.");
       trackPostHogEvent("chart_saved", {
         team_id: state.currentTeamId,
@@ -2649,16 +2658,43 @@ function bindEvents() {
         chart_type: saved.chart_type,
       });
 
-      // If song edit modal is open, refresh chart rows in the resources list
+      // If song edit modal is open, refresh the resources list from DB
       const songEditOpen = !!el("song-edit-modal") && !el("song-edit-modal").classList.contains("hidden");
       if (songEditOpen) {
-        const charts = await fetchSongCharts(active.songId, { useCache: false });
-        injectSongChartsIntoSongLinksList({
-          songId: active.songId,
-          songTitle: el("song-edit-title")?.value?.trim?.() || active.songTitle || "",
-          charts,
-          keys: collectSongKeys().map(k => k?.key).filter(Boolean),
-        });
+        try {
+          const { data: songData, error: songErr } = await supabase
+            .from("songs")
+            .select(`
+              *,
+              song_keys(
+                id,
+                key
+              ),
+              song_resources(
+                id,
+                team_id,
+                type,
+                title,
+                url,
+                file_path,
+                file_name,
+                file_type,
+                key,
+                display_order,
+                chart_content,
+                created_at
+              )
+            `)
+            .eq("id", active.songId)
+            .single();
+          if (songErr) throw songErr;
+          if (songData) {
+            renderSongKeys(songData.song_keys || []);
+            renderSongLinks(songData.song_resources || []);
+          }
+        } catch (e) {
+          console.warn("[chart] failed to refresh song resources after save:", e);
+        }
       }
     } catch (err) {
       console.error("Failed to save chart:", err);
@@ -23250,7 +23286,7 @@ async function renderSongLinksDisplay(links, container) {
       const title = document.createElement("div");
       title.className = "song-link-title";
       const baseTitle = link.title || "Chord Chart";
-      if (link.generatedFromNumber || link.doc?.settings?.ai_generated) {
+      if (link.doc?.settings?.ai_generated) {
         title.innerHTML = `${escapeHtml(baseTitle)} <span class="badge ai-generated-badge">AI Generated</span>`;
       } else {
         title.textContent = baseTitle;
@@ -23544,7 +23580,7 @@ function buildChartRow(chart, { songId, songTitle, readOnly = false, generated =
   if (chart?.id) div.dataset.chartId = chart.id;
 
   const label = generated ? "Generated Chord Chart" : chartDisplayLabel(chart);
-  const isAiGenerated = !!generated || !!chart?.doc?.settings?.ai_generated;
+  const isAiGenerated = !!chart?.doc?.settings?.ai_generated;
   const aiBadgeHtml = isAiGenerated ? `<span class="badge ai-generated-badge">AI Generated</span>` : "";
   const subtitle = generated
     ? `Key: ${targetKey} • Auto-generated (read-only)`
@@ -23623,20 +23659,16 @@ function buildChartRow(chart, { songId, songTitle, readOnly = false, generated =
       if (!ok) return;
       try {
         const { error } = await supabase
-          .from(SONG_CHARTS_TABLE)
+          .from(SONG_RESOURCES_TABLE)
           .delete()
           .eq("id", chart.id)
-          .eq("song_id", songId);
+          .eq("song_id", songId)
+          .eq("team_id", state.currentTeamId);
         if (error) throw error;
         toastSuccess("Chart deleted.");
-        // Refresh chart rows without disturbing link edits
-        const charts = await fetchSongCharts(songId, { useCache: false });
-        injectSongChartsIntoSongLinksList({
-          songId,
-          songTitle,
-          charts,
-          keys: collectSongKeys().map(k => k?.key).filter(Boolean),
-        });
+        // Refresh song resources (chart rows are part of resources now)
+        const resources = await fetchSongResources(songId);
+        renderSongLinks(resources || []);
       } catch (err) {
         console.error("Failed to delete chart:", err);
         toastError("Failed to delete chart. Check console.");
@@ -24295,13 +24327,8 @@ async function saveSongChart({
     updated_at: new Date().toISOString(),
   };
 
-  if (!id) {
-    payload.created_by = state.session?.user?.id || null;
-    // Get max display order to append? Or let DB default?
-    // DB default is 0. We might want to append.
-    // fetchSongResources might be expensive. For now let's set 0 or use a quick query if needed.
-    // Or just default 0 and let user reorder.
-  }
+  // NOTE: Do not send `created_by` here unless the column exists on `song_resources`.
+  // Supabase/PostgREST will reject unknown columns with PGRST204.
 
   const query = id
     ? supabase.from(SONG_RESOURCES_TABLE).update(payload).eq("id", id).select().single()
