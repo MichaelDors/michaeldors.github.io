@@ -8059,15 +8059,25 @@ function formatTime(timeString) {
 
 function renderTimes(serviceTimesContent, rehearsalTimesContent, set) {
   // Show/hide edit buttons for managers
+  const canEditTimes = isManager();
   const editTimesBtn = el("btn-edit-times");
   const editTimesBtnMobile = el("btn-edit-times-mobile");
+  const editTimesBtnWrapper = editTimesBtn?.parentElement;
+  const editTimesBtnMobileWrapper = editTimesBtnMobile?.parentElement;
+  const rehearsalSection = rehearsalTimesContent?.closest(".times-section");
 
-  if (isManager()) {
+  if (canEditTimes) {
+    if (editTimesBtnWrapper) editTimesBtnWrapper.classList.remove("hidden");
+    if (editTimesBtnMobileWrapper) editTimesBtnMobileWrapper.classList.remove("hidden");
     if (editTimesBtn) editTimesBtn.classList.remove("hidden");
     if (editTimesBtnMobile) editTimesBtnMobile.classList.remove("hidden");
+    if (rehearsalSection) rehearsalSection.classList.remove("times-section--flush-bottom");
   } else {
     if (editTimesBtn) editTimesBtn.classList.add("hidden");
     if (editTimesBtnMobile) editTimesBtnMobile.classList.add("hidden");
+    if (editTimesBtnWrapper) editTimesBtnWrapper.classList.add("hidden");
+    if (editTimesBtnMobileWrapper) editTimesBtnMobileWrapper.classList.add("hidden");
+    if (rehearsalSection) rehearsalSection.classList.add("times-section--flush-bottom");
   }
 
   // Render service times

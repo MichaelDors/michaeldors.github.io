@@ -842,6 +842,10 @@ main {
   margin-bottom: 0;
 }
 
+.times-section--flush-bottom {
+  margin-bottom: 0;
+}
+
 .times-section h3 {
   font-size: 1rem;
   font-weight: 600;
