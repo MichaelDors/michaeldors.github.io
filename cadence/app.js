@@ -689,6 +689,110 @@ const TAG_PRESET_OPTIONS = [
   { value: "none", label: "Clear Tag" },
 ];
 
+const HAPTIC_PATTERNS = Object.freeze({
+  success: Object.freeze([
+    Object.freeze({ duration: 30 }),
+    Object.freeze({ delay: 60, duration: 40, intensity: 1 }),
+  ]),
+  failure: Object.freeze([
+    Object.freeze({ duration: 10, intensity: 0.44 }),
+    Object.freeze({ delay: 30, duration: 90, intensity: 1 }),
+    Object.freeze({ duration: 50 }),
+  ]),
+  selection: Object.freeze([
+    Object.freeze({ duration: 25 }),
+  ]),
+  dropdownOpen: Object.freeze([
+    Object.freeze({ duration: 40, intensity: 0 }),
+    Object.freeze({ delay: 40, duration: 40, intensity: 0.34 }),
+    Object.freeze({ delay: 40, duration: 50, intensity: 0.54 }),
+  ]),
+});
+
+const HAPTIC_SELECTION_OPTIONS = Object.freeze({ intensity: 0.7 });
+
+function isIOSLikeDevice() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  const platform = navigator.platform || "";
+  const maxTouchPoints = Number(navigator.maxTouchPoints || 0);
+
+  // iPadOS can report itself as MacIntel; include touchpoint heuristic.
+  return /iPad|iPhone|iPod/i.test(ua) || (platform === "MacIntel" && maxTouchPoints > 1);
+}
+
+const HAPTICS_ENABLED = typeof window !== "undefined";
+
+let hapticsClient = null;
+if (HAPTICS_ENABLED) {
+  import("https://esm.sh/web-haptics")
+    .then(({ WebHaptics }) => {
+      try {
+        hapticsClient = new WebHaptics();
+      } catch (_) {
+        hapticsClient = null;
+      }
+    })
+    .catch(() => {
+      hapticsClient = null;
+    });
+}
+
+function triggerHaptic(pattern, options) {
+  if (!hapticsClient || typeof hapticsClient.trigger !== "function") return;
+  try {
+    hapticsClient.trigger(pattern, options);
+  } catch (_) {
+    // haptics may be unsupported on current device/browser
+  }
+}
+
+function triggerSuccessHaptic() {
+  triggerHaptic(HAPTIC_PATTERNS.success);
+}
+
+function triggerFailureHaptic() {
+  triggerHaptic(HAPTIC_PATTERNS.failure);
+}
+
+function triggerSelectionHaptic() {
+  if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+    window.setTimeout(() => {
+      triggerHaptic(HAPTIC_PATTERNS.selection, HAPTIC_SELECTION_OPTIONS);
+    }, 0);
+    return;
+  }
+  triggerHaptic(HAPTIC_PATTERNS.selection, HAPTIC_SELECTION_OPTIONS);
+}
+
+function triggerDropdownOpenHaptic() {
+  // iOS Safari can collapse freshly-opened dropdowns if haptics fire in the
+  // same click stack; defer to the next macrotask.
+  if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+    window.setTimeout(() => {
+      triggerHaptic(HAPTIC_PATTERNS.dropdownOpen);
+    }, 0);
+    return;
+  }
+  triggerHaptic(HAPTIC_PATTERNS.dropdownOpen);
+}
+
+function isLikelySyntheticClickEvent(event) {
+  if (!event || event.type !== "click") return false;
+  if (event.isTrusted === false) return true;
+
+  const target = event.target;
+  if (!(target instanceof Element)) return false;
+
+  // web-haptics injects a hidden label/input pair with ids like "web-haptics-1"
+  // and programmatically clicks the label. Ignore those click paths.
+  return Boolean(
+    target.closest('label[for^="web-haptics-"]') ||
+    target.closest('input[id^="web-haptics-"][switch]') ||
+    (typeof target.id === "string" && target.id.startsWith("web-haptics-"))
+  );
+}
+
 // Toast System
 function showToast(message, type = 'info', duration = 5000) {
   const container = el('toast-container');
@@ -745,10 +849,12 @@ function removeToast(toast) {
 
 // Convenience functions
 function toastError(message, duration = 6000) {
+  triggerFailureHaptic();
   return showToast(message, 'error', duration);
 }
 
 function toastSuccess(message, duration = 4000) {
+  triggerSuccessHaptic();
   return showToast(message, 'success', duration);
 }
 
@@ -775,6 +881,9 @@ function showDatabaseError() {
 // Helper to close modal with animation
 function closeModalWithAnimation(modalElement, onHidden) {
   if (!modalElement) return;
+  if (!modalElement.classList.contains("hidden")) {
+    triggerSelectionHaptic();
+  }
 
   // Stop tracking time on modal if it was being tracked
   const modalId = modalElement.id;
@@ -1280,30 +1389,34 @@ function setupModalObservers() {
     mutations.forEach((mutation) => {
       if (mutation.type === 'attributes' &&
         mutation.attributeName === 'class' &&
-        mutation.oldValue &&
-        mutation.oldValue.includes('hidden') &&
-        !mutation.target.classList.contains('hidden')) {
+        mutation.oldValue) {
 
-        // Modal just became visible
-        // Force animation restart if it doesn't happen automatically
         const target = mutation.target;
+        const wasHidden = mutation.oldValue.includes('hidden');
+        const isHidden = target.classList.contains('hidden');
 
-        // Slightly delay to ensure browser acknowledges visible state
-        requestAnimationFrame(() => {
-          target.style.animation = 'none';
-          target.offsetHeight; /* force reflow */
-          target.style.animation = '';
+        if (wasHidden && !isHidden) {
+          triggerSelectionHaptic();
 
-          const content = target.querySelector('.modal-content');
-          if (content) {
-            content.style.animation = 'none';
-            content.offsetHeight; /* force reflow */
-            content.style.animation = '';
-          }
+          // Modal just became visible
+          // Force animation restart if it doesn't happen automatically
+          requestAnimationFrame(() => {
+            target.style.animation = 'none';
+            target.offsetHeight; /* force reflow */
+            target.style.animation = '';
 
-          // Always reset scroll when a modal opens
-          resetModalScroll(target);
-        });
+            const content = target.querySelector('.modal-content');
+            if (content) {
+              content.style.animation = 'none';
+              content.offsetHeight; /* force reflow */
+              content.style.animation = '';
+            }
+
+            // Always reset scroll when a modal opens
+            resetModalScroll(target);
+          });
+        }
+
       }
     });
   });
@@ -1905,6 +2018,7 @@ function bindEvents() {
     if (!element) return;
     if (element.classList.contains("hidden")) {
       element.classList.remove("hidden");
+      triggerDropdownOpenHaptic();
     } else {
       element.classList.add("animate-out");
       setTimeout(() => {
@@ -1924,6 +2038,7 @@ function bindEvents() {
 
   // Close account menu when clicking outside
   document.addEventListener("click", (e) => {
+    if (isLikelySyntheticClickEvent(e)) return;
     // Helper to close a dropdown if click is outside
     const closeDropdownIfOutside = (menu, btn) => {
       if (menu && !menu.classList.contains("hidden") && !menu.contains(e.target) && (!btn || !btn.contains(e.target))) {
@@ -2025,7 +2140,8 @@ function bindEvents() {
 
   // Tab switching
   document.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (event) => {
+      if (isLikelySyntheticClickEvent(event)) return;
       const tab = btn.dataset.tab;
       switchTab(tab);
     });
@@ -2217,6 +2333,7 @@ function bindEvents() {
 
   // Close sort dropdown when clicking outside
   document.addEventListener("click", (e) => {
+    if (isLikelySyntheticClickEvent(e)) return;
     const container = el("songs-sort-dropdown-container");
     const menu = el("songs-sort-dropdown-menu");
     if (container && menu && !container.contains(e.target) && !menu.classList.contains("hidden")) {
@@ -2274,6 +2391,7 @@ function bindEvents() {
 
   // Set detail tab switching (mobile only) - use event delegation
   document.addEventListener("click", (e) => {
+    if (isLikelySyntheticClickEvent(e)) return;
     const tabBtn = e.target.closest(".set-detail-tabs .tab-btn");
     if (tabBtn) {
       e.preventDefault();
@@ -2435,6 +2553,7 @@ function bindEvents() {
 
   // Close dropdown when clicking outside
   document.addEventListener("click", (e) => {
+    if (isLikelySyntheticClickEvent(e)) return;
     const container = el("header-add-dropdown-container");
     const menu = el("header-add-dropdown-menu");
     const mobileContainer = el("mobile-header-add-dropdown-container");
@@ -3146,7 +3265,7 @@ function showApp() {
   // Restore the saved tab only once per session to avoid closing set detail on background re-entry
   const savedTab = localStorage.getItem('cadence-active-tab') || 'sets';
   if (!state.hasRestoredTab) {
-    switchTab(savedTab, { preserveSetDetail: true });
+    switchTab(savedTab, { preserveSetDetail: true, withHaptics: false });
     state.hasRestoredTab = true;
   }
 
@@ -6010,10 +6129,10 @@ function renderPendingRequests(requests) {
       // Find the full set object from state to ensure we have all details (songs, times, etc.)
       const fullSet = state.sets.find(s => s.id === (request.setId || request.set?.id));
       if (fullSet) {
-        showSetDetail(fullSet);
+        showSetDetail(fullSet, { withHaptics: true });
       } else if (request.set) {
         // Fallback to partial set data if full set not found
-        showSetDetail(request.set);
+        showSetDetail(request.set, { withHaptics: true });
       }
     };
 
@@ -6801,7 +6920,7 @@ async function openPersonDetailsModal(person) {
             modal.classList.add('hidden');
             document.body.style.overflow = '';
             // Navigate to the set
-            showSetDetail(fullSet);
+            showSetDetail(fullSet, { withHaptics: true });
           } else {
             // If set not in state, try to load it
             // For now, just show an error or reload sets
@@ -6840,7 +6959,7 @@ async function openPersonDetailsModal(person) {
             modal.classList.add('hidden');
             document.body.style.overflow = '';
             // Navigate to the set
-            showSetDetail(fullSet);
+            showSetDetail(fullSet, { withHaptics: true });
           } else {
             // If set not in state, try to load it
             // For now, just show an error or reload sets
@@ -7085,7 +7204,7 @@ function renderSetCard(set, container, index = 0, animate = true, baseDelay = 0)
       editBtn?.contains(e.target) || deleteBtn?.contains(e.target) || pinBtn?.contains(e.target)) {
       return;
     }
-    showSetDetail(set);
+    showSetDetail(set, { withHaptics: true });
   });
 
   if (isManager()) {
@@ -7203,7 +7322,7 @@ function renderSetCard(set, container, index = 0, animate = true, baseDelay = 0)
           pill.addEventListener("click", async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            showSetDetail(set);
+            showSetDetail(set, { withHaptics: true });
             // Only open details for real songs (not sections)
             if (assignment.songId) {
               const songForModal =
@@ -7363,12 +7482,15 @@ function renderSets(animate = true) {
 }
 
 function switchTab(tabName, options = {}) {
-  const { preserveSetDetail = false } = options;
+  const { preserveSetDetail = false, withHaptics = true } = options;
   // User-initiated in-app tab switch: always allow ripple (clear browser-tab-return suppression)
   state.justBecameVisible = false;
   if (state._justBecameVisibleTimeout) {
     clearTimeout(state._justBecameVisibleTimeout);
     state._justBecameVisibleTimeout = null;
+  }
+  if (withHaptics) {
+    triggerSelectionHaptic();
   }
   // Stop tracking time on previous tab
   stopPageTimeTracking();
@@ -8046,6 +8168,9 @@ function renderPeople(animate = true) {
               if (m !== menu) m.classList.add("hidden");
             });
             menu.classList.toggle("hidden");
+            if (!menu.classList.contains("hidden")) {
+              triggerDropdownOpenHaptic();
+            }
           });
         }
 
@@ -8386,11 +8511,15 @@ function renderSetAssignments(set, container) {
   }
 }
 
-function switchSetDetailTab(tabName) {
+function switchSetDetailTab(tabName, options = {}) {
+  const { withHaptics = true } = options;
   // Only switch tabs on mobile (tabs are hidden on desktop)
   const tabsContainer = document.querySelector(".set-detail-tabs");
   if (!tabsContainer || window.getComputedStyle(tabsContainer).display === "none") {
     return; // Don't switch if tabs aren't visible (desktop)
+  }
+  if (withHaptics) {
+    triggerSelectionHaptic();
   }
 
   // Update tab buttons
@@ -8579,13 +8708,17 @@ function updateAiChatFab(set) {
   scheduleAiChatFabPulse(fab);
 }
 
-function showSetDetail(set) {
+function showSetDetail(set, options = {}) {
+  const { withHaptics = false } = options;
   state._setDetailCoverLifecycleId = Number(state._setDetailCoverLifecycleId) || 0;
   const previousSetId = state.selectedSet?.id ? String(state.selectedSet.id) : "";
   const detailView = el("set-detail");
   const wasDetailVisible = Boolean(detailView && !detailView.classList.contains("hidden"));
   const nextSetId = set?.id ? String(set.id) : "";
   const isSameSetRefresh = Boolean(wasDetailVisible && previousSetId && previousSetId === nextSetId);
+  if (withHaptics && !isSameSetRefresh) {
+    triggerSelectionHaptic();
+  }
   if (!isSameSetRefresh && nextSetId) {
     const nextCoverEntryRequestId = (Number(state._setDetailCoverEntryRequestId) || 0) + 1;
     state._setDetailCoverEntryRequestId = nextCoverEntryRequestId;
@@ -8836,7 +8969,7 @@ function showSetDetail(set) {
       assignmentsTabButton.classList.add("hidden");
       // If assignments tab is currently active, switch to songs tab
       if (assignmentsTabButton.classList.contains("active")) {
-        switchSetDetailTab("songs");
+        switchSetDetailTab("songs", { withHaptics: false });
       }
     }
   }
@@ -8844,7 +8977,7 @@ function showSetDetail(set) {
   // Reset to songs tab on mobile (only if tabs are visible)
   const tabsContainer = document.querySelector(".set-detail-tabs");
   if (tabsContainer && window.getComputedStyle(tabsContainer).display !== "none") {
-    switchSetDetailTab("songs");
+    switchSetDetailTab("songs", { withHaptics: false });
   }
 
   // Render songs with entry animation only on actual set-open (not same-set refreshes).
@@ -17484,7 +17617,7 @@ async function renderSongCatalog(animate = true) {
         if (setId) {
           const set = state.sets.find(s => String(s.id) === String(setId));
           if (set) {
-            showSetDetail(set);
+            showSetDetail(set, { withHaptics: true });
             // When navigating from the song list, ensure the set detail view
             // scrolls to the top of the set details section.
             // Use a small timeout so layout has time to update.
@@ -20240,10 +20373,14 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
     toggleBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       menu.classList.toggle("hidden");
+      if (!menu.classList.contains("hidden")) {
+        triggerDropdownOpenHaptic();
+      }
     });
 
     // Close menu when clicking outside
     document.addEventListener("click", (e) => {
+      if (isLikelySyntheticClickEvent(e)) return;
       if (!dropdownContainer.contains(e.target)) {
         menu.classList.add("hidden");
       }
@@ -23271,6 +23408,7 @@ function ensureMailtoActionMenuListeners() {
   mailtoActionMenuListenersAttached = true;
 
   document.addEventListener("click", (event) => {
+    if (isLikelySyntheticClickEvent(event)) return;
     const target = event.target;
     if (target?.closest?.(".mailto-action-menu") || target?.closest?.(".mailto-copy-shell")) {
       return;
@@ -23330,6 +23468,7 @@ function openMobileMailtoActionMenu(email, anchorEl) {
   menu.style.left = `${left}px`;
   menu.style.top = `${top}px`;
   menu.style.visibility = "";
+  triggerDropdownOpenHaptic();
 
   const copyBtn = menu.querySelector("[data-mailto-action=\"copy\"]");
   copyBtn?.addEventListener("click", async (event) => {
@@ -26375,8 +26514,12 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
 
   input.addEventListener("click", (e) => {
     e.stopPropagation();
+    const wasOpen = optionsList.classList.contains("open");
     optionsList.classList.toggle("open");
     if (optionsList.classList.contains("open")) {
+      if (!wasOpen) {
+        triggerDropdownOpenHaptic();
+      }
       input.removeAttribute("readonly");
       input.focus();
       filterOptions(input.value);
@@ -26387,6 +26530,7 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
     filterOptions(e.target.value);
     if (!optionsList.classList.contains("open")) {
       optionsList.classList.add("open");
+      triggerDropdownOpenHaptic();
     }
   });
 
@@ -26450,6 +26594,7 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
   });
 
   document.addEventListener("click", (e) => {
+    if (isLikelySyntheticClickEvent(e)) return;
     if (!container.contains(e.target)) {
       optionsList.classList.remove("open");
       input.setAttribute("readonly", "");
@@ -26568,11 +26713,16 @@ function createSimpleDropdown(options, placeholder = "Select...", selectedValue 
   // Toggle dropdown on input click
   input.addEventListener("click", (e) => {
     e.stopPropagation();
+    const wasOpen = optionsList.classList.contains("open");
     optionsList.classList.toggle("open");
+    if (!wasOpen && optionsList.classList.contains("open")) {
+      triggerDropdownOpenHaptic();
+    }
   });
 
   // Close when clicking outside
   document.addEventListener("click", (e) => {
+    if (isLikelySyntheticClickEvent(e)) return;
     if (!container.contains(e.target)) {
       optionsList.classList.remove("open");
     }
@@ -29881,6 +30031,7 @@ function toggleChatTabMenu(menu, anchor) {
   if (menu.classList.contains("hidden")) {
     closeChatTabMenus(menu);
     positionChatTabMenu(menu, anchor);
+    triggerDropdownOpenHaptic();
   } else {
     closeChatTabMenu(menu);
   }
@@ -29891,6 +30042,7 @@ function ensureChatTabMenuListeners() {
   chatTabMenuListenersAttached = true;
 
   document.addEventListener("click", (event) => {
+    if (isLikelySyntheticClickEvent(event)) return;
     const target = event.target;
     if (target?.closest?.(".chat-tab-menu") || target?.closest?.(".chat-tab-menu-toggle")) {
       return;
