@@ -198,6 +198,7 @@ const state = {
   people: [],
   pendingInvites: [],
   pendingRequests: [],
+  pendingRequestCountsByTeam: {},
   selectedSet: null,
   currentSetSongs: [],
   creatingSongFromModal: false,
@@ -1058,6 +1059,7 @@ function saveAppDataToCache(session) {
       userTeams: state.userTeams,
       currentTeamId: state.currentTeamId,
       pendingRequests: state.pendingRequests,
+      pendingRequestCountsByTeam: state.pendingRequestCountsByTeam,
       timestamp: Date.now()
     };
     localStorage.setItem(APP_CACHE_PREFIX + session.user.id, JSON.stringify(cacheData));
@@ -1097,6 +1099,7 @@ function loadAppDataFromCache(session) {
     }));
     state.currentTeamId = data.currentTeamId;
     state.pendingRequests = data.pendingRequests || [];
+    state.pendingRequestCountsByTeam = data.pendingRequestCountsByTeam || {};
     state.session = session; // Ensure session is set
 
     // Important: Reset loading flags so UI renders content instead of spinners
@@ -3267,6 +3270,8 @@ function resetState() {
   state.songs = [];
   state.people = [];
   state.pendingInvites = [];
+  state.pendingRequests = [];
+  state.pendingRequestCountsByTeam = {};
   state.selectedSet = null;
   state.currentSetSongs = [];
   state.currentTeamId = null;
@@ -5009,6 +5014,7 @@ function updateTeamSwitcher() {
   if (!teamSwitcherContainer || !teamSwitcherList) return;
 
   const hasMultipleTeams = state.userTeams.length > 1;
+  const pendingRequestCountsByTeam = state.pendingRequestCountsByTeam || {};
 
   // Show switcher if user has multiple teams
   if (hasMultipleTeams) {
@@ -5017,6 +5023,7 @@ function updateTeamSwitcher() {
     // Clear and populate custom list
     teamSwitcherList.innerHTML = "";
     state.userTeams.forEach(team => {
+      const pendingCount = Number(pendingRequestCountsByTeam[String(team.id)] || 0);
       const teamItem = document.createElement("div");
       teamItem.className = "team-switcher-item";
       teamItem.dataset.teamId = team.id;
@@ -5056,15 +5063,30 @@ function updateTeamSwitcher() {
       const teamInfo = document.createElement("div");
       teamInfo.style.cssText = "flex: 1; min-width: 0;";
 
+      const teamNameRow = document.createElement("div");
+      teamNameRow.style.cssText = "display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;";
+
       const teamName = document.createElement("div");
       teamName.textContent = team.name;
-      teamName.style.cssText = "font-weight: 500; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
+      teamName.style.cssText = "flex: 1; min-width: 0; font-weight: 500; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
+
+      teamNameRow.appendChild(teamName);
+
+      // Match pending-requests header badge style for non-current teams only.
+      if (team.id !== state.currentTeamId && pendingCount > 0) {
+        const pendingBadge = document.createElement("span");
+        pendingBadge.className = "badge";
+        pendingBadge.textContent = pendingCount;
+        pendingBadge.style.marginLeft = "0";
+        pendingBadge.style.flexShrink = "0";
+        teamNameRow.appendChild(pendingBadge);
+      }
 
       const teamRole = document.createElement("div");
       teamRole.textContent = team.is_owner ? "Owner" : (team.can_manage ? "Manager" : "Member");
       teamRole.style.cssText = "font-size: 0.75rem; opacity: 0.7; margin-top: 0.125rem;";
 
-      teamInfo.appendChild(teamName);
+      teamInfo.appendChild(teamNameRow);
       teamInfo.appendChild(teamRole);
 
       // Checkmark for current team
@@ -5719,14 +5741,22 @@ function restoreSetDetailIfSaved() {
 async function loadPendingRequests() {
   const currentUserId = state.profile?.id;
   if (!currentUserId) {
+    state.pendingRequests = [];
+    state.pendingRequestCountsByTeam = {};
     el("pending-requests-section")?.classList.add("hidden");
     el("pending-requests-badge")?.classList.add("hidden");
+    updateTeamSwitcher();
     return;
   }
 
   // Optimistic render from cache if available
-  if (state.pendingRequests && state.pendingRequests.length > 0) {
-    renderPendingRequests(state.pendingRequests);
+  const currentTeamKey = state.currentTeamId ? String(state.currentTeamId) : null;
+  const cachedRequestsForCurrentTeam = currentTeamKey
+    ? (state.pendingRequests || []).filter(request => request.teamId && String(request.teamId) === currentTeamKey)
+    : [];
+  renderPendingRequests(cachedRequestsForCurrentTeam);
+  if (state.pendingRequestCountsByTeam && Object.keys(state.pendingRequestCountsByTeam).length > 0) {
+    updateTeamSwitcher();
   }
 
   // Get pending set assignments
@@ -5745,7 +5775,8 @@ async function loadPendingRequests() {
         set:set_id (
           id,
           title,
-          scheduled_date
+          scheduled_date,
+          team_id
         )
       `)
       .eq("person_id", currentUserId)
@@ -5762,7 +5793,8 @@ async function loadPendingRequests() {
           set:set_id (
             id,
             title,
-            scheduled_date
+            scheduled_date,
+            team_id
           )
         `)
         .eq("person_id", currentUserId)
@@ -5795,7 +5827,8 @@ async function loadPendingRequests() {
           set:set_id (
             id,
             title,
-            scheduled_date
+            scheduled_date,
+            team_id
           )
         )
       `)
@@ -5816,7 +5849,8 @@ async function loadPendingRequests() {
             set:set_id (
               id,
               title,
-              scheduled_date
+              scheduled_date,
+              team_id
             )
           )
         `)
@@ -5850,15 +5884,25 @@ async function loadPendingRequests() {
     });
   }
 
-  const pendingRequests = [];
+  const allPendingRequests = [];
+  const pendingRequestCountsByTeam = {};
+  const incrementPendingCount = (teamId) => {
+    if (!teamId) return;
+    const teamKey = String(teamId);
+    pendingRequestCountsByTeam[teamKey] = (pendingRequestCountsByTeam[teamKey] || 0) + 1;
+  };
 
   // Add set-level pending requests
   if (pendingSetAssignments) {
     pendingSetAssignments.forEach(assignment => {
-      pendingRequests.push({
+      const teamId = assignment.set?.team_id;
+      incrementPendingCount(teamId);
+
+      allPendingRequests.push({
         type: 'set',
         assignmentId: assignment.id,
         setId: assignment.set_id,
+        teamId,
         set: assignment.set,
         role: assignment.role,
         created_at: assignment.created_at || assignment.set?.created_at
@@ -5869,6 +5913,7 @@ async function loadPendingRequests() {
   // Add song-level pending requests (one per set)
   Object.keys(songAssignmentsBySet).forEach(setId => {
     const { set, assignments } = songAssignmentsBySet[setId];
+    const teamId = set?.team_id;
     // Get earliest created_at from assignments
     const earliestCreated = assignments.reduce((earliest, a) => {
       const createdAt = a.created_at || a.set_song?.set?.created_at;
@@ -5878,10 +5923,13 @@ async function loadPendingRequests() {
       return earliest;
     }, null);
 
-    pendingRequests.push({
+    incrementPendingCount(teamId);
+
+    allPendingRequests.push({
       type: 'song',
       assignmentIds: assignments.map(a => a.id),
       setId: setId,
+      teamId,
       set: set,
       roles: [...new Set(assignments.map(a => a.role))],
       assignmentCount: assignments.length,
@@ -5889,9 +5937,16 @@ async function loadPendingRequests() {
     });
   });
 
+  const activeTeamKey = state.currentTeamId ? String(state.currentTeamId) : null;
+  const pendingRequests = activeTeamKey
+    ? allPendingRequests.filter(request => request.teamId && String(request.teamId) === activeTeamKey)
+    : [];
+
   state.pendingRequests = pendingRequests;
+  state.pendingRequestCountsByTeam = pendingRequestCountsByTeam;
   saveAppDataToCache(state.session);
   renderPendingRequests(pendingRequests);
+  updateTeamSwitcher();
 }
 
 // Render pending requests UI
@@ -6247,6 +6302,7 @@ async function showAssignmentDetailsModal(assignment) {
       const pictureUrl = await getFileUrl(personProfilePicturePath, PROFILE_PICTURES_BUCKET);
       if (pictureUrl) {
         avatarEl.innerHTML = `<img src="${pictureUrl}" alt="${fullName}" style="width: 100%; height: 100%; object-fit: cover;">`;
+        setAvatarImageState(avatarEl, true);
       } else {
         // Fallback to initials
         displayProfilePictureInitials(avatarEl, fullName);
@@ -6592,6 +6648,7 @@ async function openPersonDetailsModal(person) {
       const pictureUrl = await getFileUrl(profilePicturePath, PROFILE_PICTURES_BUCKET);
       if (pictureUrl) {
         avatarEl.innerHTML = `<img src="${pictureUrl}" alt="${fullName}" style="width: 100%; height: 100%; object-fit: cover;">`;
+        setAvatarImageState(avatarEl, true);
       } else {
         displayProfilePictureWithGradient(avatarEl, fullName);
       }
@@ -20730,6 +20787,7 @@ function collectSongKeys() {
 const STORAGE_BUCKET = 'song-resources';
 const PROFILE_PICTURES_BUCKET = 'profile-pictures';
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB in bytes
+const PROFILE_PICTURE_MAX_SIZE = 5 * 1024 * 1024; // 5MB in bytes
 
 // Validate file size (20MB limit)
 function validateFileSize(file) {
@@ -20776,27 +20834,126 @@ function generateProfilePicturePath(userId, fileName) {
   return `profiles/${userId}/${uniqueFileName}`;
 }
 
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Failed to read image for compression'));
+    };
+
+    image.src = objectUrl;
+  });
+}
+
+function canvasToBlob(canvas, mimeType, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error('Failed to generate compressed image blob'));
+      }
+    }, mimeType, quality);
+  });
+}
+
+async function compressProfilePictureToMaxSize(file, maxSizeBytes) {
+  const image = await loadImageFromFile(file);
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+
+  if (!width || !height) {
+    return { success: false, error: 'Unable to read image dimensions' };
+  }
+
+  const preferredMimeType = file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+  const mimeTypes = [...new Set([preferredMimeType, 'image/jpeg'])];
+  const qualitySteps = [0.9, 0.82, 0.74, 0.66, 0.58, 0.5, 0.42, 0.34, 0.26, 0.18];
+  const scaleSteps = [1, 0.85, 0.7, 0.55, 0.4, 0.3, 0.2, 0.15];
+
+  // Cap overly large source dimensions before quality tuning.
+  const maxInitialDimension = 4096;
+  const maxDimension = Math.max(width, height);
+  const initialScale = maxDimension > maxInitialDimension ? maxInitialDimension / maxDimension : 1;
+
+  for (const scaleStep of scaleSteps) {
+    const scale = initialScale * scaleStep;
+    const targetWidth = Math.max(1, Math.round(width * scale));
+    const targetHeight = Math.max(1, Math.round(height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return { success: false, error: 'Unable to initialize image compressor' };
+    }
+
+    ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+    for (const mimeType of mimeTypes) {
+      for (const quality of qualitySteps) {
+        let blob;
+        try {
+          blob = await canvasToBlob(canvas, mimeType, quality);
+        } catch {
+          continue;
+        }
+
+        if (blob.size <= maxSizeBytes) {
+          const baseName = (file.name || 'profile-picture').replace(/\.[^/.]+$/, '');
+          const extension = mimeType === 'image/webp' ? 'webp' : 'jpg';
+          const compressedFile = new File([blob], `${baseName}.${extension}`, {
+            type: mimeType,
+            lastModified: Date.now()
+          });
+
+          return { success: true, file: compressedFile };
+        }
+      }
+    }
+  }
+
+  return { success: false, error: 'Unable to compress image below 5MB. Please try a smaller image.' };
+}
+
 // Upload profile picture to Supabase Storage
 async function uploadProfilePicture(file, userId) {
   try {
-    // Validate file size (max 5MB for profile pictures)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      return { success: false, error: 'Profile picture must be less than 5MB' };
-    }
-
     // Validate file type
     if (!file.type.startsWith('image/')) {
       return { success: false, error: 'File must be an image' };
     }
 
+    let fileToUpload = file;
+    if (file.size > PROFILE_PICTURE_MAX_SIZE) {
+      const compressionResult = await compressProfilePictureToMaxSize(file, PROFILE_PICTURE_MAX_SIZE);
+      if (!compressionResult.success) {
+        return { success: false, error: compressionResult.error };
+      }
+      fileToUpload = compressionResult.file;
+    }
+
+    if (fileToUpload.size > PROFILE_PICTURE_MAX_SIZE) {
+      return { success: false, error: 'Unable to reduce profile picture below 5MB' };
+    }
+
     // Generate file path (user-specific)
-    const filePath = generateProfilePicturePath(userId, file.name);
+    const filePath = generateProfilePicturePath(userId, fileToUpload.name);
 
     // Upload file to dedicated profile pictures bucket
     const { data, error } = await supabase.storage
       .from(PROFILE_PICTURES_BUCKET)
-      .upload(filePath, file, {
+      .upload(filePath, fileToUpload, {
         cacheControl: '3600',
         upsert: false
       });
@@ -23210,6 +23367,12 @@ function bindMailtoCopyButtons(root = document) {
         ""
       );
     };
+
+    shell.addEventListener("mouseleave", () => {
+      if (document.activeElement === button) {
+        button.blur();
+      }
+    });
 
     link?.addEventListener("click", (event) => {
       if (!isMobileDevice()) {
@@ -26169,6 +26332,7 @@ async function loadProfilePicturePreview() {
     const url = await getFileUrl(profilePicturePath, PROFILE_PICTURES_BUCKET);
     if (url) {
       previewEl.innerHTML = `<img src="${url}" alt="Profile picture" style="width: 100%; height: 100%; object-fit: cover;">`;
+      setAvatarImageState(previewEl, true);
       if (removeBtn) removeBtn.style.display = "block";
     } else {
       // Fallback to initials
@@ -26191,6 +26355,7 @@ async function loadProfilePicturePreview() {
       const reader = new FileReader();
       reader.onload = (event) => {
         previewEl.innerHTML = `<img src="${event.target.result}" alt="Profile picture preview" style="width: 100%; height: 100%; object-fit: cover;">`;
+        setAvatarImageState(previewEl, true);
         if (removeBtn) removeBtn.style.display = "block";
       };
       reader.readAsDataURL(file);
@@ -26210,9 +26375,24 @@ async function loadProfilePicturePreview() {
   }
 }
 
+function setAvatarImageState(element, hasCustomImage) {
+  if (!element) return;
+  element.classList.toggle("has-custom-image", Boolean(hasCustomImage));
+}
+
 // Display profile picture initials
 function displayProfilePictureInitials(element, fullName) {
-  if (!element || !fullName) {
+  if (!element) return;
+
+  setAvatarImageState(element, false);
+  if (element.style.background === "var(--accent-color)") {
+    element.style.background = "";
+  }
+  if (element.style.color === "#ffffff" || element.style.color === "rgb(255, 255, 255)") {
+    element.style.color = "";
+  }
+
+  if (!fullName) {
     element.innerHTML = '<i class="fa-solid fa-user"></i>';
     return;
   }
@@ -26235,7 +26415,11 @@ function displayProfilePictureInitials(element, fullName) {
 
 // Display profile picture with gradient background based on name
 function displayProfilePictureWithGradient(element, fullName) {
-  if (!element || !fullName) {
+  if (!element) return;
+
+  setAvatarImageState(element, false);
+
+  if (!fullName) {
     element.innerHTML = '<i class="fa-solid fa-user"></i>';
     return;
   }
@@ -26456,12 +26640,14 @@ async function updateUserProfilePicture() {
     const url = await getFileUrl(profilePicturePath, PROFILE_PICTURES_BUCKET);
     if (url) {
       profilePictureEl.innerHTML = `<img src="${url}" alt="Profile picture" style="width: 100%; height: 100%; object-fit: cover;">`;
+      setAvatarImageState(profilePictureEl, true);
       profilePictureEl.dataset.currentPath = profilePicturePath;
       return;
     }
   }
 
   // Fallback to initials or icon
+  setAvatarImageState(profilePictureEl, false);
   profilePictureEl.dataset.currentPath = "";
   const fullName = state.profile?.full_name;
   if (fullName) {

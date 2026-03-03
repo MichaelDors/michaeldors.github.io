@@ -449,6 +449,24 @@ body {
   z-index: 0;
 }
 
+#user-profile-picture.has-custom-image,
+#profile-picture-preview.has-custom-image,
+.assignment-avatar-large.has-custom-image,
+.person-details-avatar.has-custom-image {
+  background: transparent !important;
+}
+
+#user-profile-picture.has-custom-image::before,
+#user-profile-picture.has-custom-image::after,
+#profile-picture-preview.has-custom-image::before,
+#profile-picture-preview.has-custom-image::after,
+.assignment-avatar-large.has-custom-image::before,
+.assignment-avatar-large.has-custom-image::after,
+.person-details-avatar.has-custom-image::before,
+.person-details-avatar.has-custom-image::after {
+  display: none;
+}
+
 #user-profile-picture::after {
   content: "";
   position: absolute;
@@ -1735,7 +1753,8 @@ main {
 
 .assignment-pill.status-pending {
   opacity: 0.8;
-  border-color: rgba(255, 193, 7, 0.5);
+  border: 1px dashed color-mix(in srgb, var(--accent-color) 60%, transparent);
+  color: var(--accent-color);
 }
 
 .assignment-pill.status-declined {
@@ -1746,8 +1765,8 @@ main {
 
 .assignment-pill.pending-status {
   background: transparent !important;
-  border: 1px dashed rgba(255, 193, 7, 0.6) !important;
-  color: rgba(255, 193, 7, 0.9) !important;
+  border: 1px dashed color-mix(in srgb, var(--accent-color) 60%, transparent) !important;
+  color: var(--accent-color) !important;
   opacity: 0.9;
 }
 
