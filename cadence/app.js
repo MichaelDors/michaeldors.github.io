@@ -23627,6 +23627,372 @@ function getFaviconUrl(url) {
   }
 }
 
+function parseYouTubeTimeToSeconds(value) {
+  if (value == null) return 0;
+  const raw = String(value).trim().toLowerCase();
+  if (!raw) return 0;
+
+  if (/^\d+$/.test(raw)) {
+    return Math.max(0, parseInt(raw, 10));
+  }
+
+  if (raw.includes(":")) {
+    const parts = raw
+      .split(":")
+      .map((part) => parseInt(part, 10))
+      .filter((part) => Number.isFinite(part));
+    if (parts.length === 2) {
+      return Math.max(0, (parts[0] * 60) + parts[1]);
+    }
+    if (parts.length === 3) {
+      return Math.max(0, (parts[0] * 3600) + (parts[1] * 60) + parts[2]);
+    }
+  }
+
+  const unitsMatch = raw.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);
+  if (!unitsMatch) return 0;
+  const hours = parseInt(unitsMatch[1] || "0", 10);
+  const minutes = parseInt(unitsMatch[2] || "0", 10);
+  const seconds = parseInt(unitsMatch[3] || "0", 10);
+  return Math.max(0, (hours * 3600) + (minutes * 60) + seconds);
+}
+
+function getYouTubeEmbedInfo(url) {
+  if (!url) return null;
+  try {
+    const urlObj = new URL(url);
+    const hostname = (urlObj.hostname || "").toLowerCase().replace(/^www\./, "");
+    const isYouTubeHost = hostname === "youtu.be"
+      || hostname === "youtube.com"
+      || hostname.endsWith(".youtube.com")
+      || hostname === "youtube-nocookie.com"
+      || hostname.endsWith(".youtube-nocookie.com");
+    if (!isYouTubeHost) return null;
+
+    const pathParts = (urlObj.pathname || "").split("/").filter(Boolean);
+    let videoId = null;
+
+    if (hostname === "youtu.be") {
+      videoId = pathParts[0] || null;
+    } else if (pathParts[0] === "watch") {
+      videoId = urlObj.searchParams.get("v");
+    } else if (pathParts[0] === "shorts" || pathParts[0] === "embed" || pathParts[0] === "live") {
+      videoId = pathParts[1] || null;
+    } else {
+      videoId = urlObj.searchParams.get("v");
+    }
+
+    if (!videoId) return null;
+    const normalizedVideoId = (videoId.match(/[A-Za-z0-9_-]{11}/) || [])[0];
+    if (!normalizedVideoId) return null;
+
+    const startRaw = urlObj.searchParams.get("start") || urlObj.searchParams.get("t");
+    const startSeconds = parseYouTubeTimeToSeconds(startRaw);
+    const embedUrl = new URL(`https://www.youtube-nocookie.com/embed/${normalizedVideoId}`);
+    embedUrl.searchParams.set("rel", "0");
+    embedUrl.searchParams.set("modestbranding", "1");
+    embedUrl.searchParams.set("playsinline", "1");
+    if (startSeconds > 0) embedUrl.searchParams.set("start", String(startSeconds));
+
+    return {
+      videoId: normalizedVideoId,
+      embedUrl: embedUrl.toString(),
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+function buildYouTubeExpandableLinkCard(link, linkEl) {
+  const embedInfo = getYouTubeEmbedInfo(link?.url);
+  if (!embedInfo || !linkEl) return null;
+
+  linkEl.classList.add("song-link-display--youtube");
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "song-link-expandable song-link-expandable--youtube";
+  if (linkEl.style.backgroundImage) {
+    wrapper.style.setProperty("--resource-preview-bg-image", linkEl.style.backgroundImage);
+  }
+
+  const toggleBtn = document.createElement("button");
+  toggleBtn.type = "button";
+  toggleBtn.className = "song-link-embed-toggle";
+  const panelId = `song-link-embed-${embedInfo.videoId}-${Math.random().toString(36).slice(2, 8)}`;
+  toggleBtn.setAttribute("aria-expanded", "false");
+  toggleBtn.setAttribute("aria-controls", panelId);
+  toggleBtn.setAttribute("aria-label", "Preview video");
+  toggleBtn.title = "Preview video";
+
+  const toggleIcon = document.createElement("span");
+  toggleIcon.className = "song-link-embed-toggle__icon";
+  toggleIcon.innerHTML = '<i class="fa-solid fa-circle-play"></i>';
+
+  const toggleLabel = document.createElement("span");
+  toggleLabel.className = "song-link-embed-toggle__label";
+  toggleLabel.textContent = "Preview";
+
+  const toggleChevron = document.createElement("span");
+  toggleChevron.className = "song-link-embed-toggle__chevron";
+  toggleChevron.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+
+  toggleBtn.appendChild(toggleIcon);
+  toggleBtn.appendChild(toggleLabel);
+  toggleBtn.appendChild(toggleChevron);
+
+  const reveal = document.createElement("div");
+  reveal.className = "song-link-embed-reveal";
+  reveal.id = panelId;
+  reveal.setAttribute("aria-hidden", "true");
+
+  const revealInner = document.createElement("div");
+  revealInner.className = "song-link-embed-inner";
+
+  const embedCard = document.createElement("div");
+  embedCard.className = "song-link-embed-card";
+
+  const frameWrap = document.createElement("div");
+  frameWrap.className = "song-link-embed-frame-wrap";
+
+  const caption = document.createElement("div");
+  caption.className = "song-link-embed-caption";
+  caption.textContent = "YouTube preview";
+
+  embedCard.appendChild(frameWrap);
+  embedCard.appendChild(caption);
+  revealInner.appendChild(embedCard);
+  reveal.appendChild(revealInner);
+
+  const ensureIframe = () => {
+    if (frameWrap.querySelector("iframe")) return;
+    const iframe = document.createElement("iframe");
+    iframe.className = "song-link-embed-frame";
+    iframe.src = embedInfo.embedUrl;
+    iframe.loading = "lazy";
+    iframe.referrerPolicy = "strict-origin-when-cross-origin";
+    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+    iframe.allowFullscreen = true;
+    iframe.title = `${link?.title || "YouTube video"} preview`;
+    frameWrap.appendChild(iframe);
+  };
+
+  const clearIframe = () => {
+    const iframe = frameWrap.querySelector("iframe");
+    if (!iframe) return;
+    iframe.src = "";
+    iframe.remove();
+  };
+
+  const setExpanded = (isExpanded) => {
+    wrapper.classList.toggle("is-open", isExpanded);
+    reveal.classList.toggle("is-open", isExpanded);
+    toggleBtn.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    toggleBtn.setAttribute("aria-label", isExpanded ? "Hide video preview" : "Preview video");
+    reveal.setAttribute("aria-hidden", isExpanded ? "false" : "true");
+    toggleLabel.textContent = isExpanded ? "Hide" : "Preview";
+    if (isExpanded) {
+      ensureIframe();
+    } else {
+      clearIframe();
+    }
+  };
+
+  toggleBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    const nextExpanded = !wrapper.classList.contains("is-open");
+
+    // Keep one open preview at a time to avoid a very tall modal.
+    if (nextExpanded && wrapper.parentElement) {
+      const openCards = wrapper.parentElement.querySelectorAll(".song-link-expandable.is-open");
+      openCards.forEach((openCard) => {
+        if (openCard === wrapper) return;
+        const openToggle = openCard.querySelector(".song-link-embed-toggle");
+        if (openToggle) openToggle.click();
+      });
+    }
+
+    setExpanded(nextExpanded);
+  });
+
+  wrapper.appendChild(linkEl);
+  wrapper.appendChild(toggleBtn);
+  wrapper.appendChild(reveal);
+  return wrapper;
+}
+
+function getSpotifyEmbedInfo(url) {
+  if (!url) return null;
+
+  const supportedTypes = new Set(["track", "album", "playlist", "artist", "show", "episode"]);
+  const normalizeResult = (type, id) => {
+    if (!supportedTypes.has(type) || !id) return null;
+    const cleanId = String(id).trim();
+    if (!/^[A-Za-z0-9]+$/.test(cleanId)) return null;
+    const spotifyHeightByType = {
+      track: 152,
+      episode: 152,
+      album: 232,
+      playlist: 232,
+      artist: 232,
+      show: 232,
+    };
+    return {
+      type,
+      id: cleanId,
+      embedUrl: `https://open.spotify.com/embed/${type}/${cleanId}`,
+      height: spotifyHeightByType[type] || 152,
+    };
+  };
+
+  const uriMatch = String(url).trim().match(/^spotify:(track|album|playlist|artist|show|episode):([A-Za-z0-9]+)$/i);
+  if (uriMatch) {
+    return normalizeResult(uriMatch[1].toLowerCase(), uriMatch[2]);
+  }
+
+  try {
+    const urlObj = new URL(url);
+    const hostname = (urlObj.hostname || "").toLowerCase().replace(/^www\./, "");
+    if (!(hostname === "open.spotify.com" || hostname.endsWith(".spotify.com"))) return null;
+
+    const pathParts = (urlObj.pathname || "").split("/").filter(Boolean);
+    if (pathParts.length < 2) return null;
+
+    let startIndex = 0;
+    if (pathParts[0].startsWith("intl-")) startIndex = 1;
+
+    let type = pathParts[startIndex];
+    let id = pathParts[startIndex + 1];
+
+    if (type === "embed") {
+      type = pathParts[startIndex + 1];
+      id = pathParts[startIndex + 2];
+    }
+
+    if (!type || !id) return null;
+    return normalizeResult(type.toLowerCase(), id);
+  } catch (e) {
+    return null;
+  }
+}
+
+function buildSpotifyExpandableLinkCard(link, linkEl) {
+  const embedInfo = getSpotifyEmbedInfo(link?.url);
+  if (!embedInfo || !linkEl) return null;
+
+  linkEl.classList.add("song-link-display--spotify");
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "song-link-expandable song-link-expandable--spotify";
+  if (linkEl.style.backgroundImage) {
+    wrapper.style.setProperty("--resource-preview-bg-image", linkEl.style.backgroundImage);
+  }
+
+  const toggleBtn = document.createElement("button");
+  toggleBtn.type = "button";
+  toggleBtn.className = "song-link-embed-toggle";
+  const panelId = `song-link-embed-spotify-${embedInfo.type}-${embedInfo.id}-${Math.random().toString(36).slice(2, 8)}`;
+  toggleBtn.setAttribute("aria-expanded", "false");
+  toggleBtn.setAttribute("aria-controls", panelId);
+  toggleBtn.setAttribute("aria-label", "Preview Spotify embed");
+  toggleBtn.title = "Preview";
+
+  const toggleIcon = document.createElement("span");
+  toggleIcon.className = "song-link-embed-toggle__icon";
+  toggleIcon.innerHTML = '<i class="fa-brands fa-spotify"></i>';
+
+  const toggleLabel = document.createElement("span");
+  toggleLabel.className = "song-link-embed-toggle__label";
+  toggleLabel.textContent = "Preview";
+
+  const toggleChevron = document.createElement("span");
+  toggleChevron.className = "song-link-embed-toggle__chevron";
+  toggleChevron.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+
+  toggleBtn.appendChild(toggleIcon);
+  toggleBtn.appendChild(toggleLabel);
+  toggleBtn.appendChild(toggleChevron);
+
+  const reveal = document.createElement("div");
+  reveal.className = "song-link-embed-reveal";
+  reveal.id = panelId;
+  reveal.setAttribute("aria-hidden", "true");
+
+  const revealInner = document.createElement("div");
+  revealInner.className = "song-link-embed-inner";
+
+  const embedCard = document.createElement("div");
+  embedCard.className = "song-link-embed-card";
+
+  const frameWrap = document.createElement("div");
+  frameWrap.className = "song-link-embed-frame-wrap song-link-embed-frame-wrap--spotify";
+  frameWrap.style.setProperty("--spotify-embed-height", `${embedInfo.height}px`);
+  frameWrap.style.height = `${embedInfo.height}px`;
+
+  const caption = document.createElement("div");
+  caption.className = "song-link-embed-caption";
+  caption.textContent = "Spotify preview";
+
+  embedCard.appendChild(frameWrap);
+  embedCard.appendChild(caption);
+  revealInner.appendChild(embedCard);
+  reveal.appendChild(revealInner);
+
+  const ensureIframe = () => {
+    if (frameWrap.querySelector("iframe")) return;
+    const iframe = document.createElement("iframe");
+    iframe.className = "song-link-embed-frame song-link-embed-frame--spotify";
+    iframe.src = embedInfo.embedUrl;
+    iframe.loading = "lazy";
+    iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+    iframe.title = `${link?.title || "Spotify"} preview`;
+    iframe.style.height = `${embedInfo.height}px`;
+    frameWrap.appendChild(iframe);
+  };
+
+  const clearIframe = () => {
+    const iframe = frameWrap.querySelector("iframe");
+    if (!iframe) return;
+    iframe.src = "";
+    iframe.remove();
+  };
+
+  const setExpanded = (isExpanded) => {
+    wrapper.classList.toggle("is-open", isExpanded);
+    reveal.classList.toggle("is-open", isExpanded);
+    toggleBtn.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    toggleBtn.setAttribute("aria-label", isExpanded ? "Hide Spotify preview" : "Preview Spotify embed");
+    reveal.setAttribute("aria-hidden", isExpanded ? "false" : "true");
+    toggleLabel.textContent = isExpanded ? "Hide" : "Preview";
+    if (isExpanded) {
+      ensureIframe();
+    } else {
+      clearIframe();
+    }
+  };
+
+  toggleBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    const nextExpanded = !wrapper.classList.contains("is-open");
+
+    // Keep one open preview at a time to avoid a very tall modal.
+    if (nextExpanded && wrapper.parentElement) {
+      const openCards = wrapper.parentElement.querySelectorAll(".song-link-expandable.is-open");
+      openCards.forEach((openCard) => {
+        if (openCard === wrapper) return;
+        const openToggle = openCard.querySelector(".song-link-embed-toggle");
+        if (openToggle) openToggle.click();
+      });
+    }
+
+    setExpanded(nextExpanded);
+  });
+
+  wrapper.appendChild(linkEl);
+  wrapper.appendChild(toggleBtn);
+  wrapper.appendChild(reveal);
+  return wrapper;
+}
+
 async function renderSongLinksDisplay(links, container) {
   if (!links || links.length === 0) return;
 
@@ -23895,6 +24261,18 @@ async function renderSongLinksDisplay(links, container) {
             // Silent fail
           }
         };
+      }
+
+      const expandableSpotifyCard = buildSpotifyExpandableLinkCard(link, linkEl);
+      if (expandableSpotifyCard) {
+        linksContainer.appendChild(expandableSpotifyCard);
+        continue;
+      }
+
+      const expandableYouTubeCard = buildYouTubeExpandableLinkCard(link, linkEl);
+      if (expandableYouTubeCard) {
+        linksContainer.appendChild(expandableYouTubeCard);
+        continue;
       }
     }
 
