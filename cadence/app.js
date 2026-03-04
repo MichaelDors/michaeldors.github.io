@@ -20483,6 +20483,29 @@ function closeSongDetailsModal() {
       audio.currentTime = 0; // Reset to beginning
     });
 
+    // Best-effort pause for embedded previews (YouTube/Spotify) without unloading them.
+    const embedFrames = modal.querySelectorAll(".song-link-embed-frame");
+    embedFrames.forEach((frame) => {
+      const src = frame.getAttribute("src") || "";
+      const frameWindow = frame.contentWindow;
+      if (!frameWindow) return;
+
+      try {
+        if (src.includes("youtube.com/embed/") || src.includes("youtube-nocookie.com/embed/")) {
+          frameWindow.postMessage(
+            JSON.stringify({ event: "command", func: "pauseVideo", args: [] }),
+            "*"
+          );
+        } else if (src.includes("open.spotify.com/embed/")) {
+          // Spotify iframe pause is not formally exposed here; keep best-effort.
+          frameWindow.postMessage({ command: "pause" }, "*");
+          frameWindow.postMessage(JSON.stringify({ command: "pause" }), "*");
+        }
+      } catch (err) {
+        // Ignore cross-origin posting failures.
+      }
+    });
+
     closeModalWithAnimation(modal, () => {
       state.currentSongDetailsId = null;
       state.currentSongDetailsContext = null;
@@ -23831,6 +23854,10 @@ function getYouTubeEmbedInfo(url) {
     embedUrl.searchParams.set("rel", "0");
     embedUrl.searchParams.set("modestbranding", "1");
     embedUrl.searchParams.set("playsinline", "1");
+    embedUrl.searchParams.set("enablejsapi", "1");
+    if (typeof window !== "undefined" && window.location?.origin) {
+      embedUrl.searchParams.set("origin", window.location.origin);
+    }
     if (startSeconds > 0) embedUrl.searchParams.set("start", String(startSeconds));
 
     return {
