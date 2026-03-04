@@ -882,6 +882,7 @@ function showDatabaseError() {
 function closeModalWithAnimation(modalElement, onHidden) {
   if (!modalElement) return;
   if (!modalElement.classList.contains("hidden")) {
+    modalElement.dataset.hapticCloseHandled = "1";
     triggerSelectionHaptic();
   }
 
@@ -898,6 +899,7 @@ function closeModalWithAnimation(modalElement, onHidden) {
   setTimeout(() => {
     modalElement.classList.remove('closing');
     modalElement.classList.add('hidden');
+    delete modalElement.dataset.hapticCloseHandled;
     document.body.style.overflow = '';
 
     // Execute callback for state cleanup/form reset
@@ -1415,6 +1417,14 @@ function setupModalObservers() {
             // Always reset scroll when a modal opens
             resetModalScroll(target);
           });
+        } else if (!wasHidden && isHidden) {
+          // For modals closed via closeModalWithAnimation, close haptic already
+          // fired at close start. For direct hidden toggles, fire here.
+          if (target.dataset.hapticCloseHandled === "1") {
+            delete target.dataset.hapticCloseHandled;
+          } else {
+            triggerSelectionHaptic();
+          }
         }
 
       }
@@ -2300,6 +2310,8 @@ function bindEvents() {
   document.querySelectorAll("#songs-sort-dropdown-menu .header-dropdown-item").forEach(item => {
     item.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (isLikelySyntheticClickEvent(e)) return;
+      triggerSelectionHaptic();
 
       const sortOption = normalizeSongSortOption(item.dataset.sort);
       const previousSortOption = normalizeSongSortOption(state.songSortOption);
@@ -2582,8 +2594,7 @@ function bindEvents() {
   el("close-assignment-details-modal")?.addEventListener("click", () => {
     const modal = el("assignment-details-modal");
     if (modal) {
-      modal.classList.add("hidden");
-      document.body.style.overflow = "";
+      closeModalWithAnimation(modal);
     }
   });
   el("close-person-details-modal")?.addEventListener("click", () => {
@@ -6977,8 +6988,7 @@ function closePersonDetailsModal() {
   const modal = el("person-details-modal");
   if (!modal) return;
 
-  modal.classList.add("hidden");
-  document.body.style.overflow = "";
+  closeModalWithAnimation(modal);
 }
 
 function isUserAssignedToSet(set, userId) {
@@ -10371,6 +10381,12 @@ function renderSetDetailSongs(set, animate = false) {
 }
 
 function hideSetDetail() {
+  const detailView = el("set-detail");
+  const isDetailVisible = Boolean(detailView && !detailView.classList.contains("hidden"));
+  if (isDetailVisible) {
+    triggerSelectionHaptic();
+  }
+
   // Stop tracking time on set detail
   stopPageTimeTracking();
   state._setDetailCoverLifecycleId = (Number(state._setDetailCoverLifecycleId) || 0) + 1;
@@ -10380,7 +10396,6 @@ function hideSetDetail() {
     toggleAiChat(state.selectedSet);
   }
   const dashboard = el("dashboard");
-  const detailView = el("set-detail");
 
   // Stop all audio players in the set detail view before hiding
   if (detailView) {
@@ -26494,6 +26509,7 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
     input.classList.remove("placeholder");
     optionsList.classList.remove("open");
     highlightedIndex = -1;
+    triggerSelectionHaptic();
 
     const event = new CustomEvent("change", {
       detail: { value: option.value, option },
@@ -26730,6 +26746,7 @@ function createSimpleDropdown(options, placeholder = "Select...", selectedValue 
     input.value = option.label;
     input.classList.remove("placeholder");
     optionsList.classList.remove("open");
+    triggerSelectionHaptic();
 
     const event = new CustomEvent("change", {
       detail: { value: option.value, option },
