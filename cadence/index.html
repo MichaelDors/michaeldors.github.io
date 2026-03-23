@@ -678,6 +678,90 @@
     </div>
   </div>
 
+  <!-- Print Set Editor -->
+  <div id="print-set-editor-modal" class="chart-modal hidden" aria-hidden="true">
+    <div class="chart-modal-shell" role="dialog" aria-modal="true" aria-label="Set print editor">
+      <header class="chart-modal-header">
+        <div class="chart-modal-header-left">
+          <button type="button" class="icon-btn" id="close-print-set-editor" aria-label="Close print set editor">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+          <div class="chart-modal-title-wrap">
+            <div id="print-set-editor-title" class="chart-modal-title">Print Set</div>
+            <div id="print-set-editor-subtitle" class="chart-modal-subtitle muted small-text"></div>
+          </div>
+        </div>
+        <div class="chart-modal-header-right">
+          <button type="button" id="btn-print-set-print" class="btn primary small">
+            <i class="fa-solid fa-print"></i> Print
+          </button>
+        </div>
+      </header>
+      <div class="chart-modal-body chart-editor-body print-set-editor-body">
+        <aside class="chart-editor-sidebar print-set-editor-sidebar">
+          <div class="chart-sidebar-section">
+            <div class="chart-sidebar-title">Set Overview</div>
+            <div id="print-set-options" class="print-set-options">
+              <div class="print-set-option-group">
+                <div class="print-set-option-heading muted small-text">Header</div>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" class="custom-checkbox" data-print-set-option="showDate" checked />
+                  <span>Date</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" class="custom-checkbox" data-print-set-option="showDescription" checked />
+                  <span>Description</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" class="custom-checkbox" data-print-set-option="showTeam" checked />
+                  <span>Team</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" class="custom-checkbox" data-print-set-option="showTotalLength" checked />
+                  <span>Total Length</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" class="custom-checkbox" data-print-set-option="showAssignments" checked />
+                  <span>Assignments</span>
+                </label>
+              </div>
+              <div class="print-set-option-group">
+                <div class="print-set-option-heading muted small-text">Table Columns</div>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" class="custom-checkbox" data-print-set-option="showNumbers" checked />
+                  <span>#</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" class="custom-checkbox" data-print-set-option="showLength" checked />
+                  <span>Length</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" class="custom-checkbox" data-print-set-option="showKeys" checked />
+                  <span>Key</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" class="custom-checkbox" data-print-set-option="showBpm" checked />
+                  <span>BPM</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" class="custom-checkbox" data-print-set-option="showNotes" checked />
+                  <span>Notes</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="chart-sidebar-section">
+            <div class="chart-sidebar-title">Resources</div>
+            <div id="print-set-resource-list" class="print-set-resource-list"></div>
+          </div>
+        </aside>
+        <main class="chart-editor-canvas print-set-editor-canvas">
+          <div id="print-set-editor-preview" class="print-set-editor-preview"></div>
+        </main>
+      </div>
+    </div>
+  </div>
+
   <div id="set-modal" class="modal hidden">
     <div class="modal-content">
       <header>

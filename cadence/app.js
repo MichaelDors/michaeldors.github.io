@@ -205,6 +205,17 @@ const state = {
   expandedSets: new Set(),
   currentSongDetailsId: null, // Track which song is open in details modal
   currentSongDetailsContext: null, // { selectedKey, setSongId, setSongSnapshot }
+  printSetEditor: {
+    isOpen: false,
+    setId: null,
+    options: null,
+    selectedResourceKeys: new Set(),
+    resourcesByKey: new Map(),
+    songArtCache: new Map(),
+    previewToken: 0,
+    resourceListToken: 0,
+    isPrinting: false,
+  },
   // iTunes indexing refresh (only used while songs are awaiting background iTunes metadata indexing)
   itunesIndexRefresh: {
     isRunning: false,
@@ -2418,7 +2429,7 @@ function bindEvents() {
   }, true); // Use capture phase to catch event early
   el("btn-export-set-print")?.addEventListener("click", () => {
     if (state.selectedSet) {
-      openPrintSet(state.selectedSet);
+      openPrintSetEditor(state.selectedSet);
     }
   });
   el("btn-edit-set-detail")?.addEventListener("click", () => {
@@ -2694,12 +2705,41 @@ function bindEvents() {
   el("chart-editor-modal")?.addEventListener("click", (e) => {
     if (e.target === el("chart-editor-modal")) closeChordChartEditor();
   });
+  // Print set editor
+  el("close-print-set-editor")?.addEventListener("click", () => closePrintSetEditor());
+  el("btn-print-set-print")?.addEventListener("click", () => handlePrintSetEditorPrint());
+  el("print-set-editor-modal")?.addEventListener("click", (e) => {
+    if (e.target === el("print-set-editor-modal")) closePrintSetEditor();
+  });
+  el("print-set-options")?.addEventListener("change", (e) => {
+    const input = e.target.closest("input[data-print-set-option]");
+    if (!input || !state.printSetEditor?.isOpen) return;
+    const optionKey = input.dataset.printSetOption;
+    if (!optionKey) return;
+    if (!state.printSetEditor.options) state.printSetEditor.options = getDefaultPrintSetOptions();
+    state.printSetEditor.options[optionKey] = input.checked;
+    updatePrintSetEditorPreview();
+  });
+  el("print-set-resource-list")?.addEventListener("change", (e) => {
+    const input = e.target.closest("input[data-resource-key]");
+    if (!input || !state.printSetEditor?.isOpen) return;
+    const resourceKey = input.dataset.resourceKey;
+    if (!resourceKey) return;
+    if (input.checked) {
+      state.printSetEditor.selectedResourceKeys.add(resourceKey);
+    } else {
+      state.printSetEditor.selectedResourceKeys.delete(resourceKey);
+    }
+    updatePrintSetEditorPreview();
+  });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     const viewer = el("chart-viewer-modal");
     const editor = el("chart-editor-modal");
+    const printEditor = el("print-set-editor-modal");
     if (viewer && !viewer.classList.contains("hidden")) closeChordChartViewer();
     if (editor && !editor.classList.contains("hidden")) closeChordChartEditor();
+    if (printEditor && !printEditor.classList.contains("hidden")) closePrintSetEditor();
   });
 
   // Keep the PDF pages fitted as viewport changes
@@ -2711,6 +2751,10 @@ function bindEvents() {
     const editorWrap = el("chart-editor-page");
     if (editorWrap && !el("chart-editor-modal")?.classList.contains("hidden")) {
       fitAllChartPagesToContainer(editorWrap);
+    }
+    const printPreview = el("print-set-editor-preview");
+    if (printPreview && !el("print-set-editor-modal")?.classList.contains("hidden")) {
+      printPreview.querySelectorAll(".chart-page-wrap").forEach((wrap) => fitAllChartPagesToContainer(wrap));
     }
   });
   el("btn-chart-editor-format")?.addEventListener("click", () => {
@@ -23164,21 +23208,330 @@ function updateServiceLengthDisplay(set) {
   }
 }
 
-function renderSetPrintPreview(set) {
-  const wrapper = el("print-set-container");
-  let container = el("print-set-content");
+const PRINT_SET_DEFAULT_OPTIONS = {
+  showAssignments: true,
+  showKeys: true,
+  showBpm: true,
+  showNotes: true,
+  showLength: true,
+  showTotalLength: true,
+  showTeam: true,
+  showDate: true,
+  showDescription: true,
+  showNumbers: true,
+};
 
-  if (!wrapper) return;
+const printSetPdfCache = new Map();
 
-  // Robustness check: recreate content div if it went missing
-  if (!container) {
+function getDefaultPrintSetOptions() {
+  return { ...PRINT_SET_DEFAULT_OPTIONS };
+}
+
+function normalizePrintSetOptions(options = {}) {
+  return { ...PRINT_SET_DEFAULT_OPTIONS, ...(options || {}) };
+}
+
+function getPrintableResourceKind(resource) {
+  if (!resource) return null;
+  if (resource.type === "chart") return "chart";
+  if (isPdfResourceLink(resource)) return "pdf";
+  const fileType = String(resource.file_type || "").toLowerCase();
+  const fileName = String(resource.file_name || "").toLowerCase();
+  const url = String(resource.url || "").toLowerCase();
+  if (fileType.startsWith("image/")) return "image";
+  const imageExtRegex = /\.(png|jpe?g|gif|webp|svg)$/i;
+  if (imageExtRegex.test(fileName) || imageExtRegex.test(url)) return "image";
+  return null;
+}
+
+function buildPrintSetResourceKey(songId, resourceId) {
+  return `${songId}:${resourceId}`;
+}
+
+function buildPrintSetResourceEntry(song, resource) {
+  if (!song || !resource?.id) return null;
+  const kind = getPrintableResourceKind(resource);
+  if (!kind) return null;
+
+  const songId = song.id;
+  const songTitle = song.title || "Untitled";
+  const key = buildPrintSetResourceKey(songId, resource.id);
+  const chartType = resource.chart_content?.chart_type || resource.chart_type || "chord";
+
+  let title = resource.title || resource.file_name || resource.url || "Resource";
+  if (resource.type === "chart") {
+    title = chartType === "number" ? "Number Chart" : "Chord Chart";
+  }
+
+  let subtitle = "";
+  if (resource.type === "chart") {
+    const scopeLabel = resource.key ? `Key: ${resource.key}` : "General";
+    const typeLabel = chartType === "number" ? "Number chart" : "Chord chart";
+    subtitle = `${scopeLabel} - ${typeLabel}`;
+  } else if (resource.key) {
+    subtitle = `Key: ${resource.key}`;
+  }
+
+  if (kind === "pdf") {
+    subtitle = subtitle ? `${subtitle} - PDF` : "PDF";
+  } else if (kind === "image") {
+    subtitle = subtitle ? `${subtitle} - Image` : "Image";
+  }
+
+  return {
+    key,
+    songId,
+    songTitle,
+    resourceId: resource.id,
+    resource,
+    kind,
+    title,
+    subtitle,
+    displayOrder: resource.display_order ?? Number.POSITIVE_INFINITY,
+  };
+}
+
+function getSelectedPrintSetResources() {
+  const editorState = state.printSetEditor;
+  if (!editorState) return [];
+  const resources = [];
+  editorState.selectedResourceKeys.forEach((resourceKey) => {
+    const entry = editorState.resourcesByKey.get(resourceKey);
+    if (entry) resources.push(entry);
+  });
+  return resources;
+}
+
+async function getPdfPageImages(url) {
+  if (!url) return null;
+  if (printSetPdfCache.has(url)) return printSetPdfCache.get(url);
+  try {
+    if (typeof pdfjsLib === "undefined") {
+      throw new Error("PDF renderer not loaded.");
+    }
+    ensurePdfWorker();
+    const loadingTask = pdfjsLib.getDocument(url);
+    const pdf = await loadingTask.promise;
+    const pages = [];
+    const scale = 1.35;
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      pages.push(canvas.toDataURL("image/png"));
+    }
+    printSetPdfCache.set(url, pages);
+    return pages;
+  } catch (err) {
+    console.error("Failed to render PDF pages for print:", err);
+    printSetPdfCache.set(url, null);
+    return null;
+  }
+}
+
+async function renderPrintSetResources({
+  set,
+  resources,
+  container,
+  forPreview = false,
+  showHeaders = true,
+  renderToken = null,
+} = {}) {
+  if (!resources || resources.length === 0 || !container) return;
+
+  const shouldAbort = () => renderToken && state.printSetEditor?.previewToken !== renderToken;
+
+  const resourcesWrap = document.createElement("div");
+  resourcesWrap.className = "print-resources";
+
+  if (showHeaders) {
+    const heading = document.createElement("div");
+    heading.className = "print-resources-header";
+    heading.textContent = "Resources";
+    resourcesWrap.appendChild(heading);
+  }
+
+  const sortedSetSongs = (set?.set_songs || []).slice().sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
+  const songOrderMap = new Map();
+  sortedSetSongs.forEach((setSong, idx) => {
+    if (setSong?.song?.id && !songOrderMap.has(setSong.song.id)) {
+      songOrderMap.set(setSong.song.id, idx);
+    }
+  });
+
+  const resourcesBySong = new Map();
+  resources.forEach((entry) => {
+    if (!entry?.songId) return;
+    if (!resourcesBySong.has(entry.songId)) resourcesBySong.set(entry.songId, []);
+    resourcesBySong.get(entry.songId).push(entry);
+  });
+
+  const songIds = Array.from(resourcesBySong.keys());
+  songIds.sort((a, b) => {
+    const ao = songOrderMap.has(a) ? songOrderMap.get(a) : Number.POSITIVE_INFINITY;
+    const bo = songOrderMap.has(b) ? songOrderMap.get(b) : Number.POSITIVE_INFINITY;
+    if (ao !== bo) return ao - bo;
+    const at = resourcesBySong.get(a)?.[0]?.songTitle || "";
+    const bt = resourcesBySong.get(b)?.[0]?.songTitle || "";
+    return at.localeCompare(bt);
+  });
+
+  for (const songId of songIds) {
+    if (shouldAbort()) return;
+    const entries = resourcesBySong.get(songId) || [];
+    entries.sort((a, b) => {
+      const ao = typeof a.displayOrder === "number" ? a.displayOrder : Number.POSITIVE_INFINITY;
+      const bo = typeof b.displayOrder === "number" ? b.displayOrder : Number.POSITIVE_INFINITY;
+      if (ao !== bo) return ao - bo;
+      return (a.title || "").localeCompare(b.title || "");
+    });
+
+    const groupEl = document.createElement("div");
+    groupEl.className = "print-resource-group";
+
+    const songTitle = entries[0]?.songTitle || "Untitled";
+    if (showHeaders) {
+      const songHeader = document.createElement("div");
+      songHeader.className = "print-resource-song-header";
+      const artUrl = state.printSetEditor?.songArtCache?.get(songId) || null;
+      if (artUrl) {
+        const cover = document.createElement("div");
+        cover.className = "print-resource-song-cover";
+        const img = document.createElement("img");
+        img.src = artUrl;
+        img.alt = `${songTitle} album art`;
+        cover.appendChild(img);
+        songHeader.appendChild(cover);
+      }
+      const titleEl = document.createElement("div");
+      titleEl.textContent = songTitle;
+      songHeader.appendChild(titleEl);
+      groupEl.appendChild(songHeader);
+    }
+
+    for (const entry of entries) {
+      if (shouldAbort()) return;
+      const itemEl = document.createElement("div");
+      itemEl.className = "print-resource-item";
+
+      const bodyEl = document.createElement("div");
+      bodyEl.className = "print-resource-body";
+
+      if (entry.kind === "chart") {
+        const chartDoc = entry.resource?.chart_content?.doc || entry.resource?.doc;
+        if (!chartDoc) {
+          const err = document.createElement("div");
+          err.className = "print-resource-error";
+          err.textContent = "Chart data is missing for this resource.";
+          bodyEl.appendChild(err);
+        } else {
+          const layout = entry.resource?.chart_content?.layout || entry.resource?.layout || chartDoc?.settings?.layout || "one_column";
+          const chartWrap = document.createElement("div");
+          chartWrap.className = "chart-page-wrap";
+          renderChartDocIntoPage(chartWrap, chartDoc, {
+            songTitle: songTitle || chartDoc?.title || "Chord Chart",
+            subtitle: entry.subtitle || "",
+            layout,
+            readOnly: true,
+          });
+          bodyEl.appendChild(chartWrap);
+          if (forPreview) {
+            requestAnimationFrame(() => fitAllChartPagesToContainer(chartWrap));
+          }
+        }
+      } else if (entry.kind === "pdf") {
+        const url = entry.resource?.file_path
+          ? await getFileUrl(entry.resource.file_path)
+          : entry.resource?.url || null;
+        if (shouldAbort()) return;
+        if (!url) {
+          const err = document.createElement("div");
+          err.className = "print-resource-error";
+          err.textContent = "Unable to load the PDF for this resource.";
+          bodyEl.appendChild(err);
+        } else {
+          const loading = document.createElement("div");
+          loading.className = "muted small-text";
+          loading.textContent = "Loading PDF pages...";
+          bodyEl.appendChild(loading);
+          const pages = await getPdfPageImages(url);
+          if (shouldAbort()) return;
+          loading.remove();
+          if (!pages || pages.length === 0) {
+            const err = document.createElement("div");
+            err.className = "print-resource-error";
+            err.textContent = "Unable to render the PDF pages.";
+            bodyEl.appendChild(err);
+          } else {
+            pages.forEach((src) => {
+              const wrap = document.createElement("div");
+              wrap.className = "print-pdf-page-wrap";
+              const img = document.createElement("img");
+              img.className = "print-pdf-page";
+              img.src = src;
+              img.alt = `${entry.title || "PDF"} page`;
+              wrap.appendChild(img);
+              bodyEl.appendChild(wrap);
+            });
+          }
+        }
+      } else if (entry.kind === "image") {
+        const url = entry.resource?.file_path
+          ? await getFileUrl(entry.resource.file_path)
+          : entry.resource?.url || null;
+        if (shouldAbort()) return;
+        if (!url) {
+          const err = document.createElement("div");
+          err.className = "print-resource-error";
+          err.textContent = "Unable to load the image for this resource.";
+          bodyEl.appendChild(err);
+        } else {
+          const img = document.createElement("img");
+          img.className = "print-image-resource";
+          img.src = url;
+          img.alt = entry.title || "Resource image";
+          bodyEl.appendChild(img);
+        }
+      }
+
+      itemEl.appendChild(bodyEl);
+      groupEl.appendChild(itemEl);
+    }
+
+    resourcesWrap.appendChild(groupEl);
+  }
+
+  container.appendChild(resourcesWrap);
+}
+
+async function renderSetPrintPreview(set, options = {}, selectedResources = [], targetEl = null, renderOptions = {}) {
+  const wrapper = targetEl ? null : el("print-set-container");
+  let container = targetEl || el("print-set-content");
+
+  if (!container && wrapper) {
     container = document.createElement("div");
     container.id = "print-set-content";
     container.className = "print-set-content";
     wrapper.appendChild(container);
   }
 
-  if (!set) return;
+  if (!set || !container) return;
+
+  const normalizedOptions = normalizePrintSetOptions(options);
+  const { forPreview = false, renderToken = null } = renderOptions;
+  const shouldAbort = () => renderToken && state.printSetEditor?.previewToken !== renderToken;
+
+  let contentEl = container;
+  if (!container.classList.contains("print-set-content")) {
+    container.innerHTML = "";
+    contentEl = document.createElement("div");
+    contentEl.className = "print-set-content";
+    container.appendChild(contentEl);
+  }
 
   const sortedSetSongs = (set.set_songs || []).slice().sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
   const totalSeconds = calculateServiceLengthSeconds(set);
@@ -23190,6 +23543,14 @@ function renderSetPrintPreview(set) {
     year: "numeric",
   }) : "";
   const assignmentMode = getSetAssignmentMode(set);
+
+  const columns = [];
+  if (normalizedOptions.showNumbers) columns.push({ key: "number", label: "#", className: "print-col-number" });
+  columns.push({ key: "item", label: "Item", className: "print-col-item" });
+  if (normalizedOptions.showLength) columns.push({ key: "length", label: "Length", className: "print-col-length" });
+  if (normalizedOptions.showKeys) columns.push({ key: "key", label: "Key", className: "print-col-key" });
+  if (normalizedOptions.showBpm) columns.push({ key: "bpm", label: "BPM", className: "print-col-bpm" });
+  if (normalizedOptions.showNotes) columns.push({ key: "notes", label: "Notes", className: "print-col-notes" });
 
   const formatAssignmentName = (assignment) =>
     assignment.person?.full_name ||
@@ -23207,7 +23568,7 @@ function renderSetPrintPreview(set) {
     return acc;
   }, {});
 
-  const setAssignmentsHtml = setAssignments.length
+  const setAssignmentsHtml = (normalizedOptions.showAssignments && setAssignments.length)
     ? `
       <div class="print-assignments-inline">
         ${Object.keys(setAssignmentsByRole).sort().map(role => `
@@ -23244,105 +23605,136 @@ function renderSetPrintPreview(set) {
     }
 
     const notesParts = [];
-    if (setSong.notes) notesParts.push(setSong.notes);
-    if (isSection && setSong.description) notesParts.push(setSong.description);
+    if (normalizedOptions.showNotes) {
+      if (setSong.notes) notesParts.push(setSong.notes);
+      if (isSection && setSong.description) notesParts.push(setSong.description);
+    }
+    const notesHtml = notesParts.map(part => `<div class="print-notes">${escapeHtml(part)}</div>`).join("");
 
     let assignmentSummary = "";
-    const assignmentSourceSetSong = getAssignmentSourceSetSong(setSong, set);
-    const assignmentSummaryAssignments = assignmentSourceSetSong?.song_assignments || [];
-    if (assignmentMode === "per_song" && assignmentSummaryAssignments.length) {
-      const byRole = assignmentSummaryAssignments.reduce((acc, assignment) => {
-        const role = assignment.role || "Unassigned";
-        if (!acc[role]) acc[role] = [];
-        acc[role].push(formatAssignmentName(assignment));
-        return acc;
-      }, {});
-      assignmentSummary = Object.keys(byRole).sort().map(role => `${role}: ${byRole[role].join(", ")}`).join(" • ");
+    if (normalizedOptions.showAssignments) {
+      const assignmentSourceSetSong = getAssignmentSourceSetSong(setSong, set);
+      const assignmentSummaryAssignments = assignmentSourceSetSong?.song_assignments || [];
+      if (assignmentMode === "per_song" && assignmentSummaryAssignments.length) {
+        const byRole = assignmentSummaryAssignments.reduce((acc, assignment) => {
+          const role = assignment.role || "Unassigned";
+          if (!acc[role]) acc[role] = [];
+          acc[role].push(formatAssignmentName(assignment));
+          return acc;
+        }, {});
+        assignmentSummary = Object.keys(byRole).sort().map(role => `${role}: ${byRole[role].join(", ")}`).join(" • ");
+      }
     }
 
     const rowClass = isSectionHeader ? ' class="print-section-row"' : "";
+    const totalColumns = columns.length;
 
-    // For sections, merge Key and BPM columns into Notes (colspan=3 covers Key+BPM+Notes)
     if (isSection) {
+      const baseCells = [];
+      if (normalizedOptions.showNumbers) {
+        baseCells.push(`<td class="print-col-number">${index + 1}</td>`);
+      }
+      baseCells.push(`<td class="print-col-item">${escapeHtml(title)}</td>`);
+      if (normalizedOptions.showLength) {
+        baseCells.push(`<td class="print-col-length">${escapeHtml(lengthLabel || "")}</td>`);
+      }
+      const remainingColumns = totalColumns - (normalizedOptions.showNumbers ? 2 : 1) - (normalizedOptions.showLength ? 1 : 0);
+      if (remainingColumns > 0) {
+        baseCells.push(`<td colspan="${remainingColumns}"${normalizedOptions.showNotes ? ' class="print-col-notes"' : ""}>${notesHtml}</td>`);
+      }
       return `
         <tr${rowClass}>
-          <td>${index + 1}</td>
-          <td>
-            ${escapeHtml(title)}
-          </td>
-          <td>${escapeHtml(lengthLabel)}</td>
-          <td colspan="3">${notesParts.map(part => `<div class="print-notes">${escapeHtml(part)}</div>`).join("")}</td>
+          ${baseCells.join("")}
         </tr>
         ${assignmentSummary ? `
           <tr class="print-assignment-subrow">
-            <td></td>
-            <td colspan="5">${escapeHtml(assignmentSummary)}</td>
+            ${normalizedOptions.showNumbers ? "<td></td>" : ""}
+            <td colspan="${totalColumns - (normalizedOptions.showNumbers ? 1 : 0)}">${escapeHtml(assignmentSummary)}</td>
           </tr>
         ` : ""}
       `;
     }
 
-    // For songs/tags, show all columns
+    const cellValues = {
+      number: index + 1,
+      item: escapeHtml(title),
+      length: escapeHtml(lengthLabel || ""),
+      key: escapeHtml(displayKey || ""),
+      bpm: escapeHtml(bpm || ""),
+      notes: notesHtml
+    };
+
+    const cells = columns.map(col => `<td class="${col.className}">${cellValues[col.key] ?? ""}</td>`).join("");
+
     return `
       <tr${rowClass}>
-        <td>${index + 1}</td>
-        <td>
-          ${escapeHtml(title)}
-        </td>
-        <td>${escapeHtml(lengthLabel)}</td>
-        <td>${escapeHtml(displayKey || "")}</td>
-        <td>${escapeHtml(bpm)}</td>
-        <td>${notesParts.map(part => `<div class="print-notes">${escapeHtml(part)}</div>`).join("")}</td>
+        ${cells}
       </tr>
       ${assignmentSummary ? `
         <tr class="print-assignment-subrow">
-          <td></td>
-          <td colspan="5">${escapeHtml(assignmentSummary)}</td>
+          ${normalizedOptions.showNumbers ? "<td></td>" : ""}
+          <td colspan="${totalColumns - (normalizedOptions.showNumbers ? 1 : 0)}">${escapeHtml(assignmentSummary)}</td>
         </tr>
       ` : ""}
     `;
   }).join("") || `
       <tr>
-        <td colspan="6" style="text-align: center; padding: 1rem; color: #6b7280;">
+        <td colspan="${columns.length}" style="text-align: center; padding: 1rem; color: #6b7280;">
           No items in this set yet.
         </td>
       </tr>
     `;
 
-  container.innerHTML = `
+  const summaryItems = [];
+  if (normalizedOptions.showTotalLength) {
+    summaryItems.push(`<div class="print-summary-item">Total Length: ${totalSeconds ? formatLongDuration(totalSeconds) : "—"}</div>`);
+  }
+  if (normalizedOptions.showTeam && set.team_name) {
+    summaryItems.push(`<div class="print-summary-item">Team: ${escapeHtml(set.team_name)}</div>`);
+  }
+
+  contentEl.innerHTML = `
     <div class="print-set-header">
       <div>
         <p class="print-set-meta">Service</p>
         <h1 class="print-set-title">${escapeHtml(set.title || "Untitled Set")}</h1>
-        ${dateLabel ? `<p class="print-set-meta">${escapeHtml(dateLabel)}</p>` : ""}
-        ${set.description ? `<p class="print-set-meta">${escapeHtml(set.description)}</p>` : ""}
+        ${normalizedOptions.showDate && dateLabel ? `<p class="print-set-meta">${escapeHtml(dateLabel)}</p>` : ""}
+        ${normalizedOptions.showDescription && set.description ? `<p class="print-set-meta">${escapeHtml(set.description)}</p>` : ""}
       </div>
-      <div class="print-summary">
-        <div class="print-summary-item">Total Length: ${totalSeconds ? formatLongDuration(totalSeconds) : "—"}</div>
-        ${set.team_name ? `<div class="print-summary-item">Team: ${escapeHtml(set.team_name)}</div>` : ""}
-      </div>
+      ${summaryItems.length ? `
+        <div class="print-summary">
+          ${summaryItems.join("")}
+        </div>
+      ` : ""}
       ${assignmentMode === "per_set" ? setAssignmentsHtml : ""}
     </div>
     <table class="print-set-table">
       <thead>
         <tr>
-          <th>#</th>
-          <th>Item</th>
-          <th>Length</th>
-          <th>Key</th>
-          <th>BPM</th>
-          <th>Notes</th>
+          ${columns.map(col => `<th class="${col.className}">${col.label}</th>`).join("")}
         </tr>
       </thead>
       <tbody>
         ${rowsHtml}
       </tbody>
     </table>
-    <div class="print-total">Overall Length: ${totalSeconds ? formatLongDuration(totalSeconds) : "—"}</div>
+    ${normalizedOptions.showTotalLength ? `<div class="print-total">Overall Length: ${totalSeconds ? formatLongDuration(totalSeconds) : "—"}</div>` : ""}
   `;
+
+  if (shouldAbort()) return;
+  if (selectedResources && selectedResources.length > 0) {
+    await renderPrintSetResources({
+      set,
+      resources: selectedResources,
+      container: contentEl,
+      forPreview,
+      showHeaders: !!forPreview,
+      renderToken,
+    });
+  }
 }
 
-function openPrintSet(set) {
+async function openPrintSet(set, options = {}, selectedResources = [], callbacks = {}) {
   const wrapper = el("print-set-container");
   if (!wrapper || !set) return;
 
@@ -23354,7 +23746,7 @@ function openPrintSet(set) {
     chartWrapper.setAttribute("aria-hidden", "true");
   }
 
-  renderSetPrintPreview(set);
+  await renderSetPrintPreview(set, options, selectedResources);
   // Keep it visually hidden on screen; print styles will reveal it
   wrapper.setAttribute("aria-hidden", "false");
 
@@ -23364,9 +23756,15 @@ function openPrintSet(set) {
     team_id: state.currentTeamId
   });
 
+  let didCleanup = false;
   const afterPrint = () => {
+    if (didCleanup) return;
+    didCleanup = true;
     wrapper.setAttribute("aria-hidden", "true");
     window.removeEventListener("afterprint", afterPrint);
+    if (typeof callbacks.onAfterPrint === "function") {
+      callbacks.onAfterPrint();
+    }
   };
   window.addEventListener("afterprint", afterPrint);
 
@@ -23379,6 +23777,246 @@ function openPrintSet(set) {
 
   // Fallback in case afterprint doesn't fire
   setTimeout(afterPrint, 3000);
+}
+
+function syncPrintSetOptionsUI(options) {
+  const normalizedOptions = normalizePrintSetOptions(options);
+  if (state.printSetEditor) {
+    state.printSetEditor.options = normalizedOptions;
+  }
+  const optionsEl = el("print-set-options");
+  if (!optionsEl) return;
+  optionsEl.querySelectorAll("input[data-print-set-option]").forEach(input => {
+    const key = input.dataset.printSetOption;
+    if (!key) return;
+    input.checked = normalizedOptions[key] !== false;
+  });
+}
+
+function renderPrintSetResourceList(set) {
+  const listEl = el("print-set-resource-list");
+  const editorState = state.printSetEditor;
+  if (!listEl || !editorState || !set) return;
+
+  listEl.innerHTML = "";
+  editorState.resourcesByKey = new Map();
+
+  const listToken = (editorState.resourceListToken || 0) + 1;
+  editorState.resourceListToken = listToken;
+
+  const sortedSetSongs = (set.set_songs || []).slice().sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
+  const uniqueSongs = [];
+  const seenSongIds = new Set();
+  sortedSetSongs.forEach((setSong) => {
+    if (setSong?.song?.id && !seenSongIds.has(setSong.song.id)) {
+      seenSongIds.add(setSong.song.id);
+      uniqueSongs.push(setSong.song);
+    }
+  });
+
+  if (uniqueSongs.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "print-set-resource-empty";
+    empty.textContent = "No songs in this set yet.";
+    listEl.appendChild(empty);
+    return;
+  }
+
+  uniqueSongs.forEach((song) => {
+    const group = document.createElement("div");
+    group.className = "print-set-song-group";
+
+    const header = document.createElement("div");
+    header.className = "print-set-song-header";
+
+    const cover = document.createElement("div");
+    cover.className = "print-set-song-cover";
+    const icon = document.createElement("i");
+    icon.className = "fa-solid fa-music";
+    cover.appendChild(icon);
+
+    const img = document.createElement("img");
+    img.alt = `${song.title || "Song"} album art`;
+    img.style.display = "none";
+    cover.appendChild(img);
+
+    const cachedArt = editorState.songArtCache?.get(song.id);
+    if (cachedArt) {
+      img.src = cachedArt;
+      img.style.display = "block";
+      icon.style.display = "none";
+    } else {
+      getAlbumArt(song, song.title || "", { disableItunesFallback: true }).then((albumArt) => {
+        if (editorState.resourceListToken !== listToken || !img.isConnected) return;
+        const artUrl = albumArt?.small || albumArt?.large;
+        if (!artUrl) return;
+        editorState.songArtCache.set(song.id, artUrl);
+        img.src = artUrl;
+        img.style.display = "block";
+        icon.style.display = "none";
+      }).catch(() => { });
+    }
+
+    const title = document.createElement("div");
+    title.textContent = song.title || "Untitled";
+
+    header.appendChild(cover);
+    header.appendChild(title);
+    group.appendChild(header);
+
+    const printableResources = (song.song_resources || [])
+      .filter(res => getPrintableResourceKind(res))
+      .sort((a, b) => (a.display_order ?? Number.POSITIVE_INFINITY) - (b.display_order ?? Number.POSITIVE_INFINITY));
+
+    if (printableResources.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "print-set-resource-empty";
+      empty.textContent = "No printable resources.";
+      group.appendChild(empty);
+    } else {
+      printableResources.forEach((resource) => {
+        const entry = buildPrintSetResourceEntry(song, resource);
+        if (!entry) return;
+        editorState.resourcesByKey.set(entry.key, entry);
+
+        const label = document.createElement("label");
+        label.className = "custom-checkbox-label print-set-resource-checkbox";
+
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.className = "custom-checkbox";
+        input.dataset.resourceKey = entry.key;
+        input.checked = editorState.selectedResourceKeys.has(entry.key);
+
+        const textWrap = document.createElement("span");
+        textWrap.className = "print-set-resource-label";
+
+        const titleEl = document.createElement("span");
+        titleEl.className = "print-set-resource-title";
+        titleEl.textContent = entry.title || "Resource";
+        textWrap.appendChild(titleEl);
+
+        if (entry.subtitle) {
+          const subtitleEl = document.createElement("span");
+          subtitleEl.className = "print-set-resource-subtitle";
+          subtitleEl.textContent = entry.subtitle;
+          textWrap.appendChild(subtitleEl);
+        }
+
+        label.appendChild(input);
+        label.appendChild(textWrap);
+        group.appendChild(label);
+      });
+    }
+
+    listEl.appendChild(group);
+  });
+}
+
+async function updatePrintSetEditorPreview() {
+  const editorState = state.printSetEditor;
+  if (!editorState?.isOpen || !state.selectedSet) return;
+  const previewEl = el("print-set-editor-preview");
+  if (!previewEl) return;
+  const token = (editorState.previewToken || 0) + 1;
+  editorState.previewToken = token;
+  const options = normalizePrintSetOptions(editorState.options);
+  editorState.options = options;
+  const selectedResources = getSelectedPrintSetResources();
+  await renderSetPrintPreview(state.selectedSet, options, selectedResources, previewEl, {
+    renderToken: token,
+    forPreview: true,
+  });
+}
+
+function openPrintSetEditor(set) {
+  const modal = el("print-set-editor-modal");
+  if (!modal || !set) return;
+
+  const prevArtCache = state.printSetEditor?.songArtCache;
+  state.printSetEditor = {
+    isOpen: true,
+    setId: set.id,
+    options: getDefaultPrintSetOptions(),
+    selectedResourceKeys: new Set(),
+    resourcesByKey: new Map(),
+    songArtCache: prevArtCache instanceof Map ? new Map(prevArtCache) : new Map(),
+    previewToken: 0,
+    resourceListToken: 0,
+    isPrinting: false,
+  };
+
+  const titleEl = el("print-set-editor-title");
+  const subtitleEl = el("print-set-editor-subtitle");
+  const date = parseLocalDate(set.scheduled_date);
+  const dateLabel = date ? date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }) : "";
+  if (titleEl) titleEl.textContent = "Print Set";
+  if (subtitleEl) {
+    subtitleEl.textContent = `${set.title || "Untitled Set"}${dateLabel ? ` - ${dateLabel}` : ""}`;
+  }
+
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+  syncPrintSetOptionsUI(state.printSetEditor.options);
+  renderPrintSetResourceList(set);
+  updatePrintSetEditorPreview();
+}
+
+function closePrintSetEditor() {
+  const modal = el("print-set-editor-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  }
+  const previewEl = el("print-set-editor-preview");
+  if (previewEl) previewEl.innerHTML = "";
+  if (state.printSetEditor) {
+    state.printSetEditor.isOpen = false;
+  }
+}
+
+async function handlePrintSetEditorPrint() {
+  const editorState = state.printSetEditor;
+  if (!editorState?.isOpen || editorState.isPrinting || !state.selectedSet) return;
+
+  const btn = el("btn-print-set-print");
+  const prevHtml = btn?.innerHTML;
+  editorState.isPrinting = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add("disabled");
+    btn.innerHTML = `<i class="fa-solid fa-print"></i> Preparing...`;
+  }
+
+  const options = normalizePrintSetOptions(editorState.options);
+  const selectedResources = getSelectedPrintSetResources();
+
+  try {
+    await openPrintSet(state.selectedSet, options, selectedResources, {
+      onAfterPrint: () => {
+        editorState.isPrinting = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove("disabled");
+          if (prevHtml) btn.innerHTML = prevHtml;
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Failed to prepare print preview:", err);
+    editorState.isPrinting = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove("disabled");
+      if (prevHtml) btn.innerHTML = prevHtml;
+    }
+    toastError("Failed to prepare print preview. Check console.");
+  }
 }
 
 function escapeHtml(text) {
