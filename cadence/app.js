@@ -2284,7 +2284,23 @@ function bindEvents() {
 
   // Songs tab search
   let isSongSearchTransitioning = false;
+  el("songs-tab-search")?.addEventListener("keydown", (e) => {
+    const input = e.currentTarget;
+    if (!(input instanceof HTMLInputElement)) return;
+    if (e.key !== "Backspace") return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (input.selectionStart !== 0 || input.selectionEnd !== 0) return;
+    if (!popLastSongSearchFilterIntoInput()) return;
+    e.preventDefault();
+  });
+
+  el("songs-tab-search")?.addEventListener("blur", () => {
+    commitSongSearchFiltersOnBlur();
+  });
+
   el("songs-tab-search")?.addEventListener("input", () => {
+    syncSongsSearchInputState();
+
     // Use View Transitions API if available, but safeguard against rapid invalid state errors
     if (document.startViewTransition && !isSongSearchTransitioning) {
       isSongSearchTransitioning = true;
@@ -17483,6 +17499,20 @@ function parseSearchQuery(query) {
       case 'length':
         filters.duration = value;
         break;
+      case 'genre':
+        filters.genre = value;
+        break;
+      case 'album':
+        filters.album = value;
+        break;
+      case 'artist':
+        filters.artist = value;
+        break;
+      case 'date':
+      case 'releasedate':
+      case 'release':
+        filters.releaseDate = value;
+        break;
 
     }
   }
@@ -17491,6 +17521,565 @@ function parseSearchQuery(query) {
   const text = query.replace(regex, "").replace(/\s+/g, " ").trim();
 
   return { filters, text };
+}
+
+const SONG_SEARCH_FILTER_ORDER = ["key", "time_signature", "bpm", "duration", "genre", "album", "artist", "releaseDate"];
+const SONG_SEARCH_FILTER_LABELS = {
+  key: "Key",
+  time_signature: "Time",
+  bpm: "BPM",
+  duration: "Duration",
+  genre: "Genre",
+  album: "Album",
+  artist: "Artist",
+  releaseDate: "Date"
+};
+const SONG_SEARCH_FILTER_QUERY_KEYS = {
+  key: "key",
+  time_signature: "time",
+  bpm: "bpm",
+  duration: "duration",
+  genre: "genre",
+  album: "album",
+  artist: "artist",
+  releaseDate: "date"
+};
+
+function getSongKeyDisplayLabel(lowerKey) {
+  const k = String(lowerKey || "").trim().toLowerCase();
+  if (!k) return "";
+  const distinct = getDistinctSongSearchFilterValues("key");
+  const hit = distinct.find((x) => String(x).trim().toLowerCase() === k);
+  return hit ? String(hit).trim() : k;
+}
+
+function formatSongSearchFilterValue(filterKey, value) {
+  if (!value) return "";
+  if (filterKey === "key") return getSongKeyDisplayLabel(value);
+  return value;
+}
+
+/** Parsed numeric filter: plain digits, < > <= >=, or a-b range (all compared as numbers). */
+function parseNumericConstraint(raw) {
+  const s = String(raw || "").trim().toLowerCase();
+  if (!s) return null;
+  const range = /^(\d+)\s*-\s*(\d+)$/.exec(s);
+  if (range) {
+    const lo = Number(range[1]);
+    const hi = Number(range[2]);
+    if (Number.isFinite(lo) && Number.isFinite(hi)) {
+      return { kind: "range", lo: Math.min(lo, hi), hi: Math.max(lo, hi) };
+    }
+  }
+  if (s.startsWith("<=")) {
+    const n = Number(s.slice(3).trim());
+    return Number.isFinite(n) ? { kind: "lte", n } : null;
+  }
+  if (s.startsWith(">=")) {
+    const n = Number(s.slice(3).trim());
+    return Number.isFinite(n) ? { kind: "gte", n } : null;
+  }
+  if (s.startsWith("<")) {
+    const n = Number(s.slice(1).trim());
+    return Number.isFinite(n) ? { kind: "lt", n } : null;
+  }
+  if (s.startsWith(">")) {
+    const n = Number(s.slice(1).trim());
+    return Number.isFinite(n) ? { kind: "gt", n } : null;
+  }
+  if (/^\d+$/.test(s)) {
+    const n = Number(s);
+    return Number.isFinite(n) ? { kind: "eq", n } : null;
+  }
+  return null;
+}
+
+function isPlainBpmFilterValue(raw) {
+  return /^\d+$/.test(String(raw || "").trim());
+}
+
+function songMatchesBpmFilter(rawFilter, song) {
+  const raw = String(rawFilter || "").trim().toLowerCase();
+  if (!raw) return true;
+  const bpm = song?.bpm != null ? Number(song.bpm) : NaN;
+  if (!Number.isFinite(bpm)) return false;
+  const c = parseNumericConstraint(raw);
+  if (!c) return String(song.bpm).toLowerCase() === raw;
+  switch (c.kind) {
+    case "eq":
+      return Math.round(bpm) === c.n;
+    case "lt":
+      return bpm < c.n;
+    case "gt":
+      return bpm > c.n;
+    case "lte":
+      return bpm <= c.n;
+    case "gte":
+      return bpm >= c.n;
+    case "range":
+      return bpm >= c.lo && bpm <= c.hi;
+    default:
+      return false;
+  }
+}
+
+function songMatchesDurationFilter(rawFilter, song) {
+  const raw = String(rawFilter || "").trim().toLowerCase();
+  if (!raw) return true;
+  const sec = song?.duration_seconds != null ? Number(song.duration_seconds) : NaN;
+  const c = parseNumericConstraint(raw);
+  if (c && Number.isFinite(sec) && sec >= 0) {
+    switch (c.kind) {
+      case "eq":
+        return Math.round(sec) === c.n;
+      case "lt":
+        return sec < c.n;
+      case "gt":
+        return sec > c.n;
+      case "lte":
+        return sec <= c.n;
+      case "gte":
+        return sec >= c.n;
+      case "range":
+        return sec >= c.lo && sec <= c.hi;
+      default:
+        return false;
+    }
+  }
+  const dStr = song.duration_seconds ? formatDuration(song.duration_seconds) : "";
+  return dStr.toLowerCase().includes(raw);
+}
+
+function buildSongSearchQuery(filters, text) {
+  const tokens = [];
+
+  SONG_SEARCH_FILTER_ORDER.forEach((filterKey) => {
+    const value = filters?.[filterKey];
+    if (!value) return;
+
+    const trimmed = String(value).trim();
+    if (!trimmed) return;
+
+    const queryKey = SONG_SEARCH_FILTER_QUERY_KEYS[filterKey] || filterKey;
+    const needsQuotes = /\s/.test(trimmed);
+    const safeValue = needsQuotes ? `"${trimmed.replace(/"/g, '\\"')}"` : trimmed;
+    tokens.push(`${queryKey}:${safeValue}`);
+  });
+
+  if (text && text.trim()) {
+    tokens.push(text.trim());
+  }
+
+  return tokens.join(" ").trim();
+}
+
+function buildSongSearchFilterToken(filterKey, value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  const queryKey = SONG_SEARCH_FILTER_QUERY_KEYS[filterKey] || filterKey;
+  const needsQuotes = /\s/.test(trimmed);
+  const safeValue = needsQuotes ? `"${trimmed.replace(/"/g, '\\"')}"` : trimmed;
+  return `${queryKey}:${safeValue}`;
+}
+
+function normalizeSongSearchFilterKey(rawKey) {
+  const key = String(rawKey || "").toLowerCase();
+  switch (key) {
+    case "key":
+      return "key";
+    case "time":
+    case "ts":
+    case "signature":
+    case "timesignature":
+      return "time_signature";
+    case "bpm":
+      return "bpm";
+    case "duration":
+    case "length":
+      return "duration";
+    case "genre":
+      return "genre";
+    case "album":
+      return "album";
+    case "artist":
+      return "artist";
+    case "date":
+    case "releasedate":
+    case "release":
+      return "releaseDate";
+    default:
+      return null;
+  }
+}
+
+function getInProgressSongSearchFilterKeys(query) {
+  const keys = new Set();
+  if (!query || !query.trim()) return keys;
+
+  const tokenRegex = /(\w+):(?:"([^"]*)"|'([^']*)'|([^\s]*))/g;
+  let match;
+  while ((match = tokenRegex.exec(query)) !== null) {
+    const rawKey = match[1];
+    const normalizedKey = normalizeSongSearchFilterKey(rawKey);
+    if (!normalizedKey) continue;
+
+    const endIndex = tokenRegex.lastIndex;
+    const trailingChar = query[endIndex];
+    const isCommitted = /\s/.test(trailingChar || "");
+    if (!isCommitted) {
+      keys.add(normalizedKey);
+    }
+  }
+
+  return keys;
+}
+
+function parseCommittedSearchFilters(query) {
+  const filters = {};
+  if (!query || !query.trim()) return { filters, text: "" };
+
+  // Only commit filters that are followed by whitespace, which means the user moved on.
+  const committedFilterRegex = /(\w+):(?:"([^"]+)"|'([^']+)'|([^\s]+))(?=\s)/g;
+  let match;
+  while ((match = committedFilterRegex.exec(query)) !== null) {
+    const parsed = parseSearchQuery(match[0]);
+    Object.assign(filters, parsed.filters || {});
+  }
+
+  const text = query.replace(committedFilterRegex, "").replace(/\s+/g, " ").trim();
+  return { filters, text };
+}
+
+function getSongsSearchQueryRaw() {
+  const searchInput = el("songs-tab-search");
+  if (!searchInput) return "";
+
+  const existing = parseSearchQuery(searchInput.dataset.fullQuery || "");
+  const parsedCurrentValue = parseCommittedSearchFilters(searchInput.value || "");
+  const inProgressKeys = getInProgressSongSearchFilterKeys(searchInput.value || "");
+  const baseFilters = { ...(existing.filters || {}) };
+  inProgressKeys.forEach((filterKey) => {
+    delete baseFilters[filterKey];
+  });
+  const mergedFilters = {
+    ...baseFilters,
+    ...(parsedCurrentValue.filters || {})
+  };
+  const currentText = (parsedCurrentValue.text || "").trim();
+  const query = buildSongSearchQuery(mergedFilters, currentText);
+  searchInput.dataset.fullQuery = query;
+  if (searchInput.value !== currentText) {
+    searchInput.value = currentText;
+  }
+  return query;
+}
+
+function syncSongsSearchInputState() {
+  const searchInput = el("songs-tab-search");
+  if (!searchInput) return "";
+
+  const typedValue = searchInput.value || "";
+  const existing = parseSearchQuery(searchInput.dataset.fullQuery || "");
+  const parsedTypedValue = parseCommittedSearchFilters(typedValue);
+  const inProgressKeys = getInProgressSongSearchFilterKeys(typedValue);
+  const baseFilters = { ...(existing.filters || {}) };
+  inProgressKeys.forEach((filterKey) => {
+    delete baseFilters[filterKey];
+  });
+  const mergedFilters = {
+    ...baseFilters,
+    ...(parsedTypedValue.filters || {})
+  };
+  const normalizedText = (parsedTypedValue.text || "").trim();
+  const nextQuery = buildSongSearchQuery(mergedFilters, normalizedText);
+
+  searchInput.dataset.fullQuery = nextQuery;
+  if (searchInput.value !== normalizedText) {
+    searchInput.value = normalizedText;
+  }
+
+  return nextQuery;
+}
+
+/**
+ * On blur, commit any complete key:value tokens in the input even without trailing whitespace,
+ * so they become chips (same as parseSearchQuery, merged with dataset state).
+ */
+function commitSongSearchFiltersOnBlur() {
+  const searchInput = el("songs-tab-search");
+  if (!searchInput) return;
+
+  const draft = searchInput.value || "";
+  const stored = parseSearchQuery(searchInput.dataset.fullQuery || "");
+  const draftParsed = parseSearchQuery(draft);
+
+  const mergedFilters = { ...(stored.filters || {}), ...(draftParsed.filters || {}) };
+  const finalText = (draftParsed.text || "").trim();
+  const nextQuery = buildSongSearchQuery(mergedFilters, finalText);
+
+  const prevQuery = searchInput.dataset.fullQuery || "";
+  const prevText = (searchInput.value || "").trim();
+  if (nextQuery === prevQuery && finalText === prevText) return;
+
+  searchInput.dataset.fullQuery = nextQuery;
+  if (searchInput.value !== finalText) {
+    searchInput.value = finalText;
+  }
+  updateSongSearchChips(nextQuery);
+  renderSongCatalog(false);
+}
+
+function removeSongSearchFilter(filterKey) {
+  const searchInput = el("songs-tab-search");
+  if (!searchInput) return;
+
+  const current = searchInput.dataset.fullQuery || searchInput.value || "";
+  const parsed = parseSearchQuery(current);
+  if (!parsed.filters?.[filterKey]) return;
+
+  parsed.filters[filterKey] = null;
+  const currentTypedText = (searchInput.value || "").trim();
+  const nextQuery = buildSongSearchQuery(parsed.filters, currentTypedText);
+
+  searchInput.dataset.fullQuery = nextQuery;
+  searchInput.value = currentTypedText;
+  searchInput.focus();
+  updateSongSearchChips(nextQuery);
+  renderSongCatalog(false);
+}
+
+function setSongSearchFilterValue(filterKey, value) {
+  const searchInput = el("songs-tab-search");
+  if (!searchInput) return;
+
+  const current = searchInput.dataset.fullQuery || "";
+  const parsed = parseSearchQuery(current);
+  const nextValue = value === null || value === undefined ? "" : String(value).trim();
+  if (!nextValue) {
+    delete parsed.filters[filterKey];
+  } else {
+    parsed.filters[filterKey] = nextValue.toLowerCase();
+  }
+
+  const currentTypedText = (searchInput.value || "").trim();
+  const nextQuery = buildSongSearchQuery(parsed.filters, currentTypedText);
+  searchInput.dataset.fullQuery = nextQuery;
+  updateSongSearchChips(nextQuery);
+  renderSongCatalog(false);
+}
+
+function getDistinctSongSearchFilterValues(filterKey) {
+  const songs = Array.isArray(state.songs) ? state.songs : [];
+
+  if (filterKey === "key") {
+    const keysSet = new Set();
+    songs.forEach((song) => {
+      if (song?.song_key) keysSet.add(String(song.song_key).trim());
+      if (Array.isArray(song?.song_keys)) {
+        song.song_keys.forEach((entry) => {
+          if (entry?.key) keysSet.add(String(entry.key).trim());
+        });
+      }
+    });
+    return Array.from(keysSet).filter(Boolean).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  }
+
+  if (filterKey === "time_signature") {
+    const timesSet = new Set();
+    songs.forEach((song) => {
+      if (song?.time_signature) timesSet.add(String(song.time_signature).trim());
+    });
+    return Array.from(timesSet).filter(Boolean).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+  }
+
+  if (filterKey === "bpm") {
+    const bpmSet = new Set();
+    songs.forEach((song) => {
+      const bpm = Number(song?.bpm);
+      if (Number.isFinite(bpm) && bpm > 0) bpmSet.add(String(Math.round(bpm)));
+    });
+    return Array.from(bpmSet).sort((a, b) => Number(a) - Number(b));
+  }
+
+  return [];
+}
+
+function getAdjacentSongBpmValue(currentBpmValue, direction) {
+  const bpms = getDistinctSongSearchFilterValues("bpm").map((bpm) => Number(bpm)).filter((bpm) => Number.isFinite(bpm));
+  if (bpms.length === 0) return null;
+  const current = Number(currentBpmValue);
+
+  if (!Number.isFinite(current)) {
+    return direction > 0 ? String(bpms[0]) : String(bpms[bpms.length - 1]);
+  }
+
+  if (direction > 0) {
+    for (let i = 0; i < bpms.length; i++) {
+      if (bpms[i] > current) return String(bpms[i]);
+    }
+    return String(bpms[bpms.length - 1]);
+  }
+
+  for (let i = bpms.length - 1; i >= 0; i--) {
+    if (bpms[i] < current) return String(bpms[i]);
+  }
+  return String(bpms[0]);
+}
+
+function buildSongSearchChipValueControl(filterKey, value) {
+  if (filterKey === "key" || filterKey === "time_signature") {
+    const options = getDistinctSongSearchFilterValues(filterKey).map((optionValue) => ({
+      value: optionValue.toLowerCase(),
+      label: optionValue
+    }));
+    const dropdown = createSimpleDropdown(options, "Select...", String(value || "").toLowerCase());
+    dropdown.classList.add("songs-search-chip-dropdown");
+    const syncChipDropdownInputWidth = () => {
+      const inp = dropdown.querySelector(".searchable-dropdown-input");
+      if (!inp) return;
+      const len = (inp.value || "").trim().length || 1;
+      inp.setAttribute("size", String(Math.max(1, len)));
+    };
+    queueMicrotask(syncChipDropdownInputWidth);
+    dropdown.addEventListener("change", (e) => {
+      const selected = e?.detail?.value;
+      if (!selected) return;
+      setSongSearchFilterValue(filterKey, selected);
+      queueMicrotask(syncChipDropdownInputWidth);
+    });
+    return dropdown;
+  }
+
+  if (filterKey === "bpm") {
+    if (!isPlainBpmFilterValue(value)) {
+      const valueEl = document.createElement("span");
+      valueEl.className = "songs-search-chip-value";
+      valueEl.textContent = formatSongSearchFilterValue("bpm", value);
+      return valueEl;
+    }
+
+    const wrap = document.createElement("div");
+    wrap.className = "songs-search-chip-bpm-stepper";
+
+    const minusBtn = document.createElement("button");
+    minusBtn.type = "button";
+    minusBtn.className = "songs-search-chip-step-btn";
+    minusBtn.setAttribute("aria-label", "Lower BPM");
+    minusBtn.textContent = "-";
+    minusBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = getAdjacentSongBpmValue(value, -1);
+      if (!next) return;
+      setSongSearchFilterValue("bpm", next);
+    });
+
+    const valueEl = document.createElement("span");
+    valueEl.className = "songs-search-chip-value";
+    valueEl.textContent = String(value);
+
+    const plusBtn = document.createElement("button");
+    plusBtn.type = "button";
+    plusBtn.className = "songs-search-chip-step-btn";
+    plusBtn.setAttribute("aria-label", "Higher BPM");
+    plusBtn.textContent = "+";
+    plusBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = getAdjacentSongBpmValue(value, 1);
+      if (!next) return;
+      setSongSearchFilterValue("bpm", next);
+    });
+
+    wrap.appendChild(minusBtn);
+    wrap.appendChild(valueEl);
+    wrap.appendChild(plusBtn);
+    return wrap;
+  }
+
+  const valueEl = document.createElement("span");
+  valueEl.className = "songs-search-chip-value";
+  valueEl.textContent = formatSongSearchFilterValue(filterKey, value);
+  return valueEl;
+}
+
+function popLastSongSearchFilterIntoInput() {
+  const searchInput = el("songs-tab-search");
+  if (!searchInput) return false;
+
+  const current = searchInput.dataset.fullQuery || "";
+  const parsed = parseSearchQuery(current);
+  const lastFilterKey = [...SONG_SEARCH_FILTER_ORDER].reverse().find((filterKey) => {
+    const value = parsed.filters?.[filterKey];
+    return value && String(value).trim();
+  });
+  if (!lastFilterKey) return false;
+
+  const lastFilterValue = parsed.filters[lastFilterKey];
+  const tokenToEdit = buildSongSearchFilterToken(lastFilterKey, lastFilterValue);
+  if (!tokenToEdit) return false;
+
+  parsed.filters[lastFilterKey] = null;
+  const nextQuery = buildSongSearchQuery(parsed.filters, parsed.text);
+  searchInput.dataset.fullQuery = nextQuery;
+
+  const existingText = (parsed.text || "").trim();
+  searchInput.value = existingText ? `${tokenToEdit} ${existingText}` : tokenToEdit;
+  searchInput.focus();
+  const caretPos = searchInput.value.length;
+  searchInput.setSelectionRange(caretPos, caretPos);
+
+  updateSongSearchChips(nextQuery);
+  renderSongCatalog(false);
+  return true;
+}
+
+function updateSongSearchChips(queryRaw) {
+  const chipsWrap = el("songs-search-chips");
+  if (!chipsWrap) return;
+
+  const { filters } = parseSearchQuery(queryRaw || "");
+  const searchInput = el("songs-tab-search");
+  const inProgressKeys = getInProgressSongSearchFilterKeys(searchInput?.value || "");
+  const visibleFilters = { ...(filters || {}) };
+  inProgressKeys.forEach((filterKey) => {
+    delete visibleFilters[filterKey];
+  });
+  chipsWrap.innerHTML = "";
+
+  SONG_SEARCH_FILTER_ORDER.forEach((filterKey) => {
+    const value = visibleFilters?.[filterKey];
+    if (!value) return;
+
+    const label = SONG_SEARCH_FILTER_LABELS[filterKey] || filterKey;
+
+    const chip = document.createElement("div");
+    chip.className = "songs-search-chip";
+    chip.dataset.filterKey = filterKey;
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "songs-search-chip-label";
+    labelEl.textContent = `${label}:`;
+
+    const valueControl = buildSongSearchChipValueControl(filterKey, value);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "songs-search-chip-remove";
+    removeBtn.setAttribute("aria-label", `Remove ${label} filter`);
+    removeBtn.textContent = "X";
+
+    removeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      removeSongSearchFilter(filterKey);
+    });
+
+    chip.appendChild(labelEl);
+    chip.appendChild(valueControl);
+    chip.appendChild(removeBtn);
+    chipsWrap.appendChild(chip);
+  });
 }
 
 function filterSongs(songs, queryRaw) {
@@ -17520,14 +18109,11 @@ function filterSongs(songs, queryRaw) {
     }
 
     if (filters.bpm) {
-      // String comparison for BPM
-      if (!song.bpm || String(song.bpm) !== filters.bpm) return false;
+      if (!songMatchesBpmFilter(filters.bpm, song)) return false;
     }
 
     if (filters.duration) {
-      // Fuzzy match on formatted string
-      const dStr = song.duration_seconds ? formatDuration(song.duration_seconds) : "";
-      if (!dStr.includes(filters.duration)) return false;
+      if (!songMatchesDurationFilter(filters.duration, song)) return false;
     }
 
 
@@ -17594,7 +18180,8 @@ async function renderSongCatalog(animate = true) {
   }
 
   const searchInput = el("songs-tab-search");
-  const searchTermRaw = searchInput ? searchInput.value.trim() : "";
+  const searchTermRaw = searchInput ? getSongsSearchQueryRaw() : "";
+  updateSongSearchChips(searchTermRaw);
 
   // Parse for highlighting purposes (we only highlight the residual text, OR the specific fielded values if we wanted to get fancy)
   // For now, let's keep highlighting simple: highlight the residual text matches.
@@ -17899,12 +18486,13 @@ async function renderSongCatalog(animate = true) {
     resourceSearchTimeout = setTimeout(() => {
       // Double-check this is still the current search term before starting
       const searchInput = el("songs-tab-search");
-      const currentSearch = searchInput ? searchInput.value.trim() : "";
-      if (currentSearch === searchTerm && currentSearch.length > 0) {
+      const currentSearchQuery = searchInput ? getSongsSearchQueryRaw() : "";
+      const { text: currentSearchText } = parseSearchQuery(currentSearchQuery);
+      if (currentSearchText === searchTerm && currentSearchText.length > 0) {
         console.log(`⏱️ Debounce complete, starting search for: "${searchTerm}"`);
         searchSongResources(searchTerm, filteredSongs);
       } else {
-        console.log(`⏭️ Skipping search - term changed: "${searchTerm}" -> "${currentSearch}"`);
+        console.log(`⏭️ Skipping search - term changed: "${searchTerm}" -> "${currentSearchText}"`);
       }
     }, 1000); // Increased to 1000ms (1 second) to wait longer when typing fast
   }
@@ -19977,8 +20565,10 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   const keyChartByKey = new Map(keyCharts.map(c => [normalizeKeyLabel(c.song_key), c]));
   const hasGeneratedKeyCharts = !!(generalChart && generalChart.chart_type === "number" && hasKeys);
   const hasAnyCharts = !!(allGeneralCharts.length > 0 || keyCharts.length > 0 || hasGeneratedKeyCharts);
+  const relatedSongs = getRelatedSongs(songWithResources, state.songs);
   const hasResources = hasLinks || hasAnyCharts;
-  const hasAccentContent = hasResources || hasSongAssignments;
+  const hasRelatedSongs = relatedSongs.length > 0;
+  const hasAccentContent = hasResources || hasSongAssignments || hasRelatedSongs;
   content.classList.toggle("song-details-content--has-resources", hasAccentContent);
   const itunesFetchDisabled = !!songWithResources.itunes_fetch_disabled;
   const teamItunesDisabled = (state.userTeams?.find?.(t => t.id === state.currentTeamId)?.itunes_indexing_enabled === false);
@@ -19994,6 +20584,23 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   // Ref to song with resources for templates
   // Ref to song with resources for templates
   const songWithLinks = songWithResources; // Keep variable name for minimal diff in template sections
+  const relatedSectionHtml = relatedSongs.length
+    ? `
+        <div class="related-songs-section">
+          <div class="related-songs-header">
+            <div>
+              <h3 class="section-title related-songs-title">Related Songs</h3>
+              <p class="related-songs-subtitle">Based on shared themes, then tempo</p>
+            </div>
+          </div>
+          <div class="related-songs-card">
+            <div class="related-songs-list">
+              ${relatedSongs.map((entry, index) => buildRelatedSongRowHtml(entry, index)).join("")}
+            </div>
+          </div>
+        </div>
+      `
+    : "";
 
   // Render all song information in an expanded view
   content.innerHTML = `
@@ -20096,14 +20703,14 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
         ` : ''
     }
         
-        ${songWithResources.description ? `
+       ${songWithResources.description ? `
         <div class="song-details-section">
           <h3 class="section-title">Description</h3>
           <p class="song-details-description">${escapeHtml(songWithResources.description)}</p>
         </div>
         ` : ''
     }
-        
+
        ${(songWithResources.suggested_song_key || songWithResources.suggested_time_signature) ? `
         <div style="text-align: right; margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-muted);">
            Some data provided by <a href="https://getsongbpm.com" target="_blank" rel="noopener noreferrer" style="color: inherit;">GetSongBPM</a>
@@ -20140,12 +20747,22 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
               <div class="song-details-assignments"></div>
             </div>
             ` : ''}
+            ${hasRelatedSongs ? `
+            <div class="song-details-section" style="margin-top:${(hasResources || hasSongAssignments) ? "2rem" : "0.5rem"};">
+              ${relatedSectionHtml}
+            </div>
+            ` : ''}
           </div>
         </div>
         ` : ''
     }
       </div>
   `;
+
+  if (relatedSongs.length > 0) {
+    const relatedSection = content.querySelector(".related-songs-section");
+    hydrateRelatedSongCards(relatedSection, relatedSongs, { disableItunesFallback: teamItunesDisabled });
+  }
 
   // Render links organized by key
   if (hasResources) {
@@ -21061,6 +21678,174 @@ function updateLinkSections() {
 function normalizeSongTheme(value) {
   if (!value) return "";
   return value.replace(/\s+/g, " ").trim();
+}
+
+const RELATED_SONGS_MAX = 5;
+const RELATED_BPM_SIMILARITY_THRESHOLD = 6;
+
+function getSongThemeMap(song) {
+  const map = new Map();
+  const themes = Array.isArray(song?.themes) ? song.themes : [];
+  themes.forEach((theme) => {
+    const cleaned = normalizeSongTheme(theme);
+    if (!cleaned) return;
+    map.set(cleaned.toLowerCase(), cleaned);
+  });
+  return map;
+}
+
+function getSongBpmValue(song) {
+  const value = Number(song?.bpm ?? song?.suggested_bpm ?? NaN);
+  return Number.isFinite(value) ? value : null;
+}
+
+function getTempoCategory(bpm) {
+  if (bpm === null || bpm === undefined) return null;
+  if (bpm < 90) return "slow";
+  if (bpm < 120) return "mid";
+  return "fast";
+}
+
+function getRelatedSongs(baseSong, allSongs, { limit = RELATED_SONGS_MAX } = {}) {
+  if (!baseSong || !Array.isArray(allSongs)) return [];
+
+  const baseThemes = getSongThemeMap(baseSong);
+  const baseBpm = getSongBpmValue(baseSong);
+  const baseTempo = getTempoCategory(baseBpm);
+  const results = [];
+
+  allSongs.forEach((candidate) => {
+    if (!candidate?.id || String(candidate.id) === String(baseSong.id)) return;
+
+    const candidateThemes = getSongThemeMap(candidate);
+    const sharedKeys = [];
+    if (baseThemes.size > 0 && candidateThemes.size > 0) {
+      baseThemes.forEach((_value, key) => {
+        if (candidateThemes.has(key)) {
+          sharedKeys.push(key);
+        }
+      });
+    }
+
+    const sharedThemes = sharedKeys.map((key) => baseThemes.get(key) || candidateThemes.get(key)).filter(Boolean);
+    const candidateBpm = getSongBpmValue(candidate);
+    const bpmDiff = baseBpm !== null && candidateBpm !== null ? Math.abs(baseBpm - candidateBpm) : null;
+    const tempoMatch = !!baseTempo && baseTempo === getTempoCategory(candidateBpm);
+
+    const hasThemeMatch = sharedThemes.length > 0;
+    const hasBpmMatch = bpmDiff !== null && (bpmDiff <= RELATED_BPM_SIMILARITY_THRESHOLD || tempoMatch);
+
+    if (!hasThemeMatch && !hasBpmMatch) return;
+
+    results.push({
+      song: candidate,
+      sharedThemes,
+      sharedCount: sharedThemes.length,
+      bpmDiff,
+      tempoMatch,
+    });
+  });
+
+  results.sort((a, b) => {
+    if (a.sharedCount !== b.sharedCount) return b.sharedCount - a.sharedCount;
+    if (a.tempoMatch !== b.tempoMatch) return a.tempoMatch ? -1 : 1;
+
+    const aDiff = a.bpmDiff ?? Number.POSITIVE_INFINITY;
+    const bDiff = b.bpmDiff ?? Number.POSITIVE_INFINITY;
+    if (aDiff !== bDiff) return aDiff - bDiff;
+
+    return (a.song?.title || "").localeCompare(b.song?.title || "");
+  });
+
+  return results.slice(0, limit);
+}
+
+function formatRelatedThemeLabel(sharedThemes) {
+  if (!sharedThemes?.length) return "";
+  const display = sharedThemes.slice(0, 2);
+  let label = display.join(", ");
+  if (sharedThemes.length > 2) {
+    label = `${label} +${sharedThemes.length - 2}`;
+  }
+  return sharedThemes.length === 1 ? `Shared theme: ${label}` : `Shared themes: ${label}`;
+}
+
+function buildRelatedSongRowHtml(entry, index) {
+  const songTitle = escapeHtml(entry.song?.title || "Untitled");
+  const themeLabel = formatRelatedThemeLabel(entry.sharedThemes);
+  const chips = [];
+  if (themeLabel) chips.push(themeLabel);
+  if (entry.bpmDiff !== null && entry.bpmDiff <= RELATED_BPM_SIMILARITY_THRESHOLD) {
+    chips.push(entry.bpmDiff === 0 ? "Same BPM" : `Similar BPM (±${entry.bpmDiff})`);
+  } else if (entry.tempoMatch) {
+    chips.push("Similar tempo");
+  }
+
+  const chipsHtml = chips
+    .map((chip) => `<span class="related-song-chip">${escapeHtml(chip)}</span>`)
+    .join("");
+
+  return `
+    <button type="button" class="related-song-row" data-related-index="${index}" data-song-id="${escapeHtml(entry.song?.id)}">
+      <div class="related-song-cover">
+        <div class="related-song-cover-fallback"></div>
+        <img class="related-song-cover-img" alt="Album art for ${songTitle}" loading="lazy" />
+      </div>
+      <div class="related-song-info">
+        <div class="related-song-title">${songTitle}</div>
+        ${chipsHtml ? `<div class="related-song-meta">${chipsHtml}</div>` : ''}
+      </div>
+      <span class="related-song-action"><i class="fa-solid fa-arrow-right"></i></span>
+    </button>
+  `;
+}
+
+async function hydrateRelatedSongCards(container, relatedSongs, { disableItunesFallback = false } = {}) {
+  if (!container || !relatedSongs?.length) return;
+
+  const cards = Array.from(container.querySelectorAll(".related-song-row"));
+
+  cards.forEach((card) => {
+    const index = Number(card.dataset.relatedIndex);
+    const entry = relatedSongs[index];
+    if (!entry?.song) return;
+
+    card.addEventListener("click", async () => {
+      await openSongDetailsModal(entry.song);
+    });
+  });
+
+  await Promise.all(cards.map(async (card) => {
+    const index = Number(card.dataset.relatedIndex);
+    const entry = relatedSongs[index];
+    const cover = card.querySelector(".related-song-cover");
+    const img = card.querySelector(".related-song-cover-img");
+    if (!entry?.song || !cover || !img) return;
+
+    cover.classList.add("is-loading");
+    try {
+      const albumArt = await getAlbumArt(entry.song, entry.song?.title || "", { disableItunesFallback });
+      const coverUrl = albumArt?.small || albumArt?.large;
+      if (!coverUrl) {
+        cover.classList.remove("is-loading");
+        cover.classList.remove("has-image");
+        return;
+      }
+
+      img.onload = () => {
+        cover.classList.add("has-image");
+        cover.classList.remove("is-loading");
+      };
+      img.onerror = () => {
+        cover.classList.remove("is-loading");
+        cover.classList.remove("has-image");
+      };
+      img.src = coverUrl;
+    } catch (err) {
+      cover.classList.remove("is-loading");
+      cover.classList.remove("has-image");
+    }
+  }));
 }
 
 function getSongThemeSuggestions(excludeSongId = null) {

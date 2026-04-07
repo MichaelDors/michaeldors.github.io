@@ -344,10 +344,12 @@
           </div>
         </div>
         <div id="songs-controls-row" class="songs-controls-row">
-          <label id="songs-search-shell" class="songs-search-shell">
+          <div id="songs-search-shell" class="songs-search-shell" role="search">
+            <div id="songs-search-chips" class="songs-search-chips"></div>
             <input type="text" id="songs-tab-search" class="songs-search-input"
-              placeholder="Search songs by title, BPM, key, time signature, or duration" />
-          </label>
+              placeholder="Search songs by title, BPM, key, time signature, or duration"
+              aria-label="Search songs" />
+          </div>
           <div class="header-dropdown-container songs-sort-dropdown-container" id="songs-sort-dropdown-container">
             <button id="btn-songs-sort-toggle" class="btn secondary songs-sort-toggle" type="button">
               <i class="fa-solid fa-sort"></i>
