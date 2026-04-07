@@ -21117,7 +21117,7 @@ function addSongThemeInput(value = "", { container = null, focus = true, themeOp
   const target = container || el("song-themes-list");
   if (!target) return;
 
-  const resolvedExcludeId = excludeSongId ?? target.dataset.excludeSongId || null;
+  const resolvedExcludeId = excludeSongId ?? (target.dataset.excludeSongId || null);
   const existingThemes = collectSongThemes();
   const options = themeOptions || buildSongThemeOptions(
     getSongThemeSuggestions(resolvedExcludeId),
