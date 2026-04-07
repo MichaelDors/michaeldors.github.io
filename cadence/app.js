@@ -2776,6 +2776,7 @@ function bindEvents() {
     }
   });
   el("song-edit-form")?.addEventListener("submit", handleSongEditSubmit);
+  el("btn-add-song-theme")?.addEventListener("click", () => addSongThemeInput());
   el("btn-add-song-key")?.addEventListener("click", () => addSongKeyInput());
   // Charts are rendered as rows in the resources list; keep generated rows in sync with key edits
   el("song-keys-list")?.addEventListener("input", () => {
@@ -18009,6 +18010,7 @@ async function openSongEditModal(songId = null) {
     const populateForm = (songData) => {
       el("song-edit-title").value = songData.title || "";
       el("song-edit-description").value = songData.description || "";
+      renderSongThemes(songData.themes || [], { excludeSongId: songId });
 
       setupSuggestion("song-edit-bpm", songData.bpm, songData.suggested_bpm, "BPM");
       setupSuggestion("song-edit-time-signature", songData.time_signature, songData.suggested_time_signature, "Time Sig");
@@ -18063,6 +18065,7 @@ async function openSongEditModal(songId = null) {
     } else {
       // Reset fields if waiting for data to avoid confusion
       form.reset();
+      renderSongThemes([], { excludeSongId: songId });
     }
 
     // Always load fresh song data (keys and links)
@@ -18114,6 +18117,7 @@ async function openSongEditModal(songId = null) {
         }
       } else {
         if (!song) {
+          renderSongThemes([], { excludeSongId: songId });
           renderSongKeys([]);
           renderSongLinks([]);
         }
@@ -18122,6 +18126,7 @@ async function openSongEditModal(songId = null) {
       console.error("Error fetching song details for edit:", err);
       // Fallback: if we had local state, we're good. If not, user sees empty/partial form.
       if (!song) {
+        renderSongThemes([], { excludeSongId: songId });
         renderSongKeys([]);
         renderSongLinks([]);
       }
@@ -18141,6 +18146,7 @@ async function openSongEditModal(songId = null) {
     });
 
     delete form.dataset.songId;
+    renderSongThemes([]);
     renderSongKeys([]);
     renderSongLinks([]);
     // Hide delete button for new songs
@@ -18174,6 +18180,7 @@ function closeSongEditModal() {
     delete el("song-edit-form").dataset.songId;
     el("song-links-list").innerHTML = "";
     el("song-keys-list").innerHTML = "";
+    el("song-themes-list").innerHTML = "";
 
     // Reset creatingSongFromModal if cancelled (not saved)
     if (state.creatingSongFromModal) {
@@ -21051,6 +21058,134 @@ function updateLinkSections() {
   renderSongLinks(resources); // TODO: Rename to renderSongResources
 }
 
+function normalizeSongTheme(value) {
+  if (!value) return "";
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function getSongThemeSuggestions(excludeSongId = null) {
+  const themeMap = new Map();
+  const songs = Array.isArray(state.songs) ? state.songs : [];
+
+  songs.forEach((song) => {
+    if (excludeSongId && String(song?.id) === String(excludeSongId)) return;
+    const themes = Array.isArray(song?.themes) ? song.themes : [];
+    themes.forEach((theme) => {
+      const cleaned = normalizeSongTheme(theme);
+      if (!cleaned) return;
+      const key = cleaned.toLowerCase();
+      if (!themeMap.has(key)) themeMap.set(key, cleaned);
+    });
+  });
+
+  return Array.from(themeMap.values()).sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" })
+  );
+}
+
+function buildSongThemeOptions(suggestions, currentThemes = []) {
+  const map = new Map();
+  const addTheme = (theme) => {
+    const cleaned = normalizeSongTheme(theme);
+    if (!cleaned) return;
+    const key = cleaned.toLowerCase();
+    if (!map.has(key)) map.set(key, cleaned);
+  };
+
+  (suggestions || []).forEach(addTheme);
+  (currentThemes || []).forEach(addTheme);
+
+  return Array.from(map.values())
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+    .map((theme) => ({ value: theme, label: theme }));
+}
+
+function renderSongThemes(themes = [], { excludeSongId = null } = {}) {
+  const container = el("song-themes-list");
+  if (!container) return;
+
+  container.innerHTML = "";
+  container.dataset.excludeSongId = excludeSongId || "";
+  const suggestions = getSongThemeSuggestions(excludeSongId);
+  const themeOptions = buildSongThemeOptions(suggestions, themes);
+
+  const list = Array.isArray(themes) ? themes : [];
+  list.forEach((theme) => addSongThemeInput(theme, { container, focus: false, themeOptions }));
+}
+
+function addSongThemeInput(value = "", { container = null, focus = true, themeOptions = null, excludeSongId = null } = {}) {
+  const target = container || el("song-themes-list");
+  if (!target) return;
+
+  const resolvedExcludeId = excludeSongId ?? target.dataset.excludeSongId || null;
+  const existingThemes = collectSongThemes();
+  const options = themeOptions || buildSongThemeOptions(
+    getSongThemeSuggestions(resolvedExcludeId),
+    existingThemes.length ? existingThemes : [value]
+  );
+
+  const div = document.createElement("div");
+  div.className = "song-theme-row";
+  const dropdown = createSearchableDropdown(
+    options,
+    "Theme...",
+    null,
+    null,
+    { allowCustom: true, customLabel: "Add" }
+  );
+  dropdown.classList.add("song-theme-dropdown");
+
+  div.appendChild(dropdown);
+
+  if (value) {
+    dropdown.setValue(normalizeSongTheme(value));
+  }
+
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "btn small ghost remove-song-theme";
+  removeBtn.textContent = "Remove";
+  removeBtn.addEventListener("click", () => {
+    target.removeChild(div);
+  });
+
+  div.appendChild(removeBtn);
+  target.appendChild(div);
+  if (focus) {
+    const input = dropdown.querySelector(".searchable-dropdown-input");
+    if (input) input.focus();
+  }
+}
+
+function collectSongThemes() {
+  const container = el("song-themes-list");
+  if (!container) return [];
+
+  const rows = Array.from(container.querySelectorAll(".song-theme-row"));
+  const themes = [];
+  const seen = new Set();
+
+  rows.forEach((row) => {
+    const dropdown = row.querySelector(".song-theme-dropdown");
+    let value = "";
+    if (dropdown?.getValue) {
+      value = dropdown.getValue() || "";
+    }
+    if (!value) {
+      const input = dropdown?.querySelector(".searchable-dropdown-input");
+      value = input?.value || "";
+    }
+    value = normalizeSongTheme(value);
+    if (!value) return;
+    const key = value.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    themes.push(value);
+  });
+
+  return themes;
+}
+
 function renderSongKeys(keys) {
   const container = el("song-keys-list");
   if (!container) return;
@@ -22939,6 +23074,7 @@ async function handleSongEditSubmit(event) {
   const timeSignature = el("song-edit-time-signature").value.trim() || null;
   const duration = parseDuration(el("song-edit-duration").value);
   const description = el("song-edit-description").value.trim() || null;
+  const themes = collectSongThemes();
 
   if (!title) {
     toastError("Title is required.");
@@ -22958,6 +23094,7 @@ async function handleSongEditSubmit(event) {
     time_signature: timeSignature,
     duration_seconds: duration,
     description,
+    themes,
     created_by: state.session.user.id,
     team_id: state.currentTeamId,
   };
@@ -27414,11 +27551,14 @@ function updateClickTrackButtons() {
 }
 
 // Custom Searchable Dropdown Component
-function createSearchableDropdown(options, placeholder = "Search...", selectedValue = null, onInvite = null) {
+function createSearchableDropdown(options, placeholder = "Search...", selectedValue = null, onInvite = null, config = {}) {
   const container = document.createElement("div");
   container.className = "searchable-dropdown";
 
-  const normalizedOptions = (options || []).map((option) => {
+  const allowCustom = config.allowCustom === true;
+  const customLabel = config.customLabel || "Invite";
+
+  const buildNormalizedOption = (option) => {
     // Build search text including metadata
     const searchParts = [option.label];
 
@@ -27445,7 +27585,9 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
       ...option,
       searchText: searchParts.filter(Boolean).join(" ").toLowerCase(),
     };
-  });
+  };
+
+  let normalizedOptions = (options || []).map(buildNormalizedOption);
 
   const input = document.createElement("input");
   input.type = "text";
@@ -27476,12 +27618,53 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
   }
 
 
+  function addCustomOption(value) {
+    const cleaned = value.trim();
+    if (!cleaned) return null;
+    const existing = normalizedOptions.find(
+      (opt) => (opt.label || "").toLowerCase() === cleaned.toLowerCase()
+    );
+    if (existing) return existing;
+
+    const customOption = buildNormalizedOption({
+      value: cleaned,
+      label: cleaned,
+      meta: { isCustom: true },
+    });
+    normalizedOptions.push(customOption);
+    return customOption;
+  }
+
   function renderOptions() {
     optionsList.innerHTML = "";
     const searchTerm = input.value.trim();
+    const hasSearchTerm = searchTerm.length > 0;
+    const exactMatch = hasSearchTerm && normalizedOptions.some(
+      (opt) => (opt.label || "").toLowerCase() === searchTerm.toLowerCase()
+    );
+    const showCustomOption = allowCustom && hasSearchTerm && !exactMatch;
+
+    if (showCustomOption) {
+      const customOptionEl = document.createElement("div");
+      customOptionEl.className = "searchable-dropdown-option invite-option";
+      customOptionEl.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.2rem;">+</span>
+          <span>${escapeHtml(customLabel)} "${escapeHtml(searchTerm)}"</span>
+        </div>
+      `;
+      customOptionEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const customOption = addCustomOption(searchTerm);
+        if (customOption) {
+          selectOption(customOption);
+        }
+      });
+      optionsList.appendChild(customOptionEl);
+    }
 
     if (filteredOptions.length === 0) {
-      if (onInvite && searchTerm) {
+      if (!showCustomOption && onInvite && searchTerm) {
         const inviteOption = document.createElement("div");
         inviteOption.className = "searchable-dropdown-option invite-option";
         inviteOption.innerHTML = `
@@ -27497,7 +27680,9 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
           onInvite(searchTerm);
         });
         optionsList.appendChild(inviteOption);
-      } else {
+      }
+
+      if (!showCustomOption && !(onInvite && searchTerm)) {
         const noResults = document.createElement("div");
         noResults.className = "searchable-dropdown-option no-results";
         noResults.textContent = onInvite ? "Type a name to invite someone" : "No results found";
@@ -27660,8 +27845,13 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
   });
 
   input.addEventListener("keydown", (e) => {
-    const optionEls = optionsList.querySelectorAll(".searchable-dropdown-option:not(.no-results)");
+    const optionEls = optionsList.querySelectorAll(".searchable-dropdown-option:not(.no-results):not(.invite-option)");
     const inviteOption = optionsList.querySelector(".invite-option");
+    const searchTerm = input.value.trim();
+    const hasSearchTerm = searchTerm.length > 0;
+    const exactMatch = hasSearchTerm && normalizedOptions.some(
+      (opt) => (opt.label || "").toLowerCase() === searchTerm.toLowerCase()
+    );
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -27697,6 +27887,9 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
         const value = optionEls[highlightedIndex].dataset.value;
         const option = filteredOptions.find((opt) => opt.value === value);
         if (option) selectOption(option);
+      } else if (allowCustom && hasSearchTerm && !exactMatch) {
+        const customOption = addCustomOption(searchTerm);
+        if (customOption) selectOption(customOption);
       } else if (filteredOptions.length === 1) {
         selectOption(filteredOptions[0]);
       } else if (filteredOptions.length === 0 && inviteOption && onInvite && input.value.trim()) {
@@ -27721,6 +27914,18 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
   document.addEventListener("click", (e) => {
     if (isLikelySyntheticClickEvent(e)) return;
     if (!container.contains(e.target)) {
+      if (allowCustom) {
+        const pendingValue = input.value.trim();
+        const exactMatch = pendingValue && normalizedOptions.some(
+          (opt) => (opt.label || "").toLowerCase() === pendingValue.toLowerCase()
+        );
+        if (pendingValue && !exactMatch) {
+          const customOption = addCustomOption(pendingValue);
+          if (customOption) {
+            selectOption(customOption);
+          }
+        }
+      }
       optionsList.classList.remove("open");
       input.setAttribute("readonly", "");
       if (selectedOption) {
@@ -27751,6 +27956,11 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
       const option = normalizedOptions.find((opt) => opt.value === value);
       if (option) {
         selectOption(option);
+      } else if (allowCustom) {
+        const customOption = addCustomOption(String(value));
+        if (customOption) {
+          selectOption(customOption);
+        }
       }
     }
   };

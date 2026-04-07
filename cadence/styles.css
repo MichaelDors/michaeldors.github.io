@@ -2349,6 +2349,21 @@ textarea {
   flex-shrink: 0;
 }
 
+.song-theme-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.song-theme-row .searchable-dropdown {
+  flex: 1;
+}
+
+.song-theme-row .btn {
+  flex-shrink: 0;
+}
+
 .song-links-section {
   margin-bottom: 2rem;
   padding: 1rem;
