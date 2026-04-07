@@ -406,6 +406,13 @@ body {
   white-space: nowrap;
   line-height: 1.1;
   color: var(--bg-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.songs-search-chip-bpm-stepper .songs-search-chip-value {
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .songs-search-chip-dropdown.searchable-dropdown {
@@ -424,8 +431,8 @@ body {
   border: 0;
   padding: 0;
   min-height: 0;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 600;
   color: var(--bg-primary);
   cursor: pointer;
   width: auto !important;

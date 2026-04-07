@@ -17499,6 +17499,10 @@ function parseSearchQuery(query) {
       case 'length':
         filters.duration = value;
         break;
+      case 'theme':
+      case 'themes':
+        filters.theme = value;
+        break;
       case 'genre':
         filters.genre = value;
         break;
@@ -17523,10 +17527,11 @@ function parseSearchQuery(query) {
   return { filters, text };
 }
 
-const SONG_SEARCH_FILTER_ORDER = ["key", "time_signature", "bpm", "duration", "genre", "album", "artist", "releaseDate"];
+const SONG_SEARCH_FILTER_ORDER = ["key", "time_signature", "theme", "bpm", "duration", "genre", "album", "artist", "releaseDate"];
 const SONG_SEARCH_FILTER_LABELS = {
   key: "Key",
   time_signature: "Time",
+  theme: "Theme",
   bpm: "BPM",
   duration: "Duration",
   genre: "Genre",
@@ -17537,6 +17542,7 @@ const SONG_SEARCH_FILTER_LABELS = {
 const SONG_SEARCH_FILTER_QUERY_KEYS = {
   key: "key",
   time_signature: "time",
+  theme: "theme",
   bpm: "bpm",
   duration: "duration",
   genre: "genre",
@@ -17553,9 +17559,18 @@ function getSongKeyDisplayLabel(lowerKey) {
   return hit ? String(hit).trim() : k;
 }
 
+function getSongThemeDisplayLabel(lowerTheme) {
+  const k = String(lowerTheme || "").trim().toLowerCase();
+  if (!k) return "";
+  const distinct = getDistinctSongSearchFilterValues("theme");
+  const hit = distinct.find((x) => String(x).trim().toLowerCase() === k);
+  return hit ? String(hit).trim() : k;
+}
+
 function formatSongSearchFilterValue(filterKey, value) {
   if (!value) return "";
   if (filterKey === "key") return getSongKeyDisplayLabel(value);
+  if (filterKey === "theme") return getSongThemeDisplayLabel(value);
   return value;
 }
 
@@ -17697,6 +17712,9 @@ function normalizeSongSearchFilterKey(rawKey) {
     case "duration":
     case "length":
       return "duration";
+    case "theme":
+    case "themes":
+      return "theme";
     case "genre":
       return "genre";
     case "album":
@@ -17901,6 +17919,18 @@ function getDistinctSongSearchFilterValues(filterKey) {
     return Array.from(bpmSet).sort((a, b) => Number(a) - Number(b));
   }
 
+  if (filterKey === "theme") {
+    const themeSet = new Set();
+    songs.forEach((song) => {
+      const themes = Array.isArray(song?.themes) ? song.themes : [];
+      themes.forEach((t) => {
+        const cleaned = normalizeSongTheme(t);
+        if (cleaned) themeSet.add(cleaned);
+      });
+    });
+    return Array.from(themeSet).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  }
+
   return [];
 }
 
@@ -17927,7 +17957,7 @@ function getAdjacentSongBpmValue(currentBpmValue, direction) {
 }
 
 function buildSongSearchChipValueControl(filterKey, value) {
-  if (filterKey === "key" || filterKey === "time_signature") {
+  if (filterKey === "key" || filterKey === "time_signature" || filterKey === "theme") {
     const options = getDistinctSongSearchFilterValues(filterKey).map((optionValue) => ({
       value: optionValue.toLowerCase(),
       label: optionValue
@@ -18108,6 +18138,11 @@ function filterSongs(songs, queryRaw) {
       if (!song.time_signature || song.time_signature.toLowerCase() !== filters.time_signature) return false;
     }
 
+    if (filters.theme) {
+      const themeMap = getSongThemeMap(song);
+      if (!themeMap.has(filters.theme)) return false;
+    }
+
     if (filters.bpm) {
       if (!songMatchesBpmFilter(filters.bpm, song)) return false;
     }
@@ -18135,8 +18170,14 @@ function filterSongs(songs, queryRaw) {
 
       const timeMatch = (song.time_signature || "").toLowerCase().includes(textLower);
       const durationMatch = song.duration_seconds ? formatDuration(song.duration_seconds).toLowerCase().includes(textLower) : false;
+      const themesStr = (Array.isArray(song.themes) ? song.themes : [])
+        .map((t) => normalizeSongTheme(t))
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const themeMatch = themesStr.includes(textLower);
 
-      return titleMatch || bpmMatch || keyMatch || timeMatch || durationMatch;
+      return titleMatch || bpmMatch || keyMatch || timeMatch || durationMatch || themeMatch;
     }
 
     return true;
