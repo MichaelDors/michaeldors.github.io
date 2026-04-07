@@ -338,6 +338,9 @@
             </div>
           </div>
           <div class="header-actions">
+            <button type="button" id="btn-song-relations" class="btn secondary ripple-btn" title="Explore how songs connect by theme and tempo">
+              <i class="fa-solid fa-diagram-project"></i> Relations
+            </button>
             <button id="btn-create-song" class="btn primary hidden ripple-btn"><i
                 class="fa-solid fa-file-circle-plus"></i> New
               Song</button>
@@ -1080,6 +1083,41 @@
         </button>
       </header>
       <div id="song-details-content" class="song-details-content"></div>
+    </div>
+  </div>
+
+  <div id="song-relations-modal" class="modal hidden">
+    <div class="modal-content song-relations-modal-content">
+      <header class="song-relations-modal-header">
+        <div>
+          <h3>Song relations</h3>
+          <p class="muted small-text song-relations-subtitle">Visualize how songs are related by tempo and theme</p>
+        </div>
+        <button type="button" class="icon-btn" id="close-song-relations-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <div id="song-relations-map-toolbar" class="song-relations-map-toolbar hidden" role="group" aria-label="Map type">
+        <button type="button" id="btn-song-relations-map-tempo" class="btn primary small song-relations-map-btn" aria-pressed="true">
+          <i class="fa-solid fa-gauge-high"></i> Tempo map
+        </button>
+        <button type="button" id="btn-song-relations-map-theme" class="btn secondary small song-relations-map-btn" aria-pressed="false">
+          <i class="fa-solid fa-tags"></i> Theme map
+        </button>
+      </div>
+      <p id="song-relations-empty" class="song-relations-empty muted hidden">No songs in your catalog yet.</p>
+      <p id="song-relations-isolated-hint" class="song-relations-isolated-hint muted small-text hidden"></p>
+      <div id="song-relations-legend" class="song-relations-legend hidden">
+        <div id="song-relations-legend-theme" class="song-relations-legend-panel hidden">
+          <span class="song-relations-legend-item"><span class="song-relations-swatch song-relations-swatch--theme"></span> Shared theme</span>
+        </div>
+        <div id="song-relations-legend-tempo" class="song-relations-legend-panel">
+          <span class="song-relations-legend-item"><span class="song-relations-swatch song-relations-swatch--tempo"></span> Similar BPM or tempo category</span>
+        </div>
+      </div>
+      <div id="song-relations-viewport" class="song-relations-viewport hidden">
+        <div id="song-relations-graph-host"></div>
+      </div>
     </div>
   </div>
 

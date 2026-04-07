@@ -2809,6 +2809,10 @@ function bindEvents() {
     }).catch(() => { });
   });
   el("close-song-details-modal")?.addEventListener("click", () => closeSongDetailsModal());
+  el("close-song-relations-modal")?.addEventListener("click", () => closeSongRelationsModal());
+  el("btn-song-relations")?.addEventListener("click", () => openSongRelationsModal());
+  el("btn-song-relations-map-theme")?.addEventListener("click", () => applySongRelationsMapMode("theme"));
+  el("btn-song-relations-map-tempo")?.addEventListener("click", () => applySongRelationsMapMode("tempo"));
 
   // Chord chart viewer/editor
   el("close-chart-viewer")?.addEventListener("click", () => closeChordChartViewer());
@@ -21747,43 +21751,59 @@ function getTempoCategory(bpm) {
   return "fast";
 }
 
+/**
+ * Symmetric relation check between two songs (same rules as Related Songs list).
+ * Order does not matter for whether a link exists; shared theme labels follow songA's map first.
+ */
+function getSongPairRelationDetails(songA, songB) {
+  if (!songA?.id || !songB?.id || String(songA.id) === String(songB.id)) return null;
+
+  const baseThemes = getSongThemeMap(songA);
+  const candidateThemes = getSongThemeMap(songB);
+  const sharedKeys = [];
+  if (baseThemes.size > 0 && candidateThemes.size > 0) {
+    baseThemes.forEach((_value, key) => {
+      if (candidateThemes.has(key)) sharedKeys.push(key);
+    });
+  }
+
+  const sharedThemes = sharedKeys.map((key) => baseThemes.get(key) || candidateThemes.get(key)).filter(Boolean);
+  const baseBpm = getSongBpmValue(songA);
+  const candidateBpm = getSongBpmValue(songB);
+  const baseTempo = getTempoCategory(baseBpm);
+  const bpmDiff = baseBpm !== null && candidateBpm !== null ? Math.abs(baseBpm - candidateBpm) : null;
+  const tempoMatch = !!baseTempo && baseTempo === getTempoCategory(candidateBpm);
+
+  const hasThemeMatch = sharedThemes.length > 0;
+  const hasBpmMatch = bpmDiff !== null && (bpmDiff <= RELATED_BPM_SIMILARITY_THRESHOLD || tempoMatch);
+
+  if (!hasThemeMatch && !hasBpmMatch) return null;
+
+  return {
+    sharedThemes,
+    sharedCount: sharedThemes.length,
+    bpmDiff,
+    tempoMatch,
+    hasThemeMatch,
+    hasBpmMatch,
+  };
+}
+
 function getRelatedSongs(baseSong, allSongs, { limit = RELATED_SONGS_MAX } = {}) {
   if (!baseSong || !Array.isArray(allSongs)) return [];
 
-  const baseThemes = getSongThemeMap(baseSong);
-  const baseBpm = getSongBpmValue(baseSong);
-  const baseTempo = getTempoCategory(baseBpm);
   const results = [];
 
   allSongs.forEach((candidate) => {
-    if (!candidate?.id || String(candidate.id) === String(baseSong.id)) return;
-
-    const candidateThemes = getSongThemeMap(candidate);
-    const sharedKeys = [];
-    if (baseThemes.size > 0 && candidateThemes.size > 0) {
-      baseThemes.forEach((_value, key) => {
-        if (candidateThemes.has(key)) {
-          sharedKeys.push(key);
-        }
-      });
-    }
-
-    const sharedThemes = sharedKeys.map((key) => baseThemes.get(key) || candidateThemes.get(key)).filter(Boolean);
-    const candidateBpm = getSongBpmValue(candidate);
-    const bpmDiff = baseBpm !== null && candidateBpm !== null ? Math.abs(baseBpm - candidateBpm) : null;
-    const tempoMatch = !!baseTempo && baseTempo === getTempoCategory(candidateBpm);
-
-    const hasThemeMatch = sharedThemes.length > 0;
-    const hasBpmMatch = bpmDiff !== null && (bpmDiff <= RELATED_BPM_SIMILARITY_THRESHOLD || tempoMatch);
-
-    if (!hasThemeMatch && !hasBpmMatch) return;
+    const details = getSongPairRelationDetails(baseSong, candidate);
+    if (!details) return;
 
     results.push({
       song: candidate,
-      sharedThemes,
-      sharedCount: sharedThemes.length,
-      bpmDiff,
-      tempoMatch,
+      sharedThemes: details.sharedThemes,
+      sharedCount: details.sharedCount,
+      bpmDiff: details.bpmDiff,
+      tempoMatch: details.tempoMatch,
     });
   });
 
@@ -21799,6 +21819,649 @@ function getRelatedSongs(baseSong, allSongs, { limit = RELATED_SONGS_MAX } = {})
   });
 
   return results.slice(0, limit);
+}
+
+function dedupeSongsById(songs) {
+  const seen = new Set();
+  return (songs || []).filter((song) => {
+    if (!song?.id) return false;
+    if (seen.has(song.id)) return false;
+    seen.add(song.id);
+    return true;
+  });
+}
+
+/** @param {"theme"|"tempo"} mapMode */
+function buildSongRelationGraph(allSongs, mapMode = "tempo") {
+  const songs = dedupeSongsById(allSongs);
+  const nodes = songs.map((song) => ({
+    id: String(song.id),
+    song,
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+  }));
+
+  const edges = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i].song;
+      const b = nodes[j].song;
+      const details = getSongPairRelationDetails(a, b);
+      if (!details) continue;
+      if (mapMode === "theme") {
+        if (!details.hasThemeMatch) continue;
+        edges.push({
+          source: nodes[i].id,
+          target: nodes[j].id,
+          kind: "theme",
+        });
+      } else {
+        if (!details.hasBpmMatch) continue;
+        edges.push({
+          source: nodes[i].id,
+          target: nodes[j].id,
+          kind: "tempo",
+        });
+      }
+    }
+  }
+
+  return { nodes, edges, mapMode };
+}
+
+const SONG_RELATIONS_FORCE_ITERATIONS = 120;
+const SONG_RELATIONS_IDEAL_EDGE = 140;
+const SONG_RELATIONS_MIN_NODE_CENTER_DIST = 112;
+
+/** Push overlapping node centers apart in graph space (helps dense clusters). */
+function resolveSongRelationNodeCollisions(nodes, minCenterDist, iterations) {
+  if (!nodes || nodes.length < 2) return;
+  for (let iter = 0; iter < iterations; iter++) {
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d = Math.hypot(dx, dy) || 0.01;
+        if (d >= minCenterDist) continue;
+        const push = (minCenterDist - d) / 2 + 0.5;
+        const nx = (dx / d) * push;
+        const ny = (dy / d) * push;
+        a.x -= nx;
+        a.y -= ny;
+        b.x += nx;
+        b.y += ny;
+      }
+    }
+  }
+}
+
+function runSongRelationForceLayout(nodes, edges, width, height) {
+  if (!nodes.length) return { graphWidth: 400, graphHeight: 300 };
+  const cx = width / 2;
+  const cy = height / 2;
+  const ring = Math.min(width, height) * 0.35;
+  nodes.forEach((n, i) => {
+    const angle = (2 * Math.PI * i) / nodes.length - Math.PI / 2;
+    n.x = cx + ring * Math.cos(angle);
+    n.y = cy + ring * Math.sin(angle);
+    n.vx = 0;
+    n.vy = 0;
+  });
+
+  const index = new Map(nodes.map((n, i) => [n.id, i]));
+  const repulse = 7800;
+  const spring = 0.018;
+  const damping = 0.82;
+  const centerPull = 0.012;
+
+  for (let tick = 0; tick < SONG_RELATIONS_FORCE_ITERATIONS; tick++) {
+    const forces = nodes.map(() => ({ x: 0, y: 0 }));
+
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let dist = Math.hypot(dx, dy) || 0.01;
+        const f = repulse / (dist * dist);
+        const fx = (dx / dist) * f;
+        const fy = (dy / dist) * f;
+        forces[i].x -= fx;
+        forces[i].y -= fy;
+        forces[j].x += fx;
+        forces[j].y += fy;
+      }
+    }
+
+    edges.forEach((e) => {
+      const i = index.get(e.source);
+      const j = index.get(e.target);
+      if (i === undefined || j === undefined) return;
+      const a = nodes[i];
+      const b = nodes[j];
+      let dx = b.x - a.x;
+      let dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy) || 0.01;
+      const diff = dist - SONG_RELATIONS_IDEAL_EDGE;
+      const f = diff * spring;
+      const fx = (dx / dist) * f;
+      const fy = (dy / dist) * f;
+      forces[i].x += fx;
+      forces[i].y += fy;
+      forces[j].x -= fx;
+      forces[j].y -= fy;
+    });
+
+    nodes.forEach((n, i) => {
+      forces[i].x += (cx - n.x) * centerPull * nodes.length * 0.02;
+      forces[i].y += (cy - n.y) * centerPull * nodes.length * 0.02;
+      n.vx = (n.vx + forces[i].x) * damping;
+      n.vy = (n.vy + forces[i].y) * damping;
+      n.x += n.vx;
+      n.y += n.vy;
+    });
+  }
+
+  resolveSongRelationNodeCollisions(nodes, SONG_RELATIONS_MIN_NODE_CENTER_DIST, 72);
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  nodes.forEach((n) => {
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x);
+    maxY = Math.max(maxY, n.y);
+  });
+  const pad = 96;
+  const graphW = Math.max(maxX - minX, 1) + pad * 2;
+  const graphH = Math.max(maxY - minY, 1) + pad * 2;
+  nodes.forEach((n) => {
+    n.x = n.x - minX + pad;
+    n.y = n.y - minY + pad;
+  });
+
+  return { graphWidth: graphW, graphHeight: graphH };
+}
+
+let songRelationsModalCleanup = null;
+let songRelationsDismissCleanup = null;
+/** @type {"theme"|"tempo"} */
+let songRelationsMapMode = "tempo";
+
+function closeSongRelationsModal() {
+  const modal = el("song-relations-modal");
+  if (songRelationsModalCleanup) {
+    songRelationsModalCleanup();
+    songRelationsModalCleanup = null;
+  }
+  if (songRelationsDismissCleanup) {
+    songRelationsDismissCleanup();
+    songRelationsDismissCleanup = null;
+  }
+  if (modal) closeModalWithAnimation(modal);
+  document.body.style.overflow = "";
+}
+
+function renderSongRelationsSvg(host, graph, layoutSize) {
+  const { nodes, edges, mapMode = "tempo" } = graph;
+  const { graphWidth, graphHeight } = layoutSize;
+  const songById = new Map(nodes.map((n) => [n.id, n.song]));
+  const posById = new Map(nodes.map((n) => [n.id, n]));
+  const nodeElById = new Map();
+
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "song-relations-svg");
+  svg.setAttribute("viewBox", `0 0 ${graphWidth} ${graphHeight}`);
+  svg.setAttribute("width", String(graphWidth));
+  svg.setAttribute("height", String(graphHeight));
+  svg.setAttribute("role", "img");
+  svg.setAttribute(
+    "aria-label",
+    mapMode === "tempo" ? "Tempo relations map" : "Theme relations map"
+  );
+
+  const defs = document.createElementNS(ns, "defs");
+  const clipPath = document.createElementNS(ns, "clipPath");
+  clipPath.setAttribute("id", "song-relations-album-clip");
+  const clipCircle = document.createElementNS(ns, "circle");
+  clipCircle.setAttribute("cx", "0");
+  clipCircle.setAttribute("cy", "0");
+  clipCircle.setAttribute("r", "28");
+  clipPath.appendChild(clipCircle);
+  defs.appendChild(clipPath);
+  svg.appendChild(defs);
+
+  const rootG = document.createElementNS(ns, "g");
+  rootG.setAttribute("class", "song-relations-root-g");
+
+  const edgeGroup = document.createElementNS(ns, "g");
+  edgeGroup.setAttribute("class", "song-relations-edges");
+
+  edges.forEach((e) => {
+    const na = posById.get(e.source);
+    const nb = posById.get(e.target);
+    if (!na || !nb) return;
+    const line = document.createElementNS(ns, "line");
+    line.setAttribute("x1", String(na.x));
+    line.setAttribute("y1", String(na.y));
+    line.setAttribute("x2", String(nb.x));
+    line.setAttribute("y2", String(nb.y));
+    line.setAttribute("class", "song-relations-edge");
+    line.setAttribute("vector-effect", "non-scaling-stroke");
+    line.classList.add(e.kind === "tempo" ? "song-relations-edge--tempo" : "song-relations-edge--theme");
+    edgeGroup.appendChild(line);
+  });
+
+  const nodeGroup = document.createElementNS(ns, "g");
+  nodeGroup.setAttribute("class", "song-relations-nodes");
+
+  nodes.forEach((n) => {
+    const g = document.createElementNS(ns, "g");
+    g.setAttribute("class", "song-relations-node");
+    g.setAttribute("data-song-id", n.id);
+    g.dataset.px = String(n.x);
+    g.dataset.py = String(n.y);
+    g.style.cursor = "pointer";
+
+    const coverWrap = document.createElementNS(ns, "g");
+    coverWrap.setAttribute("clip-path", "url(#song-relations-album-clip)");
+
+    const fallback = document.createElementNS(ns, "rect");
+    fallback.setAttribute("class", "song-relations-cover-fallback");
+    fallback.setAttribute("x", "-28");
+    fallback.setAttribute("y", "-28");
+    fallback.setAttribute("width", "56");
+    fallback.setAttribute("height", "56");
+    fallback.setAttribute("rx", "28");
+
+    const img = document.createElementNS(ns, "image");
+    img.setAttribute("class", "song-relations-cover-img");
+    img.setAttribute("x", "-28");
+    img.setAttribute("y", "-28");
+    img.setAttribute("width", "56");
+    img.setAttribute("height", "56");
+    img.setAttribute("preserveAspectRatio", "xMidYMid slice");
+    img.addEventListener("dragstart", (ev) => ev.preventDefault());
+
+    const ring = document.createElementNS(ns, "circle");
+    ring.setAttribute("class", "song-relations-node-ring");
+    ring.setAttribute("r", "28");
+    ring.setAttribute("fill", "none");
+    ring.setAttribute("pointer-events", "none");
+
+    const title = (n.song?.title || "Untitled").trim();
+    const maxLen = 22;
+    const display = title.length > maxLen ? `${title.slice(0, maxLen - 1)}…` : title;
+
+    const text = document.createElementNS(ns, "text");
+    text.setAttribute("class", "song-relations-node-label");
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("y", "48");
+    text.textContent = display;
+
+    const hit = document.createElementNS(ns, "rect");
+    hit.setAttribute("class", "song-relations-node-hit");
+    hit.setAttribute("x", "-42");
+    hit.setAttribute("y", "-36");
+    hit.setAttribute("width", "84");
+    hit.setAttribute("height", "102");
+    hit.setAttribute("fill", "rgba(0,0,0,0)");
+    hit.setAttribute("pointer-events", "auto");
+
+    coverWrap.appendChild(fallback);
+    coverWrap.appendChild(img);
+    g.appendChild(coverWrap);
+    g.appendChild(ring);
+    g.appendChild(text);
+    g.appendChild(hit);
+
+    nodeGroup.appendChild(g);
+    nodeElById.set(n.id, g);
+  });
+
+  rootG.appendChild(edgeGroup);
+  rootG.appendChild(nodeGroup);
+  svg.appendChild(rootG);
+  host.innerHTML = "";
+  host.appendChild(svg);
+
+  const viewport = host.closest(".song-relations-viewport");
+  if (!viewport) return;
+
+  let scale = 1;
+  let tx = 0;
+  let ty = 0;
+
+  function applyNodeInverseScales() {
+    const s = Math.max(0.2, scale);
+    const inv = 1 / s;
+    nodeGroup.querySelectorAll(".song-relations-node").forEach((el) => {
+      const px = el.dataset.px;
+      const py = el.dataset.py;
+      if (px === undefined || py === undefined) return;
+      el.setAttribute("transform", `translate(${px}, ${py}) scale(${inv})`);
+    });
+  }
+
+  function applyTransform() {
+    rootG.setAttribute("transform", `translate(${tx}, ${ty}) scale(${scale})`);
+    applyNodeInverseScales();
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const pad = 24;
+      const fitW = Math.max(1, viewport.clientWidth - pad * 2);
+      const fitH = Math.max(1, viewport.clientHeight - pad * 2);
+      if (graphWidth > 0 && graphHeight > 0 && nodes.length) {
+        scale = Math.min(fitW / graphWidth, fitH / graphHeight, 1.2);
+        scale = Math.max(0.2, Math.min(2.5, scale));
+        tx = (viewport.clientWidth - graphWidth * scale) / 2;
+        ty = (viewport.clientHeight - graphHeight * scale) / 2;
+      }
+      applyTransform();
+    });
+  });
+
+  const teamItunesDisabled = state.userTeams?.find?.((t) => t.id === state.currentTeamId)?.itunes_indexing_enabled === false;
+  void Promise.all(
+    nodes.map(async (n) => {
+      const g = nodeElById.get(n.id);
+      if (!g) return;
+      const img = g.querySelector(".song-relations-cover-img");
+      const fallback = g.querySelector(".song-relations-cover-fallback");
+      if (!img) return;
+      try {
+        const art = await getAlbumArt(n.song, n.song?.title || "", { disableItunesFallback: teamItunesDisabled });
+        const url = art?.small || art?.large;
+        if (!url) return;
+        const markLoaded = () => {
+          g.classList.add("song-relations-node--has-art");
+          if (fallback) fallback.setAttribute("visibility", "hidden");
+        };
+        img.addEventListener("load", markLoaded, { once: true });
+        img.addEventListener(
+          "error",
+          () => {
+            img.setAttribute("visibility", "hidden");
+          },
+          { once: true }
+        );
+        img.setAttribute("href", url);
+        img.setAttributeNS("http://www.w3.org/1999/xlink", "href", url);
+      } catch (_) {
+        /* keep fallback */
+      }
+    })
+  );
+
+  const SONG_RELATIONS_DRAG_THRESHOLD_PX = 7;
+  let pointerDown = false;
+  let panActive = false;
+  let startX = 0;
+  let startY = 0;
+  let startTx = 0;
+  let startTy = 0;
+  /** @type {string|null} */
+  let pendingSongId = null;
+
+  const endPointerGesture = (e, { openSongIfTap }) => {
+    if (!pointerDown) return;
+    const wasPan = panActive;
+    const songIdForTap = pendingSongId;
+    pointerDown = false;
+    pendingSongId = null;
+    panActive = false;
+    viewport.classList.remove("song-relations-viewport--dragging");
+    try {
+      viewport.releasePointerCapture(e.pointerId);
+    } catch (_) { /* ignore */ }
+
+    if (openSongIfTap && !wasPan && songIdForTap) {
+      const song = songById.get(songIdForTap);
+      if (song) {
+        closeSongRelationsModal();
+        void openSongDetailsModal(song);
+      }
+    }
+  };
+
+  const onPointerDown = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
+    pointerDown = true;
+    panActive = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    startTx = tx;
+    startTy = ty;
+    const node = e.target?.closest?.(".song-relations-node");
+    pendingSongId = node?.getAttribute?.("data-song-id") ?? null;
+    try {
+      viewport.setPointerCapture(e.pointerId);
+    } catch (_) { /* ignore */ }
+  };
+
+  const onPointerMove = (e) => {
+    if (!pointerDown) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (!panActive && dx * dx + dy * dy >= SONG_RELATIONS_DRAG_THRESHOLD_PX * SONG_RELATIONS_DRAG_THRESHOLD_PX) {
+      panActive = true;
+      viewport.classList.add("song-relations-viewport--dragging");
+    }
+    if (panActive) {
+      e.preventDefault();
+      tx = startTx + dx;
+      ty = startTy + dy;
+      applyTransform();
+    }
+  };
+
+  const onPointerUp = (e) => {
+    endPointerGesture(e, { openSongIfTap: true });
+  };
+
+  const onPointerCancel = (e) => {
+    endPointerGesture(e, { openSongIfTap: false });
+  };
+
+  const onWheel = (e) => {
+    e.preventDefault();
+    const delta = e.deltaY;
+    const factor = delta > 0 ? 0.92 : 1.09;
+    const rect = viewport.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const oldScale = scale;
+    scale = Math.min(3.5, Math.max(0.2, scale * factor));
+    const ratio = scale / oldScale;
+    tx = mx - (mx - tx) * ratio;
+    ty = my - (my - ty) * ratio;
+    applyTransform();
+  };
+
+  const onSelectStart = (e) => {
+    e.preventDefault();
+  };
+
+  const onDragStart = (e) => {
+    e.preventDefault();
+  };
+
+  viewport.addEventListener("pointerdown", onPointerDown);
+  viewport.addEventListener("pointermove", onPointerMove);
+  viewport.addEventListener("pointerup", onPointerUp);
+  viewport.addEventListener("pointercancel", onPointerCancel);
+  viewport.addEventListener("wheel", onWheel, { passive: false });
+  viewport.addEventListener("selectstart", onSelectStart);
+  viewport.addEventListener("dragstart", onDragStart);
+
+  songRelationsModalCleanup = () => {
+    viewport.removeEventListener("pointerdown", onPointerDown);
+    viewport.removeEventListener("pointermove", onPointerMove);
+    viewport.removeEventListener("pointerup", onPointerUp);
+    viewport.removeEventListener("pointercancel", onPointerCancel);
+    viewport.removeEventListener("wheel", onWheel);
+    viewport.removeEventListener("selectstart", onSelectStart);
+    viewport.removeEventListener("dragstart", onDragStart);
+  };
+}
+
+function getSongRelationsIsolatedHintText(mapMode) {
+  return mapMode === "theme"
+    ? "No theme links yet. Songs connect when they share at least one theme tag."
+    : "No tempo links yet. Songs connect when BPM is within ±6 or they share the same tempo band (slow / mid / fast).";
+}
+
+function updateSongRelationsMapToolbar(mode) {
+  const themeBtn = el("btn-song-relations-map-theme");
+  const tempoBtn = el("btn-song-relations-map-tempo");
+  const setSelected = (btn, selected) => {
+    if (!btn) return;
+    btn.classList.remove("primary", "secondary");
+    btn.classList.add(selected ? "primary" : "secondary");
+    btn.setAttribute("aria-pressed", selected ? "true" : "false");
+  };
+  setSelected(themeBtn, mode === "theme");
+  setSelected(tempoBtn, mode === "tempo");
+}
+
+function applySongRelationsMapMode(mode) {
+  songRelationsMapMode = mode;
+  updateSongRelationsMapToolbar(mode);
+
+  const modal = el("song-relations-modal");
+  const host = el("song-relations-graph-host");
+  const isolatedEl = el("song-relations-isolated-hint");
+  const legendTheme = el("song-relations-legend-theme");
+  const legendTempo = el("song-relations-legend-tempo");
+  if (!modal || modal.classList.contains("hidden") || !host) return;
+
+  const songs = dedupeSongsById(state.songs || []);
+  if (songs.length === 0) return;
+
+  if (songRelationsModalCleanup) {
+    songRelationsModalCleanup();
+    songRelationsModalCleanup = null;
+  }
+
+  if (legendTheme) legendTheme.classList.toggle("hidden", mode !== "theme");
+  if (legendTempo) legendTempo.classList.toggle("hidden", mode !== "tempo");
+
+  const vw = Math.max(520, Math.floor(window.innerWidth * 0.88));
+  const vh = Math.max(420, Math.floor(window.innerHeight * 0.7));
+  const graph = buildSongRelationGraph(songs, mode);
+  const layoutSize = runSongRelationForceLayout(graph.nodes, graph.edges, vw, vh);
+
+  if (isolatedEl) {
+    isolatedEl.textContent = getSongRelationsIsolatedHintText(mode);
+    isolatedEl.classList.toggle("hidden", graph.edges.length > 0);
+  }
+
+  renderSongRelationsSvg(host, graph, layoutSize);
+}
+
+function openSongRelationsModal() {
+  const modal = el("song-relations-modal");
+  const host = el("song-relations-graph-host");
+  const emptyEl = el("song-relations-empty");
+  const isolatedEl = el("song-relations-isolated-hint");
+  const legendEl = el("song-relations-legend");
+  const viewportEl = el("song-relations-viewport");
+  const toolbarEl = el("song-relations-map-toolbar");
+  const legendTheme = el("song-relations-legend-theme");
+  const legendTempo = el("song-relations-legend-tempo");
+  if (!modal || !host) return;
+
+  if (songRelationsModalCleanup) {
+    songRelationsModalCleanup();
+    songRelationsModalCleanup = null;
+  }
+  if (songRelationsDismissCleanup) {
+    songRelationsDismissCleanup();
+    songRelationsDismissCleanup = null;
+  }
+
+  const songs = dedupeSongsById(state.songs || []);
+  host.innerHTML = "";
+  if (emptyEl) emptyEl.classList.add("hidden");
+  if (isolatedEl) {
+    isolatedEl.classList.add("hidden");
+    isolatedEl.textContent = "";
+  }
+
+  const vw = Math.max(520, Math.floor(window.innerWidth * 0.88));
+  const vh = Math.max(420, Math.floor(window.innerHeight * 0.7));
+
+  if (songs.length === 0) {
+    if (legendEl) legendEl.classList.add("hidden");
+    if (viewportEl) viewportEl.classList.add("hidden");
+    if (toolbarEl) toolbarEl.classList.add("hidden");
+    if (emptyEl) emptyEl.classList.remove("hidden");
+    modal.classList.toggle("song-relations-modal--empty", true);
+    modal.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    const handleEscapeEmpty = (e) => {
+      if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+        closeSongRelationsModal();
+      }
+    };
+    const onBackdropEmpty = (e) => {
+      if (e.target === modal) closeSongRelationsModal();
+    };
+    document.addEventListener("keydown", handleEscapeEmpty);
+    modal.addEventListener("click", onBackdropEmpty);
+    songRelationsDismissCleanup = () => {
+      document.removeEventListener("keydown", handleEscapeEmpty);
+      modal.removeEventListener("click", onBackdropEmpty);
+    };
+    return;
+  }
+
+  if (legendEl) legendEl.classList.remove("hidden");
+  if (viewportEl) viewportEl.classList.remove("hidden");
+  if (toolbarEl) toolbarEl.classList.remove("hidden");
+
+  updateSongRelationsMapToolbar(songRelationsMapMode);
+  if (legendTheme) legendTheme.classList.toggle("hidden", songRelationsMapMode !== "theme");
+  if (legendTempo) legendTempo.classList.toggle("hidden", songRelationsMapMode !== "tempo");
+
+  const graph = buildSongRelationGraph(songs, songRelationsMapMode);
+  const layoutSize = runSongRelationForceLayout(graph.nodes, graph.edges, vw, vh);
+
+  if (isolatedEl) {
+    isolatedEl.textContent = getSongRelationsIsolatedHintText(songRelationsMapMode);
+    isolatedEl.classList.toggle("hidden", graph.edges.length > 0);
+  }
+
+  renderSongRelationsSvg(host, graph, layoutSize);
+  modal.classList.toggle("song-relations-modal--empty", false);
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+
+  const handleEscape = (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+      closeSongRelationsModal();
+    }
+  };
+  const onBackdrop = (e) => {
+    if (e.target === modal) closeSongRelationsModal();
+  };
+  document.addEventListener("keydown", handleEscape);
+  modal.addEventListener("click", onBackdrop);
+  songRelationsDismissCleanup = () => {
+    document.removeEventListener("keydown", handleEscape);
+    modal.removeEventListener("click", onBackdrop);
+  };
 }
 
 function formatRelatedThemeLabel(sharedThemes) {
