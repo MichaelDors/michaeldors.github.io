@@ -920,6 +920,118 @@ function closeModalWithAnimation(modalElement, onHidden) {
   }, 250); // Slightly longer than 0.2s to be safe
 }
 
+const modalFocusState = new Map();
+const modalFocusStack = [];
+const MODAL_FOCUSABLE_SELECTOR = [
+  'a[href]:not([tabindex="-1"])',
+  'button:not([disabled]):not([tabindex="-1"])',
+  'input:not([disabled]):not([type="hidden"]):not([tabindex="-1"])',
+  'select:not([disabled]):not([tabindex="-1"])',
+  'textarea:not([disabled]):not([tabindex="-1"])',
+  '[tabindex]:not([tabindex="-1"])'
+].join(",");
+
+function getModalFocusRoot(modal) {
+  if (!modal) return null;
+  return modal.querySelector(".modal-content, .chart-modal-shell, .album-art-modal-content") || modal;
+}
+
+function getFocusableElements(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll(MODAL_FOCUSABLE_SELECTOR)).filter((el) => {
+    if (!(el instanceof HTMLElement)) return false;
+    if (el.hasAttribute("disabled")) return false;
+    if (el.getAttribute("aria-hidden") === "true") return false;
+    return el.offsetParent !== null || el.getClientRects().length > 0;
+  });
+}
+
+function focusModalFirstElement(modal, { preventScroll = true } = {}) {
+  const root = getModalFocusRoot(modal);
+  if (!root) return;
+  const focusables = getFocusableElements(root);
+  const target = focusables[0] || root;
+  if (target === root && !root.hasAttribute("tabindex")) {
+    root.tabIndex = -1;
+  }
+  if (typeof target.focus === "function") {
+    target.focus({ preventScroll });
+  }
+}
+
+function trapModalFocus(modal, event) {
+  if (event.key !== "Tab") return;
+  const root = getModalFocusRoot(modal);
+  if (!root) return;
+  const focusables = getFocusableElements(root);
+  if (focusables.length === 0) {
+    event.preventDefault();
+    focusModalFirstElement(modal);
+    return;
+  }
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement;
+  if (event.shiftKey) {
+    if (active === first || !root.contains(active)) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+    }
+  } else if (active === last) {
+    event.preventDefault();
+    first.focus({ preventScroll: true });
+  }
+}
+
+function activateModalFocus(modal) {
+  if (!modal || modalFocusState.has(modal)) return;
+  const previousActive = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const keydownHandler = (event) => {
+    if (event.key !== "Tab") return;
+    if (!modal.classList.contains("hidden")) {
+      trapModalFocus(modal, event);
+    }
+  };
+  modal.addEventListener("keydown", keydownHandler);
+  modalFocusState.set(modal, { previousActive, keydownHandler });
+  const existingIndex = modalFocusStack.indexOf(modal);
+  if (existingIndex !== -1) {
+    modalFocusStack.splice(existingIndex, 1);
+  }
+  modalFocusStack.push(modal);
+  requestAnimationFrame(() => {
+    if (!modal.classList.contains("hidden")) {
+      focusModalFirstElement(modal);
+    }
+  });
+}
+
+function deactivateModalFocus(modal) {
+  const entry = modalFocusState.get(modal);
+  if (!entry) return;
+  const wasTop = modalFocusStack[modalFocusStack.length - 1] === modal;
+  modal.removeEventListener("keydown", entry.keydownHandler);
+  modalFocusState.delete(modal);
+  const index = modalFocusStack.indexOf(modal);
+  if (index !== -1) {
+    modalFocusStack.splice(index, 1);
+  }
+  if (!wasTop) return;
+  const nextModal = modalFocusStack[modalFocusStack.length - 1];
+  if (nextModal && !nextModal.classList.contains("hidden")) {
+    const target = entry.previousActive;
+    if (target && target.isConnected && nextModal.contains(target)) {
+      target.focus({ preventScroll: true });
+    } else {
+      focusModalFirstElement(nextModal);
+    }
+    return;
+  }
+  if (entry.previousActive && entry.previousActive.isConnected) {
+    entry.previousActive.focus({ preventScroll: true });
+  }
+}
+
 function resetModalScroll(modalElement) {
   if (!modalElement) return;
 
@@ -1396,7 +1508,7 @@ async function verifyMfaAndCache(session, cacheKey) {
 
 // Setup observers to ensure animations replay correctly on re-open
 function setupModalObservers() {
-  const modals = document.querySelectorAll('.modal');
+  const modals = document.querySelectorAll('.modal, .chart-modal, .album-art-modal');
 
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
@@ -1427,10 +1539,12 @@ function setupModalObservers() {
 
             // Always reset scroll when a modal opens
             resetModalScroll(target);
+            activateModalFocus(target);
           });
         } else if (!wasHidden && isHidden) {
           // For modals closed via closeModalWithAnimation, close haptic already
           // fired at close start. For direct hidden toggles, fire here.
+          deactivateModalFocus(target);
           if (target.dataset.hapticCloseHandled === "1") {
             delete target.dataset.hapticCloseHandled;
           } else {
@@ -6960,6 +7074,8 @@ async function openPersonDetailsModal(person) {
         const setItem = document.createElement('div');
         setItem.className = 'person-set-item';
         setItem.style.cursor = 'pointer';
+        setItem.setAttribute("role", "button");
+        setItem.tabIndex = 0;
         setItem.innerHTML = `
           <div class="person-set-title">${escapeHtml(set.title || 'Untitled Set')}</div>
           <div class="person-set-meta">
@@ -6967,7 +7083,7 @@ async function openPersonDetailsModal(person) {
             <div class="person-set-relative muted">${relativeTime}</div>
           </div>
         `;
-        setItem.addEventListener('click', () => {
+        const handleSetItemActivate = () => {
           // Find the full set object from state.sets
           const fullSet = state.sets.find(s => s.id === set.id);
           if (fullSet) {
@@ -6980,6 +7096,13 @@ async function openPersonDetailsModal(person) {
             // If set not in state, try to load it
             // For now, just show an error or reload sets
             toastError('Set not found. Please refresh and try again.');
+          }
+        };
+        setItem.addEventListener('click', handleSetItemActivate);
+        setItem.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleSetItemActivate();
           }
         });
         pastSetsEl.appendChild(setItem);
@@ -6999,6 +7122,8 @@ async function openPersonDetailsModal(person) {
         const setItem = document.createElement('div');
         setItem.className = 'person-set-item';
         setItem.style.cursor = 'pointer';
+        setItem.setAttribute("role", "button");
+        setItem.tabIndex = 0;
         setItem.innerHTML = `
           <div class="person-set-title">${escapeHtml(set.title || 'Untitled Set')}</div>
           <div class="person-set-meta">
@@ -7006,7 +7131,7 @@ async function openPersonDetailsModal(person) {
             <div class="person-set-relative muted">${relativeTime}</div>
           </div>
         `;
-        setItem.addEventListener('click', () => {
+        const handleSetItemActivate = () => {
           // Find the full set object from state.sets
           const fullSet = state.sets.find(s => s.id === set.id);
           if (fullSet) {
@@ -7019,6 +7144,13 @@ async function openPersonDetailsModal(person) {
             // If set not in state, try to load it
             // For now, just show an error or reload sets
             toastError('Set not found. Please refresh and try again.');
+          }
+        };
+        setItem.addEventListener('click', handleSetItemActivate);
+        setItem.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleSetItemActivate();
           }
         });
         futureSetsEl.appendChild(setItem);
@@ -7251,13 +7383,7 @@ function renderSetCard(set, container, index = 0, animate = true, baseDelay = 0)
     });
   }
 
-  // Make card clickable to view details
-  card.addEventListener("click", (e) => {
-    // Don't trigger if clicking edit/delete/pin buttons
-    if (e.target === editBtn || e.target === deleteBtn || e.target === pinBtn ||
-      editBtn?.contains(e.target) || deleteBtn?.contains(e.target) || pinBtn?.contains(e.target)) {
-      return;
-    }
+  attachSetCardDetailsInteraction(card, () => {
     showSetDetail(set, { withHaptics: true });
   });
 
@@ -8050,10 +8176,8 @@ function renderPeople(animate = true) {
     return;
   }
 
-  // Add invite card for managers/owners (always show, not affected by search)
-  // Check if user can manage the current team (owner or manager)
-  const canManageCurrentTeam = currentTeam && (currentTeam.is_owner || currentTeam.can_manage);
-  if (canManageCurrentTeam || isManager()) {
+  // Add invite card only for managers/owners (respects member view)
+  if (isManager()) {
     const inviteCard = document.createElement("div");
     inviteCard.className = "card person-card invite-card";
     inviteCard.innerHTML = `
@@ -8062,7 +8186,7 @@ function renderPeople(animate = true) {
         <h3 class="person-name" style="margin: 0;">Invite Member</h3>
       </div>
     `;
-    inviteCard.addEventListener("click", () => openInviteModal());
+    attachPersonCardDetailsInteraction(inviteCard, () => openInviteModal());
     peopleList.appendChild(inviteCard);
   }
 
@@ -8149,18 +8273,7 @@ function renderPeople(animate = true) {
         div.style.animationDelay = `${index * 0.05}s`;
       }
 
-      // Make person card clickable to show details
-      div.style.cursor = "pointer";
-      div.addEventListener("click", (e) => {
-        // Don't open modal if clicking on interactive elements
-        if (e.target.closest(".person-menu-btn") ||
-          e.target.closest(".person-menu") ||
-          e.target.closest("button") ||
-          e.target.closest("a")) {
-          return;
-        }
-        openPersonDetailsModal(person);
-      });
+      attachPersonCardDetailsInteraction(div, () => openPersonDetailsModal(person));
 
       if (isManagerCheck) {
         // Manager view: show email, edit name, delete
@@ -9050,6 +9163,13 @@ function isInteractiveSongCardTarget(target) {
   );
 }
 
+function isInteractiveSetCardTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest("button, a, input, select, textarea, .assignment-pill, .pin-set-btn, .edit-set-btn, .delete-set-btn")
+  );
+}
+
 function attachSongCardDetailsInteraction(card, openDetailsFn) {
   if (!card || typeof openDetailsFn !== "function") return;
 
@@ -9064,6 +9184,55 @@ function attachSongCardDetailsInteraction(card, openDetailsFn) {
 
   card.addEventListener("keydown", (e) => {
     if (isInteractiveSongCardTarget(e.target)) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openDetailsFn();
+    }
+  });
+}
+
+function attachSetCardDetailsInteraction(card, openDetailsFn) {
+  if (!card || typeof openDetailsFn !== "function") return;
+
+  card.classList.add("set-card-clickable");
+  card.setAttribute("role", "button");
+  card.tabIndex = 0;
+
+  card.addEventListener("click", (e) => {
+    if (isInteractiveSetCardTarget(e.target)) return;
+    openDetailsFn();
+  });
+
+  card.addEventListener("keydown", (e) => {
+    if (isInteractiveSetCardTarget(e.target)) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openDetailsFn();
+    }
+  });
+}
+
+function isInteractivePersonCardTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest("button, a, input, select, textarea, .person-menu, .person-menu-btn, .mailto-copy-btn, .mailto-copy-link")
+  );
+}
+
+function attachPersonCardDetailsInteraction(card, openDetailsFn) {
+  if (!card || typeof openDetailsFn !== "function") return;
+
+  card.classList.add("person-card-clickable");
+  card.setAttribute("role", "button");
+  card.tabIndex = 0;
+
+  card.addEventListener("click", (e) => {
+    if (isInteractivePersonCardTarget(e.target)) return;
+    openDetailsFn();
+  });
+
+  card.addEventListener("keydown", (e) => {
+    if (isInteractivePersonCardTarget(e.target)) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       openDetailsFn();
@@ -23231,6 +23400,25 @@ function normalizePrintSetOptions(options = {}) {
   return { ...PRINT_SET_DEFAULT_OPTIONS, ...(options || {}) };
 }
 
+function formatAssignmentName(assignment) {
+  return (
+    assignment?.person?.full_name ||
+    assignment?.pending_invite?.full_name ||
+    assignment?.person_name ||
+    assignment?.person_email ||
+    assignment?.pending_invite?.email ||
+    "Unknown"
+  );
+}
+
+function isActivePrintSetRender(renderToken, renderRoot) {
+  if (!renderToken) return true;
+  if (!state.printSetEditor || state.printSetEditor.previewToken !== renderToken) return false;
+  if (renderRoot?.dataset?.renderToken && renderRoot.dataset.renderToken !== String(renderToken)) return false;
+  if (renderRoot && !renderRoot.isConnected) return false;
+  return true;
+}
+
 function getPrintableResourceKind(resource) {
   if (!resource) return null;
   if (resource.type === "chart") return "chart";
@@ -23248,6 +23436,18 @@ function buildPrintSetResourceKey(songId, resourceId) {
   return `${songId}:${resourceId}`;
 }
 
+function buildPrintSetSectionKey(setSongId) {
+  return `section:${setSongId}`;
+}
+
+function getSectionPrintDetails(setSong) {
+  if (!setSong) return { description: "", notes: "", assignments: [] };
+  const description = typeof setSong.description === "string" ? setSong.description.trim() : "";
+  const notes = typeof setSong.notes === "string" ? setSong.notes.trim() : "";
+  const assignments = Array.isArray(setSong.song_assignments) ? setSong.song_assignments : [];
+  return { description, notes, assignments };
+}
+
 function buildPrintSetResourceEntry(song, resource) {
   if (!song || !resource?.id) return null;
   const kind = getPrintableResourceKind(resource);
@@ -23263,20 +23463,23 @@ function buildPrintSetResourceEntry(song, resource) {
     title = chartType === "number" ? "Number Chart" : "Chord Chart";
   }
 
-  let subtitle = "";
+  const metaParts = [];
   if (resource.type === "chart") {
     const scopeLabel = resource.key ? `Key: ${resource.key}` : "General";
     const typeLabel = chartType === "number" ? "Number chart" : "Chord chart";
-    subtitle = `${scopeLabel} - ${typeLabel}`;
+    metaParts.push({ text: scopeLabel, kind: "key" });
+    metaParts.push({ text: typeLabel, kind: "chart-type" });
   } else if (resource.key) {
-    subtitle = `Key: ${resource.key}`;
+    metaParts.push({ text: `Key: ${resource.key}`, kind: "key" });
   }
 
   if (kind === "pdf") {
-    subtitle = subtitle ? `${subtitle} - PDF` : "PDF";
+    metaParts.push({ text: "PDF", kind: "filetype" });
   } else if (kind === "image") {
-    subtitle = subtitle ? `${subtitle} - Image` : "Image";
+    metaParts.push({ text: "Image", kind: "filetype" });
   }
+
+  const subtitle = metaParts.map(part => part.text).join(" - ");
 
   return {
     key,
@@ -23287,7 +23490,27 @@ function buildPrintSetResourceEntry(song, resource) {
     kind,
     title,
     subtitle,
+    metaParts,
     displayOrder: resource.display_order ?? Number.POSITIVE_INFINITY,
+  };
+}
+
+function buildPrintSetSectionEntry(setSong) {
+  if (!setSong?.id) return null;
+  const { description, notes, assignments } = getSectionPrintDetails(setSong);
+  const hasContent = Boolean(description || notes || (assignments && assignments.length));
+  if (!hasContent) return null;
+
+  const title = setSong.title || "Section";
+  return {
+    key: buildPrintSetSectionKey(setSong.id),
+    kind: "section-notes",
+    setSongId: setSong.id,
+    title,
+    description,
+    notes,
+    assignments,
+    sequenceOrder: setSong.sequence_order ?? Number.POSITIVE_INFINITY,
   };
 }
 
@@ -23339,11 +23562,16 @@ async function renderPrintSetResources({
   container,
   forPreview = false,
   showHeaders = true,
+  options = {},
+  renderRoot = null,
   renderToken = null,
 } = {}) {
   if (!resources || resources.length === 0 || !container) return;
 
-  const shouldAbort = () => renderToken && state.printSetEditor?.previewToken !== renderToken;
+  const shouldAbort = () => !isActivePrintSetRender(renderToken, renderRoot || container);
+  const normalizedOptions = normalizePrintSetOptions(options);
+
+  if (shouldAbort()) return;
 
   const resourcesWrap = document.createElement("div");
   resourcesWrap.className = "print-resources";
@@ -23357,32 +23585,130 @@ async function renderPrintSetResources({
 
   const sortedSetSongs = (set?.set_songs || []).slice().sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
   const songOrderMap = new Map();
+  const sectionOrderMap = new Map();
   sortedSetSongs.forEach((setSong, idx) => {
-    if (setSong?.song?.id && !songOrderMap.has(setSong.song.id)) {
-      songOrderMap.set(setSong.song.id, idx);
+    const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
+    const isSection = !setSong.song_id && !tagInfo;
+    if (isSection && setSong?.id !== undefined && setSong?.id !== null) {
+      const sectionKey = String(setSong.id);
+      if (!sectionOrderMap.has(sectionKey)) sectionOrderMap.set(sectionKey, idx);
+    }
+    if (setSong?.song?.id && !songOrderMap.has(String(setSong.song.id))) {
+      songOrderMap.set(String(setSong.song.id), idx);
     }
   });
 
   const resourcesBySong = new Map();
+  const sectionEntries = new Map();
   resources.forEach((entry) => {
-    if (!entry?.songId) return;
-    if (!resourcesBySong.has(entry.songId)) resourcesBySong.set(entry.songId, []);
-    resourcesBySong.get(entry.songId).push(entry);
+    if (!entry) return;
+    if (entry.kind === "section-notes" && entry.setSongId) {
+      sectionEntries.set(String(entry.setSongId), entry);
+      return;
+    }
+    if (!entry.songId) return;
+    const songKey = String(entry.songId);
+    if (!resourcesBySong.has(songKey)) resourcesBySong.set(songKey, []);
+    resourcesBySong.get(songKey).push(entry);
   });
 
-  const songIds = Array.from(resourcesBySong.keys());
-  songIds.sort((a, b) => {
-    const ao = songOrderMap.has(a) ? songOrderMap.get(a) : Number.POSITIVE_INFINITY;
-    const bo = songOrderMap.has(b) ? songOrderMap.get(b) : Number.POSITIVE_INFINITY;
-    if (ao !== bo) return ao - bo;
-    const at = resourcesBySong.get(a)?.[0]?.songTitle || "";
-    const bt = resourcesBySong.get(b)?.[0]?.songTitle || "";
+  const groups = [];
+  resourcesBySong.forEach((entries, songKey) => {
+    if (!entries || entries.length === 0) return;
+    const orderIndex = songOrderMap.has(songKey) ? songOrderMap.get(songKey) : Number.POSITIVE_INFINITY;
+    groups.push({ type: "song", songId: entries[0]?.songId, entries, orderIndex });
+  });
+  sectionEntries.forEach((entry, sectionKey) => {
+    if (!entry) return;
+    const orderIndex = sectionOrderMap.has(sectionKey) ? sectionOrderMap.get(sectionKey) : Number.POSITIVE_INFINITY;
+    groups.push({ type: "section", entries: [entry], orderIndex });
+  });
+
+  groups.sort((a, b) => {
+    if (a.orderIndex !== b.orderIndex) return a.orderIndex - b.orderIndex;
+    if (a.type !== b.type) return a.type === "section" ? -1 : 1;
+    const at = a.type === "song" ? (a.entries?.[0]?.songTitle || "") : (a.entries?.[0]?.title || "");
+    const bt = b.type === "song" ? (b.entries?.[0]?.songTitle || "") : (b.entries?.[0]?.title || "");
     return at.localeCompare(bt);
   });
 
-  for (const songId of songIds) {
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
     if (shouldAbort()) return;
-    const entries = resourcesBySong.get(songId) || [];
+    const group = groups[groupIndex];
+    const isLastGroup = groupIndex === groups.length - 1;
+
+    if (group.type === "section") {
+      const entry = group.entries[0];
+      if (!entry) continue;
+
+      const groupEl = document.createElement("div");
+      groupEl.className = "print-resource-group";
+
+      const itemEl = document.createElement("div");
+      itemEl.className = "print-resource-item";
+
+      const pageEl = document.createElement("div");
+      pageEl.className = `print-section-page${isLastGroup ? " print-section-page--last" : ""}`;
+
+      const titleEl = document.createElement("h2");
+      titleEl.className = "print-section-page-title";
+      titleEl.textContent = entry.title || "Section";
+      pageEl.appendChild(titleEl);
+
+      const blocks = [];
+      if (entry.description) {
+        blocks.push({ label: "Details", text: entry.description });
+      }
+      if (entry.notes) {
+        blocks.push({ label: "Notes", text: entry.notes });
+      }
+      if (normalizedOptions.showAssignments && entry.assignments?.length) {
+        const byRole = entry.assignments.reduce((acc, assignment) => {
+          const role = assignment.role || "Unassigned";
+          if (!acc[role]) acc[role] = [];
+          acc[role].push(formatAssignmentName(assignment));
+          return acc;
+        }, {});
+        blocks.push({
+          label: "Assignments",
+          lines: Object.keys(byRole).sort().map(role => `${role}: ${byRole[role].join(", ")}`)
+        });
+      }
+
+      blocks.forEach((block) => {
+        const blockEl = document.createElement("div");
+        blockEl.className = "print-section-page-block";
+
+        const labelEl = document.createElement("div");
+        labelEl.className = "print-section-page-label";
+        labelEl.textContent = block.label;
+        blockEl.appendChild(labelEl);
+
+        if (block.lines) {
+          block.lines.forEach(line => {
+            const textEl = document.createElement("div");
+            textEl.className = "print-section-page-text";
+            textEl.textContent = line;
+            blockEl.appendChild(textEl);
+          });
+        } else {
+          const textEl = document.createElement("div");
+          textEl.className = "print-section-page-text";
+          textEl.textContent = block.text;
+          blockEl.appendChild(textEl);
+        }
+
+        pageEl.appendChild(blockEl);
+      });
+
+      itemEl.appendChild(pageEl);
+      groupEl.appendChild(itemEl);
+      resourcesWrap.appendChild(groupEl);
+      continue;
+    }
+
+    const songId = group.songId;
+    const entries = group.entries || [];
     entries.sort((a, b) => {
       const ao = typeof a.displayOrder === "number" ? a.displayOrder : Number.POSITIVE_INFINITY;
       const bo = typeof b.displayOrder === "number" ? b.displayOrder : Number.POSITIVE_INFINITY;
@@ -23467,7 +23793,8 @@ async function renderPrintSetResources({
             err.textContent = "Unable to render the PDF pages.";
             bodyEl.appendChild(err);
           } else {
-            pages.forEach((src) => {
+            for (const src of pages) {
+              if (shouldAbort()) return;
               const wrap = document.createElement("div");
               wrap.className = "print-pdf-page-wrap";
               const img = document.createElement("img");
@@ -23476,7 +23803,7 @@ async function renderPrintSetResources({
               img.alt = `${entry.title || "PDF"} page`;
               wrap.appendChild(img);
               bodyEl.appendChild(wrap);
-            });
+            }
           }
         }
       } else if (entry.kind === "image") {
@@ -23502,9 +23829,11 @@ async function renderPrintSetResources({
       groupEl.appendChild(itemEl);
     }
 
+    if (shouldAbort()) return;
     resourcesWrap.appendChild(groupEl);
   }
 
+  if (shouldAbort()) return;
   container.appendChild(resourcesWrap);
 }
 
@@ -23522,8 +23851,8 @@ async function renderSetPrintPreview(set, options = {}, selectedResources = [], 
   if (!set || !container) return;
 
   const normalizedOptions = normalizePrintSetOptions(options);
-  const { forPreview = false, renderToken = null } = renderOptions;
-  const shouldAbort = () => renderToken && state.printSetEditor?.previewToken !== renderToken;
+  const { forPreview = false, renderToken = null, renderRoot = null } = renderOptions;
+  const shouldAbort = () => !isActivePrintSetRender(renderToken, renderRoot || container);
 
   let contentEl = container;
   if (!container.classList.contains("print-set-content")) {
@@ -23532,6 +23861,8 @@ async function renderSetPrintPreview(set, options = {}, selectedResources = [], 
     contentEl.className = "print-set-content";
     container.appendChild(contentEl);
   }
+
+  if (shouldAbort()) return;
 
   const sortedSetSongs = (set.set_songs || []).slice().sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
   const totalSeconds = calculateServiceLengthSeconds(set);
@@ -23551,14 +23882,6 @@ async function renderSetPrintPreview(set, options = {}, selectedResources = [], 
   if (normalizedOptions.showKeys) columns.push({ key: "key", label: "Key", className: "print-col-key" });
   if (normalizedOptions.showBpm) columns.push({ key: "bpm", label: "BPM", className: "print-col-bpm" });
   if (normalizedOptions.showNotes) columns.push({ key: "notes", label: "Notes", className: "print-col-notes" });
-
-  const formatAssignmentName = (assignment) =>
-    assignment.person?.full_name ||
-    assignment.pending_invite?.full_name ||
-    assignment.person_name ||
-    assignment.person_email ||
-    assignment.pending_invite?.email ||
-    "Unknown";
 
   const setAssignments = assignmentMode === "per_set" ? (set.set_assignments || []) : [];
   const setAssignmentsByRole = setAssignments.reduce((acc, assignment) => {
@@ -23693,6 +24016,8 @@ async function renderSetPrintPreview(set, options = {}, selectedResources = [], 
     summaryItems.push(`<div class="print-summary-item">Team: ${escapeHtml(set.team_name)}</div>`);
   }
 
+  if (shouldAbort()) return;
+
   contentEl.innerHTML = `
     <div class="print-set-header">
       <div>
@@ -23729,6 +24054,8 @@ async function renderSetPrintPreview(set, options = {}, selectedResources = [], 
       container: contentEl,
       forPreview,
       showHeaders: !!forPreview,
+      options: normalizedOptions,
+      renderRoot: renderRoot || contentEl,
       renderToken,
     });
   }
@@ -23801,20 +24128,39 @@ function renderPrintSetResourceList(set) {
   listEl.innerHTML = "";
   editorState.resourcesByKey = new Map();
 
+  const songKeyMap = new Map();
+  (set.set_songs || []).forEach((setSong) => {
+    const songId = setSong?.song?.id;
+    if (!songId) return;
+    const keyLabel = normalizeKeyLabel(setSong.key || "");
+    if (!keyLabel) return;
+    if (!songKeyMap.has(songId)) songKeyMap.set(songId, new Set());
+    songKeyMap.get(songId).add(keyLabel);
+  });
+
   const listToken = (editorState.resourceListToken || 0) + 1;
   editorState.resourceListToken = listToken;
 
   const sortedSetSongs = (set.set_songs || []).slice().sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
-  const uniqueSongs = [];
+  const orderedItems = [];
   const seenSongIds = new Set();
+
   sortedSetSongs.forEach((setSong) => {
+    const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
+    const isSection = !setSong.song_id && !tagInfo;
+    if (isSection) {
+      const entry = buildPrintSetSectionEntry(setSong);
+      if (entry) orderedItems.push({ type: "section", entry });
+      return;
+    }
+
     if (setSong?.song?.id && !seenSongIds.has(setSong.song.id)) {
       seenSongIds.add(setSong.song.id);
-      uniqueSongs.push(setSong.song);
+      orderedItems.push({ type: "song", song: setSong.song });
     }
   });
 
-  if (uniqueSongs.length === 0) {
+  if (orderedItems.length === 0) {
     const empty = document.createElement("div");
     empty.className = "print-set-resource-empty";
     empty.textContent = "No songs in this set yet.";
@@ -23822,7 +24168,68 @@ function renderPrintSetResourceList(set) {
     return;
   }
 
-  uniqueSongs.forEach((song) => {
+  orderedItems.forEach((item) => {
+    if (item.type === "section") {
+      const entry = item.entry;
+      const group = document.createElement("div");
+      group.className = "print-set-song-group print-set-section-group";
+
+      const header = document.createElement("div");
+      header.className = "print-set-song-header print-set-section-header";
+
+      const cover = document.createElement("div");
+      cover.className = "print-set-song-cover";
+      const icon = document.createElement("i");
+      icon.className = "fa-solid fa-list";
+      cover.appendChild(icon);
+
+      const titleWrap = document.createElement("div");
+      titleWrap.className = "print-set-song-title";
+      titleWrap.textContent = entry.title || "Section";
+
+      header.appendChild(cover);
+      header.appendChild(titleWrap);
+      group.appendChild(header);
+
+      editorState.resourcesByKey.set(entry.key, entry);
+
+      const label = document.createElement("label");
+      label.className = "custom-checkbox-label print-set-resource-checkbox";
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "custom-checkbox";
+      input.dataset.resourceKey = entry.key;
+      input.checked = editorState.selectedResourceKeys.has(entry.key);
+
+      const textWrap = document.createElement("span");
+      textWrap.className = "print-set-resource-label";
+
+      const titleEl = document.createElement("span");
+      titleEl.className = "print-set-resource-title";
+      titleEl.textContent = "Notes & Details";
+      textWrap.appendChild(titleEl);
+
+      const detailParts = [];
+      if (entry.description) detailParts.push("Description");
+      if (entry.notes) detailParts.push("Notes");
+      if (entry.assignments?.length) detailParts.push("Assignments");
+
+      if (detailParts.length) {
+        const subtitleEl = document.createElement("span");
+        subtitleEl.className = "print-set-resource-subtitle";
+        subtitleEl.textContent = detailParts.join(" • ");
+        textWrap.appendChild(subtitleEl);
+      }
+
+      label.appendChild(input);
+      label.appendChild(textWrap);
+      group.appendChild(label);
+      listEl.appendChild(group);
+      return;
+    }
+
+    const song = item.song;
     const group = document.createElement("div");
     group.className = "print-set-song-group";
 
@@ -23857,11 +24264,25 @@ function renderPrintSetResourceList(set) {
       }).catch(() => { });
     }
 
-    const title = document.createElement("div");
-    title.textContent = song.title || "Untitled";
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "print-set-song-title";
+    titleWrap.textContent = song.title || "Untitled";
+
+    const explicitKeys = songKeyMap.get(song.id);
+    const fallbackKeys = (song.song_keys || []).map(k => k?.key).filter(Boolean);
+    const keyLabel = explicitKeys && explicitKeys.size
+      ? Array.from(explicitKeys).join(", ")
+      : (fallbackKeys.length ? fallbackKeys.join(", ") : "");
+
+    if (keyLabel) {
+      const keyEl = document.createElement("span");
+      keyEl.className = "print-set-song-key";
+      keyEl.textContent = keyLabel;
+      titleWrap.appendChild(keyEl);
+    }
 
     header.appendChild(cover);
-    header.appendChild(title);
+    header.appendChild(titleWrap);
     group.appendChild(header);
 
     const printableResources = (song.song_resources || [])
@@ -23896,7 +24317,23 @@ function renderPrintSetResourceList(set) {
         titleEl.textContent = entry.title || "Resource";
         textWrap.appendChild(titleEl);
 
-        if (entry.subtitle) {
+        if (entry.metaParts && entry.metaParts.length) {
+          const subtitleEl = document.createElement("span");
+          subtitleEl.className = "print-set-resource-subtitle";
+          entry.metaParts.forEach((part, idx) => {
+            const partEl = document.createElement("span");
+            partEl.className = `print-set-resource-subtitle-part${part.kind ? ` meta-${part.kind}` : ""}`;
+            partEl.textContent = part.text;
+            subtitleEl.appendChild(partEl);
+            if (idx < entry.metaParts.length - 1) {
+              const sepEl = document.createElement("span");
+              sepEl.className = "print-set-resource-subtitle-sep";
+              sepEl.textContent = "•";
+              subtitleEl.appendChild(sepEl);
+            }
+          });
+          textWrap.appendChild(subtitleEl);
+        } else if (entry.subtitle) {
           const subtitleEl = document.createElement("span");
           subtitleEl.className = "print-set-resource-subtitle";
           subtitleEl.textContent = entry.subtitle;
@@ -23920,12 +24357,19 @@ async function updatePrintSetEditorPreview() {
   if (!previewEl) return;
   const token = (editorState.previewToken || 0) + 1;
   editorState.previewToken = token;
+  previewEl.dataset.renderToken = String(token);
   const options = normalizePrintSetOptions(editorState.options);
   editorState.options = options;
   const selectedResources = getSelectedPrintSetResources();
-  await renderSetPrintPreview(state.selectedSet, options, selectedResources, previewEl, {
+  previewEl.innerHTML = "";
+  const contentEl = document.createElement("div");
+  contentEl.className = "print-set-content";
+  contentEl.dataset.renderToken = String(token);
+  previewEl.appendChild(contentEl);
+  await renderSetPrintPreview(state.selectedSet, options, selectedResources, contentEl, {
     renderToken: token,
     forPreview: true,
+    renderRoot: contentEl,
   });
 }
 
