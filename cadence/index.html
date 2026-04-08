@@ -1112,7 +1112,10 @@
           <span class="song-relations-legend-item"><span class="song-relations-swatch song-relations-swatch--theme"></span> Shared theme</span>
         </div>
         <div id="song-relations-legend-tempo" class="song-relations-legend-panel">
-          <span class="song-relations-legend-item"><span class="song-relations-swatch song-relations-swatch--tempo"></span> Similar BPM or tempo category</span>
+          <span class="song-relations-legend-item"><span class="song-relations-swatch song-relations-swatch--tempo"></span> Similar tempo</span>
+          <span class="song-relations-legend-item"><span class="song-relations-swatch song-relations-swatch--slow"></span> Slow</span>
+          <span class="song-relations-legend-item"><span class="song-relations-swatch song-relations-swatch--mid"></span> Mid</span>
+          <span class="song-relations-legend-item"><span class="song-relations-swatch song-relations-swatch--fast"></span> Fast</span>
         </div>
       </div>
       <div id="song-relations-viewport" class="song-relations-viewport hidden">
@@ -1133,6 +1136,10 @@
         <label>
           Title
           <input type="text" id="song-edit-title" required />
+        </label>
+        <label>
+          Artist
+          <input type="text" id="song-edit-artist" placeholder="Used to improve metadata matching" />
         </label>
         <div class="song-edit-grid">
           <label>
@@ -1356,6 +1363,28 @@
         <label>
           Team Name
           <input type="text" id="team-settings-name-input" placeholder="Enter team name" required autocomplete="off" />
+        </label>
+        <label>
+          Team Logo
+          <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+            <div id="team-logo-preview"
+              style="width: 64px; height: 64px; border-radius: 0.75rem; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 600; color: var(--text-secondary); border: 2px solid var(--border-color); text-transform: uppercase; position: relative; overflow: hidden; flex-shrink: 0;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1;">
+              <label for="team-logo-upload" class="btn secondary small"
+                style="cursor: pointer; width: fit-content; margin: 0; display: inline-flex !important; align-items: center !important; gap: 0.5rem; flex-direction: row !important;">
+                <i class="fa-solid fa-upload"></i>
+                <span>Upload Logo</span>
+              </label>
+              <input type="file" id="team-logo-upload" accept="image/*" style="display: none;">
+              <button type="button" id="btn-remove-team-logo" class="btn ghost small"
+                style="display: none; color: var(--error-color); width: fit-content; margin: 0; display: inline-flex !important; align-items: center !important; gap: 0.5rem; flex-direction: row;">
+                <i class="fa-solid fa-trash"></i>
+                <span>Remove Logo</span>
+              </button>
+            </div>
+          </div>
+          <p class="muted small-text">Optional. If set, this logo is shown instead of the team text name.</p>
         </label>
         <label>
           Assignment Mode

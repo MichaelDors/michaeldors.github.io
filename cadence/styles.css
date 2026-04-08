@@ -2377,6 +2377,18 @@ main {
   background: color-mix(in srgb, var(--accent-color) 50%, #60a5fa 50%);
 }
 
+.song-relations-swatch--slow {
+  background: #60a5fa;
+}
+
+.song-relations-swatch--mid {
+  background: #fbbf24;
+}
+
+.song-relations-swatch--fast {
+  background: #f87171;
+}
+
 .song-relations-swatch--both {
   background: linear-gradient(
     90deg,
@@ -2473,6 +2485,22 @@ main {
   stroke: var(--accent-color);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
+}
+
+.song-relations-node--tempo-slow .song-relations-node-ring {
+  stroke: #60a5fa;
+}
+
+.song-relations-node--tempo-mid .song-relations-node-ring {
+  stroke: #fbbf24;
+}
+
+.song-relations-node--tempo-fast .song-relations-node-ring {
+  stroke: #f87171;
+}
+
+.song-relations-node--tempo-unknown .song-relations-node-ring {
+  stroke: color-mix(in srgb, var(--text-secondary) 65%, var(--border-color));
 }
 
 .song-relations-node-label {

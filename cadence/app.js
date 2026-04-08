@@ -3382,6 +3382,56 @@ function showPasswordSetupGate() {
   }
 }
 
+function getTeamDisplayName(team) {
+  return team?.name || "No Team";
+}
+
+function renderTeamIdentityFallback(element, team, fallbackText = "No Team") {
+  if (!element) return;
+  element.textContent = team?.name || fallbackText;
+}
+
+async function renderTeamIdentity(element, team, options = {}) {
+  if (!element) return;
+
+  const {
+    fallbackText = "No Team",
+    imageHeight = "44px",
+    imageMaxWidth = "240px",
+    imageBorderRadius = "8px",
+    textClassName = ""
+  } = options;
+
+  if (!team) {
+    element.textContent = fallbackText;
+    return;
+  }
+
+  if (!team.logo_path) {
+    element.textContent = getTeamDisplayName(team);
+    return;
+  }
+
+  const requestToken = `${team.id}:${team.logo_path}:${Date.now()}`;
+  element.dataset.teamLogoRequestToken = requestToken;
+  const logoUrl = await getFileUrl(team.logo_path, TEAM_LOGOS_BUCKET);
+  if (element.dataset.teamLogoRequestToken !== requestToken) {
+    return;
+  }
+
+  if (!logoUrl) {
+    element.textContent = getTeamDisplayName(team);
+    return;
+  }
+
+  element.innerHTML = `
+    <span style="display: inline-flex; align-items: center; gap: 0.6rem; min-width: 0;">
+      <img src="${logoUrl}" alt="${getTeamDisplayName(team)} logo" style="height: ${imageHeight}; max-width: ${imageMaxWidth}; width: auto; object-fit: contain; display: block; border-radius: ${imageBorderRadius}; flex-shrink: 0;">
+      <span class="${textClassName}" style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${getTeamDisplayName(team)}</span>
+    </span>
+  `;
+}
+
 function showApp() {
   console.log('✅ showApp() called');
   console.log('  - state.session:', !!state.session);
@@ -3480,7 +3530,12 @@ function showApp() {
 
   // LOGIC CHANGE: Prioritize showing data if we have it, even if "loading" flag is true
   if (teamNameDisplay && currentTeam) {
-    teamNameDisplay.textContent = currentTeam.name;
+    renderTeamIdentity(teamNameDisplay, currentTeam, {
+      imageHeight: "48px",
+      imageMaxWidth: "280px",
+      imageBorderRadius: "10px",
+      textClassName: "team-name-with-logo-text"
+    });
     if (teamNameHeader) {
       teamNameHeader.classList.remove("hidden");
     }
@@ -5049,6 +5104,7 @@ async function fetchUserTeams() {
         team:team_id (
           id,
           name,
+          logo_path,
           owner_id,
           assignment_mode,
           daily_reminder_time,
@@ -5067,6 +5123,7 @@ async function fetchUserTeams() {
         team:team_id (
           id,
           name,
+          logo_path,
           owner_id,
           assignment_mode,
           daily_reminder_time,
@@ -5124,7 +5181,8 @@ async function fetchUserTeams() {
       error = result.error;
       if (!error) break;
       if (!error.message?.includes("ai_chat_managers_only") &&
-        !error.message?.includes("itunes_indexing_enabled")) {
+        !error.message?.includes("itunes_indexing_enabled") &&
+        !error.message?.includes("logo_path")) {
         break;
       }
     }
@@ -5139,6 +5197,7 @@ async function fetchUserTeams() {
         state.userTeams = [{
           id: state.profile.team_id,
           name: state.profile.team?.name || 'Unknown Team',
+          logo_path: state.profile.team?.logo_path || null,
           role: state.profile.is_owner ? 'owner' : (state.profile.can_manage ? 'manager' : 'member'),
           is_owner: state.profile.is_owner || false,
           can_manage: state.profile.can_manage || false,
@@ -5157,6 +5216,7 @@ async function fetchUserTeams() {
     state.userTeams = (teamMembers || []).map(tm => ({
       id: tm.team_id,
       name: tm.team?.name || 'Unknown Team',
+      logo_path: tm.team?.logo_path || null,
       role: tm.role,
       is_owner: tm.is_owner,
       can_manage: tm.can_manage,
@@ -5241,6 +5301,7 @@ async function fetchUserTeams() {
       state.userTeams = [{
         id: state.profile.team_id,
         name: state.profile.team?.name || 'Unknown Team',
+        logo_path: state.profile.team?.logo_path || null,
         role: state.profile.is_owner ? 'owner' : (state.profile.can_manage ? 'manager' : 'member'),
         is_owner: state.profile.is_owner || false,
         can_manage: state.profile.can_manage || false,
@@ -5443,9 +5504,14 @@ function updateTeamSwitcher() {
   if (accountMenuTeamName) {
     const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
     if (currentTeam) {
-      accountMenuTeamName.textContent = currentTeam.name;
+      renderTeamIdentity(accountMenuTeamName, currentTeam, {
+        imageHeight: "28px",
+        imageMaxWidth: "180px",
+        imageBorderRadius: "6px",
+        textClassName: "account-menu-team-name-with-logo-text"
+      });
     } else if (state.profile?.team?.name) {
-      accountMenuTeamName.textContent = state.profile.team.name;
+      renderTeamIdentityFallback(accountMenuTeamName, { name: state.profile.team.name }, "No Team");
     } else {
       accountMenuTeamName.textContent = "No Team";
     }
@@ -8140,7 +8206,12 @@ function renderPeople(animate = true) {
   const teamNameHeader = el("team-name-header");
   const currentTeam = state.userTeams.find(t => t.id === state.currentTeamId);
   if (teamNameDisplay && currentTeam) {
-    teamNameDisplay.textContent = currentTeam.name;
+    renderTeamIdentity(teamNameDisplay, currentTeam, {
+      imageHeight: "48px",
+      imageMaxWidth: "280px",
+      imageBorderRadius: "10px",
+      textClassName: "team-name-with-logo-text"
+    });
     if (teamNameHeader) {
       teamNameHeader.classList.remove("hidden");
     }
@@ -18642,6 +18713,7 @@ async function openSongEditModal(songId = null) {
 
     const populateForm = (songData) => {
       el("song-edit-title").value = songData.title || "";
+      el("song-edit-artist").value = songData.artist || "";
       el("song-edit-description").value = songData.description || "";
       renderSongThemes(songData.themes || [], { excludeSongId: songId });
 
@@ -19541,7 +19613,7 @@ async function getAlbumArt(song, songTitle, options = {}) {
   // Fall back to iTunes API (for songs not yet indexed)
   if (songTitle) {
     console.log('🎵 No database art found, fetching from iTunes API...');
-    const itunesArt = await fetchAlbumArt(songTitle);
+    const itunesArt = await fetchAlbumArt(songTitle, song?.artist || null);
     if (itunesArt) {
       console.log('🎵 iTunes API returned art:', itunesArt.small ? 'has small' : 'no small', itunesArt.large ? 'has large' : 'no large');
       return { ...itunesArt, isOverride: false };
@@ -20030,6 +20102,7 @@ async function getItunesMetadataForSong(songOrTitle) {
 
   // Extract song title
   const songTitle = typeof songOrTitle === 'object' ? songOrTitle?.title : songOrTitle;
+  const songArtist = typeof songOrTitle === 'object' ? songOrTitle?.artist : null;
   if (!songTitle || !songTitle.trim()) {
     return null;
   }
@@ -20043,7 +20116,8 @@ async function getItunesMetadataForSong(songOrTitle) {
 
   // Fall back to fetching from iTunes API (for songs not yet indexed)
   // This should rarely happen now that we have server-side indexing
-  console.log('🎵 No database metadata, fetching from iTunes API (song not yet indexed):', songTitle);
+  const searchQuery = [songTitle, songArtist].filter(Boolean).join(' ').trim();
+  console.log('🎵 No database metadata, fetching from iTunes API (song not yet indexed):', searchQuery);
   const isMobile = isMobileDevice();
 
   try {
@@ -20051,9 +20125,9 @@ async function getItunesMetadataForSong(songOrTitle) {
       // Use debounced edge function for mobile
       const { data, error } = await invokeEdgeFunctionDebounced(
         'fetch-album-art',
-        songTitle.toLowerCase().trim(),
+        searchQuery.toLowerCase().trim(),
         {
-          searchQuery: songTitle.trim(),
+          searchQuery,
           metadataSearch: true,
           exactMatch: true
         },
@@ -20070,8 +20144,8 @@ async function getItunesMetadataForSong(songOrTitle) {
       }
     } else {
       // Direct API call for desktop
-      const searchQuery = encodeURIComponent(songTitle.trim());
-      const apiUrl = `https://itunes.apple.com/search?term=${searchQuery}&media=music&limit=1`;
+      const encodedQuery = encodeURIComponent(searchQuery);
+      const apiUrl = `https://itunes.apple.com/search?term=${encodedQuery}&media=music&limit=1`;
 
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -20226,16 +20300,18 @@ async function searchItunesMetadata(params) {
  * @param {string} songTitle - The title of the song
  * @returns {Promise<{small: string, large: string}|null>} - URLs of the album art images, or null if not found
  */
-async function searchItunesViaEdgeFunction(songTitle) {
+async function searchItunesViaEdgeFunction(songTitle, songArtist = null) {
   try {
-    console.log('🌐 Searching iTunes via edge function:', songTitle);
+    const searchQuery = [songTitle, songArtist].filter(Boolean).join(' ').trim();
+    console.log('🌐 Searching iTunes via edge function:', searchQuery);
 
-    const functionCacheKey = songTitle.toLowerCase().trim();
+    const functionCacheKey = searchQuery.toLowerCase().trim();
+    const metadataCacheKey = functionCacheKey;
     const { data, error } = await invokeEdgeFunctionDebounced(
       'fetch-album-art',
       functionCacheKey,
       {
-        searchQuery: songTitle.trim(),
+        searchQuery,
         metadataSearch: true,
         exactMatch: true // Get full result so we can cache it
       },
@@ -20279,18 +20355,19 @@ async function searchItunesViaEdgeFunction(songTitle) {
  * @param {string} songTitle - The title of the song
  * @returns {Promise<{small: string, large: string}|null>} - URLs of the album art images (small and large), or null if not found
  */
-async function fetchAlbumArt(songTitle) {
+async function fetchAlbumArt(songTitle, songArtist = null) {
   if (!songTitle || !songTitle.trim()) {
     console.warn('🎵 fetchAlbumArt: empty songTitle');
     return null;
   }
+  const searchQuery = [songTitle, songArtist].filter(Boolean).join(' ').trim();
 
   const isMobile = isMobileDevice();
 
   // On mobile, use edge function to bypass CORS
   if (isMobile) {
     console.log('📱 Mobile: using edge function for iTunes search');
-    const result = await searchItunesViaEdgeFunction(songTitle);
+    const result = await searchItunesViaEdgeFunction(songTitle, songArtist);
     if (result) return result;
     // If edge function fails, try direct as fallback
     console.log('📱 Edge function failed, trying direct iTunes API as fallback');
@@ -20299,8 +20376,8 @@ async function fetchAlbumArt(songTitle) {
   // On desktop or as fallback on mobile, try direct fetch
   try {
     // iTunes Search API - completely free, no API key needed
-    const searchQuery = encodeURIComponent(songTitle.trim());
-    const apiUrl = `https://itunes.apple.com/search?term=${searchQuery}&media=music&limit=1`;
+    const encodedQuery = encodeURIComponent(searchQuery);
+    const apiUrl = `https://itunes.apple.com/search?term=${encodedQuery}&media=music&limit=1`;
 
     console.log('🎵 Calling iTunes API directly:', apiUrl);
 
@@ -20331,7 +20408,7 @@ async function fetchAlbumArt(songTitle) {
     if (data?.results?.[0]?.artworkUrl100) {
       // Cache the full iTunes result for this song title so we can use it for metadata later
       // This ensures metadata always matches the album art
-      const cacheKey = songTitle.toLowerCase().trim();
+      const cacheKey = searchQuery.toLowerCase().trim();
       if (data.results[0]) {
         itunesMetadataCache.set(cacheKey, data.results[0]);
         saveItunesCacheToStorage();
@@ -21746,7 +21823,7 @@ function getSongBpmValue(song) {
 
 function getTempoCategory(bpm) {
   if (bpm === null || bpm === undefined) return null;
-  if (bpm < 90) return "slow";
+  if (bpm < 70) return "slow";
   if (bpm < 120) return "mid";
   return "fast";
 }
@@ -21899,7 +21976,7 @@ function resolveSongRelationNodeCollisions(nodes, minCenterDist, iterations) {
   }
 }
 
-function runSongRelationForceLayout(nodes, edges, width, height) {
+function runSongRelationForceLayout(nodes, edges, width, height, mapMode = "tempo") {
   if (!nodes.length) return { graphWidth: 400, graphHeight: 300 };
   const cx = width / 2;
   const cy = height / 2;
@@ -21917,6 +21994,10 @@ function runSongRelationForceLayout(nodes, edges, width, height) {
   const spring = 0.018;
   const damping = 0.82;
   const centerPull = 0.012;
+  const tempoLanePull = mapMode === "tempo" ? 0.08 : 0;
+  const laneLeft = width * 0.2;
+  const laneCenter = width * 0.5;
+  const laneRight = width * 0.8;
 
   for (let tick = 0; tick < SONG_RELATIONS_FORCE_ITERATIONS; tick++) {
     const forces = nodes.map(() => ({ x: 0, y: 0 }));
@@ -21960,6 +22041,11 @@ function runSongRelationForceLayout(nodes, edges, width, height) {
     nodes.forEach((n, i) => {
       forces[i].x += (cx - n.x) * centerPull * nodes.length * 0.02;
       forces[i].y += (cy - n.y) * centerPull * nodes.length * 0.02;
+      if (tempoLanePull > 0) {
+        const tempo = getTempoCategory(getSongBpmValue(n.song));
+        const targetX = tempo === "slow" ? laneLeft : tempo === "mid" ? laneCenter : tempo === "fast" ? laneRight : laneCenter;
+        forces[i].x += (targetX - n.x) * tempoLanePull;
+      }
       n.vx = (n.vx + forces[i].x) * damping;
       n.vy = (n.vy + forces[i].y) * damping;
       n.x += n.vx;
@@ -22066,6 +22152,10 @@ function renderSongRelationsSvg(host, graph, layoutSize) {
   nodes.forEach((n) => {
     const g = document.createElementNS(ns, "g");
     g.setAttribute("class", "song-relations-node");
+    if (mapMode === "tempo") {
+      const tempoCategory = getTempoCategory(getSongBpmValue(n.song));
+      g.classList.add(`song-relations-node--tempo-${tempoCategory || "unknown"}`);
+    }
     g.setAttribute("data-song-id", n.id);
     g.dataset.px = String(n.x);
     g.dataset.py = String(n.y);
@@ -22360,7 +22450,7 @@ function applySongRelationsMapMode(mode) {
   const vw = Math.max(520, Math.floor(window.innerWidth * 0.88));
   const vh = Math.max(420, Math.floor(window.innerHeight * 0.7));
   const graph = buildSongRelationGraph(songs, mode);
-  const layoutSize = runSongRelationForceLayout(graph.nodes, graph.edges, vw, vh);
+  const layoutSize = runSongRelationForceLayout(graph.nodes, graph.edges, vw, vh, mode);
 
   if (isolatedEl) {
     isolatedEl.textContent = getSongRelationsIsolatedHintText(mode);
@@ -22436,7 +22526,7 @@ function openSongRelationsModal() {
   if (legendTempo) legendTempo.classList.toggle("hidden", songRelationsMapMode !== "tempo");
 
   const graph = buildSongRelationGraph(songs, songRelationsMapMode);
-  const layoutSize = runSongRelationForceLayout(graph.nodes, graph.edges, vw, vh);
+  const layoutSize = runSongRelationForceLayout(graph.nodes, graph.edges, vw, vh, songRelationsMapMode);
 
   if (isolatedEl) {
     isolatedEl.textContent = getSongRelationsIsolatedHintText(songRelationsMapMode);
@@ -22798,6 +22888,7 @@ function collectSongKeys() {
 
 const STORAGE_BUCKET = 'song-resources';
 const PROFILE_PICTURES_BUCKET = 'profile-pictures';
+const TEAM_LOGOS_BUCKET = 'team-logos';
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB in bytes
 const PROFILE_PICTURE_MAX_SIZE = 5 * 1024 * 1024; // 5MB in bytes
 
@@ -22844,6 +22935,15 @@ function generateProfilePicturePath(userId, fileName) {
   const uniqueFileName = `${uuid}-${timestamp}.${extension}`;
   // User-specific path structure
   return `profiles/${userId}/${uniqueFileName}`;
+}
+
+// Generate file path for team logos (team-specific)
+function generateTeamLogoPath(teamId, fileName) {
+  const uuid = crypto.randomUUID();
+  const timestamp = Date.now();
+  const extension = fileName.split('.').pop();
+  const uniqueFileName = `${uuid}-${timestamp}.${extension}`;
+  return `teams/${teamId}/${uniqueFileName}`;
 }
 
 function loadImageFromFile(file) {
@@ -22985,6 +23085,49 @@ async function uploadProfilePicture(file, userId) {
   }
 }
 
+// Upload team logo to Supabase Storage
+async function uploadTeamLogo(file, teamId) {
+  try {
+    if (!file.type.startsWith('image/')) {
+      return { success: false, error: 'File must be an image' };
+    }
+
+    let fileToUpload = file;
+    if (file.size > PROFILE_PICTURE_MAX_SIZE) {
+      const compressionResult = await compressProfilePictureToMaxSize(file, PROFILE_PICTURE_MAX_SIZE);
+      if (!compressionResult.success) {
+        return { success: false, error: compressionResult.error };
+      }
+      fileToUpload = compressionResult.file;
+    }
+
+    if (fileToUpload.size > PROFILE_PICTURE_MAX_SIZE) {
+      return { success: false, error: 'Unable to reduce team logo below 5MB' };
+    }
+
+    const filePath = generateTeamLogoPath(teamId, fileToUpload.name);
+    const { data, error } = await supabase.storage
+      .from(TEAM_LOGOS_BUCKET)
+      .upload(filePath, fileToUpload, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Team logo upload error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      filePath: data.path
+    };
+  } catch (error) {
+    console.error('Team logo upload exception:', error);
+    return { success: false, error: error.message || 'Failed to upload team logo' };
+  }
+}
+
 // Upload file to Supabase Storage
 async function uploadFileToSupabase(file, songId, setSongId, teamId, isAlbumArt = false) {
   try {
@@ -23023,12 +23166,12 @@ async function uploadFileToSupabase(file, songId, setSongId, teamId, isAlbumArt 
 }
 
 // Delete file from Supabase Storage
-async function deleteFileFromSupabase(filePath) {
+async function deleteFileFromSupabase(filePath, bucket = STORAGE_BUCKET) {
   if (!filePath) return { success: true };
 
   try {
     const { error } = await supabase.storage
-      .from(STORAGE_BUCKET)
+      .from(bucket)
       .remove([filePath]);
 
     if (error) {
@@ -24559,6 +24702,7 @@ async function handleSongEditSubmit(event) {
   const form = el("song-edit-form");
   const songId = form.dataset.songId;
   const title = el("song-edit-title").value.trim();
+  const artist = el("song-edit-artist").value.trim() || null;
   const bpm = el("song-edit-bpm").value ? parseInt(el("song-edit-bpm").value) : null;
   const timeSignature = el("song-edit-time-signature").value.trim() || null;
   const duration = parseDuration(el("song-edit-duration").value);
@@ -24579,6 +24723,7 @@ async function handleSongEditSubmit(event) {
 
   const songData = {
     title,
+    artist,
     bpm,
     time_signature: timeSignature,
     duration_seconds: duration,
@@ -30382,6 +30527,62 @@ let teamTimezoneSelectedValue = null;
 let teamAlertTimeDropdown = null;
 let teamTimezoneDropdown = null;
 
+function displayTeamLogoFallback(previewEl, teamName) {
+  if (!previewEl) return;
+  const initials = (teamName || "T")
+    .split(" ")
+    .map(part => part[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase() || "T";
+  previewEl.textContent = initials;
+}
+
+async function loadTeamLogoPreview(teamData) {
+  const previewEl = el("team-logo-preview");
+  const uploadInput = el("team-logo-upload");
+  const removeBtn = el("btn-remove-team-logo");
+  if (!previewEl) return;
+
+  if (teamData?.logo_path) {
+    const logoUrl = await getFileUrl(teamData.logo_path, TEAM_LOGOS_BUCKET);
+    if (logoUrl) {
+      previewEl.innerHTML = `<img src="${logoUrl}" alt="${getTeamDisplayName(teamData)} logo" style="width: 100%; height: 100%; object-fit: contain; display: block;">`;
+      if (removeBtn) removeBtn.style.display = "inline-flex";
+    } else {
+      displayTeamLogoFallback(previewEl, teamData?.name);
+      if (removeBtn) removeBtn.style.display = "none";
+    }
+  } else {
+    displayTeamLogoFallback(previewEl, teamData?.name);
+    if (removeBtn) removeBtn.style.display = "none";
+  }
+
+  if (uploadInput) {
+    uploadInput.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        previewEl.innerHTML = `<img src="${event.target?.result}" alt="Team logo preview" style="width: 100%; height: 100%; object-fit: contain; display: block;">`;
+        if (removeBtn) removeBtn.style.display = "inline-flex";
+      };
+      reader.readAsDataURL(file);
+      previewEl.dataset.removeLogo = "false";
+    };
+  }
+
+  if (removeBtn) {
+    removeBtn.onclick = () => {
+      previewEl.innerHTML = "";
+      displayTeamLogoFallback(previewEl, teamData?.name);
+      previewEl.dataset.removeLogo = "true";
+      if (uploadInput) uploadInput.value = "";
+      removeBtn.style.display = "none";
+    };
+  }
+}
+
 async function openTeamSettingsModal() {
   if (!isOwner()) return;
 
@@ -30392,6 +30593,7 @@ async function openTeamSettingsModal() {
   const timezoneContainer = el("team-timezone-container");
   const requirePublishCheckbox = el("team-require-publish");
   const itunesIndexingEnabledCheckbox = el("team-itunes-indexing-enabled");
+  const teamLogoPreview = el("team-logo-preview");
 
   if (!modal || !nameInput || !assignmentModeContainer) return;
 
@@ -30404,7 +30606,8 @@ async function openTeamSettingsModal() {
     require_publish: true,
     itunes_indexing_enabled: true,
     ai_enabled: false,
-    ai_chat_managers_only: false
+    ai_chat_managers_only: false,
+    logo_path: null
   };
 
   const render = (data) => {
@@ -30412,6 +30615,10 @@ async function openTeamSettingsModal() {
     if (document.activeElement !== nameInput) {
       nameInput.value = data.name || "";
     }
+    if (teamLogoPreview) {
+      delete teamLogoPreview.dataset.removeLogo;
+    }
+    loadTeamLogoPreview(data);
 
     // Assignment Mode
     const currentMode = data.assignment_mode || state.teamAssignmentMode || 'per_set';
@@ -30525,9 +30732,9 @@ async function openTeamSettingsModal() {
   // Fetch fresh data in background
   try {
     const selectVariants = [
-      "id, name, assignment_mode, daily_reminder_time, timezone, require_publish, itunes_indexing_enabled, ai_enabled, ai_chat_managers_only",
-      "id, name, assignment_mode, daily_reminder_time, timezone, require_publish, itunes_indexing_enabled, ai_enabled",
-      "id, name, assignment_mode, daily_reminder_time, timezone, require_publish, ai_enabled"
+      "id, name, logo_path, assignment_mode, daily_reminder_time, timezone, require_publish, itunes_indexing_enabled, ai_enabled, ai_chat_managers_only",
+      "id, name, logo_path, assignment_mode, daily_reminder_time, timezone, require_publish, itunes_indexing_enabled, ai_enabled",
+      "id, name, logo_path, assignment_mode, daily_reminder_time, timezone, require_publish, ai_enabled"
     ];
 
     let freshData = null;
@@ -30544,7 +30751,8 @@ async function openTeamSettingsModal() {
       if (!error) break;
 
       if (!error.message?.includes("ai_chat_managers_only") &&
-        !error.message?.includes("itunes_indexing_enabled")) {
+        !error.message?.includes("itunes_indexing_enabled") &&
+        !error.message?.includes("logo_path")) {
         break;
       }
     }
@@ -30566,6 +30774,7 @@ async function openTeamSettingsModal() {
         (freshData.require_publish !== teamData.require_publish) ||
         (freshData.itunes_indexing_enabled !== teamData.itunes_indexing_enabled) ||
         (freshData.ai_enabled !== teamData.ai_enabled) ||
+        (freshData.logo_path !== teamData.logo_path) ||
         (freshData.ai_chat_managers_only !== undefined &&
           freshData.ai_chat_managers_only !== teamData.ai_chat_managers_only);
 
@@ -30588,7 +30797,14 @@ async function openTeamSettingsModal() {
 function closeTeamSettingsModal() {
   const modal = el("team-settings-modal");
   if (modal) {
-    closeModalWithAnimation(modal);
+    closeModalWithAnimation(modal, () => {
+      const uploadInput = el("team-logo-upload");
+      const previewEl = el("team-logo-preview");
+      if (uploadInput) uploadInput.value = "";
+      if (previewEl) {
+        delete previewEl.dataset.removeLogo;
+      }
+    });
   }
 }
 
@@ -30603,6 +30819,8 @@ async function handleTeamSettingsSubmit(e) {
   const itunesIndexingEnabledCheckbox = el("team-itunes-indexing-enabled");
   const aiEnabledCheckbox = el("team-ai-enabled");
   const aiChatManagersOnlyCheckbox = el("team-ai-chat-managers-only");
+  const teamLogoUploadInput = el("team-logo-upload");
+  const teamLogoPreview = el("team-logo-preview");
 
   if (!nameInput || !teamAssignmentModeDropdown) return;
 
@@ -30626,6 +30844,22 @@ async function handleTeamSettingsSubmit(e) {
 
   const updates = {};
   let hasChanges = false;
+  let nextLogoPath = currentTeam?.logo_path || null;
+
+  if (teamLogoUploadInput?.files?.[0]) {
+    if (nextLogoPath) {
+      await deleteFileFromSupabase(nextLogoPath, TEAM_LOGOS_BUCKET);
+    }
+    const uploadResult = await uploadTeamLogo(teamLogoUploadInput.files[0], state.currentTeamId);
+    if (!uploadResult.success) {
+      toastError(`Failed to upload team logo: ${uploadResult.error}`);
+      return;
+    }
+    nextLogoPath = uploadResult.filePath;
+  } else if (teamLogoPreview?.dataset.removeLogo === "true" && nextLogoPath) {
+    await deleteFileFromSupabase(nextLogoPath, TEAM_LOGOS_BUCKET);
+    nextLogoPath = null;
+  }
 
   if (newName !== currentTeamName) {
     updates.name = newName;
@@ -30669,6 +30903,11 @@ async function handleTeamSettingsSubmit(e) {
     hasChanges = true;
   }
 
+  if (nextLogoPath !== (currentTeam?.logo_path || null)) {
+    updates.logo_path = nextLogoPath;
+    hasChanges = true;
+  }
+
   if (!hasChanges) {
     // No changes, just close modal
     closeTeamSettingsModal();
@@ -30699,6 +30938,15 @@ async function handleTeamSettingsSubmit(e) {
       .eq("id", state.currentTeamId);
     error = retry.error;
   }
+  if (error && error.message?.includes("logo_path") && updates.logo_path !== undefined) {
+    console.warn('teams.logo_path column may not exist yet; retrying save without it');
+    const { logo_path, ...retryUpdates } = updates;
+    const retry = await supabase
+      .from("teams")
+      .update(retryUpdates)
+      .eq("id", state.currentTeamId);
+    error = retry.error;
+  }
 
   if (error) {
     console.error("Error updating team settings:", error);
@@ -30716,6 +30964,7 @@ async function handleTeamSettingsSubmit(e) {
     if (updates.itunes_indexing_enabled !== undefined) currentTeam.itunes_indexing_enabled = updates.itunes_indexing_enabled;
     if (updates.ai_enabled !== undefined) currentTeam.ai_enabled = updates.ai_enabled;
     if (updates.ai_chat_managers_only !== undefined) currentTeam.ai_chat_managers_only = updates.ai_chat_managers_only;
+    if (updates.logo_path !== undefined) currentTeam.logo_path = updates.logo_path;
 
     // Force update the current selected team ref in the list to trigger reactivity if any
     const teamIndex = state.userTeams.findIndex(t => t.id === state.currentTeamId);
@@ -30727,6 +30976,9 @@ async function handleTeamSettingsSubmit(e) {
   if (state.profile?.team && updates.name) {
     state.profile.team.name = updates.name;
   }
+  if (state.profile?.team && updates.logo_path !== undefined) {
+    state.profile.team.logo_path = updates.logo_path;
+  }
 
   if (updates.assignment_mode) {
     state.teamAssignmentMode = updates.assignment_mode;
@@ -30734,8 +30986,13 @@ async function handleTeamSettingsSubmit(e) {
 
   // Update team name displays
   const teamNameDisplay = el("team-name-display");
-  if (teamNameDisplay && updates.name) {
-    teamNameDisplay.textContent = updates.name;
+  if (teamNameDisplay && (updates.name || updates.logo_path !== undefined)) {
+    renderTeamIdentity(teamNameDisplay, currentTeam, {
+      imageHeight: "48px",
+      imageMaxWidth: "280px",
+      imageBorderRadius: "10px",
+      textClassName: "team-name-with-logo-text"
+    });
   }
 
   // Refresh team switcher to show updated name
