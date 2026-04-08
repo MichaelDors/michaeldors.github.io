@@ -3391,6 +3391,36 @@ function renderTeamIdentityFallback(element, team, fallbackText = "No Team") {
   element.textContent = team?.name || fallbackText;
 }
 
+const preloadedTeamLogoPromises = new Map();
+
+async function resolvePreloadedTeamLogo(team) {
+  if (!team?.logo_path) return null;
+  const cacheKey = `${team.id}:${team.logo_path}`;
+  if (preloadedTeamLogoPromises.has(cacheKey)) {
+    return preloadedTeamLogoPromises.get(cacheKey);
+  }
+
+  const preloadPromise = (async () => {
+    const logoUrl = await getFileUrl(team.logo_path, TEAM_LOGOS_BUCKET);
+    if (!logoUrl) return null;
+
+    await new Promise((resolve) => {
+      const image = new Image();
+      image.onload = resolve;
+      image.onerror = resolve;
+      image.src = logoUrl;
+    });
+
+    return logoUrl;
+  })();
+
+  preloadedTeamLogoPromises.set(cacheKey, preloadPromise);
+  if (preloadedTeamLogoPromises.size > 80) {
+    preloadedTeamLogoPromises.clear();
+  }
+  return preloadPromise;
+}
+
 async function renderTeamIdentity(element, team, options = {}) {
   if (!element) return;
 
@@ -3399,7 +3429,8 @@ async function renderTeamIdentity(element, team, options = {}) {
     imageHeight = "44px",
     imageMaxWidth = "240px",
     imageBorderRadius = "8px",
-    textClassName = ""
+    textClassName = "",
+    preloadLogo = false
   } = options;
 
   if (!team) {
@@ -3414,7 +3445,9 @@ async function renderTeamIdentity(element, team, options = {}) {
 
   const requestToken = `${team.id}:${team.logo_path}:${Date.now()}`;
   element.dataset.teamLogoRequestToken = requestToken;
-  const logoUrl = await getFileUrl(team.logo_path, TEAM_LOGOS_BUCKET);
+  const logoUrl = preloadLogo
+    ? await resolvePreloadedTeamLogo(team)
+    : await getFileUrl(team.logo_path, TEAM_LOGOS_BUCKET);
   if (element.dataset.teamLogoRequestToken !== requestToken) {
     return;
   }
@@ -3430,6 +3463,34 @@ async function renderTeamIdentity(element, team, options = {}) {
       <span class="${textClassName}" style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${getTeamDisplayName(team)}</span>
     </span>
   `;
+}
+
+async function updateContextualTeamBrand() {
+  const contextualBrand = el("contextual-team-brand");
+  const contextualTeamDisplay = el("contextual-team-brand-team");
+  if (!contextualBrand || !contextualTeamDisplay) return;
+
+  const detailView = el("set-detail");
+  const shouldShow = Boolean(detailView && !detailView.classList.contains("hidden"));
+  const currentTeam = state.userTeams.find((t) => t.id === state.currentTeamId);
+  if (currentTeam?.logo_path) {
+    void resolvePreloadedTeamLogo(currentTeam);
+  }
+
+  if (!shouldShow || !currentTeam) {
+    contextualBrand.classList.remove("is-visible");
+    contextualBrand.setAttribute("aria-hidden", "true");
+    return;
+  }
+
+  await renderTeamIdentity(contextualTeamDisplay, currentTeam, {
+    imageHeight: "30px",
+    imageMaxWidth: "140px",
+    imageBorderRadius: "7px",
+    preloadLogo: true
+  });
+  contextualBrand.classList.add("is-visible");
+  contextualBrand.setAttribute("aria-hidden", "false");
 }
 
 function showApp() {
@@ -3545,6 +3606,7 @@ function showApp() {
   } else if (teamNameHeader) {
     teamNameHeader.classList.add("hidden");
   }
+  updateContextualTeamBrand();
 
   // Show/hide manager buttons based on actual manager status (not member view)
 
@@ -8218,6 +8280,7 @@ function renderPeople(animate = true) {
   } else if (teamNameHeader) {
     teamNameHeader.classList.add("hidden");
   }
+  updateContextualTeamBrand();
 
   // Update team member count next to the Team Members heading
   const teamMemberCountEl = el("team-member-count");
@@ -9007,6 +9070,7 @@ function showSetDetail(set, options = {}) {
 
   dashboard.classList.add("hidden");
   detailView.classList.remove("hidden");
+  updateContextualTeamBrand();
 
   // Track set detail view
   trackPostHogEvent('set_viewed', {
@@ -10713,6 +10777,7 @@ function hideSetDetail() {
 
   dashboard.classList.remove("hidden");
   detailView.classList.add("hidden");
+  updateContextualTeamBrand();
   state.selectedSet = null;
   state._pendingSetDetailCoverEntry = null;
   state._setDetailCoverEntry = null;
@@ -30994,6 +31059,7 @@ async function handleTeamSettingsSubmit(e) {
       textClassName: "team-name-with-logo-text"
     });
   }
+  updateContextualTeamBrand();
 
   // Refresh team switcher to show updated name
   updateTeamSwitcher();

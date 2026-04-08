@@ -171,6 +171,71 @@ body {
   z-index: 1000;
 }
 
+.app-brand-shell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.app-brand-primary {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.contextual-team-brand {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.24rem;
+  min-width: 0;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-10px) scale(0.985);
+  filter: blur(6px);
+  pointer-events: none;
+  overflow: hidden;
+  transition:
+    max-width 460ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 340ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 460ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.contextual-team-brand.is-visible {
+  max-width: 480px;
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  filter: blur(0);
+}
+
+.contextual-team-brand-slash {
+  color: var(--text-muted);
+  font-size: 1.12rem;
+  font-weight: 450;
+  margin-right: 0.55rem;
+}
+
+#contextual-team-brand-team {
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+#contextual-team-brand-team img {
+  opacity: 0.9;
+}
+
+#contextual-team-brand-team span {
+  font-size: 1.02rem;
+  font-weight: 480;
+  color: var(--text-secondary);
+}
+
 .member-view-banner {
   background: var(--accent-color) !important;
   color: var(--bg-primary);
