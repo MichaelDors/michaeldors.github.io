@@ -6,6 +6,8 @@ const SUPABASE_IMPORT_PRIMARY_URL = "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_IMPORT_FALLBACK_URL = "https://esm.sh/@supabase/supabase-js@2.48.1";
 const SUPABASE_IMPORT_TIMEOUT_MS = 1000;
 const PDF_WORKER_SRC = window.__pdfjsWorkerSrc || "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const fileSignedUrlCache = new Map();
+const pdfTextCache = new Map();
 
 async function importWithTimeout(url, timeoutMs) {
   return Promise.race([
@@ -17144,14 +17146,21 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
           }
           if (!pdfUrl) continue;
 
-          const text = await extractTextFromPdf(pdfUrl);
-          if (text && text.toLowerCase().includes(searchTextForResources.toLowerCase())) {
+          const pdfCacheKey = link.file_path || link.url || pdfUrl;
+          const text = await extractTextFromPdf(pdfUrl, pdfCacheKey);
+          const normalizedPdfText = normalizePdfSearchText(text);
+          const normalizedSearch = normalizePdfSearchText(searchTextForResources);
+          if (pdfTextMatchesQuery(normalizedPdfText, normalizedSearch)) {
             matchFound = true;
-            // Find a snippet for context
-            const index = text.toLowerCase().indexOf(searchTextForResources.toLowerCase());
-            const start = Math.max(0, index - 20);
-            const end = Math.min(text.length, index + searchTextForResources.length + 20);
-            resourceMatchContext = "..." + highlightMatch(text.substring(start, end), searchTextForResources) + "...";
+            // Try exact snippet first; otherwise still show that PDF content matched.
+            const exactIndex = text.toLowerCase().indexOf(searchTextForResources.toLowerCase());
+            if (exactIndex >= 0) {
+              const start = Math.max(0, exactIndex - 20);
+              const end = Math.min(text.length, exactIndex + searchTextForResources.length + 20);
+              resourceMatchContext = "..." + highlightMatch(text.substring(start, end), searchTextForResources) + "...";
+            } else {
+              resourceMatchContext = `PDF content match in "${escapeHtml(link.title || link.file_name || "PDF")}"`;
+            }
           }
         } catch (err) {
           console.warn(`⚠️ Failed to parse PDF for song ${song.title}:`, err);
@@ -17602,43 +17611,100 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
     }
   }
 
-  // Hide loading indicator when done
-  if (activeResourceSearchTerm === currentSearchTerm) {
+  // Hide loading indicator when done and only show "no matches" after
+  // the full async metadata/resource search finishes for this request.
+  if (activeResourceSearchTerm === currentSearchTerm && currentSearchId === thisSearchId) {
     if (loadingIndicator) loadingIndicator.classList.add("hidden");
+
+    const hasSongCards = list.querySelector(".set-song-card") !== null;
+    const hasNoSongsMessage = Array.from(list.children).some(
+      (child) => child.tagName === "P" && child.textContent.includes("No songs match")
+    );
+
+    if (!hasSongCards && !hasNoSongsMessage) {
+      const noSongs = document.createElement("p");
+      noSongs.className = "muted";
+      noSongs.textContent = "No songs match your search.";
+      list.appendChild(noSongs);
+    }
   }
 }
 
 // Helper to extract text from PDF URL
-async function extractTextFromPdf(url) {
-  try {
-    ensurePdfWorker();
-    let loadingTask;
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Failed to fetch PDF (${response.status})`);
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      loadingTask = pdfjsLib.getDocument({ data: bytes });
-    } catch (fetchErr) {
-      console.warn("Falling back to direct PDF URL loading:", fetchErr);
-      loadingTask = pdfjsLib.getDocument(url);
-    }
-    const pdf = await loadingTask.promise;
-    let fullText = "";
-
-    // Limit pages to avoid performance issues (e.g., first 5 pages)
-    const maxPages = Math.min(pdf.numPages, 5);
-
-    for (let i = 1; i <= maxPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map(item => item.str).join(" ");
-      fullText += pageText + " ";
-    }
-    return fullText;
-  } catch (error) {
-    console.error("Error extracting text from PDF:", error);
-    return "";
+async function extractTextFromPdf(url, cacheKey = null) {
+  const effectiveKey = cacheKey || url;
+  if (effectiveKey && pdfTextCache.has(effectiveKey)) {
+    return pdfTextCache.get(effectiveKey);
   }
+
+  const extractionPromise = (async () => {
+    try {
+      ensurePdfWorker();
+      let loadingTask;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch PDF (${response.status})`);
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        loadingTask = pdfjsLib.getDocument({ data: bytes });
+      } catch (fetchErr) {
+        console.warn("Falling back to direct PDF URL loading:", fetchErr);
+        loadingTask = pdfjsLib.getDocument(url);
+      }
+      const pdf = await loadingTask.promise;
+      let fullText = "";
+
+      // Keep search responsive by prioritizing common lyric lengths.
+      const maxPages = Math.min(pdf.numPages, 8);
+
+      for (let i = 1; i <= maxPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(" ");
+        fullText += pageText + " ";
+      }
+      return fullText;
+    } catch (error) {
+      console.error("Error extracting text from PDF:", error);
+      return "";
+    }
+  })();
+
+  if (effectiveKey) {
+    pdfTextCache.set(effectiveKey, extractionPromise);
+  }
+
+  return extractionPromise;
+}
+
+function normalizePdfSearchText(value) {
+  return String(value || "")
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[^a-z0-9']+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function pdfTextMatchesQuery(normalizedPdfText, normalizedSearch) {
+  if (!normalizedPdfText || !normalizedSearch) return false;
+  if (normalizedPdfText.includes(normalizedSearch)) return true;
+
+  // Fallback for chord charts where PDF extraction can reorder words.
+  // For multi-word queries, require all terms to appear somewhere in the text.
+  const terms = normalizedSearch
+    .split(" ")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  if (terms.length < 2) return false;
+
+  const textTerms = new Set(
+    normalizedPdfText
+      .split(" ")
+      .map((t) => t.trim())
+      .filter(Boolean)
+  );
+  return terms.every((term) => textTerms.has(term));
 }
 
 // Advanced Search Parsing and Filtering
@@ -18459,11 +18525,14 @@ async function renderSongCatalog(animate = true) {
   let filteredSongs = filterSongs(songsSnapshot, searchTermRaw);
 
   if (filteredSongs.length === 0) {
-    list.innerHTML = '<p class="muted">No songs match your search.</p>';
-    // Only search resources if there is an actual text term remaining
+    // Only search resources if there is an actual text term remaining.
+    // Defer "no matches" until async metadata/resource search finishes.
     if (searchTerm) {
       searchSongResources(searchTerm, [], searchTermRaw);
+      return;
     }
+
+    list.innerHTML = '<p class="muted">No songs match your search.</p>';
     return;
   }
 
@@ -23335,6 +23404,12 @@ async function getFileUrl(filePath, bucket = STORAGE_BUCKET) {
     return null;
   }
 
+  const cacheKey = `${bucket}:${filePath}`;
+  const cached = fileSignedUrlCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.url;
+  }
+
   try {
     console.log('Generating signed URL for:', filePath, 'from bucket:', bucket);
     const { data, error } = await supabase.storage
@@ -23353,6 +23428,10 @@ async function getFileUrl(filePath, bucket = STORAGE_BUCKET) {
     }
 
     console.log('Successfully generated signed URL');
+    fileSignedUrlCache.set(cacheKey, {
+      url: data.signedUrl,
+      expiresAt: Date.now() + 55 * 60 * 1000
+    });
     return data.signedUrl;
   } catch (error) {
     console.error('Exception creating signed URL:', error);
