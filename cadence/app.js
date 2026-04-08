@@ -2166,9 +2166,23 @@ function bindEvents() {
   // Account switcher
   const accountMenuBtn = el("btn-account-menu");
   const accountMenu = el("account-menu");
+  const appHomeLogo = el("app-home-logo");
   accountMenuBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
     toggleDropdown(accountMenu);
+  });
+  appHomeLogo?.addEventListener("click", (e) => {
+    if (isLikelySyntheticClickEvent(e)) return;
+    const authGateEl = el("auth-gate");
+    if (authGateEl && !authGateEl.classList.contains("hidden")) return;
+    switchTab("sets");
+  });
+  appHomeLogo?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    const authGateEl = el("auth-gate");
+    if (authGateEl && !authGateEl.classList.contains("hidden")) return;
+    switchTab("sets");
   });
 
   // Close account menu when clicking outside
@@ -16981,7 +16995,7 @@ let resourceSearchTimeout = null;
 let activeResourceSearchAbortController = null; // For cancelling in-flight searches
 let currentSearchId = 0; // Incrementing ID to track which search is current
 
-async function searchSongResources(searchTerm, existingResults) {
+async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "") {
   const list = el("songs-catalog-list");
   if (!list) return;
 
@@ -17036,10 +17050,15 @@ async function searchSongResources(searchTerm, existingResults) {
     loadingIndicator.classList.remove("hidden");
   }
 
-  // Parse iTunes metadata filters from search term
-  const itunesMetadata = parseItunesMetadataQuery(searchTerm);
+  // Parse full query so async matches obey active structured filters.
+  const fullQuery = String(fullQueryRaw || searchTerm || "");
+  const parsedFullQuery = parseSearchQuery(fullQuery);
+  const structuredOnlyQuery = buildSongSearchQuery(parsedFullQuery.filters || {}, "");
+
+  // Parse iTunes metadata filters from full query text
+  const itunesMetadata = parseItunesMetadataQuery(fullQuery);
   const hasItunesFilters = Object.keys(itunesMetadata.filters).length > 0;
-  const searchTextForResources = itunesMetadata.text || searchTerm;
+  const searchTextForResources = itunesMetadata.text || parsedFullQuery.text || searchTerm;
 
   // Filter songs to check:
   // 1. Not already in existingResults
@@ -17047,6 +17066,7 @@ async function searchSongResources(searchTerm, existingResults) {
   const existingIds = new Set(existingResults.map(s => s.id));
   const candidateSongs = state.songs.filter(song => {
     if (existingIds.has(song.id)) return false;
+    if (structuredOnlyQuery && !filterSongs([song], structuredOnlyQuery).length) return false;
     const resources = song.song_resources || [];
     return resources.length > 0;
   });
@@ -17112,16 +17132,19 @@ async function searchSongResources(searchTerm, existingResults) {
 
     // 2. Check PDF Content (if no title match yet)
     if (!matchFound) {
-      const pdfLinks = resources.filter(res =>
-        (res.type === 'file' && res.file_type === 'application/pdf') ||
-        (res.url?.toLowerCase().endsWith('.pdf') && res.type === 'link')
-      );
+      const pdfLinks = resources.filter(res => isPdfResourceLink(res));
 
       for (const link of pdfLinks) {
         if (matchFound) break;
 
         try {
-          const text = await extractTextFromPdf(link.url);
+          let pdfUrl = link.url || null;
+          if (!pdfUrl && link.file_path) {
+            pdfUrl = await getFileUrl(link.file_path);
+          }
+          if (!pdfUrl) continue;
+
+          const text = await extractTextFromPdf(pdfUrl);
           if (text && text.toLowerCase().includes(searchTextForResources.toLowerCase())) {
             matchFound = true;
             // Find a snippet for context
@@ -17384,6 +17407,7 @@ async function searchSongResources(searchTerm, existingResults) {
       if (existingIds.has(song.id)) return false;
       if (itunesMatchedSongIds.has(song.id)) return false;
       if (addedSongIds.has(song.id)) return false;
+      if (structuredOnlyQuery && !filterSongs([song], structuredOnlyQuery).length) return false;
       return song.title; // Only songs with titles
     });
 
@@ -17588,7 +17612,16 @@ async function searchSongResources(searchTerm, existingResults) {
 async function extractTextFromPdf(url) {
   try {
     ensurePdfWorker();
-    const loadingTask = pdfjsLib.getDocument(url);
+    let loadingTask;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Failed to fetch PDF (${response.status})`);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      loadingTask = pdfjsLib.getDocument({ data: bytes });
+    } catch (fetchErr) {
+      console.warn("Falling back to direct PDF URL loading:", fetchErr);
+      loadingTask = pdfjsLib.getDocument(url);
+    }
     const pdf = await loadingTask.promise;
     let fullText = "";
 
@@ -17904,8 +17937,11 @@ function parseCommittedSearchFilters(query) {
     Object.assign(filters, parsed.filters || {});
   }
 
-  const text = query.replace(committedFilterRegex, "").replace(/\s+/g, " ").trim();
-  return { filters, text };
+  // Preserve user-typed spacing in the visible input text while still
+  // returning a normalized value for query building/filtering.
+  const draftText = query.replace(committedFilterRegex, "");
+  const text = draftText.replace(/\s+/g, " ").trim();
+  return { filters, text, draftText };
 }
 
 function getSongsSearchQueryRaw() {
@@ -17924,10 +17960,11 @@ function getSongsSearchQueryRaw() {
     ...(parsedCurrentValue.filters || {})
   };
   const currentText = (parsedCurrentValue.text || "").trim();
+  const draftText = parsedCurrentValue.draftText || "";
   const query = buildSongSearchQuery(mergedFilters, currentText);
   searchInput.dataset.fullQuery = query;
-  if (searchInput.value !== currentText) {
-    searchInput.value = currentText;
+  if (searchInput.value !== draftText) {
+    searchInput.value = draftText;
   }
   return query;
 }
@@ -17949,11 +17986,12 @@ function syncSongsSearchInputState() {
     ...(parsedTypedValue.filters || {})
   };
   const normalizedText = (parsedTypedValue.text || "").trim();
+  const draftText = parsedTypedValue.draftText || "";
   const nextQuery = buildSongSearchQuery(mergedFilters, normalizedText);
 
   searchInput.dataset.fullQuery = nextQuery;
-  if (searchInput.value !== normalizedText) {
-    searchInput.value = normalizedText;
+  if (searchInput.value !== draftText) {
+    searchInput.value = draftText;
   }
 
   return nextQuery;
@@ -18291,6 +18329,35 @@ function filterSongs(songs, queryRaw) {
       if (!songMatchesDurationFilter(filters.duration, song)) return false;
     }
 
+    // iTunes metadata-backed filters
+    const itunesMeta = song?.itunes_metadata && typeof song.itunes_metadata === "object"
+      ? song.itunes_metadata
+      : null;
+    if (filters.genre) {
+      const primaryGenre = (itunesMeta?.primaryGenreName || "").toLowerCase();
+      const genres = Array.isArray(itunesMeta?.genres)
+        ? itunesMeta.genres.map((g) => String(g || "").toLowerCase())
+        : [];
+      const genreMatch = primaryGenre.includes(filters.genre) || genres.some((g) => g.includes(filters.genre));
+      if (!genreMatch) return false;
+    }
+    if (filters.album) {
+      const album = (itunesMeta?.collectionName || "").toLowerCase();
+      if (!album.includes(filters.album)) return false;
+    }
+    if (filters.artist) {
+      const artist = (itunesMeta?.artistName || "").toLowerCase();
+      if (!artist.includes(filters.artist)) return false;
+    }
+    if (filters.releaseDate) {
+      const releaseDate = String(itunesMeta?.releaseDate || "");
+      const targetYear = String(filters.releaseDate).split("-")[0];
+      if (!releaseDate) return false;
+      const itemYear = new Date(releaseDate).getFullYear().toString();
+      const dateMatch = releaseDate.startsWith(filters.releaseDate) || itemYear === targetYear;
+      if (!dateMatch) return false;
+    }
+
 
 
     // 2. Check Text (if any residual text)
@@ -18395,7 +18462,7 @@ async function renderSongCatalog(animate = true) {
     list.innerHTML = '<p class="muted">No songs match your search.</p>';
     // Only search resources if there is an actual text term remaining
     if (searchTerm) {
-      searchSongResources(searchTerm, []);
+      searchSongResources(searchTerm, [], searchTermRaw);
     }
     return;
   }
@@ -18671,7 +18738,7 @@ async function renderSongCatalog(animate = true) {
       const { text: currentSearchText } = parseSearchQuery(currentSearchQuery);
       if (currentSearchText === searchTerm && currentSearchText.length > 0) {
         console.log(`⏱️ Debounce complete, starting search for: "${searchTerm}"`);
-        searchSongResources(searchTerm, filteredSongs);
+        searchSongResources(searchTerm, filteredSongs, currentSearchQuery);
       } else {
         console.log(`⏭️ Skipping search - term changed: "${searchTerm}" -> "${currentSearchText}"`);
       }
@@ -22294,6 +22361,9 @@ function renderSongRelationsSvg(host, graph, layoutSize) {
   let scale = 1;
   let tx = 0;
   let ty = 0;
+  const graphCenterX = graphWidth / 2;
+  const graphCenterY = graphHeight / 2;
+  const graphMaxRadius = Math.max(1, Math.hypot(graphCenterX, graphCenterY));
 
   function applyNodeInverseScales() {
     const s = Math.max(0.2, scale);
@@ -22302,7 +22372,14 @@ function renderSongRelationsSvg(host, graph, layoutSize) {
       const px = el.dataset.px;
       const py = el.dataset.py;
       if (px === undefined || py === undefined) return;
-      el.setAttribute("transform", `translate(${px}, ${py}) scale(${inv})`);
+      const x = Number(px);
+      const y = Number(py);
+      const distFromCenter = Math.hypot(x - graphCenterX, y - graphCenterY);
+      const normalized = Math.min(1, distFromCenter / graphMaxRadius);
+      // Apple Watch style depth cue: icons shrink near the perimeter.
+      const radialScale = 1 - normalized * 0.32;
+      const nodeScale = Math.max(0.62, radialScale);
+      el.setAttribute("transform", `translate(${x}, ${y}) scale(${inv * nodeScale})`);
     });
   }
 
