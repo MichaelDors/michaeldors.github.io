@@ -17038,6 +17038,39 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
     }
   };
 
+  const truncateMatchSourceName = (name, maxLength = 42) => {
+    const safe = String(name || "").trim();
+    if (!safe) return "";
+    if (safe.length <= maxLength) return safe;
+    return `${safe.slice(0, maxLength - 1)}…`;
+  };
+
+  const renderMatchContextRow = ({
+    icon = "fa-link",
+    sourceLabel = "",
+    sourceName = "",
+    contextHtml = ""
+  }) => {
+    const normalizedName = String(sourceName || "").trim();
+    const hasSourceName = !!normalizedName;
+    const sourcePieces = [];
+    // For resources, prefer showing the actual resource name.
+    // Keep explicit labels like iTunes even when there's no resource name.
+    if (sourceLabel && (!hasSourceName || sourceLabel === "iTunes")) {
+      sourcePieces.push(`<span class="match-context-label">${escapeHtml(sourceLabel)}</span>`);
+    }
+    if (hasSourceName) {
+      const truncated = truncateMatchSourceName(normalizedName);
+      sourcePieces.push(`<span class="match-context-name" title="${escapeHtml(normalizedName)}">${escapeHtml(truncated)}</span>`);
+    }
+    return `
+      <div class="song-match-context">
+        <span class="badge-resource-match match-context-source"><i class="fa-solid ${icon}"></i>${sourcePieces.join(" ")}</span>
+        <small class="muted match-context-text">${contextHtml}</small>
+      </div>
+    `;
+  };
+
   // Create or reuse loading indicator
   let loadingIndicator = el("resource-search-loading");
   if (!loadingIndicator) {
@@ -17118,16 +17151,23 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
     let matchFound = false;
     let resourceMatchContext = "";
     let itunesMatchContext = "";
+    let resourceMatchSourceLabel = "";
+    let resourceMatchSourceName = "";
+    let resourceMatchIcon = "fa-link";
     let isLinkTitleMatch = false;
 
     const resources = song.song_resources || [];
 
     // 1. Check Link Titles (charts, files, links)
     for (const res of resources) {
-      if ((res.title || "").toLowerCase().includes(searchTextForResources.toLowerCase())) {
+      if (songFieldMatchesSearch(res.title || "", searchTextForResources)) {
         matchFound = true;
         isLinkTitleMatch = true;
-        resourceMatchContext = `${res.type === 'chart' ? 'Chart' : 'Link'}: ${highlightMatch(res.title, searchTextForResources)}`;
+        resourceMatchSourceLabel = (res.type === "file" || isPdfResourceLink(res)) ? "File" : "Link";
+        resourceMatchIcon = resourceMatchSourceLabel === "File" ? "fa-file" : "fa-link";
+        resourceMatchSourceName = resourceMatchSourceLabel === "Link" ? "" : (res.title || res.file_name || "Resource");
+        const titleForContext = res.title || res.file_name || "Resource";
+        resourceMatchContext = `Title match: ${highlightMatchForContext(titleForContext, searchTextForResources)}`;
         break;
       }
     }
@@ -17152,14 +17192,17 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
           const normalizedSearch = normalizePdfSearchText(searchTextForResources);
           if (pdfTextMatchesQuery(normalizedPdfText, normalizedSearch)) {
             matchFound = true;
+            resourceMatchSourceLabel = "File";
+            resourceMatchIcon = "fa-file-pdf";
+            resourceMatchSourceName = link.title || link.file_name || "PDF";
             // Try exact snippet first; otherwise still show that PDF content matched.
             const exactIndex = text.toLowerCase().indexOf(searchTextForResources.toLowerCase());
             if (exactIndex >= 0) {
               const start = Math.max(0, exactIndex - 20);
               const end = Math.min(text.length, exactIndex + searchTextForResources.length + 20);
-              resourceMatchContext = "..." + highlightMatch(text.substring(start, end), searchTextForResources) + "...";
+              resourceMatchContext = highlightMatchForContext(`...${text.substring(start, end)}...`, searchTextForResources);
             } else {
-              resourceMatchContext = `PDF content match in "${escapeHtml(link.title || link.file_name || "PDF")}"`;
+              resourceMatchContext = "PDF content match";
             }
           }
         } catch (err) {
@@ -17222,10 +17265,10 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
             if (!hasItunesFilters && searchTextForResources) {
               const searchLower = searchTextForResources.toLowerCase();
               const matchesText =
-                (itunesItem.trackName || '').toLowerCase().includes(searchLower) ||
-                (itunesItem.artistName || '').toLowerCase().includes(searchLower) ||
-                (itunesItem.collectionName || '').toLowerCase().includes(searchLower) ||
-                (itunesItem.primaryGenreName || '').toLowerCase().includes(searchLower);
+                songFieldMatchesSearch(itunesItem.trackName || "", searchLower) ||
+                songFieldMatchesSearch(itunesItem.artistName || "", searchLower) ||
+                songFieldMatchesSearch(itunesItem.collectionName || "", searchLower) ||
+                songFieldMatchesSearch(itunesItem.primaryGenreName || "", searchLower);
               if (!matchesText) matchesFilters = false;
             }
           }
@@ -17238,21 +17281,26 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
             // Build iTunes match context
             const contextParts = [];
             if (itunesItem.artistName) {
-              contextParts.push(`Artist: ${highlightMatch(itunesItem.artistName, itunesMetadata.filters.artist || searchTextForResources)}`);
+              contextParts.push(`Artist: ${itunesItem.artistName}`);
             }
             if (itunesItem.collectionName) {
-              contextParts.push(`Album: ${highlightMatch(itunesItem.collectionName, itunesMetadata.filters.album || searchTextForResources)}`);
+              contextParts.push(`Album: ${itunesItem.collectionName}`);
             }
             if (itunesItem.primaryGenreName) {
-              contextParts.push(`Genre: ${highlightMatch(itunesItem.primaryGenreName, itunesMetadata.filters.genre || searchTextForResources)}`);
+              contextParts.push(`Genre: ${itunesItem.primaryGenreName}`);
             }
             if (itunesItem.releaseDate) {
               const releaseDate = new Date(itunesItem.releaseDate).getFullYear();
               contextParts.push(`Released: ${releaseDate}`);
             }
 
+            const itunesHighlightTerm =
+              itunesMetadata.filters.album ||
+              itunesMetadata.filters.artist ||
+              itunesMetadata.filters.genre ||
+              searchTextForResources;
             itunesMatchContext = contextParts.length > 0
-              ? `iTunes: ${contextParts.join(', ')}`
+              ? highlightMatchForContext(contextParts.join(', '), itunesHighlightTerm)
               : 'iTunes metadata match';
 
             // If no resource match yet, mark as found
@@ -17310,56 +17358,43 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
       // Check if there's a resource match (link title or PDF content)
       const hasResourceMatch = isLinkTitleMatch || !!resourceMatchContext;
 
-      // Determine badge - prioritize resource matches, but show both if applicable
-      let badgeIcon, badgeText;
-      if (isLinkTitleMatch) {
-        badgeIcon = 'fa-link';
-        badgeText = isItunesMatch ? 'Link & iTunes Match' : 'Link Match';
-      } else if (hasResourceMatch) {
-        badgeIcon = 'fa-file-pdf';
-        badgeText = isItunesMatch ? 'Content & iTunes Match' : 'Content Match';
-      } else if (isItunesMatch) {
-        badgeIcon = 'fa-music';
-        badgeText = 'iTunes Match';
-      } else {
-        badgeIcon = 'fa-file-pdf';
-        badgeText = 'Match';
-      }
-
-      // Build match context HTML - separate sections for resource and iTunes matches
+      // Build match context rows with source label on the left.
       let matchContextHtml = '';
       if (hasResourceMatch && isItunesMatch) {
-        // Both matches - show in separate sections
-        matchContextHtml = `
-          <div class="song-match-context">
-            <small class="muted">${resourceMatchContext}</small>
-          </div>
-          <div class="song-match-context" style="margin-top: 0.5rem;">
-            <small class="muted">${itunesMatchContext}</small>
-          </div>
-        `;
+        matchContextHtml =
+          renderMatchContextRow({
+            icon: resourceMatchIcon,
+            sourceLabel: resourceMatchSourceLabel || (isLinkTitleMatch ? "Link" : "File"),
+            sourceName: resourceMatchSourceName,
+            contextHtml: resourceMatchContext
+          }) +
+          renderMatchContextRow({
+            icon: "fa-music",
+            sourceLabel: "iTunes metadata",
+            sourceName: "",
+            contextHtml: itunesMatchContext
+          });
       } else if (hasResourceMatch) {
-        // Only resource match
-        matchContextHtml = `
-          <div class="song-match-context">
-            <small class="muted">${resourceMatchContext}</small>
-          </div>
-        `;
+        matchContextHtml = renderMatchContextRow({
+          icon: resourceMatchIcon,
+          sourceLabel: resourceMatchSourceLabel || (isLinkTitleMatch ? "Link" : "File"),
+          sourceName: resourceMatchSourceName,
+          contextHtml: resourceMatchContext
+        });
       } else if (isItunesMatch) {
-        // Only iTunes match
-        matchContextHtml = `
-          <div class="song-match-context">
-            <small class="muted">${itunesMatchContext}</small>
-          </div>
-        `;
+        matchContextHtml = renderMatchContextRow({
+          icon: "fa-music",
+          sourceLabel: "iTunes metadata",
+          sourceName: "",
+          contextHtml: itunesMatchContext
+        });
       }
 
       div.innerHTML = `
         <div class="set-song-header song-card-header">
           <div class="set-song-info">
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <div style="margin-bottom: 0.5rem;">
               <h4 class="song-title" style="margin: 0;">${highlightedTitle}</h4>
-              <span class="badge-resource-match"><i class="fa-solid ${badgeIcon}"></i> ${badgeText}</span>
             </div>
             <div class="song-meta-text">
               ${highlightedBpm}
@@ -17487,10 +17522,10 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
             // Check if search text matches album name (most common case - searching for album)
             // Also check artist and genre
             matchesSearch =
-              albumName.includes(searchLower) ||
-              artistName.includes(searchLower) ||
-              genreName.includes(searchLower) ||
-              trackName.includes(searchLower);
+              songFieldMatchesSearch(albumName, searchLower) ||
+              songFieldMatchesSearch(artistName, searchLower) ||
+              songFieldMatchesSearch(genreName, searchLower) ||
+              songFieldMatchesSearch(trackName, searchLower);
 
             console.log(`🎵 Checking "${song.title}": album="${albumName}", search="${searchLower}", match=${matchesSearch}`);
           }
@@ -17502,21 +17537,26 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
             // Build match context
             const contextParts = [];
             if (itunesItem.artistName) {
-              contextParts.push(`Artist: ${highlightMatch(itunesItem.artistName, itunesMetadata.filters.artist || searchTextForResources)}`);
+              contextParts.push(`Artist: ${itunesItem.artistName}`);
             }
             if (itunesItem.collectionName) {
-              contextParts.push(`Album: ${highlightMatch(itunesItem.collectionName, itunesMetadata.filters.album || searchTextForResources)}`);
+              contextParts.push(`Album: ${itunesItem.collectionName}`);
             }
             if (itunesItem.primaryGenreName) {
-              contextParts.push(`Genre: ${highlightMatch(itunesItem.primaryGenreName, itunesMetadata.filters.genre || searchTextForResources)}`);
+              contextParts.push(`Genre: ${itunesItem.primaryGenreName}`);
             }
             if (itunesItem.releaseDate) {
               const releaseDate = new Date(itunesItem.releaseDate).getFullYear();
               contextParts.push(`Released: ${releaseDate}`);
             }
 
+            const itunesHighlightTerm =
+              itunesMetadata.filters.album ||
+              itunesMetadata.filters.artist ||
+              itunesMetadata.filters.genre ||
+              searchTextForResources;
             const matchContext = contextParts.length > 0
-              ? `iTunes: ${contextParts.join(', ')}`
+              ? highlightMatchForContext(contextParts.join(', '), itunesHighlightTerm)
               : 'iTunes metadata match';
 
             // Final check: verify this search is still current before adding to DOM
@@ -17559,9 +17599,8 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
             div.innerHTML = `
               <div class="set-song-header song-card-header">
                 <div class="set-song-info">
-                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                  <div style="margin-bottom: 0.5rem;">
                     <h4 class="song-title" style="margin: 0;">${highlightedTitle}</h4>
-                    <span class="badge-resource-match"><i class="fa-solid fa-music"></i> iTunes Match</span>
                   </div>
                   <div class="song-meta-text">
                     ${highlightedBpm}
@@ -17569,9 +17608,12 @@ async function searchSongResources(searchTerm, existingResults, fullQueryRaw = "
                     ${highlightedTime}
                     ${highlightedDuration}
                   </div>
-                  <div class="song-match-context">
-                    <small class="muted">${matchContext}</small>
-                  </div>
+                  ${renderMatchContextRow({
+                    icon: "fa-music",
+                    sourceLabel: "iTunes metadata",
+                    sourceName: "",
+                    contextHtml: matchContext
+                  })}
                 </div>
                 <div class="set-song-actions song-card-actions">
                   ${isManager() ? `
@@ -18202,10 +18244,26 @@ function getAdjacentSongBpmValue(currentBpmValue, direction) {
 
 function buildSongSearchChipValueControl(filterKey, value) {
   if (filterKey === "key" || filterKey === "time_signature" || filterKey === "theme") {
+    const normalizedCurrentValue = String(value || "").toLowerCase();
     const options = getDistinctSongSearchFilterValues(filterKey).map((optionValue) => ({
       value: optionValue.toLowerCase(),
       label: optionValue
     }));
+
+    // Keep key dropdown options based on existing song keys, but if a user typed
+    // a currently-active key that's not in the catalog, include it as a temporary
+    // option so the chip stays a dropdown and shows the active value.
+    if (
+      filterKey === "key" &&
+      normalizedCurrentValue &&
+      !options.some((option) => option.value === normalizedCurrentValue)
+    ) {
+      options.push({
+        value: normalizedCurrentValue,
+        label: formatSongSearchFilterValue("key", value)
+      });
+    }
+
     const dropdown = createSimpleDropdown(options, "Select...", String(value || "").toLowerCase());
     dropdown.classList.add("songs-search-chip-dropdown");
     const syncChipDropdownInputWidth = () => {
@@ -18356,6 +18414,93 @@ function updateSongSearchChips(queryRaw) {
   });
 }
 
+function normalizeSongSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeKeyForEnharmonicSearch(value) {
+  const compact = String(value || "").trim().replace(/\s+/g, "");
+  if (!compact) return null;
+  const parsed = parseKeyToPitchClass(compact);
+  if (!parsed) return null;
+  return `${parsed.pc}${parsed.isMinor ? "m" : ""}`;
+}
+
+function songHasEnharmonicKey(song, searchKeyValue) {
+  const normalizedSearch = normalizeKeyForEnharmonicSearch(searchKeyValue);
+  if (!normalizedSearch) return false;
+
+  const songKeys = [
+    song?.song_key || "",
+    ...((song?.song_keys || []).map((k) => k?.key || ""))
+  ].filter(Boolean);
+
+  return songKeys.some((songKey) => normalizeKeyForEnharmonicSearch(songKey) === normalizedSearch);
+}
+
+function getSongSearchMaxEditDistance(queryLength) {
+  if (queryLength >= 12) return 2;
+  return 1;
+}
+
+function isWithinSongSearchEditDistance(a, b, maxDistance) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (Math.abs(a.length - b.length) > maxDistance) return false;
+
+  const prev = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j += 1) prev[j] = j;
+
+  for (let i = 1; i <= a.length; i += 1) {
+    let curr = i;
+    let minInRow = curr;
+    let prevDiagonal = i - 1;
+
+    for (let j = 1; j <= b.length; j += 1) {
+      const temp = prev[j];
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const insertCost = curr + 1;
+      const deleteCost = prev[j] + 1;
+      const replaceCost = prevDiagonal + cost;
+      curr = Math.min(insertCost, deleteCost, replaceCost);
+      prevDiagonal = temp;
+      prev[j] = curr;
+      if (curr < minInRow) minInRow = curr;
+    }
+
+    if (minInRow > maxDistance) return false;
+  }
+
+  return prev[b.length] <= maxDistance;
+}
+
+function songFieldMatchesSearch(fieldValue, searchText) {
+  const normalizedSearch = normalizeSongSearchText(searchText);
+  if (!normalizedSearch) return true;
+
+  const normalizedField = normalizeSongSearchText(fieldValue);
+  if (!normalizedField) return false;
+  if (normalizedField.includes(normalizedSearch)) return true;
+
+  const searchWords = normalizedSearch.split(" ").filter(Boolean);
+  const fieldWords = normalizedField.split(" ").filter(Boolean);
+  if (!searchWords.length || fieldWords.length < searchWords.length) return false;
+
+  const maxDistance = getSongSearchMaxEditDistance(normalizedSearch.length);
+  for (let i = 0; i <= fieldWords.length - searchWords.length; i += 1) {
+    const windowText = fieldWords.slice(i, i + searchWords.length).join(" ");
+    if (isWithinSongSearchEditDistance(windowText, normalizedSearch, maxDistance)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function filterSongs(songs, queryRaw) {
   if (!queryRaw) return songs;
 
@@ -18375,7 +18520,9 @@ function filterSongs(songs, queryRaw) {
       }
 
       // Check if any of the song's keys match the filter
-      if (!songKeys.has(filters.key)) return false;
+      const directMatch = songKeys.has(filters.key);
+      const enharmonicMatch = songHasEnharmonicKey(song, filters.key);
+      if (!directMatch && !enharmonicMatch) return false;
     }
 
     if (filters.time_signature) {
@@ -18428,7 +18575,7 @@ function filterSongs(songs, queryRaw) {
 
     // 2. Check Text (if any residual text)
     if (textLower) {
-      const titleMatch = (song.title || "").toLowerCase().includes(textLower);
+      const titleMatch = songFieldMatchesSearch(song.title || "", textLower);
 
       // Also match metadata if no specific filter forced it out, 
       // BUT typical behavior for "key:C text" is "key IS C AND text matches title/meta"
@@ -18439,16 +18586,16 @@ function filterSongs(songs, queryRaw) {
         song.song_key || "",
         ...(song.song_keys || []).map(k => k.key || "")
       ].filter(Boolean).join(" ").toLowerCase();
-      const keyMatch = keyList.includes(textLower);
+      const keyMatch = songFieldMatchesSearch(keyList, textLower) || songHasEnharmonicKey(song, textLower);
 
-      const timeMatch = (song.time_signature || "").toLowerCase().includes(textLower);
-      const durationMatch = song.duration_seconds ? formatDuration(song.duration_seconds).toLowerCase().includes(textLower) : false;
+      const timeMatch = songFieldMatchesSearch(song.time_signature || "", textLower);
+      const durationMatch = song.duration_seconds ? songFieldMatchesSearch(formatDuration(song.duration_seconds), textLower) : false;
       const themesStr = (Array.isArray(song.themes) ? song.themes : [])
         .map((t) => normalizeSongTheme(t))
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-      const themeMatch = themesStr.includes(textLower);
+      const themeMatch = songFieldMatchesSearch(themesStr, textLower);
 
       return titleMatch || bpmMatch || keyMatch || timeMatch || durationMatch || themeMatch;
     }
@@ -26867,7 +27014,30 @@ function highlightMatch(text, searchTerm) {
   const match = text.substring(searchIndex, searchIndex + searchTerm.length);
   const afterMatch = text.substring(searchIndex + searchTerm.length);
 
-  return `${escapeHtml(beforeMatch)}<span style="color: var(--accent-color);">${escapeHtml(match)}</span>${escapeHtml(afterMatch)}`;
+  return `${escapeHtml(beforeMatch)}<span class="match-highlight" style="color: var(--accent-color);">${escapeHtml(match)}</span>${escapeHtml(afterMatch)}`;
+}
+
+function highlightMatchForContext(text, searchTerm) {
+  if (!searchTerm || !text) return escapeHtml(text);
+
+  const lowerText = text.toLowerCase();
+  const lowerSearch = searchTerm.toLowerCase();
+  const searchIndex = lowerText.indexOf(lowerSearch);
+
+  if (searchIndex === -1) return escapeHtml(text);
+
+  const beforeMatch = text.substring(0, searchIndex);
+  const match = text.substring(searchIndex, searchIndex + searchTerm.length);
+  const afterMatch = text.substring(searchIndex + searchTerm.length);
+
+  const beforeHtml = beforeMatch
+    ? `<span class="match-context-before">${escapeHtml(beforeMatch)}</span>`
+    : "";
+  const afterHtml = afterMatch
+    ? `<span class="match-context-after">${escapeHtml(afterMatch)}</span>`
+    : "";
+
+  return `${beforeHtml}<span class="match-highlight" style="color: var(--accent-color);">${escapeHtml(match)}</span>${afterHtml}`;
 }
 
 function getFaviconUrl(url) {
@@ -29649,18 +29819,16 @@ function createSearchableDropdown(options, placeholder = "Search...", selectedVa
     } else {
       // Filter and prioritize: title/name matches first, then metadata/email matches
       const allMatches = normalizedOptions.filter((opt) =>
-        opt.searchText.includes(term)
+        songFieldMatchesSearch(opt.searchText, term)
       );
 
       // Separate into priority groups
       const primaryMatches = allMatches.filter((opt) => {
-        const labelLower = (opt.label || "").toLowerCase();
-        return labelLower.includes(term);
+        return songFieldMatchesSearch(opt.label || "", term);
       });
 
       const secondaryMatches = allMatches.filter((opt) => {
-        const labelLower = (opt.label || "").toLowerCase();
-        return !labelLower.includes(term);
+        return !songFieldMatchesSearch(opt.label || "", term);
       });
 
       // Combine: primary first, then secondary

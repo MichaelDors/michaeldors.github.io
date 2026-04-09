@@ -5996,24 +5996,92 @@ i {
 .badge-resource-match {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.6rem;
-  background: color-mix(in srgb, var(--accent-color) 5%, transparent);
+  /* gap: 0.35rem; */
+  padding: 0.2rem 0rem;
+  /* background: color-mix(in srgb, var(--accent-color) 5%, transparent); */
   color: var(--accent-color);
-  border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent);
-  border-radius: 999px;
+  /* border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent); */
+  /* border-radius: 999px; */
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  /* text-transform: uppercase; */
+  /* letter-spacing: 0.02em; */
 }
 
 .song-match-context {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
+  margin-top: 0.65rem;
   background: var(--bg-secondary);
-  border-radius: 0.35rem;
-  border-left: 2px solid var(--accent-color);
+  border-top: 2px dashed var(--border-color);
+  padding: 0.45rem 0 0;
+  margin-bottom: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.match-context-source {
+  flex: 0 0 auto;
+  max-width: min(48%, 260px);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.match-context-label {
+  flex: 0 0 auto;
+}
+
+.match-context-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match-context-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+  width: 100%;
+  margin-top: 0.15rem;
+}
+
+.match-context-text .match-highlight {
+  position: relative;
+  z-index: 1;
+}
+
+.match-context-text .match-context-before,
+.match-context-text .match-context-after {
+  display: inline-block;
+  --context-edge-opacity: 0.3;
+}
+
+.match-context-text .match-context-before {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, var(--context-edge-opacity)) 0%,
+    rgba(0, 0, 0, 1) 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, var(--context-edge-opacity)) 0%,
+    rgba(0, 0, 0, 1) 100%
+  );
+}
+
+.match-context-text .match-context-after {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, var(--context-edge-opacity)) 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, var(--context-edge-opacity)) 100%
+  );
 }
 
 .fade-in {
