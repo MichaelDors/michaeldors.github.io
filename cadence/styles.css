@@ -6011,12 +6011,34 @@ i {
 .song-match-context {
   margin-top: 0.65rem;
   background: var(--bg-secondary);
-  border-top: 2px dashed var(--border-color);
   padding: 0.45rem 0 0;
   margin-bottom: 0;
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
+  position: relative;
+}
+
+.song-match-context::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  border-top: 2px dashed var(--border-color);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) calc(100% - 3.5rem),
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 1) calc(100% - 3.5rem),
+    rgba(0, 0, 0, 0) 100%
+  );
 }
 
 .match-context-source {
