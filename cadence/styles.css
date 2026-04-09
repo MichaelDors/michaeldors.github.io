@@ -2739,6 +2739,12 @@ form {
   gap: 1rem;
 }
 
+.song-edit-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 label {
   display: flex;
   flex-direction: column;
