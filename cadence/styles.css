@@ -722,6 +722,10 @@ body {
 }
 
 @media (max-width: 768px) {
+  #btn-song-relations {
+    display: none;
+  }
+
   .songs-controls-row {
     gap: 0.75rem;
   }
