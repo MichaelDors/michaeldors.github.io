@@ -2399,8 +2399,8 @@ main {
 }
 
 #song-relations-modal .song-relations-modal-content {
-  max-width: min(99vw, 1760px);
-  width: min(99vw, 1760px);
+  max-width: min(96vw, 1540px);
+  width: min(96vw, 1540px);
   max-height: min(94dvh, 940px);
   min-height: min(70dvh, 720px);
   padding: 1.5rem 1.5rem 1.25rem;
