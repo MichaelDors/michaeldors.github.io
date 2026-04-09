@@ -5999,7 +5999,7 @@ i {
   /* gap: 0.35rem; */
   padding: 0.2rem 0rem;
   /* background: color-mix(in srgb, var(--accent-color) 5%, transparent); */
-  color: var(--accent-color);
+  color: var(--text-primary);
   /* border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent); */
   /* border-radius: 999px; */
   font-size: 0.75rem;
