@@ -6008,6 +6008,14 @@ i {
   /* letter-spacing: 0.02em; */
 }
 
+.badge-resource-match i{
+  color:var(--accent-color);
+}
+
+.badge-resource-match .fa-music{
+  color:var(--chart-declined-color) !important;
+}
+
 .song-match-context {
   margin-top: 0.65rem;
   background: var(--bg-secondary);
