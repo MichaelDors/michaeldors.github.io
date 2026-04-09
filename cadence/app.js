@@ -22306,9 +22306,8 @@ function renderSongRelationsSvg(host, graph, layoutSize) {
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("class", "song-relations-svg");
-  svg.setAttribute("viewBox", `0 0 ${graphWidth} ${graphHeight}`);
-  svg.setAttribute("width", String(graphWidth));
-  svg.setAttribute("height", String(graphHeight));
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
   svg.setAttribute("role", "img");
   svg.setAttribute(
     "aria-label",
@@ -22430,24 +22429,27 @@ function renderSongRelationsSvg(host, graph, layoutSize) {
   let scale = 1;
   let tx = 0;
   let ty = 0;
-  const graphCenterX = graphWidth / 2;
-  const graphCenterY = graphHeight / 2;
-  const graphMaxRadius = Math.max(1, Math.hypot(graphCenterX, graphCenterY));
 
   function applyNodeInverseScales() {
     const s = Math.max(0.2, scale);
     const inv = 1 / s;
+    const viewportCenterX = viewport.clientWidth / 2;
+    const viewportCenterY = viewport.clientHeight / 2;
+    const viewportMaxRadius = Math.max(1, Math.hypot(viewportCenterX, viewportCenterY));
     nodeGroup.querySelectorAll(".song-relations-node").forEach((el) => {
       const px = el.dataset.px;
       const py = el.dataset.py;
       if (px === undefined || py === undefined) return;
       const x = Number(px);
       const y = Number(py);
-      const distFromCenter = Math.hypot(x - graphCenterX, y - graphCenterY);
-      const normalized = Math.min(1, distFromCenter / graphMaxRadius);
+      const screenX = tx + x * s;
+      const screenY = ty + y * s;
+      const distFromCenter = Math.hypot(screenX - viewportCenterX, screenY - viewportCenterY);
+      const normalized = Math.min(1, distFromCenter / viewportMaxRadius);
       // Apple Watch style depth cue: icons shrink near the perimeter.
-      const radialScale = 1 - normalized * 0.32;
-      const nodeScale = Math.max(0.62, radialScale);
+      const eased = Math.pow(normalized, 0.9);
+      const radialScale = 1.08 - eased * 0.76;
+      const nodeScale = Math.max(0.34, radialScale);
       el.setAttribute("transform", `translate(${x}, ${y}) scale(${inv * nodeScale})`);
     });
   }
@@ -22459,7 +22461,8 @@ function renderSongRelationsSvg(host, graph, layoutSize) {
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      const pad = 24;
+      // Keep extra frame margin so icons/labels near edges are not clipped.
+      const pad = 84;
       const fitW = Math.max(1, viewport.clientWidth - pad * 2);
       const fitH = Math.max(1, viewport.clientHeight - pad * 2);
       if (graphWidth > 0 && graphHeight > 0 && nodes.length) {
