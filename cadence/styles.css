@@ -6016,6 +6016,10 @@ i {
   color:var(--chart-declined-color) !important;
 }
 
+.badge-resource-match .fa-link{
+  color:var(--chart-accepted-color) !important;
+}
+
 .song-match-context {
   margin-top: 0.65rem;
   background: var(--bg-secondary);
@@ -6054,7 +6058,6 @@ i {
   max-width: min(48%, 260px);
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
   white-space: nowrap;
   overflow: hidden;
 }
