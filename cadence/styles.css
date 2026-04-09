@@ -234,6 +234,7 @@ body {
 #contextual-team-brand-team {
   min-width: 0;
   color: var(--text-secondary);
+  margin-top:3px;
 }
 
 #contextual-team-brand-team img {
@@ -753,6 +754,16 @@ body {
   position: relative;
   z-index: 10001;
   /* Ensure higher than header-text */
+}
+
+@media (max-width: 768px) {
+  .user-info #user-name {
+    display: none;
+  }
+
+  .contextual-team-brand {
+    display: none !important;
+  }
 }
 
 #user-profile-picture {
