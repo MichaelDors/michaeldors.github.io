@@ -1606,6 +1606,17 @@ function initTabAnimations() {
       path: '2 users ai.json'
     });
   }
+
+  // Bookmark.json for files
+  if (document.getElementById('anim-files')) {
+    state.lottieAnimations.files = lottie.loadAnimation({
+      container: document.getElementById('anim-files'),
+      renderer: 'svg',
+      loop: false,
+      autoplay: false,
+      path: 'Bookmark.json'
+    });
+  }
 }
 
 async function init() {
@@ -2539,6 +2550,11 @@ function bindEvents() {
     }
   });
 
+  // Files tab search
+  el("files-tab-search")?.addEventListener("input", () => {
+    renderFiles(false);
+  });
+
   // Window resize handler for recalculating assignment pills
   let resizeTimeout;
   window.addEventListener("resize", () => {
@@ -2853,6 +2869,10 @@ function bindEvents() {
   el("chart-viewer-modal")?.addEventListener("click", (e) => {
     if (e.target === el("chart-viewer-modal")) closeChordChartViewer();
   });
+  el("close-file-viewer")?.addEventListener("click", () => closeFileViewer());
+  el("file-viewer-modal")?.addEventListener("click", (e) => {
+    if (e.target === el("file-viewer-modal")) closeFileViewer();
+  });
   el("chart-editor-modal")?.addEventListener("click", (e) => {
     if (e.target === el("chart-editor-modal")) closeChordChartEditor();
   });
@@ -2885,6 +2905,11 @@ function bindEvents() {
   });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+    const fileViewer = el("file-viewer-modal");
+    if (fileViewer && !fileViewer.classList.contains("hidden")) {
+      closeFileViewer();
+      return;
+    }
     const viewer = el("chart-viewer-modal");
     const editor = el("chart-editor-modal");
     const printEditor = el("print-set-editor-modal");
@@ -7907,12 +7932,14 @@ function switchTab(tabName, options = {}) {
   el("sets-tab").classList.toggle("hidden", tabName !== "sets");
   el("songs-tab").classList.toggle("hidden", tabName !== "songs");
   el("people-tab").classList.toggle("hidden", tabName !== "people");
+  el("files-tab").classList.toggle("hidden", tabName !== "files");
 
   // Map tab names to page names for tracking
   const pageNameMap = {
     'sets': 'Sets',
     'songs': 'Songs',
-    'people': 'People'
+    'people': 'People',
+    'files': 'Files'
   };
 
   // Start tracking time on new tab (will stop previous tab automatically)
@@ -7938,6 +7965,8 @@ function switchTab(tabName, options = {}) {
     if (!state.people || state.people.length === 0) {
       loadPeople();
     }
+  } else if (tabName === "files") {
+    renderFiles();
   } else if (tabName === "sets") {
     // Recalculate assignment pills when switching to sets tab
     // Use a small delay to ensure the tab is visible and layout is complete
@@ -7964,6 +7993,8 @@ function refreshActiveTab(animate = false) {
     // if a load is already in progress or just completed.
     // If we need to force reload, we should call loadPeople() explicitly elsewhere.
     renderPeople(animate);
+  } else if (activeTab === "files") {
+    renderFiles(animate);
   }
 
   // If set detail view is open, refresh it too (no ripple on passive refresh)
@@ -8621,6 +8652,131 @@ function renderPeople(animate = true) {
       peopleList.appendChild(div);
     });
   }
+}
+
+function getUploadedFilesFromSongs() {
+  const songs = Array.isArray(state.songs) ? state.songs : [];
+  const files = [];
+  for (const song of songs) {
+    const resources = Array.isArray(song?.song_resources) ? song.song_resources : [];
+    for (const resource of resources) {
+      const isFileResource = resource?.type === "file" || resource?.is_file_upload || !!resource?.file_path;
+      if (!isFileResource) continue;
+      files.push({
+        id: resource.id || `${song?.id || "song"}-${resource?.file_path || resource?.file_name || resource?.title || Math.random()}`,
+        title: resource.title || resource.file_name || "Untitled file",
+        fileName: resource.file_name || "",
+        fileType: resource.file_type || "",
+        filePath: resource.file_path || "",
+        songTitle: song?.title || "Untitled song",
+        resourceKey: resource.key || null,
+        createdAt: resource.created_at || song?.created_at || null
+      });
+    }
+  }
+  return files;
+}
+
+function getFileIconClass(fileType = "", fileName = "") {
+  if (isAudioFile(fileType, fileName)) return "fa-file-audio";
+  const type = String(fileType || "").toLowerCase();
+  const name = String(fileName || "").toLowerCase();
+  if (type.includes("pdf") || name.endsWith(".pdf")) return "fa-file-pdf";
+  if (type.includes("image/") || /\.(png|jpe?g|gif|webp|svg)$/.test(name)) return "fa-file-image";
+  if (type.includes("video/") || /\.(mp4|mov|m4v|webm)$/.test(name)) return "fa-file-video";
+  return "fa-file";
+}
+
+/** Opens the shared file viewer (same as resource file rows in song details). */
+async function openUploadedSongFileLikeSongDetails(file) {
+  await openFileViewer({
+    title: file.title,
+    fileName: file.fileName,
+    fileType: file.fileType,
+    filePath: file.filePath,
+    audioKey: file.resourceKey || null
+  });
+}
+
+function renderFiles(animate = true) {
+  if (state.justBecameVisible) animate = false;
+  const filesGrid = el("files-grid");
+  if (!filesGrid) return;
+
+  const filesCountEl = el("files-count");
+  const allFiles = getUploadedFilesFromSongs();
+  if (filesCountEl) {
+    filesCountEl.textContent = ` (${allFiles.length})`;
+  }
+
+  const searchInput = el("files-tab-search");
+  const searchTermRaw = searchInput ? searchInput.value.trim() : "";
+  const searchTerm = searchTermRaw.toLowerCase();
+
+  let filteredFiles = allFiles;
+  if (searchTerm) {
+    filteredFiles = allFiles.filter((file) => {
+      return [file.title, file.fileName, file.fileType, file.songTitle]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(searchTerm));
+    });
+  }
+
+  filesGrid.innerHTML = "";
+
+  if (filteredFiles.length === 0) {
+    const emptyState = document.createElement("p");
+    emptyState.className = "muted";
+    emptyState.textContent = searchTerm ? "No files match your search." : "No uploaded files yet.";
+    filesGrid.appendChild(emptyState);
+    return;
+  }
+
+  filteredFiles.forEach((file, index) => {
+    const card = document.createElement("div");
+    card.className = "card file-card";
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-label", `Open file: ${file.title || file.fileName || "file"}`);
+    if (animate) {
+      card.classList.add("ripple-item");
+      card.style.animationDelay = `${index * 0.04}s`;
+    }
+
+    const iconClass = getFileIconClass(file.fileType, file.fileName);
+    const titleHtml = searchTermRaw ? highlightMatch(file.title || "", searchTermRaw) : escapeHtml(file.title || "");
+    const songHtml = searchTermRaw ? highlightMatch(file.songTitle || "", searchTermRaw) : escapeHtml(file.songTitle || "");
+    const typeLabel = file.fileType || "Unknown type";
+
+    card.innerHTML = `
+      <div class="file-card-header">
+        <span class="file-card-icon"><i class="fa-solid ${iconClass}"></i></span>
+        <div class="file-card-title" title="${escapeHtml(file.title || "")}">${titleHtml}</div>
+      </div>
+      <div class="file-card-meta">${songHtml}</div>
+      <div class="file-card-submeta">${escapeHtml(typeLabel)}</div>
+    `;
+
+    const activateFile = () => {
+      if (card.dataset.opening === "1") return;
+      card.dataset.opening = "1";
+      card.classList.add("file-card--opening");
+      openUploadedSongFileLikeSongDetails(file).finally(() => {
+        delete card.dataset.opening;
+        card.classList.remove("file-card--opening");
+      });
+    };
+
+    card.addEventListener("click", activateFile);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        activateFile();
+      }
+    });
+
+    filesGrid.appendChild(card);
+  });
 }
 
 function formatTime(timeString) {
@@ -10343,7 +10499,7 @@ function renderSetDetailSongs(set, animate = false) {
                   const linkEl = document.createElement("a");
                   linkEl.className = "song-link-display";
 
-                  if (link.is_file_upload && link.file_path) {
+                  if ((link.is_file_upload || link.type === "file") && link.file_path) {
                     console.log('Rendering file upload in set detail:', {
                       title: link.title,
                       file_path: link.file_path,
@@ -10408,13 +10564,20 @@ function renderSetDetailSongs(set, animate = false) {
                       continue; // Skip the link creation for audio files
                     }
 
-                    // For non-audio files, create download link
+                    // For non-audio files, open inline file viewer (no new tab)
                     if (fileUrl) {
-                      linkEl.href = fileUrl;
-                      linkEl.target = "_blank";
-                      linkEl.rel = "noopener noreferrer";
-                      linkEl.download = link.file_name || link.title;
+                      linkEl.href = "#";
                       linkEl.style.cursor = "pointer";
+                      linkEl.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        openFileViewer({
+                          title: link.title,
+                          fileName: link.file_name,
+                          fileType: link.file_type,
+                          filePath: link.file_path,
+                          audioKey: link.key || link.song_key || link.songKey,
+                        });
+                      });
                     } else {
                       // Don't make it clickable if URL generation failed
                       linkEl.href = "#";
@@ -23624,6 +23787,154 @@ function isAudioFile(fileType, fileName) {
   return false;
 }
 
+let fileViewerSession = null;
+
+function getFileViewerKind(fileType, fileName) {
+  if (isAudioFile(fileType, fileName)) return "audio";
+  const name = String(fileName || "").toLowerCase();
+  const type = String(fileType || "").toLowerCase();
+  if (type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(name)) return "image";
+  if (type.startsWith("video/") || /\.(mp4|webm|mov|m4v|ogg)$/i.test(name)) return "video";
+  if (type.includes("pdf") || name.endsWith(".pdf")) return "pdf";
+  return "other";
+}
+
+function triggerFileDownloadFromViewer(url, fileName) {
+  if (!url) return;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName || "download";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function closeFileViewer() {
+  const modal = el("file-viewer-modal");
+  const stage = el("file-viewer-stage");
+  const downloadBtn = el("btn-file-viewer-download");
+  if (stage) {
+    stage.querySelectorAll("iframe").forEach((frame) => {
+      frame.src = "about:blank";
+    });
+    stage.querySelectorAll("video, audio").forEach((media) => {
+      try {
+        media.pause();
+      } catch (_) { }
+      media.removeAttribute("src");
+    });
+    stage.innerHTML = "";
+  }
+  if (downloadBtn) {
+    downloadBtn.classList.add("hidden");
+    downloadBtn.onclick = null;
+  }
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  }
+  fileViewerSession = null;
+}
+
+async function openFileViewer({ title, fileName, fileType, filePath, audioKey = null }) {
+  closeFileViewer();
+  if (!filePath) {
+    toastError("No file path for this resource.");
+    return;
+  }
+  const fileUrl = await getFileUrl(filePath);
+  if (!fileUrl) {
+    toastError("Unable to load file. Please try again later.");
+    return;
+  }
+
+  const kind = getFileViewerKind(fileType, fileName);
+  fileViewerSession = { url: fileUrl, fileName: fileName || title || "download" };
+
+  const modal = el("file-viewer-modal");
+  const stage = el("file-viewer-stage");
+  const titleEl = el("file-viewer-title");
+  const subEl = el("file-viewer-subtitle");
+  const downloadBtn = el("btn-file-viewer-download");
+
+  if (!modal || !stage) return;
+
+  if (titleEl) titleEl.textContent = title || fileName || "File";
+  if (subEl) {
+    const parts = [];
+    if (fileName) parts.push(fileName);
+    if (fileType) parts.push(fileType);
+    subEl.textContent = parts.join(" · ");
+  }
+  if (downloadBtn) {
+    downloadBtn.classList.remove("hidden");
+    downloadBtn.onclick = () => triggerFileDownloadFromViewer(fileViewerSession?.url, fileViewerSession?.fileName);
+  }
+
+  if (kind === "pdf") {
+    const iframe = document.createElement("iframe");
+    iframe.className = "file-viewer-frame";
+    iframe.title = title || fileName || "Document";
+    iframe.src = fileUrl;
+    stage.appendChild(iframe);
+  } else if (kind === "image") {
+    const img = document.createElement("img");
+    img.className = "file-viewer-img";
+    img.alt = title || fileName || "";
+    img.src = fileUrl;
+    stage.appendChild(img);
+  } else if (kind === "video") {
+    const video = document.createElement("video");
+    video.className = "file-viewer-video";
+    video.controls = true;
+    video.preload = "metadata";
+    video.src = fileUrl;
+    stage.appendChild(video);
+  } else if (kind === "audio") {
+    const wrap = document.createElement("div");
+    wrap.className = "file-viewer-audio-wrap";
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.crossOrigin = "anonymous";
+    audio.preload = "metadata";
+    audio.src = fileUrl;
+    audio.style.width = "100%";
+    wrap.appendChild(audio);
+    if (audioKey) {
+      try {
+        const transposeControls = buildAudioTransposeControls(audio, { baseKey: audioKey });
+        if (transposeControls) wrap.appendChild(transposeControls);
+      } catch (err) {
+        console.error("Failed to build transpose controls:", err);
+      }
+    }
+    stage.appendChild(wrap);
+  } else {
+    const wrap = document.createElement("div");
+    wrap.className = "file-viewer-download-fallback";
+    const iconWrap = document.createElement("div");
+    iconWrap.className = "file-viewer-fallback-icon";
+    iconWrap.innerHTML = '<i class="fa-solid fa-file" style="font-size: 2.5rem; color: var(--text-muted);"></i>';
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.style.margin = "1rem 0";
+    p.textContent = "Preview isn't available for this file type.";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn primary";
+    btn.innerHTML = '<i class="fa-solid fa-download"></i> Download';
+    btn.addEventListener("click", () => triggerFileDownloadFromViewer(fileViewerSession?.url, fileViewerSession?.fileName));
+    wrap.appendChild(iconWrap);
+    wrap.appendChild(p);
+    wrap.appendChild(btn);
+    stage.appendChild(wrap);
+  }
+
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+  el("close-file-viewer")?.focus();
+}
+
 const AUDIO_TRANSPOSE_LIMITS = { min: -12, max: 12 };
 const AUDIO_PITCH_SHIFT_WORKLET_URL = "https://cdn.jsdelivr.net/npm/@soundtouchjs/audio-worklet@0.2.1/dist/soundtouch-worklet.js";
 const audioPitchShiftRegistry = new WeakMap();
@@ -27542,13 +27853,20 @@ async function renderSongLinksDisplay(links, container) {
         continue; // Skip the link creation for audio files
       }
 
-      // For non-audio files, create download link
+      // For non-audio files, open inline file viewer (no new tab)
       if (fileUrl) {
-        linkEl.href = fileUrl;
-        linkEl.target = "_blank";
-        linkEl.rel = "noopener noreferrer";
-        linkEl.download = link.file_name || link.title;
+        linkEl.href = "#";
         linkEl.style.cursor = "pointer";
+        linkEl.addEventListener("click", (e) => {
+          e.preventDefault();
+          openFileViewer({
+            title: link.title,
+            fileName: link.file_name,
+            fileType: link.file_type,
+            filePath: link.file_path,
+            audioKey: link.key || link.song_key || link.songKey,
+          });
+        });
       } else {
         // Don't make it clickable if URL generation failed
         linkEl.href = "#";

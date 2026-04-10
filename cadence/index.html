@@ -289,6 +289,9 @@
         <button class="tab-btn" data-tab="songs">
           <div id="anim-songs" class="lottie-icon"></div> Songs
         </button>
+        <button class="tab-btn" data-tab="files">
+          <div id="anim-files" class="lottie-icon"></div> Files
+        </button>
         <button class="tab-btn" data-tab="people">
           <div id="anim-people" class="lottie-icon"></div> Team
         </button>
@@ -407,6 +410,24 @@
           </label>
         </div>
         <div id="people-list" class="people-grid"></div>
+      </div>
+
+      <div id="files-tab" class="tab-content hidden">
+        <div class="dashboard-header">
+          <div>
+            <h2>
+              <i class="fa-solid fa-folder-open"></i>
+              Files
+              <span id="files-count" class="muted small-text"></span>
+            </h2>
+          </div>
+        </div>
+        <div class="files-controls-row">
+          <label for="files-tab-search" class="sr-only">Search files</label>
+          <input type="text" id="files-tab-search" placeholder="Search files by name, type, or song"
+            class="files-search-input" />
+        </div>
+        <div id="files-grid" class="files-grid"></div>
       </div>
     </section>
 
@@ -603,6 +624,31 @@
       </header>
       <div class="chart-modal-body">
         <div id="chart-viewer-page" class="chart-page-wrap" aria-label="Chord chart page"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Uploaded file viewer (PDF, images, audio, video; avoids new-tab navigation) -->
+  <div id="file-viewer-modal" class="chart-modal hidden" aria-hidden="true">
+    <div class="chart-modal-shell file-viewer-shell" role="dialog" aria-modal="true" aria-labelledby="file-viewer-title">
+      <header class="chart-modal-header">
+        <div class="chart-modal-header-left">
+          <button type="button" class="icon-btn" id="close-file-viewer" aria-label="Close file viewer">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+          <div class="chart-modal-title-wrap">
+            <div id="file-viewer-title" class="chart-modal-title">File</div>
+            <div id="file-viewer-subtitle" class="chart-modal-subtitle muted small-text"></div>
+          </div>
+        </div>
+        <div class="chart-modal-header-right">
+          <button type="button" id="btn-file-viewer-download" class="btn secondary small hidden">
+            <i class="fa-solid fa-download"></i> Download
+          </button>
+        </div>
+      </header>
+      <div class="chart-modal-body file-viewer-body">
+        <div id="file-viewer-stage" class="file-viewer-stage"></div>
       </div>
     </div>
   </div>
