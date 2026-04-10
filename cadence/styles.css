@@ -6023,7 +6023,7 @@ i {
 }
 
 .badge-resource-match .fa-music{
-  color:var(--chart-declined-color) !important;
+  color:#EC4DBB !important;
 }
 
 .badge-resource-match .fa-link{
