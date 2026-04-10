@@ -24126,7 +24126,7 @@ function createLinkRow(link, index, key) {
     div.innerHTML = `
       ${isManager() ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
       <label>
-        Title
+        <span class="required-label">Title <span class="required-asterisk" aria-hidden="true">*</span></span>
         <input type="text" class="song-link-title-input" placeholder="File name" value="${escapeHtml(link.title || link.file_name || '')}" required />
       </label>
       <label style="flex: 1; min-width: 200px;">
@@ -24188,11 +24188,11 @@ function createLinkRow(link, index, key) {
     div.innerHTML = `
       ${isManager() ? '<div class="drag-handle" title="Drag to reorder">⋮⋮</div>' : ''}
       <label>
-        Title
+        <span class="required-label">Title <span class="required-asterisk" aria-hidden="true">*</span></span>
         <input type="text" class="song-link-title-input" placeholder="Recording" value="${escapeHtml(link.title || '')}" required />
       </label>
       <label>
-        URL
+        <span class="required-label">URL <span class="required-asterisk" aria-hidden="true">*</span></span>
         <input type="url" class="song-link-url-input" placeholder="https://..." value="${escapeHtml(link.url || '')}" required />
       </label>
       ${link.id ? `<input type="hidden" class="song-link-id" value="${link.id}" />` : ''}

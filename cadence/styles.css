@@ -2393,6 +2393,18 @@ main {
   z-index: 2100;
 }
 
+#song-edit-modal .required-asterisk {
+  color: var(--accent-color);
+  font-weight: 700;
+}
+
+#song-edit-modal .required-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  white-space: nowrap;
+}
+
 #song-relations-modal {
   z-index: 2050;
   padding: 0.5rem;
