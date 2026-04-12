@@ -1307,17 +1307,37 @@ main {
 }
 
 .files-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   margin-bottom: 1.25rem;
 }
 
 .files-search-input {
   width: 100%;
+  flex: 1 1 auto;
   padding: 0.75rem 1rem;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 3rem;
   color: var(--text-primary);
   font-size: 1rem;
+}
+
+.files-sort-dropdown-container {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 860px) {
+  .files-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .files-sort-dropdown-container .songs-sort-toggle {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 .files-grid {
@@ -1346,8 +1366,28 @@ main {
 
 .file-card-header {
   display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.file-card-info {
+  display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .file-card-icon {
@@ -1356,6 +1396,8 @@ main {
 }
 
 .file-card-title {
+  flex: 1;
+  min-width: 0;
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -1374,6 +1416,43 @@ main {
 .file-card-submeta {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+.delete-confirm-extra {
+  margin: 0.75rem 0 1rem;
+}
+
+.delete-confirm-usages-scroll {
+  max-height: 12rem;
+  overflow-y: auto;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background: var(--bg-secondary, rgba(0, 0, 0, 0.03));
+}
+
+.delete-confirm-extra-label {
+  font-size: 0.85rem;
+  margin-bottom: 0.35rem;
+}
+
+ul.song-resource-usage-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--text-secondary);
+}
+
+#file-resource-remove-modal ul.song-resource-usage-list {
+  max-height: 10rem;
+  overflow-y: auto;
+  padding: 0.5rem 0.65rem 0.5rem 1.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background: var(--bg-secondary, rgba(0, 0, 0, 0.03));
 }
 
 .sr-only {

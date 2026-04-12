@@ -159,6 +159,8 @@ let supabase = null;
 
 const SONG_SORT_STORAGE_KEY = "cadence-song-sort-option";
 const SONG_SORT_OPTIONS = new Set(["relevancy", "newest", "oldest", "alphabetical"]);
+const FILES_SORT_STORAGE_KEY = "cadence-files-sort-option";
+const FILES_SORT_OPTIONS = new Set(["relevancy", "newest", "oldest", "alphabetical"]);
 
 function normalizeSongSortOption(sortOption) {
   return SONG_SORT_OPTIONS.has(sortOption) ? sortOption : "relevancy";
@@ -181,6 +183,33 @@ function saveSongSortOption(sortOption) {
   try {
     if (typeof window !== "undefined" && window.localStorage) {
       window.localStorage.setItem(SONG_SORT_STORAGE_KEY, normalizedSort);
+    }
+  } catch (_) {
+    // localStorage may be unavailable; fail soft
+  }
+  return normalizedSort;
+}
+
+function normalizeFilesSortOption(sortOption) {
+  return FILES_SORT_OPTIONS.has(sortOption) ? sortOption : "relevancy";
+}
+
+function getStoredFilesSortOption() {
+  const fallbackSort = "relevancy";
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return fallbackSort;
+    const storedSort = window.localStorage.getItem(FILES_SORT_STORAGE_KEY);
+    return normalizeFilesSortOption(storedSort);
+  } catch (_) {
+    return fallbackSort;
+  }
+}
+
+function saveFilesSortOption(sortOption) {
+  const normalizedSort = normalizeFilesSortOption(sortOption);
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem(FILES_SORT_STORAGE_KEY, normalizedSort);
     }
   } catch (_) {
     // localStorage may be unavailable; fail soft
@@ -268,6 +297,7 @@ const state = {
   },
   lottieAnimations: {},
   songSortOption: getStoredSongSortOption(), // Sort persisted locally (relevancy, newest, oldest, alphabetical)
+  filesSortOption: getStoredFilesSortOption(), // Files tab sort (relevancy, newest, oldest, alphabetical)
   // PostHog analytics tracking state
   analytics: {
     sessionStartTime: null,
@@ -2514,11 +2544,17 @@ function bindEvents() {
   // Close sort dropdown when clicking outside
   document.addEventListener("click", (e) => {
     if (isLikelySyntheticClickEvent(e)) return;
-    const container = el("songs-sort-dropdown-container");
-    const menu = el("songs-sort-dropdown-menu");
-    if (container && menu && !container.contains(e.target) && !menu.classList.contains("hidden")) {
-      menu.classList.add("hidden");
-      menu.classList.remove("animate-out");
+    const songsContainer = el("songs-sort-dropdown-container");
+    const songsMenu = el("songs-sort-dropdown-menu");
+    if (songsContainer && songsMenu && !songsContainer.contains(e.target) && !songsMenu.classList.contains("hidden")) {
+      songsMenu.classList.add("hidden");
+      songsMenu.classList.remove("animate-out");
+    }
+    const filesContainer = el("files-sort-dropdown-container");
+    const filesMenu = el("files-sort-dropdown-menu");
+    if (filesContainer && filesMenu && !filesContainer.contains(e.target) && !filesMenu.classList.contains("hidden")) {
+      filesMenu.classList.add("hidden");
+      filesMenu.classList.remove("animate-out");
     }
   });
 
@@ -2527,6 +2563,68 @@ function bindEvents() {
     setSongSortLabel(state.songSortOption || "relevancy", false);
   };
   updateSortLabel();
+
+  // Files tab sort dropdown
+  const filesSortLabelMap = {
+    relevancy: "Relevancy",
+    newest: "Newest",
+    oldest: "Oldest",
+    alphabetical: "Alphabetical"
+  };
+
+  el("btn-files-sort-toggle")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleDropdown(el("files-sort-dropdown-menu"));
+  });
+
+  const setFilesSortLabel = (sortOption) => {
+    const labelEl = el("files-sort-label");
+    if (!labelEl) return;
+    const label = filesSortLabelMap[sortOption] || filesSortLabelMap.relevancy;
+    labelEl.textContent = `Sort: ${label}`;
+  };
+
+  const updateFilesSortSelection = () => {
+    document.querySelectorAll("#files-sort-dropdown-menu .header-dropdown-item").forEach(item => {
+      if (item.dataset.sort === (state.filesSortOption || "relevancy")) {
+        item.classList.add("selected");
+      } else {
+        item.classList.remove("selected");
+      }
+    });
+  };
+
+  document.querySelectorAll("#files-sort-dropdown-menu .header-dropdown-item").forEach(item => {
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (isLikelySyntheticClickEvent(e)) return;
+      triggerSelectionHaptic();
+
+      const sortOption = normalizeFilesSortOption(item.dataset.sort);
+      const previousSortOption = normalizeFilesSortOption(state.filesSortOption);
+      const didSortChange = sortOption !== previousSortOption;
+      state.filesSortOption = sortOption;
+      if (didSortChange) {
+        saveFilesSortOption(sortOption);
+      }
+
+      setFilesSortLabel(sortOption);
+      updateFilesSortSelection();
+
+      const menu = el("files-sort-dropdown-menu");
+      if (menu) {
+        menu.classList.add("hidden");
+        menu.classList.remove("animate-out");
+      }
+
+      if (didSortChange) {
+        renderFiles(true);
+      }
+    });
+  });
+
+  updateFilesSortSelection();
+  setFilesSortLabel(state.filesSortOption || "relevancy");
 
   // People tab search
   let isPeopleSearchTransitioning = false;
@@ -8664,6 +8762,8 @@ function getUploadedFilesFromSongs() {
       if (!isFileResource) continue;
       files.push({
         id: resource.id || `${song?.id || "song"}-${resource?.file_path || resource?.file_name || resource?.title || Math.random()}`,
+        resourceId: resource.id || null,
+        songId: song?.id || null,
         title: resource.title || resource.file_name || "Untitled file",
         fileName: resource.file_name || "",
         fileType: resource.file_type || "",
@@ -8675,6 +8775,82 @@ function getUploadedFilesFromSongs() {
     }
   }
   return files;
+}
+
+function normalizeAttachmentKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getWeeksSinceForFileAttachments(filesToUse = null) {
+  const weeksMap = new Map();
+  const files = Array.isArray(filesToUse) ? filesToUse : [];
+  if (!files.length || !Array.isArray(state.sets) || !state.sets.length) {
+    return weeksMap;
+  }
+
+  const candidatesBySongId = new Map();
+  state.sets.forEach((set) => {
+    if (!set?.scheduled_date || !Array.isArray(set.set_songs)) return;
+    const setDate = new Date(set.scheduled_date);
+    if (Number.isNaN(setDate.getTime())) return;
+    setDate.setHours(0, 0, 0, 0);
+    set.set_songs.forEach((setSong) => {
+      if (!setSong?.song_id) return;
+      const songId = String(setSong.song_id);
+      const arr = candidatesBySongId.get(songId) || [];
+      arr.push({
+        setId: set.id,
+        date: setDate,
+        setSongKey: normalizeAttachmentKey(setSong.key)
+      });
+      candidatesBySongId.set(songId, arr);
+    });
+  });
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const weekMs = 1000 * 60 * 60 * 24 * 7;
+
+  files.forEach((file) => {
+    const songId = file?.songId ? String(file.songId) : "";
+    if (!songId) return;
+    const candidates = candidatesBySongId.get(songId) || [];
+    if (!candidates.length) return;
+
+    const fileKey = normalizeAttachmentKey(file.resourceKey);
+    const matchingCandidates = candidates.filter((candidate) => {
+      if (!fileKey) return true; // General attachment applies to any scheduled use of the song.
+      return candidate.setSongKey === fileKey;
+    });
+    if (!matchingCandidates.length) return;
+
+    let next = null;
+    let last = null;
+    matchingCandidates.forEach((candidate) => {
+      if (candidate.date >= now) {
+        if (!next || candidate.date < next.date) next = candidate;
+      } else {
+        if (!last || candidate.date > last.date) last = candidate;
+      }
+    });
+
+    if (next) {
+      const diffWeeks = Math.round((next.date.getTime() - now.getTime()) / weekMs);
+      const label = diffWeeks === 0 ? "This week" : `+${diffWeeks}w`;
+      weeksMap.set(file.id, { diffWeeks, label, setId: next.setId, type: "future" });
+    } else if (last) {
+      const weeksAgo = Math.round((now.getTime() - last.date.getTime()) / weekMs);
+      const signedWeeks = -weeksAgo;
+      weeksMap.set(file.id, {
+        diffWeeks: signedWeeks,
+        label: weeksAgo === 0 ? "This week" : `-${weeksAgo}w`,
+        setId: last.setId,
+        type: "past"
+      });
+    }
+  });
+
+  return weeksMap;
 }
 
 function getFileIconClass(fileType = "", fileName = "") {
@@ -8713,12 +8889,72 @@ function renderFiles(animate = true) {
   const searchTermRaw = searchInput ? searchInput.value.trim() : "";
   const searchTerm = searchTermRaw.toLowerCase();
 
-  let filteredFiles = allFiles;
-  if (searchTerm) {
-    filteredFiles = allFiles.filter((file) => {
-      return [file.title, file.fileName, file.fileType, file.songTitle]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(searchTerm));
+  let filteredFiles = allFiles.filter((file) => {
+    if (!searchTerm) return true;
+    return [file.title, file.fileName, file.fileType, file.songTitle]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(searchTerm));
+  });
+
+  const sortOption = normalizeFilesSortOption(state.filesSortOption);
+  if (sortOption === "relevancy") {
+    const weeksSinceMap = getWeeksSinceForFileAttachments(filteredFiles);
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+
+    const newFiles = [];
+    const otherFiles = [];
+    filteredFiles.forEach((file) => {
+      const createdAt = file.createdAt ? new Date(file.createdAt) : new Date(0);
+      if (createdAt > fiveDaysAgo) {
+        newFiles.push(file);
+      } else {
+        otherFiles.push(file);
+      }
+    });
+
+    newFiles.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    const boostedFiles = newFiles.slice(0, 3);
+    otherFiles.push(...newFiles.slice(3));
+
+    otherFiles.sort((a, b) => {
+      const infoA = weeksSinceMap.get(a.id);
+      const infoB = weeksSinceMap.get(b.id);
+      const numA = infoA ? infoA.diffWeeks : null;
+      const numB = infoB ? infoB.diffWeeks : null;
+
+      if (numA !== null && numB !== null) {
+        if (numA >= 0 && numB >= 0) return numA - numB;
+        if (numA < 0 && numB < 0) return numA - numB;
+        if (numA >= 0 && numB < 0) return -1;
+        if (numA < 0 && numB >= 0) return 1;
+      }
+      if (numA !== null && numB === null) return -1;
+      if (numA === null && numB !== null) return 1;
+      return String(a.title || a.fileName || "").localeCompare(String(b.title || b.fileName || ""));
+    });
+
+    filteredFiles = [...boostedFiles, ...otherFiles];
+  } else if (sortOption === "newest") {
+    filteredFiles.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+  } else if (sortOption === "oldest") {
+    filteredFiles.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return dateA.getTime() - dateB.getTime();
+    });
+  } else if (sortOption === "alphabetical") {
+    filteredFiles.sort((a, b) => {
+      return String(a.title || a.fileName || "").toLowerCase().localeCompare(String(b.title || b.fileName || "").toLowerCase());
     });
   }
 
@@ -8748,14 +8984,69 @@ function renderFiles(animate = true) {
     const songHtml = searchTermRaw ? highlightMatch(file.songTitle || "", searchTermRaw) : escapeHtml(file.songTitle || "");
     const typeLabel = file.fileType || "Unknown type";
 
+    const deleteBtnHtml =
+      isManager() && file.filePath
+        ? `<div class="file-card-actions">
+            <button type="button" class="btn small ghost file-card-delete" aria-label="Delete file from team">Delete</button>
+          </div>`
+        : "";
+
     card.innerHTML = `
       <div class="file-card-header">
-        <span class="file-card-icon"><i class="fa-solid ${iconClass}"></i></span>
-        <div class="file-card-title" title="${escapeHtml(file.title || "")}">${titleHtml}</div>
+        <div class="file-card-info">
+          <span class="file-card-icon"><i class="fa-solid ${iconClass}"></i></span>
+          <div class="file-card-title" title="${escapeHtml(file.title || "")}">${titleHtml}</div>
+        </div>
+        ${deleteBtnHtml}
       </div>
       <div class="file-card-meta">${songHtml}</div>
       <div class="file-card-submeta">${escapeHtml(typeLabel)}</div>
     `;
+
+    const deleteBtn = card.querySelector(".file-card-delete");
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!state.currentTeamId || !file.filePath) return;
+        const confirmName = (file.title || file.fileName || "").trim() || "Untitled file";
+        const { lines, error: usageErr } = await fetchSongResourceUsages({
+          teamId: state.currentTeamId,
+          filePath: file.filePath,
+          url: null
+        });
+        if (usageErr) {
+          toastError("Could not load file usage. Try again.");
+          return;
+        }
+        const extraHtml = buildSongResourceUsagesExtraHtml(lines);
+        const message =
+          "This permanently removes the file from storage and deletes every attachment row that uses it. This cannot be undone.";
+        showDeleteConfirmModal(
+          confirmName,
+          message,
+          async () => {
+            const result = await safeSupabaseOperation(async () => {
+              const r = await deleteAllSongResourceRowsForFile({
+                teamId: state.currentTeamId,
+                filePath: file.filePath,
+                url: null
+              });
+              return { data: r, error: r.error };
+            });
+            if (result?.error) {
+              toastError("Failed to delete file.");
+              return;
+            }
+            await loadSongs();
+            await loadSets();
+            renderFiles(false);
+            await refreshOpenSongDetailsModalForPermissions();
+          },
+          { extraHtml }
+        );
+      });
+    }
 
     const activateFile = () => {
       if (card.dataset.opening === "1") return;
@@ -15674,13 +15965,16 @@ async function handleEditSetSongSubmit(event) {
       !links.some(l => l.id === id)
     );
 
-    // Delete removed links and their files
+    // Delete removed links; storage only if no other row references the same path
     if (deletedIds.length > 0) {
-      // Get file paths of links to be deleted
       const linksToDelete = existingLinks?.filter(l => deletedIds.includes(l.id)) || [];
+      const pathsToCheck = new Set();
       for (const linkToDelete of linksToDelete) {
-        if (linkToDelete.is_file_upload && linkToDelete.file_path) {
-          await deleteFileFromSupabase(linkToDelete.file_path);
+        if (
+          (linkToDelete.type === "file" || linkToDelete.is_file_upload) &&
+          linkToDelete.file_path
+        ) {
+          pathsToCheck.add(linkToDelete.file_path);
         }
       }
 
@@ -15688,6 +15982,10 @@ async function handleEditSetSongSubmit(event) {
         .from(SONG_RESOURCES_TABLE)
         .delete()
         .in("id", deletedIds);
+
+      for (const fp of pathsToCheck) {
+        await deleteStorageIfOrphaned({ teamId: state.currentTeamId, filePath: fp });
+      }
     }
 
     // Update existing links
@@ -15699,10 +15997,8 @@ async function handleEditSetSongSubmit(event) {
 
       // If it's a file upload with a new file, upload it
       if (link.is_file_upload && link.file) {
-        // Delete old file if it exists
-        if (existingLink?.is_file_upload && existingLink?.file_path) {
-          await deleteFileFromSupabase(existingLink.file_path);
-        }
+        const oldPathForReplace =
+          existingLink?.is_file_upload && existingLink?.file_path ? existingLink.file_path : null;
 
         // Upload new file
         const uploadResult = await uploadFileToSupabase(link.file, null, setSongId, state.currentTeamId);
@@ -15713,6 +16009,25 @@ async function handleEditSetSongSubmit(event) {
         filePath = uploadResult.filePath;
         fileName = uploadResult.fileName;
         fileType = uploadResult.fileType;
+
+        await supabase
+          .from(SONG_RESOURCES_TABLE)
+          .update({
+            title: link.title,
+            url: link.is_file_upload ? null : link.url,
+            file_path: link.is_file_upload ? filePath : null,
+            file_name: link.is_file_upload ? fileName : null,
+            file_type: link.is_file_upload ? fileType : null,
+            type: link.is_file_upload ? 'file' : 'link',
+            key: link.key || null,
+            display_order: link.display_order,
+          })
+          .eq("id", link.id);
+
+        if (oldPathForReplace && oldPathForReplace !== filePath) {
+          await deleteStorageIfOrphaned({ teamId: state.currentTeamId, filePath: oldPathForReplace });
+        }
+        continue;
       } else if (link.is_file_upload && !link.file && existingLink?.file_path) {
         // Keep existing file if no new file is selected
         filePath = existingLink.file_path;
@@ -15813,11 +16128,13 @@ function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
   const confirmBtn = el("confirm-delete");
   const cancelBtn = el("cancel-delete-confirm");
   const closeBtn = el("close-delete-confirm-modal");
+  const extraWrap = el("delete-confirm-extra");
 
   if (!modal) return;
 
   const modalTitle = options.title || "Confirm Deletion";
   const buttonText = options.buttonText || "Delete";
+  const extraHtml = options.extraHtml || options.extraBodyHtml || "";
 
   title.textContent = modalTitle;
   messageEl.textContent = message;
@@ -15826,6 +16143,16 @@ function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
   input.placeholder = name;
   confirmBtn.textContent = buttonText;
   confirmBtn.disabled = true;
+
+  if (extraWrap) {
+    if (extraHtml) {
+      extraWrap.innerHTML = extraHtml;
+      extraWrap.classList.remove("hidden");
+    } else {
+      extraWrap.innerHTML = "";
+      extraWrap.classList.add("hidden");
+    }
+  }
 
   const checkMatch = () => {
     confirmBtn.disabled = input.value.trim() !== name.trim();
@@ -15848,6 +16175,13 @@ function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
     input.removeEventListener("keydown", handleKeyDown);
     input.value = "";
     confirmBtn.disabled = true;
+    if (extraWrap) {
+      extraWrap.innerHTML = "";
+      extraWrap.classList.add("hidden");
+    }
+    confirmBtn.onclick = null;
+    cancelBtn.onclick = null;
+    closeBtn.onclick = null;
   };
 
   const handleConfirm = () => {
@@ -23836,19 +24170,27 @@ function closeFileViewer() {
   fileViewerSession = null;
 }
 
-async function openFileViewer({ title, fileName, fileType, filePath, audioKey = null }) {
+async function openFileViewer({ title, fileName, fileType, filePath, audioKey = null, directUrl = null }) {
   closeFileViewer();
-  if (!filePath) {
+  let fileUrl = null;
+  const trimmedDirect = directUrl && String(directUrl).trim() ? String(directUrl).trim() : null;
+  if (trimmedDirect) {
+    fileUrl = trimmedDirect;
+  } else if (filePath) {
+    fileUrl = await getFileUrl(filePath);
+  } else {
     toastError("No file path for this resource.");
     return;
   }
-  const fileUrl = await getFileUrl(filePath);
   if (!fileUrl) {
     toastError("Unable to load file. Please try again later.");
     return;
   }
 
-  const kind = getFileViewerKind(fileType, fileName);
+  let kind = getFileViewerKind(fileType, fileName);
+  if (trimmedDirect && isPdfResourceLink({ url: trimmedDirect, file_type: fileType, file_name: fileName })) {
+    kind = "pdf";
+  }
   fileViewerSession = { url: fileUrl, fileName: fileName || title || "download" };
 
   const modal = el("file-viewer-modal");
@@ -24518,27 +24860,96 @@ function createLinkRow(link, index, key) {
   div.linkResource = link;
 
   div.querySelector(".remove-song-link").addEventListener("click", async () => {
-    // If it's a file upload, delete the file from storage
-    if (isFileUpload) {
-      // Get file_path from hidden input (in case link object doesn't have it)
-      const filePathInput = div.querySelector(".song-link-file-path");
-      const filePath = filePathInput?.value || link.file_path;
-      if (filePath) {
-        console.log('Deleting file from storage:', filePath);
-        const result = await deleteFileFromSupabase(filePath);
-        if (!result.success) {
-          console.error('Failed to delete file:', result.error);
-          toastError(`Failed to delete file: ${result.error}`);
-        }
-      }
-    }
-
     const section = div.closest(".song-links-section");
     const sectionContent = section?.querySelector(".song-links-section-content");
-    if (sectionContent) {
-      sectionContent.removeChild(div);
-      updateAllLinkOrderInDom();
+
+    const removeDom = () => {
+      if (sectionContent) {
+        sectionContent.removeChild(div);
+        updateAllLinkOrderInDom();
+      }
+    };
+
+    if (!isFileUpload) {
+      removeDom();
+      return;
     }
+
+    const filePathInput = div.querySelector(".song-link-file-path");
+    const filePath = filePathInput?.value || link.file_path || "";
+    const resourceId = link.id || div.querySelector(".song-link-id")?.value || null;
+
+    if (!resourceId || !filePath) {
+      removeDom();
+      return;
+    }
+
+    if (!isManager()) {
+      toastError("Only managers can remove saved file attachments.");
+      return;
+    }
+
+    const { lines, error: usageErr } = await fetchSongResourceUsages({
+      teamId: state.currentTeamId,
+      filePath,
+      url: null
+    });
+    if (usageErr) {
+      toastError("Could not load file usage. Try again.");
+      return;
+    }
+
+    const confirmName =
+      (link.title || link.file_name || filePath.split("/").pop() || "").trim() || "file";
+
+    openFileResourceRemoveChoiceModal({
+      lines,
+      confirmName,
+      filePath,
+      url: null,
+      onRemoveThisPlace: async () => {
+        const res = await safeSupabaseOperation(async () => {
+          const { error } = await supabase.from(SONG_RESOURCES_TABLE).delete().eq("id", resourceId);
+          return { data: null, error };
+        });
+        if (res?.error) {
+          toastError("Could not remove attachment.");
+          return;
+        }
+        await deleteStorageIfOrphaned({ teamId: state.currentTeamId, filePath });
+        removeDom();
+        await loadSongs();
+        await loadSets();
+        renderFiles(false);
+        await refreshOpenSongDetailsModalForPermissions();
+      },
+      onDeleteEverywhere: ({ lines: usageLines, confirmName: cn }) => {
+        showDeleteConfirmModal(
+          cn,
+          "This permanently removes the file from storage and deletes every attachment row that uses it.",
+          async () => {
+            const result = await safeSupabaseOperation(async () => {
+              const r = await deleteAllSongResourceRowsForFile({
+                teamId: state.currentTeamId,
+                filePath,
+                url: null
+              });
+              return { data: r, error: r.error };
+            });
+            if (result?.error) {
+              toastError("Failed to delete file.");
+              return;
+            }
+            removeDom();
+            await loadSongs();
+            await loadSets();
+            renderFiles(false);
+            await refreshOpenSongDetailsModalForPermissions();
+          },
+          { extraHtml: buildSongResourceUsagesExtraHtml(usageLines) }
+        );
+      }
+    });
   });
 
   const generateBtn = div.querySelector(".generate-cadence-chart-btn");
@@ -25130,27 +25541,97 @@ function createSectionLinkRow(link, index, key) {
   }
 
   div.querySelector(".remove-section-link").addEventListener("click", async () => {
-    // If it's a file upload, delete the file from storage
-    if (isFileUpload) {
-      // Get file_path from hidden input (in case link object doesn't have it)
-      const filePathInput = div.querySelector(".section-link-file-path");
-      const filePath = filePathInput?.value || link.file_path;
-      if (filePath) {
-        console.log('Deleting file from storage:', filePath);
-        const result = await deleteFileFromSupabase(filePath);
-        if (!result.success) {
-          console.error('Failed to delete file:', result.error);
-          toastError(`Failed to delete file: ${result.error}`);
-        }
-      }
-    }
-
     const section = div.closest(".song-links-section");
     const sectionContent = section?.querySelector(".song-links-section-content");
-    if (sectionContent) {
-      sectionContent.removeChild(div);
-      updateAllSectionLinkOrderInDom(div.closest('[id*="links-list"]')?.id || "section-links-list");
+    const listId = div.closest('[id*="links-list"]')?.id || "section-links-list";
+
+    const removeDom = () => {
+      if (sectionContent) {
+        sectionContent.removeChild(div);
+        updateAllSectionLinkOrderInDom(listId);
+      }
+    };
+
+    if (!isFileUpload) {
+      removeDom();
+      return;
     }
+
+    const filePathInput = div.querySelector(".section-link-file-path");
+    const filePath = filePathInput?.value || link.file_path || "";
+    const resourceId = link.id || div.querySelector(".section-link-id")?.value || null;
+
+    if (!resourceId || !filePath) {
+      removeDom();
+      return;
+    }
+
+    if (!isManager()) {
+      toastError("Only managers can remove saved file attachments.");
+      return;
+    }
+
+    const { lines, error: usageErr } = await fetchSongResourceUsages({
+      teamId: state.currentTeamId,
+      filePath,
+      url: null
+    });
+    if (usageErr) {
+      toastError("Could not load file usage. Try again.");
+      return;
+    }
+
+    const confirmName =
+      (link.title || link.file_name || filePath.split("/").pop() || "").trim() || "file";
+
+    openFileResourceRemoveChoiceModal({
+      lines,
+      confirmName,
+      filePath,
+      url: null,
+      onRemoveThisPlace: async () => {
+        const res = await safeSupabaseOperation(async () => {
+          const { error } = await supabase.from(SONG_RESOURCES_TABLE).delete().eq("id", resourceId);
+          return { data: null, error };
+        });
+        if (res?.error) {
+          toastError("Could not remove attachment.");
+          return;
+        }
+        await deleteStorageIfOrphaned({ teamId: state.currentTeamId, filePath });
+        removeDom();
+        await loadSongs();
+        await loadSets();
+        renderFiles(false);
+        await refreshOpenSongDetailsModalForPermissions();
+      },
+      onDeleteEverywhere: ({ lines: usageLines, confirmName: cn }) => {
+        showDeleteConfirmModal(
+          cn,
+          "This permanently removes the file from storage and deletes every attachment row that uses it.",
+          async () => {
+            const result = await safeSupabaseOperation(async () => {
+              const r = await deleteAllSongResourceRowsForFile({
+                teamId: state.currentTeamId,
+                filePath,
+                url: null
+              });
+              return { data: r, error: r.error };
+            });
+            if (result?.error) {
+              toastError("Failed to delete file.");
+              return;
+            }
+            removeDom();
+            await loadSongs();
+            await loadSets();
+            renderFiles(false);
+            await refreshOpenSongDetailsModalForPermissions();
+          },
+          { extraHtml: buildSongResourceUsagesExtraHtml(usageLines) }
+        );
+      }
+    });
   });
 
   return div;
@@ -25513,17 +25994,21 @@ async function handleSongEditSubmit(event) {
   const updatedResources = resources.filter(r => r.id && existingIds.has(r.id));
   const deletedIds = Array.from(existingIds).filter(id => !resources.some(r => r.id === id));
 
-  // 1. Delete removed resources
+  // 1. Delete removed resources (storage only when no row still references path)
   if (deletedIds.length > 0) {
     const resourcesToDelete = existingResources.filter(r => deletedIds.includes(r.id));
-    // Delete files for deleted resources
+    const pathsToCheck = new Set();
     for (const res of resourcesToDelete) {
-      if (res.type === 'file' && res.file_path) {
-        await deleteFileFromSupabase(res.file_path);
+      if (res.type === "file" && res.file_path) {
+        pathsToCheck.add(res.file_path);
       }
     }
 
     await supabase.from(SONG_RESOURCES_TABLE).delete().in("id", deletedIds);
+
+    for (const fp of pathsToCheck) {
+      await deleteStorageIfOrphaned({ teamId: state.currentTeamId, filePath: fp });
+    }
   }
 
   // 2. Update existing resources
@@ -25548,12 +26033,8 @@ async function handleSongEditSubmit(event) {
 
       // If it's a file upload with a new file, upload it
       if (res.type === 'file' && res.file) {
-        // Delete old file if it exists
-        if (existing.file_path) {
-          await deleteFileFromSupabase(existing.file_path);
-        }
+        const oldPathForReplace = existing.file_path || null;
 
-        // Upload new file
         const uploadResult = await uploadFileToSupabase(res.file, finalSongId, null, state.currentTeamId);
         if (!uploadResult.success) {
           toastError(`Failed to upload file: ${uploadResult.error}`);
@@ -25562,6 +26043,17 @@ async function handleSongEditSubmit(event) {
         filePath = uploadResult.filePath;
         fileName = uploadResult.fileName;
         fileType = uploadResult.fileType;
+
+        updateData.file_path = filePath;
+        updateData.file_name = fileName;
+        updateData.file_type = fileType;
+
+        await supabase.from(SONG_RESOURCES_TABLE).update(updateData).eq("id", res.id);
+
+        if (oldPathForReplace && oldPathForReplace !== filePath) {
+          await deleteStorageIfOrphaned({ teamId: state.currentTeamId, filePath: oldPathForReplace });
+        }
+        continue;
       }
 
       updateData.file_path = filePath;
@@ -27906,9 +28398,25 @@ async function renderSongLinksDisplay(links, container) {
       linkEl.appendChild(content);
     } else {
       // URL link
-      linkEl.href = link.url;
-      linkEl.target = "_blank";
-      linkEl.rel = "noopener noreferrer";
+      const isPdfUrlLink = !!(link.url && isPdfResourceLink(link));
+      if (isPdfUrlLink) {
+        linkEl.href = "#";
+        linkEl.style.cursor = "pointer";
+        linkEl.addEventListener("click", (e) => {
+          e.preventDefault();
+          openFileViewer({
+            title: link.title,
+            fileName: link.file_name || null,
+            fileType: link.file_type || "application/pdf",
+            filePath: null,
+            directUrl: link.url,
+          });
+        });
+      } else {
+        linkEl.href = link.url;
+        linkEl.target = "_blank";
+        linkEl.rel = "noopener noreferrer";
+      }
 
       const favicon = document.createElement("img");
       favicon.className = "song-link-favicon";
@@ -28034,6 +28542,204 @@ async function renderSongLinksDisplay(links, container) {
 
 const SONG_CHARTS_TABLE = "song_charts";
 const SONG_RESOURCES_TABLE = "song_resources";
+
+/** DB may use `set_song_id` or `set_songs_id` (or similar) for the FK to set_songs. */
+function getSongResourceSetSongId(row) {
+  if (!row || typeof row !== "object") return null;
+  const v = row.set_song_id ?? row.set_songs_id ?? row.setSongId ?? null;
+  return v != null && v !== "" ? v : null;
+}
+
+function formatSongResourceUsageLine(row) {
+  if (!row) return "";
+  const song = row.song;
+  if (row.song_id && song) {
+    return `Song: ${song.title || "Untitled"}`;
+  }
+  const setSong = row.set_song;
+  const setSongFk = getSongResourceSetSongId(row);
+  if (setSongFk && setSong) {
+    const st = setSong.set;
+    const setTitle = st?.title || "Set";
+    const dateStr = st?.scheduled_date
+      ? new Date(st.scheduled_date).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        })
+      : "No date";
+    const itemTitle =
+      (setSong.title && String(setSong.title).trim()) ||
+      (setSong.song_id ? "Song" : "Section");
+    return `Set: ${setTitle} (${dateStr}) — ${itemTitle}`;
+  }
+  return `Attachment (${row.id || "?"})`;
+}
+
+function buildSongResourceUsagesExtraHtml(lines) {
+  if (!lines || !lines.length) {
+    return `<div class="delete-confirm-usages-scroll"><p class="muted">No other references found (this attachment only).</p></div>`;
+  }
+  const items = lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  return `<div class="delete-confirm-usages-scroll"><div class="delete-confirm-extra-label muted">This file is attached to:</div><ul class="song-resource-usage-list">${items}</ul></div>`;
+}
+
+async function fetchSongResourceUsages({ teamId, filePath, url }) {
+  if (!teamId) return { rows: [], lines: [] };
+
+  // PostgREST cannot embed song/set_song from song_resources if those FKs are not declared
+  // in the schema. Fetch resource rows first, then batch-load songs and set_songs.
+  let query = supabase
+    .from(SONG_RESOURCES_TABLE)
+    .select("*")
+    .eq("team_id", teamId);
+
+  if (filePath) {
+    query = query.eq("file_path", filePath);
+  } else if (url) {
+    query = query.eq("url", url);
+  } else {
+    return { rows: [], lines: [] };
+  }
+
+  const { data: baseRows, error } = await query;
+  if (error) {
+    console.error("fetchSongResourceUsages:", error);
+    return { rows: [], lines: [], error };
+  }
+  const base = baseRows || [];
+  if (!base.length) {
+    return { rows: [], lines: [] };
+  }
+
+  const songIds = [...new Set(base.map((r) => r.song_id).filter(Boolean))];
+  const setSongIds = [...new Set(base.map((r) => getSongResourceSetSongId(r)).filter(Boolean))];
+
+  const songById = new Map();
+  if (songIds.length > 0) {
+    const { data: songs, error: songErr } = await supabase
+      .from("songs")
+      .select("id, title")
+      .in("id", songIds);
+    if (songErr) {
+      console.error("fetchSongResourceUsages (songs):", songErr);
+    } else {
+      (songs || []).forEach((s) => songById.set(s.id, s));
+    }
+  }
+
+  const setSongById = new Map();
+  if (setSongIds.length > 0) {
+    const { data: setSongs, error: setSongErr } = await supabase
+      .from("set_songs")
+      .select(
+        `
+        id,
+        title,
+        song_id,
+        set_id,
+        set:set_id ( id, title, scheduled_date )
+      `
+      )
+      .in("id", setSongIds);
+    if (setSongErr) {
+      console.error("fetchSongResourceUsages (set_songs):", setSongErr);
+    } else {
+      (setSongs || []).forEach((ss) => setSongById.set(ss.id, ss));
+    }
+  }
+
+  const rows = base.map((r) => {
+    const ssid = getSongResourceSetSongId(r);
+    return {
+      ...r,
+      set_song_id: ssid,
+      song: r.song_id ? songById.get(r.song_id) || null : null,
+      set_song: ssid ? setSongById.get(ssid) || null : null
+    };
+  });
+  const lines = rows.map(formatSongResourceUsageLine);
+  return { rows, lines };
+}
+
+async function deleteStorageIfOrphaned({ teamId, filePath }) {
+  if (!teamId || !filePath) return;
+  const { count, error } = await supabase
+    .from(SONG_RESOURCES_TABLE)
+    .select("*", { count: "exact", head: true })
+    .eq("team_id", teamId)
+    .eq("file_path", filePath);
+  if (error) {
+    console.error("deleteStorageIfOrphaned count:", error);
+    return;
+  }
+  if (count === 0) {
+    await deleteFileFromSupabase(filePath);
+  }
+}
+
+async function deleteAllSongResourceRowsForFile({ teamId, filePath, url }) {
+  const { rows, error: fetchErr } = await fetchSongResourceUsages({ teamId, filePath, url });
+  if (fetchErr) {
+    return { deleted: 0, error: fetchErr };
+  }
+  if (!rows.length) {
+    return { deleted: 0, error: null };
+  }
+  const ids = rows.map((r) => r.id);
+  const { error } = await supabase.from(SONG_RESOURCES_TABLE).delete().in("id", ids);
+  if (error) {
+    return { deleted: 0, error };
+  }
+  if (filePath) {
+    await deleteFileFromSupabase(filePath);
+  }
+  return { deleted: ids.length, error: null };
+}
+
+/**
+ * Saved attachment removal: choose "this place only" vs "everywhere" (chains to type-to-confirm).
+ * Immediate DB delete for "this place only" avoids desync with the edit form.
+ */
+function openFileResourceRemoveChoiceModal({ lines, confirmName, filePath, url, onRemoveThisPlace, onDeleteEverywhere }) {
+  const modal = el("file-resource-remove-modal");
+  const listEl = el("file-resource-remove-usages");
+  const closeBtn = el("close-file-resource-remove-modal");
+  const cancelBtn = el("cancel-file-resource-remove");
+  const thisPlaceBtn = el("file-resource-remove-this-place");
+  const everywhereBtn = el("file-resource-remove-delete-everywhere");
+  if (!modal || !listEl || !thisPlaceBtn || !everywhereBtn) return;
+
+  const items =
+    lines && lines.length
+      ? lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")
+      : `<li class="muted">(This row only)</li>`;
+  listEl.innerHTML = items;
+
+  const cleanup = () => {
+    modal.classList.add("hidden");
+    document.body.style.overflow = "";
+    listEl.innerHTML = "";
+    if (closeBtn) closeBtn.onclick = null;
+    if (cancelBtn) cancelBtn.onclick = null;
+    thisPlaceBtn.onclick = null;
+    everywhereBtn.onclick = null;
+  };
+
+  if (closeBtn) closeBtn.onclick = cleanup;
+  if (cancelBtn) cancelBtn.onclick = cleanup;
+  thisPlaceBtn.onclick = () => {
+    cleanup();
+    onRemoveThisPlace?.();
+  };
+  everywhereBtn.onclick = () => {
+    cleanup();
+    onDeleteEverywhere?.({ lines, confirmName, filePath, url });
+  };
+
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
 
 async function fetchSongResources(songId) {
   if (!songId) return [];

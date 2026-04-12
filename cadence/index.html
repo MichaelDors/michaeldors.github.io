@@ -426,6 +426,31 @@
           <label for="files-tab-search" class="sr-only">Search files</label>
           <input type="text" id="files-tab-search" placeholder="Search files by name, type, or song"
             class="files-search-input" />
+          <div class="header-dropdown-container files-sort-dropdown-container" id="files-sort-dropdown-container">
+            <button id="btn-files-sort-toggle" class="btn secondary songs-sort-toggle" type="button">
+              <i class="fa-solid fa-sort"></i>
+              <span id="files-sort-label" class="songs-sort-label-text">Sort: Relevancy</span>
+              <i class="fa-solid fa-chevron-down songs-sort-chevron"></i>
+            </button>
+            <div class="header-dropdown-menu hidden" id="files-sort-dropdown-menu">
+              <button type="button" class="header-dropdown-item" data-sort="relevancy">
+                <i class="fa-solid fa-star"></i>
+                <span>Relevancy</span>
+              </button>
+              <button type="button" class="header-dropdown-item" data-sort="newest">
+                <i class="fa-solid fa-clock"></i>
+                <span>Newest</span>
+              </button>
+              <button type="button" class="header-dropdown-item" data-sort="oldest">
+                <i class="fa-solid fa-history"></i>
+                <span>Oldest</span>
+              </button>
+              <button type="button" class="header-dropdown-item" data-sort="alphabetical">
+                <i class="fa-solid fa-sort-alpha-down"></i>
+                <span>Alphabetical</span>
+              </button>
+            </div>
+          </div>
         </div>
         <div id="files-grid" class="files-grid"></div>
       </div>
@@ -1369,14 +1394,36 @@
       </header>
       <div>
         <p id="delete-confirm-message"></p>
+        <div id="delete-confirm-extra" class="delete-confirm-extra hidden" aria-live="polite"></div>
         <label>
-          <span style="white-space: nowrap; margin-bottom: 1rem;">Type <span style="color: var(--accent-color);"
+          <span style="margin-bottom: 1rem;">Type <span style="color: var(--accent-color);"
               id="delete-confirm-name"></span> to confirm</span>
           <input type="text" id="delete-confirm-input" placeholder="" autocomplete="off" style="margin-bottom: 1rem;" />
         </label>
         <div class="modal-actions">
           <button type="button" class="btn ghost" id="cancel-delete-confirm">Cancel</button>
           <button type="button" class="btn primary" id="confirm-delete" disabled>Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="file-resource-remove-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3>Remove attachment</h3>
+        <button class="icon-btn" id="close-file-resource-remove-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <div>
+        <p class="muted" style="margin-bottom: 0.75rem;">This file may be used in more than one place. Choose how to remove it.</p>
+        <div class="delete-confirm-extra-label muted" style="margin-bottom: 0.35rem;">Used in:</div>
+        <ul id="file-resource-remove-usages" class="song-resource-usage-list"></ul>
+        <div class="modal-actions" style="flex-wrap: wrap; gap: 0.5rem;">
+          <button type="button" class="btn ghost" id="cancel-file-resource-remove">Cancel</button>
+          <button type="button" class="btn secondary" id="file-resource-remove-this-place">Remove from this place only</button>
+          <button type="button" class="btn primary danger" id="file-resource-remove-delete-everywhere">Delete file everywhere</button>
         </div>
       </div>
     </div>
