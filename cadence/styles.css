@@ -6259,7 +6259,6 @@ i {
 
 .song-match-context {
   margin-top: 0.65rem;
-  background: var(--bg-secondary);
   padding: 0.45rem 0 0;
   margin-bottom: 0;
   display: flex;
