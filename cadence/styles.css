@@ -743,8 +743,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .songs-search-shell.songs-sort-resizing,
+  #files-search-shell.files-search-shell.files-sort-resizing,
   .songs-sort-toggle,
   .songs-search-input,
+  .files-search-input,
   .songs-sort-label-text {
     transition: none !important;
     animation: none !important;
@@ -1307,36 +1309,104 @@ main {
 }
 
 .files-controls-row {
+  margin-bottom: 1.5rem;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  align-items: stretch;
+  gap: 1rem;
+  position: relative;
+  z-index: 2;
 }
 
-.files-search-input {
-  width: 100%;
+#files-search-shell.files-search-shell {
   flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
   padding: 0.75rem 1rem;
+  overflow: visible;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 3rem;
+  font-weight: 400;
+  color: inherit;
+  transition:
+    background-color 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    backdrop-filter 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    -webkit-backdrop-filter 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#files-search-shell.files-search-shell:focus-within {
+  border-color: color-mix(in srgb, var(--accent-color) 45%, var(--border-color));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-color) 24%, transparent);
+}
+
+#files-search-shell.files-search-shell.files-sort-resizing {
+  transition: width 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.files-search-input {
+  flex: 1 0 12rem;
+  min-width: 10rem;
+  width: auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   color: var(--text-primary);
   font-size: 1rem;
 }
 
+.files-search-input:focus {
+  outline: none;
+}
+
+.files-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.files-controls-row.files-sort-animating .files-search-shell {
+  background: color-mix(in srgb, var(--bg-secondary) 82%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 20%, var(--border-color));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.files-controls-row.files-sort-animating .songs-sort-toggle {
+  background: color-mix(in srgb, var(--secondary-btn-bg) 84%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 20%, var(--border-color));
+  box-shadow: 0 10px 25px color-mix(in srgb, var(--accent-color) 9%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
 .files-sort-dropdown-container {
   flex: 0 0 auto;
+  margin-left: 0;
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
 }
 
 @media (max-width: 860px) {
   .files-controls-row {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
   }
 
   .files-sort-dropdown-container .songs-sort-toggle {
     width: 100%;
     justify-content: center;
+  }
+
+  .files-search-input {
+    font-size: 0.95rem;
+    min-width: 5rem;
   }
 }
 

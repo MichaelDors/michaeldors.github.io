@@ -422,10 +422,12 @@
             </h2>
           </div>
         </div>
-        <div class="files-controls-row">
+        <div id="files-controls-row" class="files-controls-row">
           <label for="files-tab-search" class="sr-only">Search files</label>
-          <input type="text" id="files-tab-search" placeholder="Search files by name, type, or song"
-            class="files-search-input" />
+          <div id="files-search-shell" class="files-search-shell" role="search">
+            <input type="text" id="files-tab-search" placeholder="Search files by name, type, or song"
+              class="files-search-input" />
+          </div>
           <div class="header-dropdown-container files-sort-dropdown-container" id="files-sort-dropdown-container">
             <button id="btn-files-sort-toggle" class="btn secondary songs-sort-toggle" type="button">
               <i class="fa-solid fa-sort"></i>
