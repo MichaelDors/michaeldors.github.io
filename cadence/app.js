@@ -3733,6 +3733,13 @@ async function updateContextualTeamBrand() {
   contextualBrand.setAttribute("aria-hidden", "false");
 }
 
+function syncMemberViewBannerLayout() {
+  const memberViewBanner = el("member-view-banner");
+  const isVisible = !!memberViewBanner && state.isMemberView && !memberViewBanner.classList.contains("hidden");
+  const bannerHeight = isVisible ? memberViewBanner.offsetHeight : 0;
+  document.documentElement.style.setProperty("--member-view-banner-offset", `${bannerHeight}px`);
+}
+
 function showApp() {
   console.log('✅ showApp() called');
   console.log('  - state.session:', !!state.session);
@@ -3860,6 +3867,7 @@ function showApp() {
   } else {
     if (memberViewBanner) memberViewBanner.classList.add("hidden");
   }
+  syncMemberViewBannerLayout();
 
   // Show/hide management buttons based on isManager() (respects member view)
   if (isManager()) {
@@ -35881,6 +35889,7 @@ window.resizeChatLayout = () => {
 
 window.addEventListener('scroll', window.resizeChatLayout);
 window.addEventListener('resize', window.resizeChatLayout);
+window.addEventListener('resize', syncMemberViewBannerLayout);
 
 
 function renderSetChatPanel(set) {
