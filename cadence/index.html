@@ -421,6 +421,12 @@
               <span id="files-count" class="muted small-text"></span>
             </h2>
           </div>
+          <div class="header-actions">
+            <button id="btn-files-upload" class="btn primary hidden" type="button">
+              <i class="fa-solid fa-upload"></i> Upload
+            </button>
+            <input type="file" id="files-tab-upload-input" style="display: none;" />
+          </div>
         </div>
         <div id="files-controls-row" class="files-controls-row">
           <label for="files-tab-search" class="sr-only">Search files</label>
@@ -1431,6 +1437,31 @@
     </div>
   </div>
 
+  <div id="existing-file-picker-modal" class="modal hidden">
+    <div class="modal-content">
+      <header>
+        <h3 id="existing-file-picker-title">Choose Existing File</h3>
+        <button class="icon-btn" id="close-existing-file-picker-modal" aria-label="Close modal">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </header>
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <input type="text" id="existing-file-picker-search" placeholder="Search uploaded files"
+          style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.75rem; color: var(--text-primary); font-size: 0.95rem;" />
+        <div id="existing-file-picker-gallery-shell" class="existing-file-picker-gallery-shell">
+          <div id="existing-file-picker-list" style="display: grid; gap: 0.5rem;"></div>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top: 1rem;">
+        <button type="button" class="btn ghost" id="existing-file-picker-cancel">Cancel</button>
+        <button type="button" class="btn secondary" id="existing-file-picker-upload-new">
+          <i class="fa-solid fa-upload"></i> Upload New
+        </button>
+        <button type="button" class="btn primary" id="existing-file-picker-use-selected" disabled>Use Selected</button>
+      </div>
+    </div>
+  </div>
+
   <div id="leave-team-modal" class="modal hidden">
     <div class="modal-content">
       <header>
@@ -1470,11 +1501,11 @@
               style="width: 64px; height: 64px; border-radius: 0.75rem; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 600; color: var(--text-secondary); border: 2px solid var(--border-color); text-transform: uppercase; position: relative; overflow: hidden; flex-shrink: 0;">
             </div>
             <div style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1;">
-              <label for="team-logo-upload" class="btn secondary small"
+              <button type="button" id="btn-team-logo-pick" class="btn secondary small"
                 style="cursor: pointer; width: fit-content; margin: 0; display: inline-flex !important; align-items: center !important; gap: 0.5rem; flex-direction: row !important;">
                 <i class="fa-solid fa-upload"></i>
                 <span>Upload Logo</span>
-              </label>
+              </button>
               <input type="file" id="team-logo-upload" accept="image/*" style="display: none;">
               <button type="button" id="btn-remove-team-logo" class="btn ghost small"
                 style="display: none; color: var(--error-color); width: fit-content; margin: 0; display: inline-flex !important; align-items: center !important; gap: 0.5rem; flex-direction: row;">
@@ -1565,11 +1596,11 @@
                 <!-- Profile picture or initials will be displayed here -->
               </div>
               <div style="display: flex; flex-direction: column; gap: 0.5rem; flex: 1;">
-                <label for="profile-picture-upload" class="btn secondary small"
+                <button type="button" id="btn-profile-picture-pick" class="btn secondary small"
                   style="cursor: pointer; width: fit-content; margin: 0; display: inline-flex !important; align-items: center !important; gap: 0.5rem; flex-direction: row !important;">
                   <i class="fa-solid fa-upload"></i>
                   <span>Upload Photo</span>
-                </label>
+                </button>
                 <input type="file" id="profile-picture-upload" accept="image/*" style="display: none;">
                 <button type="button" id="btn-remove-profile-picture" class="btn ghost small"
                   style="display: none; color: var(--error-color); width: fit-content; margin: 0; display: inline-flex !important; align-items: center !important; gap: 0.5rem; flex-direction: row;">

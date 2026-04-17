@@ -161,6 +161,33 @@ const SONG_SORT_STORAGE_KEY = "cadence-song-sort-option";
 const SONG_SORT_OPTIONS = new Set(["relevancy", "newest", "oldest", "alphabetical"]);
 const FILES_SORT_STORAGE_KEY = "cadence-files-sort-option";
 const FILES_SORT_OPTIONS = new Set(["relevancy", "newest", "oldest", "alphabetical"]);
+const SYSTEM_FILE_LIBRARY_TITLE = "__CADENCE_FILE_LIBRARY__";
+const SYSTEM_FILE_LIBRARY_DESCRIPTION = "__cadence_system_file_library__";
+const TEAM_FILE_CATALOG_CACHE_MS = 60 * 1000;
+
+function isSystemFileLibrarySong(song) {
+  if (!song) return false;
+  return song.title === SYSTEM_FILE_LIBRARY_TITLE && song.description === SYSTEM_FILE_LIBRARY_DESCRIPTION;
+}
+
+function buildStandaloneFilesFromLibrarySong(song) {
+  if (!song) return [];
+  const resources = Array.isArray(song.song_resources) ? song.song_resources : [];
+  return resources
+    .filter((resource) => resource?.type === "file" || !!resource?.file_path || !!resource?.file_name)
+    .map((resource) => ({
+      id: resource.id || `standalone-${resource?.file_path || resource?.file_name || Math.random()}`,
+      resourceId: resource.id || null,
+      songId: null,
+      title: resource.title || resource.file_name || "Untitled file",
+      fileName: resource.file_name || "",
+      fileType: resource.file_type || "",
+      filePath: resource.file_path || "",
+      songTitle: "Unlinked file",
+      resourceKey: resource.key || null,
+      createdAt: resource.created_at || song?.created_at || null
+    }));
+}
 
 function normalizeSongSortOption(sortOption) {
   return SONG_SORT_OPTIONS.has(sortOption) ? sortOption : "relevancy";
@@ -298,6 +325,13 @@ const state = {
   lottieAnimations: {},
   songSortOption: getStoredSongSortOption(), // Sort persisted locally (relevancy, newest, oldest, alphabetical)
   filesSortOption: getStoredFilesSortOption(), // Files tab sort (relevancy, newest, oldest, alphabetical)
+  standaloneFiles: [],
+  fileLibrarySongId: null,
+  teamFileCatalogCache: {
+    teamId: null,
+    loadedAt: 0,
+    items: []
+  },
   // PostHog analytics tracking state
   analytics: {
     sessionStartTime: null,
@@ -1348,7 +1382,15 @@ function loadAppDataFromCache(session) {
 
     // Deduplicate songs by ID (keep first occurrence) before storing in state
     const seenSongIds = new Set();
-    const uniqueSongsFromCache = (data.songs || []).filter(song => {
+    const songsFromCache = Array.isArray(data.songs) ? data.songs : [];
+    const cachedLibrarySong = songsFromCache.find((song) => isSystemFileLibrarySong(song));
+    state.fileLibrarySongId = cachedLibrarySong?.id || null;
+    if (cachedLibrarySong) {
+      state.standaloneFiles = buildStandaloneFilesFromLibrarySong(cachedLibrarySong);
+    }
+
+    const uniqueSongsFromCache = songsFromCache.filter(song => {
+      if (!song?.id || isSystemFileLibrarySong(song)) return false;
       if (seenSongIds.has(song.id)) {
         return false;
       }
@@ -3025,6 +3067,88 @@ function bindEvents() {
   el("song-edit-form")?.addEventListener("submit", handleSongEditSubmit);
   el("btn-add-song-theme")?.addEventListener("click", () => addSongThemeInput());
   el("btn-add-song-key")?.addEventListener("click", () => addSongKeyInput());
+  el("btn-files-upload")?.addEventListener("click", async () => {
+    if (!isManager()) return;
+    const selection = await openExistingFilePicker({ imagesOnly: false, title: "Choose Team File" });
+    if (selection === "upload_new") {
+      el("files-tab-upload-input")?.click();
+      return;
+    }
+    if (!selection || !selection.filePath) return;
+    const saveRes = await saveFileToLibraryReference({
+      filePath: selection.filePath,
+      fileName: selection.fileName,
+      fileType: selection.fileType,
+      title: selection.title || selection.fileName
+    });
+    if (saveRes.error) {
+      toastError("Failed to save selected file.");
+      return;
+    }
+    await loadStandaloneFiles();
+    renderFiles(false);
+    toastSuccess("Existing file added.");
+  });
+  el("files-tab-upload-input")?.addEventListener("change", async (e) => {
+    if (!isManager()) return;
+    const input = e.target;
+    const file = input?.files?.[0];
+    if (!file || !state.currentTeamId) {
+      if (input) input.value = "";
+      return;
+    }
+    const uploadBtn = el("btn-files-upload");
+    const previousText = uploadBtn?.innerHTML || "";
+    if (uploadBtn) {
+      uploadBtn.disabled = true;
+      uploadBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading...`;
+    }
+    try {
+      const duplicate = await resolvePotentialDuplicateUpload(file);
+      if (duplicate?.filePath) {
+        const reuseResult = await saveFileToLibraryReference({
+          filePath: duplicate.filePath,
+          fileName: duplicate.fileName,
+          fileType: duplicate.fileType,
+          title: duplicate.title || duplicate.fileName
+        });
+        if (reuseResult.error) {
+          toastError("Failed to reuse existing file.");
+          return;
+        }
+        await loadStandaloneFiles();
+        renderFiles(false);
+        toastSuccess("Existing file reused.");
+        return;
+      }
+      const uploadResult = await uploadFileToSupabase(file, null, null, state.currentTeamId);
+      if (!uploadResult.success) {
+        toastError(`Failed to upload file: ${uploadResult.error}`);
+        return;
+      }
+      const saveRes = await saveFileToLibraryReference({
+        filePath: uploadResult.filePath,
+        fileName: uploadResult.fileName,
+        fileType: uploadResult.fileType,
+        title: file.name
+      });
+      if (saveRes.error) {
+        await deleteFileFromSupabase(uploadResult.filePath);
+        toastError("Failed to save uploaded file.");
+        return;
+      }
+      await refreshTeamFileCatalog({ force: true });
+      await loadStandaloneFiles();
+      renderFiles(false);
+      toastSuccess("File uploaded.");
+    } finally {
+      if (input) input.value = "";
+      if (uploadBtn) {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = previousText;
+      }
+    }
+  });
   // Charts are rendered as rows in the resources list; keep generated rows in sync with key edits
   el("song-keys-list")?.addEventListener("input", () => {
     const form = el("song-edit-form");
@@ -3755,6 +3879,7 @@ function showApp() {
   const userNameEl = el("user-name");
   const createSetBtnEl = el("btn-create-set");
   const createSongBtnEl = el("btn-create-song");
+  const filesUploadBtnEl = el("btn-files-upload");
   const inviteMemberBtnEl = el("btn-invite-member");
 
   console.log('  - authGate element:', authGateEl);
@@ -3873,10 +3998,12 @@ function showApp() {
   if (isManager()) {
     if (createSetBtnEl) createSetBtnEl.classList.remove("hidden");
     if (createSongBtnEl) createSongBtnEl.classList.remove("hidden");
+    if (filesUploadBtnEl) filesUploadBtnEl.classList.remove("hidden");
     if (inviteMemberBtnEl) inviteMemberBtnEl.classList.remove("hidden");
   } else {
     if (createSetBtnEl) createSetBtnEl.classList.add("hidden");
     if (createSongBtnEl) createSongBtnEl.classList.add("hidden");
+    if (filesUploadBtnEl) filesUploadBtnEl.classList.add("hidden");
     if (inviteMemberBtnEl) inviteMemberBtnEl.classList.add("hidden");
   }
 
@@ -5841,6 +5968,8 @@ async function loadSongs() {
   if (!state.currentTeamId) {
     console.warn('⚠️ No currentTeamId, cannot load songs');
     state.songs = [];
+    state.standaloneFiles = [];
+    state.fileLibrarySongId = null;
     state.isLoadingSongs = false;
     await renderSongCatalog();
     return;
@@ -5888,6 +6017,8 @@ async function loadSongs() {
     console.error('  - Error details:', JSON.stringify(error, null, 2));
     console.error('  - Query was for team_id:', state.profile?.team_id);
     state.songs = [];
+    state.standaloneFiles = [];
+    state.fileLibrarySongId = null;
     state.isLoadingSongs = false;
     await renderSongCatalog();
     return;
@@ -5905,7 +6036,7 @@ async function loadSongs() {
 
   // Deduplicate songs by ID (keep first occurrence) before storing in state
   const seenIds = new Set();
-  const uniqueSongs = (data || []).filter(song => {
+  const rawUniqueSongs = (data || []).filter(song => {
     if (seenIds.has(song.id)) {
       return false;
     }
@@ -5913,7 +6044,17 @@ async function loadSongs() {
     return true;
   });
 
+  const systemFileLibrarySong = rawUniqueSongs.find((song) =>
+    song?.title === SYSTEM_FILE_LIBRARY_TITLE && song?.description === SYSTEM_FILE_LIBRARY_DESCRIPTION
+  );
+  state.fileLibrarySongId = systemFileLibrarySong?.id || null;
+  const uniqueSongs = rawUniqueSongs.filter((song) => song?.id !== state.fileLibrarySongId);
+
   state.songs = uniqueSongs;
+  if (!state.fileLibrarySongId) {
+    await ensureSystemFileLibrarySongId();
+  }
+  await loadStandaloneFiles();
   state.isLoadingSongs = false;
   await renderSongCatalog(false);
 
@@ -8883,7 +9024,522 @@ function getUploadedFilesFromSongs() {
       });
     }
   }
-  return files;
+  const standaloneFiles = Array.isArray(state.standaloneFiles) ? state.standaloneFiles : [];
+  return [...files, ...standaloneFiles];
+}
+
+async function loadStandaloneFiles() {
+  if (!state.currentTeamId) {
+    state.standaloneFiles = [];
+    return;
+  }
+  if (!state.fileLibrarySongId) {
+    state.standaloneFiles = [];
+    return;
+  }
+  const { data, error } = await supabase
+    .from(SONG_RESOURCES_TABLE)
+    .select(`
+      id,
+      team_id,
+      type,
+      title,
+      url,
+      file_path,
+      file_name,
+      file_type,
+      key,
+      created_at
+    `)
+    .eq("team_id", state.currentTeamId)
+    .eq("song_id", state.fileLibrarySongId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Failed loading standalone files:", error);
+    state.standaloneFiles = [];
+    return;
+  }
+  state.standaloneFiles = (data || [])
+    .filter((resource) => resource?.type === "file" || !!resource?.file_path || !!resource?.file_name)
+    .map((resource) => ({
+      id: resource.id || `standalone-${resource?.file_path || resource?.file_name || Math.random()}`,
+      resourceId: resource.id || null,
+      songId: null,
+      title: resource.title || resource.file_name || "Untitled file",
+      fileName: resource.file_name || "",
+      fileType: resource.file_type || "",
+      filePath: resource.file_path || "",
+      songTitle: "Unlinked file",
+      resourceKey: resource.key || null,
+      createdAt: resource.created_at || null
+    }));
+}
+
+async function ensureSystemFileLibrarySongId() {
+  if (!state.currentTeamId) return null;
+  if (state.fileLibrarySongId) return state.fileLibrarySongId;
+
+  const { data: existing, error: existingError } = await supabase
+    .from("songs")
+    .select("id")
+    .eq("team_id", state.currentTeamId)
+    .eq("title", SYSTEM_FILE_LIBRARY_TITLE)
+    .eq("description", SYSTEM_FILE_LIBRARY_DESCRIPTION)
+    .maybeSingle();
+  if (!existingError && existing?.id) {
+    state.fileLibrarySongId = existing.id;
+    return existing.id;
+  }
+
+  const { data: created, error: createError } = await supabase
+    .from("songs")
+    .insert({
+      team_id: state.currentTeamId,
+      title: SYSTEM_FILE_LIBRARY_TITLE,
+      description: SYSTEM_FILE_LIBRARY_DESCRIPTION
+    })
+    .select("id")
+    .single();
+  if (createError) {
+    console.error("Failed creating system file library song:", createError);
+    return null;
+  }
+
+  state.fileLibrarySongId = created?.id || null;
+  return state.fileLibrarySongId;
+}
+
+function getFileNameFromPath(filePath) {
+  if (!filePath) return "";
+  const segments = String(filePath).split("/");
+  return segments[segments.length - 1] || "";
+}
+
+function inferFileTypeFromName(fileName = "") {
+  const name = String(fileName || "").toLowerCase();
+  if (/\.(png|jpe?g|gif|webp|svg|bmp|ico)$/.test(name)) return "image/*";
+  if (/\.pdf$/.test(name)) return "application/pdf";
+  if (/\.(mp3|m4a|wav|ogg|webm|aac|flac|opus)$/.test(name)) return "audio/*";
+  if (/\.(mp4|mov|m4v|webm)$/.test(name)) return "video/*";
+  return "application/octet-stream";
+}
+
+function isImageCatalogItem(item) {
+  if (!item) return false;
+  const type = String(item.fileType || "").toLowerCase();
+  const name = String(item.fileName || "").toLowerCase();
+  return type.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/.test(name);
+}
+
+function getCatalogItemKey(item) {
+  return `${item.bucket || STORAGE_BUCKET}:${item.filePath || ""}`;
+}
+
+async function refreshTeamFileCatalog({ force = false } = {}) {
+  if (!state.currentTeamId) return [];
+  const cache = state.teamFileCatalogCache || {};
+  const cacheValid =
+    !force &&
+    cache.teamId === state.currentTeamId &&
+    Array.isArray(cache.items) &&
+    Date.now() - (cache.loadedAt || 0) < TEAM_FILE_CATALOG_CACHE_MS;
+  if (cacheValid) return cache.items;
+
+  const byPath = new Map();
+  const addItem = (item) => {
+    if (!item?.filePath) return;
+    const key = getCatalogItemKey(item);
+    if (!byPath.has(key)) byPath.set(key, item);
+  };
+
+  const { data: resources } = await supabase
+    .from(SONG_RESOURCES_TABLE)
+    .select("id, title, file_path, file_name, file_type, created_at")
+    .eq("team_id", state.currentTeamId)
+    .eq("type", "file")
+    .not("file_path", "is", null)
+    .order("created_at", { ascending: false });
+
+  (resources || []).forEach((res) => {
+    addItem({
+      id: res.id || null,
+      filePath: res.file_path,
+      fileName: res.file_name || getFileNameFromPath(res.file_path),
+      fileType: res.file_type || inferFileTypeFromName(res.file_name || res.file_path),
+      title: res.title || res.file_name || "Uploaded file",
+      sourceType: "resource",
+      createdAt: res.created_at || null,
+      bucket: STORAGE_BUCKET
+    });
+  });
+
+  const { data: currentTeam } = await supabase
+    .from("teams")
+    .select("id, logo_path")
+    .eq("id", state.currentTeamId)
+    .maybeSingle();
+  if (currentTeam?.logo_path) {
+    addItem({
+      id: `team-logo-${currentTeam.id}`,
+      filePath: currentTeam.logo_path,
+      fileName: getFileNameFromPath(currentTeam.logo_path),
+      fileType: inferFileTypeFromName(currentTeam.logo_path),
+      title: "Team logo",
+      sourceType: "team_logo",
+      createdAt: null,
+      bucket: TEAM_LOGOS_BUCKET
+    });
+  }
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, profile_picture_path")
+    .eq("team_id", state.currentTeamId)
+    .not("profile_picture_path", "is", null);
+  (profiles || []).forEach((profile) => {
+    addItem({
+      id: `profile-picture-${profile.id}`,
+      filePath: profile.profile_picture_path,
+      fileName: getFileNameFromPath(profile.profile_picture_path),
+      fileType: inferFileTypeFromName(profile.profile_picture_path),
+      title: `${profile.full_name || "User"} profile picture`,
+      sourceType: "profile_picture",
+      profileOwnerId: profile.id,
+      createdAt: null,
+      bucket: PROFILE_PICTURES_BUCKET
+    });
+  });
+
+  const items = Array.from(byPath.values());
+  state.teamFileCatalogCache = {
+    teamId: state.currentTeamId,
+    loadedAt: Date.now(),
+    items
+  };
+  return items;
+}
+
+async function resolvePotentialDuplicateUpload(file, { imagesOnly = false } = {}) {
+  if (!file) return null;
+  const catalog = await refreshTeamFileCatalog();
+  const fileName = String(file.name || "").toLowerCase();
+  const fileType = String(getFileType(file) || "").toLowerCase();
+  const match = catalog.find((item) => {
+    if (!item?.filePath) return false;
+    if (imagesOnly && !isImageCatalogItem(item)) return false;
+    return (
+      String(item.fileName || "").toLowerCase() === fileName &&
+      String(item.fileType || "").toLowerCase() === fileType
+    );
+  });
+  if (!match) return null;
+  const shouldReuse = window.confirm(`A file named "${file.name}" already exists. Reuse it instead of uploading a duplicate?`);
+  return shouldReuse ? match : null;
+}
+
+async function saveFileToLibraryReference({ filePath, fileName, fileType, title }) {
+  if (!state.currentTeamId || !filePath) return { error: new Error("Missing team or file path") };
+  const librarySongId = await ensureSystemFileLibrarySongId();
+  if (!librarySongId) return { error: new Error("Missing library song id") };
+  const { error } = await supabase.from(SONG_RESOURCES_TABLE).insert({
+    team_id: state.currentTeamId,
+    song_id: librarySongId,
+    type: "file",
+    title: title || fileName || "Uploaded file",
+    url: null,
+    file_path: filePath,
+    file_name: fileName || getFileNameFromPath(filePath),
+    file_type: fileType || inferFileTypeFromName(fileName || filePath),
+    key: null
+  });
+  if (!error) {
+    await refreshTeamFileCatalog({ force: true });
+  }
+  return { error };
+}
+
+function closeExistingFilePickerModal() {
+  const modal = el("existing-file-picker-modal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+async function openExistingFilePicker({
+  imagesOnly = false,
+  title = "Choose File",
+  allowProfilePictures = false,
+  profilePictureOwnerId = null
+} = {}) {
+  const modal = el("existing-file-picker-modal");
+  const titleEl = el("existing-file-picker-title");
+  const searchEl = el("existing-file-picker-search");
+  const listEl = el("existing-file-picker-list");
+  const galleryShell = el("existing-file-picker-gallery-shell");
+  const useBtn = el("existing-file-picker-use-selected");
+  const uploadBtn = el("existing-file-picker-upload-new");
+  const cancelBtn = el("existing-file-picker-cancel");
+  const closeBtn = el("close-existing-file-picker-modal");
+  if (!modal || !titleEl || !searchEl || !listEl || !galleryShell || !useBtn || !uploadBtn || !cancelBtn || !closeBtn) return null;
+
+  const allItems = await refreshTeamFileCatalog({ force: true });
+  const filteredBySource = allItems.filter((item) => {
+    if (item?.sourceType !== "profile_picture") return true;
+    if (!allowProfilePictures) return false;
+    if (!profilePictureOwnerId) return false;
+    return String(item.profileOwnerId || "") === String(profilePictureOwnerId);
+  });
+  const items = imagesOnly ? filteredBySource.filter(isImageCatalogItem) : filteredBySource;
+  let selectedPath = null;
+  const imageCaptionContrast = new Map();
+  let pendingCornerUpdateRaf = null;
+
+  const applyImageCaptionContrast = (imgEl, path) => {
+    if (!imgEl || !path) return;
+    const compute = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const width = Math.max(1, Math.min(24, imgEl.naturalWidth || 24));
+        const height = Math.max(1, Math.min(24, imgEl.naturalHeight || 24));
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(imgEl, 0, 0, width, height);
+        const { data } = ctx.getImageData(0, 0, width, height);
+        let luminanceSum = 0;
+        let samples = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const alpha = data[i + 3] / 255;
+          if (alpha <= 0.05) continue;
+          const r = data[i] / 255;
+          const g = data[i + 1] / 255;
+          const b = data[i + 2] / 255;
+          const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          luminanceSum += lum;
+          samples += 1;
+        }
+        if (!samples) return;
+        imageCaptionContrast.set(path, luminanceSum / samples > 0.6 ? "#111111" : "#ffffff");
+      } catch {
+        // cross-origin or canvas restrictions should fail silently
+      }
+    };
+    if (imgEl.complete) {
+      compute();
+    } else {
+      imgEl.addEventListener("load", compute, { once: true });
+    }
+  };
+
+  const renderItems = async () => {
+    const searchTerm = String(searchEl.value || "").trim().toLowerCase();
+    const filtered = items.filter((item) => {
+      if (!searchTerm) return true;
+      return [item.title, item.fileName, item.fileType]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(searchTerm));
+    });
+
+    listEl.innerHTML = "";
+    const isGallery = imagesOnly;
+    galleryShell.classList.toggle("is-gallery", isGallery);
+    if (isGallery) {
+      listEl.className = "existing-file-picker-gallery-grid";
+      uploadBtn.classList.add("hidden");
+      const uploadTile = document.createElement("button");
+      uploadTile.type = "button";
+      uploadTile.className = "existing-file-picker-tile existing-file-picker-upload-tile";
+      uploadTile.innerHTML = `<i class="fa-solid fa-upload"></i><span>Upload</span>`;
+      uploadTile.addEventListener("click", () => {
+        selectedPath = null;
+        useBtn.disabled = true;
+        uploadBtn.click();
+      });
+      listEl.appendChild(uploadTile);
+    } else {
+      listEl.className = "";
+      uploadBtn.classList.remove("hidden");
+    }
+    if (!filtered.length) {
+      if (!isGallery) {
+        const empty = document.createElement("p");
+        empty.className = "muted";
+        empty.textContent = "No matching files found.";
+        listEl.appendChild(empty);
+      }
+      return;
+    }
+
+    for (const item of filtered) {
+      const isSelected = selectedPath === item.filePath;
+      if (imagesOnly) {
+        const tile = document.createElement("button");
+        tile.type = "button";
+        tile.className = `existing-file-picker-tile${isSelected ? " is-selected" : ""}`;
+        const signedUrl = await getFileUrl(item.filePath, item.bucket || STORAGE_BUCKET);
+        const textColor = imageCaptionContrast.get(item.filePath) || "#ffffff";
+        tile.innerHTML = signedUrl
+          ? `
+            <img src="${escapeHtml(signedUrl)}" alt="${escapeHtml(item.fileName || "image")}" class="existing-file-picker-image" />
+            <div class="existing-file-picker-caption" style="color:${textColor};">${escapeHtml(item.fileName || "")}</div>
+          `
+          : `
+            <span style="width: 100%; height: 100%; display:flex; align-items:center; justify-content:center;">
+              <i class="fa-solid fa-image"></i>
+            </span>
+            <div class="existing-file-picker-caption" style="color:${textColor};">${escapeHtml(item.fileName || "")}</div>
+          `;
+        tile.addEventListener("click", () => {
+          selectedPath = item.filePath;
+          useBtn.disabled = false;
+          void renderItems();
+        });
+        listEl.appendChild(tile);
+        const imageEl = tile.querySelector("img.existing-file-picker-image");
+        if (imageEl) {
+          applyImageCaptionContrast(imageEl, item.filePath);
+        }
+      } else {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "btn ghost";
+        row.style.width = "100%";
+        row.style.textAlign = "left";
+        row.style.display = "flex";
+        row.style.alignItems = "center";
+        row.style.justifyContent = "space-between";
+        row.style.gap = "0.75rem";
+        row.style.border = isSelected ? "1px solid var(--accent-color)" : "1px solid var(--border-color)";
+        row.style.background = "var(--bg-secondary)";
+        row.innerHTML = `
+          <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
+            <span style="width: 42px; height: 42px; border-radius: 0.5rem; background: var(--bg-tertiary); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fa-solid ${getFileIconClass(item.fileType, item.fileName)}"></i></span>
+            <div style="min-width:0;">
+              <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(item.title || item.fileName || "Uploaded file")}</div>
+              <div class="muted small-text" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(item.fileName || "")}</div>
+            </div>
+          </div>
+          <span class="small-text muted">${escapeHtml(item.sourceType || "")}</span>
+        `;
+        row.addEventListener("click", () => {
+          selectedPath = item.filePath;
+          useBtn.disabled = false;
+          void renderItems();
+        });
+        listEl.appendChild(row);
+      }
+    }
+
+    if (isGallery) {
+      if (galleryShell._cornerUpdateHandler) {
+        galleryShell.removeEventListener("scroll", galleryShell._cornerUpdateHandler);
+        delete galleryShell._cornerUpdateHandler;
+      }
+      const scheduleCornerUpdate = () => {
+        if (pendingCornerUpdateRaf) cancelAnimationFrame(pendingCornerUpdateRaf);
+        pendingCornerUpdateRaf = requestAnimationFrame(() => {
+          const tiles = Array.from(listEl.querySelectorAll(".existing-file-picker-tile"));
+          tiles.forEach((tile) => tile.classList.remove("edge-top-left", "edge-top-right", "edge-bottom-left", "edge-bottom-right"));
+          if (!tiles.length) return;
+
+          const shellRect = galleryShell.getBoundingClientRect();
+          const inset = 2;
+          const targetCorners = [
+            { cls: "edge-top-left", x: shellRect.left + inset, y: shellRect.top + inset },
+            { cls: "edge-top-right", x: shellRect.right - inset, y: shellRect.top + inset },
+            { cls: "edge-bottom-left", x: shellRect.left + inset, y: shellRect.bottom - inset },
+            { cls: "edge-bottom-right", x: shellRect.right - inset, y: shellRect.bottom - inset },
+          ];
+
+          const visibleTiles = tiles.filter((tile) => {
+            const r = tile.getBoundingClientRect();
+            return r.bottom > shellRect.top && r.top < shellRect.bottom;
+          });
+          const candidates = visibleTiles.length ? visibleTiles : tiles;
+
+          const pointInsideRect = (x, y, r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+          const pointRectDistanceSq = (x, y, r) => {
+            const dx = x < r.left ? (r.left - x) : (x > r.right ? (x - r.right) : 0);
+            const dy = y < r.top ? (r.top - y) : (y > r.bottom ? (y - r.bottom) : 0);
+            return dx * dx + dy * dy;
+          };
+
+          targetCorners.forEach((target) => {
+            let bestTile = null;
+            let bestDistance = Number.POSITIVE_INFINITY;
+            let containingTile = null;
+
+            candidates.forEach((tile) => {
+              const r = tile.getBoundingClientRect();
+              if (!containingTile && pointInsideRect(target.x, target.y, r)) {
+                containingTile = tile;
+                return;
+              }
+              const distance = pointRectDistanceSq(target.x, target.y, r);
+              if (distance < bestDistance) {
+                bestDistance = distance;
+                bestTile = tile;
+              }
+            });
+            (containingTile || bestTile)?.classList.add(target.cls);
+          });
+        });
+      };
+      scheduleCornerUpdate();
+      galleryShell._cornerUpdateHandler = scheduleCornerUpdate;
+      galleryShell.addEventListener("scroll", scheduleCornerUpdate, { passive: true });
+    }
+  };
+
+  titleEl.textContent = title;
+  searchEl.value = "";
+  selectedPath = null;
+  useBtn.disabled = true;
+  await renderItems();
+
+  modal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  searchEl.focus();
+
+  return await new Promise((resolve) => {
+    const cleanup = () => {
+      if (galleryShell && galleryShell._cornerUpdateHandler) {
+        galleryShell.removeEventListener("scroll", galleryShell._cornerUpdateHandler);
+        delete galleryShell._cornerUpdateHandler;
+      }
+      if (pendingCornerUpdateRaf) {
+        cancelAnimationFrame(pendingCornerUpdateRaf);
+        pendingCornerUpdateRaf = null;
+      }
+      searchEl.removeEventListener("input", onSearch);
+      useBtn.removeEventListener("click", onUse);
+      uploadBtn.removeEventListener("click", onUploadNew);
+      cancelBtn.removeEventListener("click", onCancel);
+      closeBtn.removeEventListener("click", onCancel);
+      closeExistingFilePickerModal();
+    };
+    const onSearch = () => { void renderItems(); };
+    const onUse = () => {
+      if (!selectedPath) return;
+      const selected = items.find((item) => item.filePath === selectedPath) || null;
+      cleanup();
+      resolve(selected);
+    };
+    const onUploadNew = () => {
+      cleanup();
+      resolve("upload_new");
+    };
+    const onCancel = () => {
+      cleanup();
+      resolve(null);
+    };
+    searchEl.addEventListener("input", onSearch);
+    useBtn.addEventListener("click", onUse);
+    uploadBtn.addEventListener("click", onUploadNew);
+    cancelBtn.addEventListener("click", onCancel);
+    closeBtn.addEventListener("click", onCancel);
+  });
 }
 
 function normalizeAttachmentKey(value) {
@@ -9149,6 +9805,7 @@ function renderFiles(animate = true) {
             }
             await loadSongs();
             await loadSets();
+            await loadStandaloneFiles();
             renderFiles(false);
             await refreshOpenSongDetailsModalForPermissions();
           },
@@ -16109,15 +16766,21 @@ async function handleEditSetSongSubmit(event) {
         const oldPathForReplace =
           existingLink?.is_file_upload && existingLink?.file_path ? existingLink.file_path : null;
 
-        // Upload new file
-        const uploadResult = await uploadFileToSupabase(link.file, null, setSongId, state.currentTeamId);
-        if (!uploadResult.success) {
-          toastError(`Failed to upload file: ${uploadResult.error}`);
-          continue;
+        const duplicate = await resolvePotentialDuplicateUpload(link.file);
+        if (duplicate?.filePath) {
+          filePath = duplicate.filePath;
+          fileName = duplicate.fileName || link.file.name;
+          fileType = duplicate.fileType || getFileType(link.file);
+        } else {
+          const uploadResult = await uploadFileToSupabase(link.file, null, setSongId, state.currentTeamId);
+          if (!uploadResult.success) {
+            toastError(`Failed to upload file: ${uploadResult.error}`);
+            continue;
+          }
+          filePath = uploadResult.filePath;
+          fileName = uploadResult.fileName;
+          fileType = uploadResult.fileType;
         }
-        filePath = uploadResult.filePath;
-        fileName = uploadResult.fileName;
-        fileType = uploadResult.fileType;
 
         await supabase
           .from(SONG_RESOURCES_TABLE)
@@ -16175,14 +16838,21 @@ async function handleEditSetSongSubmit(event) {
 
         // If it's a file upload, upload the file first
         if (link.is_file_upload && link.file) {
-          const uploadResult = await uploadFileToSupabase(link.file, null, setSongId, state.currentTeamId);
-          if (!uploadResult.success) {
-            toastError(`Failed to upload file: ${uploadResult.error}`);
-            continue;
+          const duplicate = await resolvePotentialDuplicateUpload(link.file);
+          if (duplicate?.filePath) {
+            filePath = duplicate.filePath;
+            fileName = duplicate.fileName || link.file.name;
+            fileType = duplicate.fileType || getFileType(link.file);
+          } else {
+            const uploadResult = await uploadFileToSupabase(link.file, null, setSongId, state.currentTeamId);
+            if (!uploadResult.success) {
+              toastError(`Failed to upload file: ${uploadResult.error}`);
+              continue;
+            }
+            filePath = uploadResult.filePath;
+            fileName = uploadResult.fileName;
+            fileType = uploadResult.fileType;
           }
-          filePath = uploadResult.filePath;
-          fileName = uploadResult.fileName;
-          fileType = uploadResult.fileType;
         }
 
         linksToInsert.push({
@@ -19190,11 +19860,14 @@ async function renderSongCatalog(animate = true) {
   // Increment render ID and capture it - MUST be at the top to invalidate previous async runs
   const thisRenderId = ++currentSongRenderId;
 
+  const songsBeforeFilter = Array.isArray(state.songs) ? [...state.songs] : [];
+
   // Deduplicate state.songs by ID first (keep first occurrence) to ensure no duplicates
   // Do this IMMEDIATELY and update state to prevent race conditions
   const seenSongIds = new Set();
-  const deduplicatedSongs = (state.songs || []).filter(song => {
+  const deduplicatedSongs = songsBeforeFilter.filter(song => {
     if (!song || !song.id) return false; // Filter out invalid entries
+    if (isSystemFileLibrarySong(song)) return false;
     if (seenSongIds.has(song.id)) {
       return false;
     }
@@ -19204,6 +19877,14 @@ async function renderSongCatalog(animate = true) {
 
   // Update state immediately with deduplicated songs
   state.songs = deduplicatedSongs;
+
+  if (!Array.isArray(state.standaloneFiles) || state.standaloneFiles.length === 0) {
+    const hiddenLibrarySong = songsBeforeFilter.find((song) => isSystemFileLibrarySong(song));
+    if (hiddenLibrarySong) {
+      state.standaloneFiles = buildStandaloneFilesFromLibrarySong(hiddenLibrarySong);
+      state.fileLibrarySongId = hiddenLibrarySong.id || state.fileLibrarySongId || null;
+    }
+  }
 
   // Create a snapshot of songs to work with (prevents race conditions during async operations)
   const songsSnapshot = [...deduplicatedSongs];
@@ -21655,9 +22336,9 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             <div id="song-album-art-no-image" class="song-album-art-no-image hidden">No image</div>
             ${canUploadAlbumArt ? `
             <div class="album-art-overlay-controls" id="album-art-overlay-controls" style="position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.5rem; opacity: 0; transition: opacity 0.2s;">
-              <label for="album-art-upload-input" class="btn small secondary" style="cursor: pointer; margin: 0; padding: 0.4rem 0.6rem;" title="Upload album art">
+              <button type="button" class="btn small secondary" id="btn-album-art-pick" style="margin: 0; padding: 0.4rem 0.6rem;" title="Choose or upload album art">
                 <i class="fa-solid fa-upload album-art-overlay-icon"></i>
-              </label>
+              </button>
               ${songWithLinks.album_art_override_path ? `
               <button type="button" class="btn small ghost" id="remove-album-art-btn" style="margin: 0; padding: 0.4rem 0.6rem;" title="Remove custom album art">
                 <i class="fa-solid fa-trash"></i>
@@ -22111,6 +22792,67 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 
   // Setup album art upload handler
   const uploadInput = content.querySelector("#album-art-upload-input");
+  const albumArtPickBtn = content.querySelector("#btn-album-art-pick");
+  const applyAlbumArtOverridePath = async (nextPath) => {
+    if (!nextPath) return false;
+    const { error: updateError } = await supabase
+      .from("songs")
+      .update({ album_art_override_path: nextPath })
+      .eq("id", songWithLinks.id);
+    if (updateError) {
+      console.error("Error updating album art override:", updateError);
+      toastError("Failed to save album art. Check console.");
+      return false;
+    }
+    songWithLinks.album_art_override_path = nextPath;
+    const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
+    if (albumArtData) {
+      displayAlbumArt(content, albumArtData, songWithLinks);
+    }
+    const removeBtn = content.querySelector("#remove-album-art-btn");
+    if (removeBtn) {
+      removeBtn.style.display = "block";
+    } else {
+      const nextOverlayControls = content.querySelector("#album-art-overlay-controls");
+      if (nextOverlayControls) {
+        const nextRemoveBtn = document.createElement("button");
+        nextRemoveBtn.type = "button";
+        nextRemoveBtn.className = "btn small ghost";
+        nextRemoveBtn.id = "remove-album-art-btn";
+        nextRemoveBtn.style.cssText = "margin: 0; padding: 0.4rem 0.6rem;";
+        nextRemoveBtn.title = "Remove custom album art";
+        nextRemoveBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        nextRemoveBtn.addEventListener("click", async () => {
+          await removeAlbumArtOverride(songWithLinks.id, songWithLinks.album_art_override_path);
+          songWithLinks.album_art_override_path = null;
+          nextRemoveBtn.remove();
+          const nextAlbumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
+          if (nextAlbumArtData) {
+            displayAlbumArt(content, nextAlbumArtData, songWithLinks);
+          } else if (canUploadAlbumArt) {
+            showSongAlbumArtNoImagePlaceholder(content);
+          } else {
+            collapseSongAlbumArt(content);
+          }
+        });
+        nextOverlayControls.appendChild(nextRemoveBtn);
+      }
+    }
+    return true;
+  };
+
+  if (albumArtPickBtn && isManager()) {
+    albumArtPickBtn.addEventListener("click", async () => {
+      const selection = await openExistingFilePicker({ imagesOnly: true, title: "Choose Album Art" });
+      if (!selection || selection === "upload_new") {
+        if (selection === "upload_new") uploadInput?.click();
+        return;
+      }
+      const didApply = await applyAlbumArtOverridePath(selection.filePath);
+      if (didApply) toastSuccess("Album art updated.");
+    });
+  }
+
   if (uploadInput && isManager()) {
     uploadInput.addEventListener("change", async (e) => {
       const file = e.target.files[0];
@@ -22132,9 +22874,14 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
       }
 
       try {
-        // Delete old override if it exists
-        if (songWithLinks.album_art_override_path) {
-          await deleteFileFromSupabase(songWithLinks.album_art_override_path);
+        const duplicate = await resolvePotentialDuplicateUpload(file, { imagesOnly: true });
+        if (duplicate?.filePath) {
+          const didApplyExisting = await applyAlbumArtOverridePath(duplicate.filePath);
+          if (didApplyExisting) {
+            toastSuccess("Existing album art reused.");
+          }
+          e.target.value = '';
+          return;
         }
 
         // Upload new file (album art)
@@ -22145,63 +22892,13 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
           return;
         }
 
-        // Update song with new override path
-        const { error: updateError } = await supabase
-          .from("songs")
-          .update({ album_art_override_path: uploadResult.filePath })
-          .eq("id", songWithLinks.id);
-
-        if (updateError) {
-          console.error("Error updating album art override:", updateError);
-          toastError("Failed to save album art. Check console.");
-          // Try to delete the uploaded file
+        const didApplyUpload = await applyAlbumArtOverridePath(uploadResult.filePath);
+        if (!didApplyUpload) {
           await deleteFileFromSupabase(uploadResult.filePath);
           e.target.value = '';
           return;
         }
-
-        // Update local song data
-        songWithLinks.album_art_override_path = uploadResult.filePath;
-
-        // Reload album art
-        const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
-        if (albumArtData) {
-          displayAlbumArt(content, albumArtData, songWithLinks);
-        }
-
-        // Update remove button visibility
-        const removeBtn = content.querySelector("#remove-album-art-btn");
-        if (removeBtn) {
-          removeBtn.style.display = "block";
-        } else {
-          // Add remove button if it doesn't exist
-          const overlayControls = content.querySelector("#album-art-overlay-controls");
-          if (overlayControls) {
-            const removeBtn = document.createElement("button");
-            removeBtn.type = "button";
-            removeBtn.className = "btn small ghost";
-            removeBtn.id = "remove-album-art-btn";
-            removeBtn.style.cssText = "margin: 0; padding: 0.4rem 0.6rem;";
-            removeBtn.title = "Remove custom album art";
-            removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-            removeBtn.addEventListener("click", async () => {
-              await removeAlbumArtOverride(songWithLinks.id, songWithLinks.album_art_override_path);
-              songWithLinks.album_art_override_path = null;
-              removeBtn.remove();
-              // Reload album art from iTunes
-              const albumArtData = await getAlbumArt(songWithLinks, songWithLinks.title, { disableItunesFallback: teamItunesDisabled });
-              if (albumArtData) {
-                displayAlbumArt(content, albumArtData, songWithLinks);
-              } else if (canUploadAlbumArt) {
-                showSongAlbumArtNoImagePlaceholder(content);
-              } else {
-                collapseSongAlbumArt(content);
-              }
-            });
-            overlayControls.appendChild(removeBtn);
-          }
-        }
-
+        await refreshTeamFileCatalog({ force: true });
         toastSuccess("Album art uploaded successfully!");
         e.target.value = '';
       } catch (error) {
@@ -23858,7 +24555,7 @@ function generateFilePath(teamId, songId, setSongId, fileName, isAlbumArt = fals
   } else if (setSongId) {
     return `${teamId}/sections/${setSongId}/${uniqueFileName}`;
   }
-  throw new Error('Either songId or setSongId must be provided');
+  return `${teamId}/files/${uniqueFileName}`;
 }
 
 // Generate file path for profile pictures (user-specific, not team-specific)
@@ -24861,21 +25558,15 @@ function createLinkRow(link, index, key) {
       <label style="flex: 1; min-width: 200px;">
         File
         <div class="file-upload-display">
-          ${link.file_name ? `
-            <div class="file-info">
-              <span class="file-name">${escapeHtml(link.file_name)}</span>
-              ${link.file_type ? `<span class="file-type">${escapeHtml(link.file_type)}</span>` : ''}
-            </div>
-          ` : `
-            <input type="file" class="song-link-file-input" accept="*/*" />
-            <div class="file-upload-status"></div>
-          `}
+          <input type="file" class="song-link-file-input" accept="*/*" style="display:none;" />
+          <button type="button" class="btn small secondary song-link-pick-file" style="margin-top:0.4rem;">Choose File</button>
+          <div class="file-upload-status">${link.file_name ? `Selected: ${escapeHtml(link.file_name)}${link.file_type ? ` (${escapeHtml(link.file_type)})` : ''}` : ''}</div>
         </div>
       </label>
       ${link.id ? `<input type="hidden" class="song-link-id" value="${link.id}" />` : ''}
-      ${link.file_path ? `<input type="hidden" class="song-link-file-path" value="${escapeHtml(link.file_path)}" />` : ''}
-      ${link.file_name ? `<input type="hidden" class="song-link-file-name" value="${escapeHtml(link.file_name)}" />` : ''}
-      ${link.file_type ? `<input type="hidden" class="song-link-file-type" value="${escapeHtml(link.file_type)}" />` : ''}
+      <input type="hidden" class="song-link-file-path" value="${escapeHtml(link.file_path || "")}" />
+      <input type="hidden" class="song-link-file-name" value="${escapeHtml(link.file_name || "")}" />
+      <input type="hidden" class="song-link-file-type" value="${escapeHtml(link.file_type || "")}" />
       <input type="hidden" class="song-link-is-file-upload" value="true" />
       <input type="hidden" class="song-link-key" value="${escapeHtml(key)}" />
       ${generateBtnHtml}
@@ -24884,11 +25575,35 @@ function createLinkRow(link, index, key) {
 
     // Add file input change handler if it's a new file upload
     const fileInput = div.querySelector(".song-link-file-input");
+    const pickFileBtn = div.querySelector(".song-link-pick-file");
+    const statusDiv = div.querySelector(".file-upload-status");
+    const filePathInput = div.querySelector(".song-link-file-path");
+    const fileNameInput = div.querySelector(".song-link-file-name");
+    const fileTypeInput = div.querySelector(".song-link-file-type");
+    if (pickFileBtn) {
+      pickFileBtn.addEventListener("click", async () => {
+        const selection = await openExistingFilePicker({ imagesOnly: false, title: "Choose File" });
+        if (!selection || selection === "upload_new") {
+          if (selection === "upload_new") fileInput?.click();
+          return;
+        }
+        if (filePathInput) filePathInput.value = selection.filePath || "";
+        if (fileNameInput) fileNameInput.value = selection.fileName || "";
+        if (fileTypeInput) fileTypeInput.value = selection.fileType || "";
+        if (statusDiv) {
+          statusDiv.textContent = `Selected existing: ${selection.fileName || getFileNameFromPath(selection.filePath)}`;
+          statusDiv.style.color = "var(--text-secondary)";
+        }
+        const titleInput = div.querySelector(".song-link-title-input");
+        if (titleInput && !titleInput.value) {
+          titleInput.value = selection.fileName || getFileNameFromPath(selection.filePath);
+        }
+      });
+    }
     if (fileInput) {
       fileInput.addEventListener("change", async (e) => {
         const file = e.target.files[0];
         if (file) {
-          const statusDiv = div.querySelector(".file-upload-status");
           statusDiv.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
           statusDiv.style.color = "var(--text-secondary)";
 
@@ -24900,6 +25615,9 @@ function createLinkRow(link, index, key) {
             e.target.value = "";
             return;
           }
+          if (filePathInput) filePathInput.value = "";
+          if (fileNameInput) fileNameInput.value = "";
+          if (fileTypeInput) fileTypeInput.value = "";
 
           // Update file name input
           const titleInput = div.querySelector(".song-link-title-input");
@@ -25339,12 +26057,12 @@ function addFileUploadToSection(key) {
   if (isManager()) setupLinkDragAndDrop(linkRow, sectionContent);
   updateLinkOrder(sectionContent);
 
-  // Scroll the new upload row into view and auto-open the file picker
+  // Scroll the new upload row into view and auto-open the Cadence file manager
   linkRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  const fileInput = linkRow.querySelector(".song-link-file-input");
-  if (fileInput) {
+  const pickFileBtn = linkRow.querySelector(".song-link-pick-file");
+  if (pickFileBtn) {
     requestAnimationFrame(() => {
-      fileInput.click();
+      pickFileBtn.click();
     });
   }
 }
@@ -25550,21 +26268,15 @@ function createSectionLinkRow(link, index, key) {
       <label style="flex: 1; min-width: 200px;">
         File
         <div class="file-upload-display">
-          ${link.file_name ? `
-            <div class="file-info">
-              <span class="file-name">${escapeHtml(link.file_name)}</span>
-              ${link.file_type ? `<span class="file-type">${escapeHtml(link.file_type)}</span>` : ''}
-            </div>
-          ` : `
-            <input type="file" class="section-link-file-input" accept="*/*" />
-            <div class="file-upload-status"></div>
-          `}
+          <input type="file" class="section-link-file-input" accept="*/*" style="display:none;" />
+          <button type="button" class="btn small secondary section-link-pick-file" style="margin-top:0.4rem;">Choose File</button>
+          <div class="file-upload-status">${link.file_name ? `Selected: ${escapeHtml(link.file_name)}${link.file_type ? ` (${escapeHtml(link.file_type)})` : ''}` : ''}</div>
         </div>
       </label>
       ${link.id ? `<input type="hidden" class="section-link-id" value="${link.id}" />` : ''}
-      ${link.file_path ? `<input type="hidden" class="section-link-file-path" value="${escapeHtml(link.file_path)}" />` : ''}
-      ${link.file_name ? `<input type="hidden" class="section-link-file-name" value="${escapeHtml(link.file_name)}" />` : ''}
-      ${link.file_type ? `<input type="hidden" class="section-link-file-type" value="${escapeHtml(link.file_type)}" />` : ''}
+      <input type="hidden" class="section-link-file-path" value="${escapeHtml(link.file_path || "")}" />
+      <input type="hidden" class="section-link-file-name" value="${escapeHtml(link.file_name || "")}" />
+      <input type="hidden" class="section-link-file-type" value="${escapeHtml(link.file_type || "")}" />
       <input type="hidden" class="section-link-is-file-upload" value="true" />
       <input type="hidden" class="section-link-key" value="${escapeHtml(key)}" />
       <button type="button" class="btn small ghost remove-section-link">Remove</button>
@@ -25572,11 +26284,35 @@ function createSectionLinkRow(link, index, key) {
 
     // Add file input change handler if it's a new file upload
     const fileInput = div.querySelector(".section-link-file-input");
+    const pickFileBtn = div.querySelector(".section-link-pick-file");
+    const statusDiv = div.querySelector(".file-upload-status");
+    const filePathInput = div.querySelector(".section-link-file-path");
+    const fileNameInput = div.querySelector(".section-link-file-name");
+    const fileTypeInput = div.querySelector(".section-link-file-type");
+    if (pickFileBtn) {
+      pickFileBtn.addEventListener("click", async () => {
+        const selection = await openExistingFilePicker({ imagesOnly: false, title: "Choose File" });
+        if (!selection || selection === "upload_new") {
+          if (selection === "upload_new") fileInput?.click();
+          return;
+        }
+        if (filePathInput) filePathInput.value = selection.filePath || "";
+        if (fileNameInput) fileNameInput.value = selection.fileName || "";
+        if (fileTypeInput) fileTypeInput.value = selection.fileType || "";
+        if (statusDiv) {
+          statusDiv.textContent = `Selected existing: ${selection.fileName || getFileNameFromPath(selection.filePath)}`;
+          statusDiv.style.color = "var(--text-secondary)";
+        }
+        const titleInput = div.querySelector(".section-link-title-input");
+        if (titleInput && !titleInput.value) {
+          titleInput.value = selection.fileName || getFileNameFromPath(selection.filePath);
+        }
+      });
+    }
     if (fileInput) {
       fileInput.addEventListener("change", async (e) => {
         const file = e.target.files[0];
         if (file) {
-          const statusDiv = div.querySelector(".file-upload-status");
           statusDiv.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
           statusDiv.style.color = "var(--text-secondary)";
 
@@ -25588,6 +26324,9 @@ function createSectionLinkRow(link, index, key) {
             e.target.value = "";
             return;
           }
+          if (filePathInput) filePathInput.value = "";
+          if (fileNameInput) fileNameInput.value = "";
+          if (fileTypeInput) fileTypeInput.value = "";
 
           // Update file name input
           const titleInput = div.querySelector(".section-link-title-input");
@@ -25835,6 +26574,15 @@ function addSectionFileUploadToSection(key, containerId = "section-links-list") 
   sectionContent.appendChild(linkRow);
   if (isManager()) setupLinkDragAndDrop(linkRow, sectionContent);
   updateSectionLinkOrder(sectionContent, containerId);
+
+  // Scroll the new upload row into view and auto-open the Cadence file manager
+  linkRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const pickFileBtn = linkRow.querySelector(".section-link-pick-file");
+  if (pickFileBtn) {
+    requestAnimationFrame(() => {
+      pickFileBtn.click();
+    });
+  }
 }
 
 function updateSectionLinkOrder(container, containerId) {
@@ -26110,15 +26858,21 @@ async function handleSongEditSubmit(event) {
       // If it's a file upload with a new file, upload it
       if (res.type === 'file' && res.file) {
         const oldPathForReplace = existing.file_path || null;
-
-        const uploadResult = await uploadFileToSupabase(res.file, finalSongId, null, state.currentTeamId);
-        if (!uploadResult.success) {
-          toastError(`Failed to upload file: ${uploadResult.error}`);
-          continue;
+        const duplicate = await resolvePotentialDuplicateUpload(res.file);
+        if (duplicate?.filePath) {
+          filePath = duplicate.filePath;
+          fileName = duplicate.fileName || res.file.name;
+          fileType = duplicate.fileType || getFileType(res.file);
+        } else {
+          const uploadResult = await uploadFileToSupabase(res.file, finalSongId, null, state.currentTeamId);
+          if (!uploadResult.success) {
+            toastError(`Failed to upload file: ${uploadResult.error}`);
+            continue;
+          }
+          filePath = uploadResult.filePath;
+          fileName = uploadResult.fileName;
+          fileType = uploadResult.fileType;
         }
-        filePath = uploadResult.filePath;
-        fileName = uploadResult.fileName;
-        fileType = uploadResult.fileType;
 
         updateData.file_path = filePath;
         updateData.file_name = fileName;
@@ -26156,15 +26910,28 @@ async function handleSongEditSubmit(event) {
       let fileName = null;
       let fileType = null;
 
-      if (res.type === 'file' && res.file) {
-        const uploadResult = await uploadFileToSupabase(res.file, finalSongId, null, state.currentTeamId);
-        if (!uploadResult.success) {
-          toastError(`Failed to upload file: ${uploadResult.error}`);
-          continue;
+      if (res.type === 'file') {
+        if (res.file) {
+          const duplicate = await resolvePotentialDuplicateUpload(res.file);
+          if (duplicate?.filePath) {
+            filePath = duplicate.filePath;
+            fileName = duplicate.fileName || res.file.name;
+            fileType = duplicate.fileType || getFileType(res.file);
+          } else {
+            const uploadResult = await uploadFileToSupabase(res.file, finalSongId, null, state.currentTeamId);
+            if (!uploadResult.success) {
+              toastError(`Failed to upload file: ${uploadResult.error}`);
+              continue;
+            }
+            filePath = uploadResult.filePath;
+            fileName = uploadResult.fileName;
+            fileType = uploadResult.fileType;
+          }
+        } else if (res.file_path) {
+          filePath = res.file_path;
+          fileName = res.file_name || getFileNameFromPath(res.file_path);
+          fileType = res.file_type || inferFileTypeFromName(fileName);
         }
-        filePath = uploadResult.filePath;
-        fileName = uploadResult.fileName;
-        fileType = uploadResult.fileType;
       }
 
       await supabase.from(SONG_RESOURCES_TABLE).insert({
@@ -31312,6 +32079,7 @@ async function loadProfilePicturePreview() {
   const previewEl = el("profile-picture-preview");
   const removeBtn = el("btn-remove-profile-picture");
   const uploadInput = el("profile-picture-upload");
+  const profilePicturePickBtn = el("btn-profile-picture-pick");
 
   if (!previewEl) return;
 
@@ -31349,6 +32117,33 @@ async function loadProfilePicturePreview() {
         if (removeBtn) removeBtn.style.display = "block";
       };
       reader.readAsDataURL(file);
+      delete previewEl.dataset.selectedExistingPicturePath;
+      delete previewEl.dataset.selectedExistingPictureBucket;
+      previewEl.dataset.removePicture = "false";
+    };
+  }
+
+  if (profilePicturePickBtn) {
+    profilePicturePickBtn.onclick = async () => {
+      const selection = await openExistingFilePicker({
+        imagesOnly: true,
+        title: "Choose Profile Image",
+        allowProfilePictures: true,
+        profilePictureOwnerId: state.session?.user?.id || null
+      });
+      if (!selection || selection === "upload_new") {
+        if (selection === "upload_new") uploadInput?.click();
+        return;
+      }
+      const signedUrl = await getFileUrl(selection.filePath, selection.bucket || STORAGE_BUCKET);
+      if (signedUrl) {
+        previewEl.innerHTML = `<img src="${signedUrl}" alt="Profile picture preview" style="width: 100%; height: 100%; object-fit: cover;">`;
+        setAvatarImageState(previewEl, true);
+        previewEl.dataset.selectedExistingPicturePath = selection.filePath;
+        previewEl.dataset.selectedExistingPictureBucket = selection.bucket || STORAGE_BUCKET;
+        previewEl.dataset.removePicture = "false";
+        if (removeBtn) removeBtn.style.display = "block";
+      }
     };
   }
 
@@ -31361,6 +32156,8 @@ async function loadProfilePicturePreview() {
       removeBtn.style.display = "none";
       // Mark for removal
       previewEl.dataset.removePicture = "true";
+      delete previewEl.dataset.selectedExistingPicturePath;
+      delete previewEl.dataset.selectedExistingPictureBucket;
     };
   }
 }
@@ -31831,26 +32628,38 @@ async function handleEditAccountSubmit(e) {
 
   let profilePicturePath = state.profile.profile_picture_path || null;
   let shouldRemovePicture = previewEl?.dataset.removePicture === "true";
+  const selectedExistingPicturePath = previewEl?.dataset.selectedExistingPicturePath || null;
+  const selectedExistingPictureBucket = previewEl?.dataset.selectedExistingPictureBucket || null;
 
   // Handle profile picture upload
-  if (uploadInput?.files?.[0]) {
+  if (selectedExistingPicturePath) {
+    profilePicturePath = selectedExistingPicturePath;
+    shouldRemovePicture = false;
+  } else if (uploadInput?.files?.[0]) {
     const file = uploadInput.files[0];
+    const duplicate = await resolvePotentialDuplicateUpload(file, { imagesOnly: true });
+    if (duplicate?.filePath) {
+      profilePicturePath = duplicate.filePath;
+      shouldRemovePicture = false;
+    } else {
+      // Delete old picture if it exists
+      if (profilePicturePath) {
+        await deleteFileFromSupabase(profilePicturePath, PROFILE_PICTURES_BUCKET);
+      }
 
-    // Delete old picture if it exists
-    if (profilePicturePath) {
-      await deleteFileFromSupabase(profilePicturePath, PROFILE_PICTURES_BUCKET);
+      // Upload new picture
+      const uploadResult = await uploadProfilePicture(file, state.session.user.id);
+      if (!uploadResult.success) {
+        toastError(`Failed to upload profile picture: ${uploadResult.error}`);
+        return;
+      }
+      profilePicturePath = uploadResult.filePath;
     }
-
-    // Upload new picture
-    const uploadResult = await uploadProfilePicture(file, state.session.user.id);
-    if (!uploadResult.success) {
-      toastError(`Failed to upload profile picture: ${uploadResult.error}`);
-      return;
-    }
-    profilePicturePath = uploadResult.filePath;
   } else if (shouldRemovePicture && profilePicturePath) {
     // Remove profile picture
-    await deleteFileFromSupabase(profilePicturePath, PROFILE_PICTURES_BUCKET);
+    if (!selectedExistingPicturePath) {
+      await deleteFileFromSupabase(profilePicturePath, PROFILE_PICTURES_BUCKET);
+    }
     profilePicturePath = null;
   }
 
@@ -32034,6 +32843,7 @@ async function loadTeamLogoPreview(teamData) {
   const previewEl = el("team-logo-preview");
   const uploadInput = el("team-logo-upload");
   const removeBtn = el("btn-remove-team-logo");
+  const teamLogoPickBtn = el("btn-team-logo-pick");
   if (!previewEl) return;
 
   if (teamData?.logo_path) {
@@ -32060,7 +32870,26 @@ async function loadTeamLogoPreview(teamData) {
         if (removeBtn) removeBtn.style.display = "inline-flex";
       };
       reader.readAsDataURL(file);
+      delete previewEl.dataset.selectedExistingLogoPath;
+      delete previewEl.dataset.selectedExistingLogoBucket;
       previewEl.dataset.removeLogo = "false";
+    };
+  }
+
+  if (teamLogoPickBtn) {
+    teamLogoPickBtn.onclick = async () => {
+      const selection = await openExistingFilePicker({ imagesOnly: true, title: "Choose Team Logo" });
+      if (!selection || selection === "upload_new") {
+        if (selection === "upload_new") uploadInput?.click();
+        return;
+      }
+      const signedUrl = await getFileUrl(selection.filePath, selection.bucket || STORAGE_BUCKET);
+      if (!signedUrl) return;
+      previewEl.innerHTML = `<img src="${signedUrl}" alt="Team logo preview" style="width: 100%; height: 100%; object-fit: contain; display: block;">`;
+      previewEl.dataset.selectedExistingLogoPath = selection.filePath;
+      previewEl.dataset.selectedExistingLogoBucket = selection.bucket || STORAGE_BUCKET;
+      previewEl.dataset.removeLogo = "false";
+      if (removeBtn) removeBtn.style.display = "inline-flex";
     };
   }
 
@@ -32071,6 +32900,8 @@ async function loadTeamLogoPreview(teamData) {
       previewEl.dataset.removeLogo = "true";
       if (uploadInput) uploadInput.value = "";
       removeBtn.style.display = "none";
+      delete previewEl.dataset.selectedExistingLogoPath;
+      delete previewEl.dataset.selectedExistingLogoBucket;
     };
   }
 }
@@ -32337,17 +33168,25 @@ async function handleTeamSettingsSubmit(e) {
   const updates = {};
   let hasChanges = false;
   let nextLogoPath = currentTeam?.logo_path || null;
+  const selectedExistingLogoPath = teamLogoPreview?.dataset.selectedExistingLogoPath || null;
 
-  if (teamLogoUploadInput?.files?.[0]) {
-    if (nextLogoPath) {
-      await deleteFileFromSupabase(nextLogoPath, TEAM_LOGOS_BUCKET);
+  if (selectedExistingLogoPath) {
+    nextLogoPath = selectedExistingLogoPath;
+  } else if (teamLogoUploadInput?.files?.[0]) {
+    const duplicate = await resolvePotentialDuplicateUpload(teamLogoUploadInput.files[0], { imagesOnly: true });
+    if (duplicate?.filePath) {
+      nextLogoPath = duplicate.filePath;
+    } else {
+      if (nextLogoPath) {
+        await deleteFileFromSupabase(nextLogoPath, TEAM_LOGOS_BUCKET);
+      }
+      const uploadResult = await uploadTeamLogo(teamLogoUploadInput.files[0], state.currentTeamId);
+      if (!uploadResult.success) {
+        toastError(`Failed to upload team logo: ${uploadResult.error}`);
+        return;
+      }
+      nextLogoPath = uploadResult.filePath;
     }
-    const uploadResult = await uploadTeamLogo(teamLogoUploadInput.files[0], state.currentTeamId);
-    if (!uploadResult.success) {
-      toastError(`Failed to upload team logo: ${uploadResult.error}`);
-      return;
-    }
-    nextLogoPath = uploadResult.filePath;
   } else if (teamLogoPreview?.dataset.removeLogo === "true" && nextLogoPath) {
     await deleteFileFromSupabase(nextLogoPath, TEAM_LOGOS_BUCKET);
     nextLogoPath = null;
