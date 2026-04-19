@@ -554,29 +554,37 @@
                         <br>
 
                         <div class="schedule-editor-section" id="exceptiondaycontainer">
-                            <div class="schedule-day-columns" id="schedule-dayColumns">
-                                <section class="schedule-day-column schedule-day-column-regular">
-                                    <div class="schedule-day-column-header">
-                                        <p class="schedule-day-column-kicker"><i class="fa-solid fa-repeat"></i> Base Schedule</p>
-                                        <h2 id="regdaystag" style="font-family: 'Dosis';">Regular Schedule</h2>
-                                        <p class="schedule-day-column-description">This applies every day unless an exception overrides it.</p>
-                                    </div>
-                                    <div class="schedule-day-column-actions">
-                                        <a class="schedule-day-meta-action primary" onclick="schedule_selectRegularDay();"><i class="fa-solid fa-calendar-days"></i> Add Here</a>
-                                    </div>
-                                    <div id="schedule-eventList" class="schedule-day-event-list"></div>
-                                </section>
+                            <div class="schedule-calendar-shell">
+                                <div class="schedule-calendar-toolbar">
+                                    <p class="schedule-calendar-toolbar-text"><i class="fa-solid fa-calendar-week"></i> Click a time slot to place a new event there, then save it with the editor above.</p>
+                                    <a class="schedule-calendar-toolbar-action" onclick="schedule_selectRegularDay();"><i class="fa-solid fa-repeat"></i> Target Regular Schedule</a>
+                                </div>
+                                <div class="schedule-calendar-board">
+                                    <div class="schedule-time-axis" id="schedule-timeAxis"></div>
+                                    <div class="schedule-calendar-scroller">
+                                        <div class="schedule-calendar-columns" id="schedule-dayColumns">
+                                            <section class="schedule-calendar-day schedule-calendar-day-regular">
+                                                <div class="schedule-calendar-day-header">
+                                                    <p class="schedule-calendar-day-kicker"><i class="fa-solid fa-repeat"></i> Base Schedule</p>
+                                                    <h2 id="regdaystag" style="font-family: 'Dosis';">Regular Schedule</h2>
+                                                    <p class="schedule-calendar-day-description">Applies every day unless an exception overrides it.</p>
+                                                </div>
+                                                <div id="schedule-eventList" class="schedule-calendar-day-body"></div>
+                                            </section>
 
-                                <div style="font-family: 'Dosis'" id="schedule-exceptionList"></div>
+                                            <div style="font-family: 'Dosis'" id="schedule-exceptionList" class="schedule-calendar-exception-columns"></div>
 
-                                <section class="schedule-day-column schedule-day-column-add" id="schedule-addDayCard">
-                                    <div class="schedule-day-column-header">
-                                        <p class="schedule-day-column-kicker"><i class="fa-solid fa-calendar-plus"></i> Override</p>
-                                        <h2 id="exceptiondaystag" style="font-family: 'Dosis';">Add Exception Day</h2>
-                                        <p class="schedule-day-column-description">Pick a weekday to create a one-day override card.</p>
+                                            <section class="schedule-calendar-day schedule-calendar-day-add" id="schedule-addDayCard">
+                                                <div class="schedule-calendar-day-header">
+                                                    <p class="schedule-calendar-day-kicker"><i class="fa-solid fa-calendar-plus"></i> Override</p>
+                                                    <h2 id="exceptiondaystag" style="font-family: 'Dosis';">Add Exception Day</h2>
+                                                    <p class="schedule-calendar-day-description">Create a new day column, then click in its time grid to add events.</p>
+                                                </div>
+                                                <div class="schedule-calendar-add-body" id="schedule-addDayOptions"></div>
+                                            </section>
+                                        </div>
                                     </div>
-                                    <div class="schedule-add-day-options" id="schedule-addDayOptions"></div>
-                                </section>
+                                </div>
                             </div>
                         </div>
                     </div>

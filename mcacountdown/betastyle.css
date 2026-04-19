@@ -2669,223 +2669,310 @@ backdrop-filter: blur(12px);
         margin-bottom: 20px;
     }
 
-    .schedule-day-columns {
+    .schedule-calendar-shell {
+        --schedule-hour-height: 64px;
+    }
+
+    .schedule-calendar-toolbar {
         display: flex;
-        align-items: stretch;
-        gap: 24px;
-        overflow-x: auto;
-        padding: 6px 6px 22px;
-        scroll-snap-type: x proximity;
-    }
-
-    #schedule-exceptionList {
-        display: flex;
-        align-items: stretch;
-        gap: 24px;
-    }
-
-    .schedule-day-column {
-        position: relative;
-        flex: 0 0 320px;
-        min-height: 540px;
-        padding: 24px;
-        border-radius: 28px;
-        border: 1px solid rgba(132, 38, 255, 0.28);
-        background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.01)),
-            linear-gradient(180deg, rgba(12, 12, 18, 0.78), rgba(5, 5, 8, 0.9));
-        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.28);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        display: flex;
-        flex-direction: column;
-        scroll-snap-align: start;
-    }
-
-    .schedule-day-column::before {
-        content: "";
-        position: absolute;
-        inset: 0 auto auto 0;
-        width: 100%;
-        height: 6px;
-        border-radius: 28px 28px 0 0;
-        background: linear-gradient(90deg, rgba(132, 38, 255, 0.95), rgba(58, 182, 255, 0.75), rgba(255, 153, 0, 0.8));
-    }
-
-    .schedule-day-column-regular::before {
-        background: linear-gradient(90deg, rgba(132, 38, 255, 0.98), rgba(58, 182, 255, 0.8));
-    }
-
-    .schedule-day-column-add {
-        border-style: dashed;
-        border-color: rgba(255, 153, 0, 0.32);
-        background:
-            linear-gradient(180deg, rgba(255, 153, 0, 0.12), rgba(255, 153, 0, 0.03)),
-            linear-gradient(180deg, rgba(10, 8, 6, 0.72), rgba(6, 5, 5, 0.9));
-    }
-
-    .schedule-day-column.is-select-target {
-        border-color: rgba(1, 254, 94, 0.75);
-        box-shadow: 0 25px 60px rgba(1, 254, 94, 0.16);
-    }
-
-    .schedule-day-column.is-editing-target {
-        border-color: rgba(255, 153, 0, 0.7);
-        box-shadow: 0 25px 60px rgba(255, 153, 0, 0.14);
-    }
-
-    .schedule-day-column-header {
-        margin-bottom: 20px;
-    }
-
-    .schedule-day-column-kicker {
-        margin: 6px 0 12px;
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: rgba(255, 255, 255, 0.72);
-    }
-
-    .schedule-day-column-description {
-        margin: 10px 0 0;
-        font-size: 18px;
-        line-height: 1.4;
-        color: rgba(255, 255, 255, 0.78);
-    }
-
-    .schedule-day-column h2 {
-        margin: 0;
-        font-size: 34px;
-        line-height: 1.05;
-    }
-
-    .schedule-day-column-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-bottom: 18px;
-    }
-
-    .schedule-day-event-list {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        min-height: 220px;
-    }
-
-    .schedule-event-item,
-    .schedule-exception-item {
-        list-style-type: none;
-        margin: 0;
-        padding: 18px;
-        border-radius: 22px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015));
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    }
-
-    .schedule-event-time {
-        display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 7px 12px;
-        border-radius: 999px;
-        background: rgba(132, 38, 255, 0.18);
-        font-size: 15px;
-        letter-spacing: 0.04em;
-        color: rgba(255, 255, 255, 0.82);
+        justify-content: space-between;
+        gap: 20px;
+        padding: 18px 22px;
+        margin-bottom: 20px;
+        border-radius: 24px;
+        background: linear-gradient(to right, rgba(132, 38, 255, 0.18), rgba(58, 182, 255, 0.08), rgba(255, 153, 0, 0.08));
+        border: var(--cardborder);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
 
-    .schedule-event-item h1,
-    .schedule-exception-item h1 {
-        margin: 14px 0 10px;
-        font-size: 30px;
-        line-height: 1.05;
-    }
-
-    .schedule-event-item p,
-    .schedule-exception-item p {
+    .schedule-calendar-toolbar-text {
         margin: 0;
-        font-size: 18px;
-        line-height: 1.4;
-        color: rgba(255, 255, 255, 0.8);
+        font-size: 21px;
+        line-height: 1.35;
+        color: var(--mainforegroundcolor);
     }
 
-    .schedule-event-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 16px;
-    }
-
-    .schedule-day-meta-action,
-    .schedule-event-actions a,
-    .schedule-add-day-choice {
+    .schedule-calendar-toolbar-action,
+    .schedule-calendar-day-action,
+    .schedule-calendar-add-choice {
         appearance: none;
         border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.06);
+        background: var(--inputbackground);
         color: var(--mainforegroundcolor);
-        border-radius: 16px;
-        padding: 11px 15px;
+        border-radius: 18px;
+        padding: 12px 16px;
         font-family: "Dosis";
         font-size: 18px;
         text-decoration: none;
         cursor: pointer;
-        transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        transition: 0.18s transform ease, 0.18s border-color ease, 0.18s box-shadow ease;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        text-align: center;
+        gap: 9px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
 
-    .schedule-day-meta-action:hover,
-    .schedule-event-actions a:hover,
-    .schedule-add-day-choice:hover {
+    .schedule-calendar-toolbar-action:hover,
+    .schedule-calendar-day-action:hover,
+    .schedule-calendar-add-choice:hover {
         transform: translateY(-1px);
         border-color: rgba(255, 255, 255, 0.24);
-        background: rgba(255, 255, 255, 0.12);
     }
 
-    .schedule-day-meta-action.primary {
-        background: linear-gradient(135deg, rgba(132, 38, 255, 0.38), rgba(58, 182, 255, 0.2));
-        border-color: rgba(132, 38, 255, 0.34);
+    .schedule-calendar-day-action.primary {
+        border-color: rgba(58, 182, 255, 0.3);
+        background: linear-gradient(to right, rgba(58, 182, 255, 0.18), rgba(132, 38, 255, 0.18));
     }
 
-    .schedule-day-meta-action.warning,
-    .schedule-event-actions a.warning {
-        background: rgba(255, 153, 0, 0.12);
-        border-color: rgba(255, 153, 0, 0.26);
+    .schedule-calendar-day-action.warning {
+        border-color: rgba(255, 153, 0, 0.3);
+        background: linear-gradient(to right, rgba(255, 153, 0, 0.14), rgba(132, 38, 255, 0.12));
     }
 
-    .schedule-day-column.is-select-target .schedule-day-meta-action.primary {
-        background: linear-gradient(135deg, rgba(1, 254, 94, 0.3), rgba(58, 182, 255, 0.2));
-        border-color: rgba(1, 254, 94, 0.46);
+    .schedule-calendar-board {
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr);
+        gap: 14px;
+        align-items: start;
     }
 
-    .schedule-day-empty,
-    .schedule-add-day-empty {
-        margin-top: auto;
-        padding: 18px;
-        border-radius: 20px;
-        border: 1px dashed rgba(255, 255, 255, 0.18);
-        background: rgba(255, 255, 255, 0.025);
-        color: rgba(255, 255, 255, 0.72);
-        font-size: 18px;
-        line-height: 1.4;
+    .schedule-time-axis {
+        border-radius: 24px;
+        overflow: hidden;
+        background: linear-gradient(to bottom, rgba(132, 38, 255, 0.08), rgba(20, 20, 20, 0.18));
+        border: var(--cardborder);
     }
 
-    .schedule-add-day-options {
-        margin-top: auto;
+    .schedule-time-axis-spacer {
+        height: 126px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(0, 0, 0, 0.18);
+    }
+
+    .schedule-time-axis-slot {
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 10px;
+        box-sizing: border-box;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .schedule-time-axis-slot span {
+        font-family: 'Dosis';
+        font-size: 16px;
+        letter-spacing: 0.04em;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .schedule-calendar-scroller {
+        overflow-x: auto;
+        padding-bottom: 12px;
+    }
+
+    .schedule-calendar-columns,
+    #schedule-exceptionList {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .schedule-calendar-day {
+        flex: 0 0 260px;
+        border-radius: 24px;
+        overflow: hidden;
+        border: var(--cardborder);
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), rgba(20, 20, 20, 0.16));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .schedule-calendar-day.is-select-target {
+        border-color: rgba(58, 182, 255, 0.4);
+        box-shadow: 0 0 0 1px rgba(58, 182, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .schedule-calendar-day.is-editing-target {
+        border-color: rgba(255, 153, 0, 0.42);
+        box-shadow: 0 0 0 1px rgba(255, 153, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .schedule-calendar-day-header {
+        min-height: 126px;
+        padding: 18px 18px 12px;
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0.08));
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .schedule-calendar-day-kicker {
+        margin: 0 0 8px;
+        font-size: 14px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.66);
+    }
+
+    .schedule-calendar-day h2 {
+        margin: 0;
+        font-size: 30px;
+        line-height: 1;
+        color: var(--mainforegroundcolor);
+    }
+
+    .schedule-calendar-day-description {
+        margin: 10px 0 0;
+        font-size: 17px;
+        line-height: 1.35;
+        color: rgba(255, 255, 255, 0.74);
+    }
+
+    .schedule-calendar-day-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
-        align-content: flex-start;
+        gap: 10px;
+        padding: 14px 18px 0;
     }
 
-    .schedule-add-day-choice {
-        width: calc(50% - 6px);
-        min-height: 56px;
+    .schedule-calendar-day-body {
+        position: relative;
+    }
+
+    .schedule-calendar-grid {
+        position: relative;
+        background:
+            repeating-linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0.05) 0,
+                rgba(255, 255, 255, 0.05) 1px,
+                transparent 1px,
+                transparent calc(var(--schedule-hour-height) / 2)
+            ),
+            repeating-linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0.08) 0,
+                rgba(255, 255, 255, 0.08) 1px,
+                transparent 1px,
+                transparent var(--schedule-hour-height)
+            ),
+            linear-gradient(to bottom, rgba(132, 38, 255, 0.06), rgba(20, 20, 20, 0.04));
+        cursor: crosshair;
+    }
+
+    .schedule-calendar-grid::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to right, rgba(58, 182, 255, 0.03), rgba(255, 153, 0, 0.02));
+        pointer-events: none;
+    }
+
+    .schedule-calendar-empty {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        right: 14px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(20, 20, 20, 0.42);
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        font-size: 17px;
+        line-height: 1.35;
+        color: rgba(255, 255, 255, 0.68);
+        pointer-events: none;
+    }
+
+    .schedule-calendar-event {
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        padding: 10px 12px 12px;
+        border-radius: 18px;
+        background: linear-gradient(to bottom right, rgba(132, 38, 255, 0.72), rgba(58, 182, 255, 0.52));
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+        cursor: pointer;
+        overflow: hidden;
+        z-index: 1;
+    }
+
+    .schedule-calendar-day-exception .schedule-calendar-event {
+        background: linear-gradient(to bottom right, rgba(255, 153, 0, 0.66), rgba(132, 38, 255, 0.52));
+    }
+
+    .schedule-calendar-event-time {
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.78);
+    }
+
+    .schedule-calendar-event-title {
+        margin-top: 6px;
+        font-family: 'Fredoka One';
+        font-size: 18px;
+        line-height: 1.05;
+        color: white;
+        word-break: break-word;
+    }
+
+    .schedule-calendar-event-actions {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        display: flex;
+        gap: 8px;
+    }
+
+    .schedule-calendar-event-action {
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.26);
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .schedule-calendar-event-action.warning {
+        background: rgba(0, 0, 0, 0.36);
+    }
+
+    .schedule-calendar-day-add .schedule-calendar-day-header {
+        background: linear-gradient(to bottom, rgba(255, 153, 0, 0.14), rgba(0, 0, 0, 0.08));
+    }
+
+    .schedule-calendar-add-body {
+        min-height: calc(var(--schedule-hour-height) * 24);
+        padding: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        gap: 12px;
+        background:
+            linear-gradient(to bottom, rgba(255, 255, 255, 0.025), rgba(255, 153, 0, 0.04));
+    }
+
+    .schedule-calendar-add-copy,
+    .schedule-calendar-add-empty {
+        width: 100%;
+        margin: 0;
+        padding: 14px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.18);
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        font-size: 17px;
+        line-height: 1.35;
+        color: rgba(255, 255, 255, 0.72);
+    }
+
+    .schedule-calendar-add-choice {
+        width: 100%;
+        justify-content: flex-start;
     }
 
     @media (max-width: 900px) {
@@ -2894,13 +2981,22 @@ backdrop-filter: blur(12px);
             padding: 12px;
         }
 
-        .schedule-day-column {
-            flex-basis: min(82vw, 320px);
-            min-height: 500px;
+        .schedule-calendar-toolbar {
+            flex-direction: column;
+            align-items: flex-start;
         }
 
-        .schedule-day-column h2 {
-            font-size: 30px;
+        .schedule-calendar-board {
+            grid-template-columns: 72px minmax(0, 1fr);
+            gap: 10px;
+        }
+
+        .schedule-calendar-day {
+            flex-basis: min(78vw, 260px);
+        }
+
+        .schedule-calendar-day h2 {
+            font-size: 26px;
         }
     }
 
