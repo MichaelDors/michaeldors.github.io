@@ -4421,9 +4421,10 @@ function contrast(){ //increase contrast set or remove cookie
               const endMinutes = Math.max(schedule_parseTimeToMinutes(event.endTime), startMinutes + 15);
               const top = (startMinutes / 60) * schedule_hourHeight;
               const height = Math.max(((endMinutes - startMinutes) / 60) * schedule_hourHeight, 44);
+              const sizeClass = height < 58 ? ' is-micro' : height < 88 ? ' is-compact' : '';
 
               return `
-                  <div class="schedule-calendar-event" style="top:${top}px; height:${height}px;" onclick="${editAction}">
+                  <div class="schedule-calendar-event${sizeClass}" style="top:${top}px; height:${height}px;" onclick="${editAction}">
                       <div class="schedule-calendar-event-time">${schedule_formatTime(event.startTime)} - ${schedule_formatTime(event.endTime)}</div>
                       <div class="schedule-calendar-event-title">${event.title}</div>
                       <div class="schedule-calendar-event-actions">
@@ -4506,7 +4507,7 @@ function contrast(){ //increase contrast set or remove cookie
                           <div class="schedule-calendar-day-header">
                               <p class="schedule-calendar-day-kicker"><i class="fa-solid ${schedule_getDayIcon(day)}"></i> Exception Day</p>
                               <h2>${dayName}</h2>
-                              <p class="schedule-calendar-day-description">Overrides the regular schedule for ${dayName}.</p>
+                              <p class="schedule-calendar-day-description">Custom schedule for ${dayName}.</p>
                           </div>
                           <div class="schedule-calendar-day-actions">
                               <a class="schedule-calendar-day-action primary addeventtoexceptionday" onclick="event.preventDefault(); schedule_editEvent(null, true, '${day}'); return false;"><i class="fa-solid fa-plus-circle"></i> New Event</a>

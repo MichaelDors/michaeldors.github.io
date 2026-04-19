@@ -556,8 +556,8 @@
                         <div class="schedule-editor-section" id="exceptiondaycontainer">
                             <div class="schedule-calendar-shell">
                                 <div class="schedule-calendar-toolbar">
-                                    <p class="schedule-calendar-toolbar-text"><i class="fa-solid fa-calendar-week"></i> Click a time slot to place a new event there, then save it with the editor above.</p>
-                                    <a class="schedule-calendar-toolbar-action" onclick="schedule_selectRegularDay();"><i class="fa-solid fa-repeat"></i> Target Regular Schedule</a>
+                                    <p class="schedule-calendar-toolbar-text"><i class="fa-solid fa-calendar-week"></i> Click any slot to place a new event.</p>
+                                    <a class="schedule-calendar-toolbar-action" onclick="schedule_selectRegularDay();"><i class="fa-solid fa-repeat"></i> Regular</a>
                                 </div>
                                 <div class="schedule-calendar-board">
                                     <div class="schedule-time-axis" id="schedule-timeAxis"></div>
@@ -567,7 +567,7 @@
                                                 <div class="schedule-calendar-day-header">
                                                     <p class="schedule-calendar-day-kicker"><i class="fa-solid fa-repeat"></i> Base Schedule</p>
                                                     <h2 id="regdaystag" style="font-family: 'Dosis';">Regular Schedule</h2>
-                                                    <p class="schedule-calendar-day-description">Applies every day unless an exception overrides it.</p>
+                                                    <p class="schedule-calendar-day-description">Default for every day.</p>
                                                 </div>
                                                 <div id="schedule-eventList" class="schedule-calendar-day-body"></div>
                                             </section>
@@ -578,7 +578,7 @@
                                                 <div class="schedule-calendar-day-header">
                                                     <p class="schedule-calendar-day-kicker"><i class="fa-solid fa-calendar-plus"></i> Override</p>
                                                     <h2 id="exceptiondaystag" style="font-family: 'Dosis';">Add Exception Day</h2>
-                                                    <p class="schedule-calendar-day-description">Create a new day column, then click in its time grid to add events.</p>
+                                                    <p class="schedule-calendar-day-description">Create a custom day column.</p>
                                                 </div>
                                                 <div class="schedule-calendar-add-body" id="schedule-addDayOptions"></div>
                                             </section>
