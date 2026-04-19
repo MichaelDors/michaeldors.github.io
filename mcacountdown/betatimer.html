@@ -553,32 +553,31 @@
                         <br>
                         <br>
 
-                        <div class="schedule-editor-section">
-                            <h2 id="regdaystag" style="font-family: 'Dosis';">Regular Schedule</h2>
-                            <button style="font-family: 'Dosis'" class="schedule-collapsible" onclick="schedule_toggleCollapsible(this)">Show/Hide Regular Schedule</button>
-                            <div class="schedule-content">
-                                <ul id="schedule-eventList"></ul>
-                            </div>
-                        </div>
-
                         <div class="schedule-editor-section" id="exceptiondaycontainer">
-                            <h2 id="exceptiondaystag" style="font-family: 'Dosis';">Exception Days</h2>
-                            <div class="schedule-form-group">
-                                <div class="dropdown-container" style="display: inline-block; width:250px;" id="schedule-exceptionDay">
-                                    <button class="dropdown-button" id="dropdownbuttonexceptionday"><i class="fa-solid fa-calendar-day"></i> Select Day</button>
-                                    <div class="dropdown-menu" id="exceptionDayMenu">
-                                        <div class="dropdown-item" data-day="0"><i class="fa-solid fa-sun"></i> Sunday</div>
-                                        <div class="dropdown-item" data-day="1"><i class="fa-solid fa-mug-hot"></i> Monday</div>
-                                        <div class="dropdown-item" data-day="2"><i class="fa-solid fa-calendar-check"></i> Tuesday</div>
-                                        <div class="dropdown-item" data-day="3"><i class="fa-solid fa-balance-scale"></i> Wednesday</div>
-                                        <div class="dropdown-item" data-day="4"><i class="fa-solid fa-chart-line"></i> Thursday</div>
-                                        <div class="dropdown-item" data-day="5"><i class="fa-solid fa-pizza-slice"></i> Friday</div>
-                                        <div class="dropdown-item" data-day="6"><i class="fa-solid fa-umbrella-beach"></i> Saturday</div>
+                            <div class="schedule-day-columns" id="schedule-dayColumns">
+                                <section class="schedule-day-column schedule-day-column-regular">
+                                    <div class="schedule-day-column-header">
+                                        <p class="schedule-day-column-kicker"><i class="fa-solid fa-repeat"></i> Base Schedule</p>
+                                        <h2 id="regdaystag" style="font-family: 'Dosis';">Regular Schedule</h2>
+                                        <p class="schedule-day-column-description">This applies every day unless an exception overrides it.</p>
                                     </div>
-                                </div>
-                                <a id="schedule-addExceptionBtn" style="margin-left:0px !important; border-top-left-radius: 0px; border-bottom-left-radius: 0px;"><i class="fa-solid fa-plus-circle"></i> Add Exception Day</a>
+                                    <div class="schedule-day-column-actions">
+                                        <a class="schedule-day-meta-action primary" onclick="schedule_selectRegularDay();"><i class="fa-solid fa-calendar-days"></i> Add Here</a>
+                                    </div>
+                                    <div id="schedule-eventList" class="schedule-day-event-list"></div>
+                                </section>
+
+                                <div style="font-family: 'Dosis'" id="schedule-exceptionList"></div>
+
+                                <section class="schedule-day-column schedule-day-column-add" id="schedule-addDayCard">
+                                    <div class="schedule-day-column-header">
+                                        <p class="schedule-day-column-kicker"><i class="fa-solid fa-calendar-plus"></i> Override</p>
+                                        <h2 id="exceptiondaystag" style="font-family: 'Dosis';">Add Exception Day</h2>
+                                        <p class="schedule-day-column-description">Pick a weekday to create a one-day override card.</p>
+                                    </div>
+                                    <div class="schedule-add-day-options" id="schedule-addDayOptions"></div>
+                                </section>
                             </div>
-                            <div style="font-family: 'Dosis'" id="schedule-exceptionList"></div>
                         </div>
                     </div>
                 </div>
