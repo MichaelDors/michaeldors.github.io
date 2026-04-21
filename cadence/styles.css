@@ -2050,6 +2050,7 @@ ul.song-resource-usage-list {
   mask-repeat: no-repeat;
   mask-position: center;
   z-index: 1;
+  opacity: 0.5;
 }
 
 .set-song-tag-card::after {
