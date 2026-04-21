@@ -2040,7 +2040,7 @@ ul.song-resource-usage-list {
   top: -2.93rem;
   width: 2.75rem;
   height: 4.45rem;
-  background-color: color-mix(in srgb, var(--accent-color) 60%, var(--border-color));
+  background-color: var(--accent-color);
   -webkit-mask-image: url("./loop-mask.png");
   -webkit-mask-size: contain;
   -webkit-mask-repeat: no-repeat;
@@ -2050,7 +2050,6 @@ ul.song-resource-usage-list {
   mask-repeat: no-repeat;
   mask-position: center;
   z-index: 1;
-  opacity: 0.5;
 }
 
 .set-song-tag-card::after {
