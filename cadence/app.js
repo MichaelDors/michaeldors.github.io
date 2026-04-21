@@ -22368,9 +22368,12 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 
   title.textContent = "Song Details";
 
-  // Fetch song with keys and resources
+  // Fetch full song details when partial set-song payloads are missing fields.
+  // Set-song queries can include keys/resources but omit themes, which breaks
+  // related-song theme matching if we don't hydrate here.
   let songWithResources = song;
-  if (!song.song_resources || !song.song_keys) {
+  const hasThemeList = Array.isArray(song?.themes);
+  if (!song.song_resources || !song.song_keys || !hasThemeList) {
     const { data } = await supabase
       .from("songs")
       .select(`
