@@ -2991,17 +2991,26 @@ ul.song-resource-usage-list {
   margin: 0;
 }
 
-#song-details-modal .modal-content {
-  max-width: 800px;
-  background: var(--song-details-modal-bg);
-  overflow: visible;
+#song-details-modal {
+  align-items: center;
 }
 
-#song-details-modal,
-#song-details-modal .song-details-content,
-#song-details-modal .song-details-section,
-#song-details-modal .song-details-header-wrapper {
+#song-details-modal .modal-content {
+  max-width: 800px;
+  background: linear-gradient(
+    to bottom,
+    var(--song-details-modal-bg) 0%,
+    var(--song-details-modal-bg) 80%,
+    var(--resources-tint) 80%,
+    var(--resources-tint) 100%
+  );
+  max-height: none;
   overflow: visible;
+  margin: auto;
+}
+
+#song-details-modal .modal-content:has(.song-details-content.song-details-content--has-resources) {
+  padding-bottom: 0;
 }
 
 .modal-content {
@@ -3862,6 +3871,13 @@ textarea {
 
 .song-details-content {
   padding: 1.5rem 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 80%,
+    var(--resources-tint) 80%,
+    var(--resources-tint) 100%
+  );
 }
 
 .song-details-section {
@@ -4866,32 +4882,26 @@ textarea {
   /* Song details modal is fullscreen on mobile; stretch resources tint to the bottom */
   #song-details-modal .song-details-content.song-details-content--has-resources {
     display: flex;
-    flex: 1;
     flex-direction: column;
-    min-height: 100%;
     padding-bottom: 0;
   }
 
   #song-details-modal .song-details-content.song-details-content--has-resources > .song-details-section {
     display: flex;
-    flex: 1;
     flex-direction: column;
-    min-height: 100%;
   }
 
   #song-details-modal .song-details-content.song-details-content--has-resources .resources-section-wrapper {
     display: flex;
-    flex: 1;
     flex-direction: column;
     margin-bottom: 0;
   }
 
   #song-details-modal .song-details-content.song-details-content--has-resources .resources-content-area {
     display: flex;
-    flex: 1;
     flex-direction: column;
-    padding-bottom: 4rem;
-    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    padding-bottom: 1.25rem;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -6803,6 +6813,16 @@ i {
 .resources-content-area {
   background-color: var(--resources-tint);
   padding: 0 2rem 4rem 2rem;
+}
+
+#song-details-modal .resources-section-wrapper {
+  margin-bottom: 0;
+}
+
+#song-details-modal .resources-content-area {
+  overflow: hidden;
+  padding-bottom: 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
 }
 
 .resources-section-wrapper .section-title {
