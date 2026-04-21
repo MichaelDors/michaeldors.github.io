@@ -22368,9 +22368,12 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
 
   title.textContent = "Song Details";
 
-  // Fetch song with keys and resources
+  // Fetch full song details when partial set-song payloads are missing fields.
+  // Set-song queries can include keys/resources but omit themes, which breaks
+  // related-song theme matching if we don't hydrate here.
   let songWithResources = song;
-  if (!song.song_resources || !song.song_keys) {
+  const hasThemeList = Array.isArray(song?.themes);
+  if (!song.song_resources || !song.song_keys || !hasThemeList) {
     const { data } = await supabase
       .from("songs")
       .select(`
@@ -27442,6 +27445,63 @@ function buildPrintSetResourceKey(songId, resourceId) {
   return `${songId}:${resourceId}`;
 }
 
+function buildGeneratedPrintSetChordChartResources(song, setKeys = []) {
+  if (!song?.id) return [];
+  const songResources = Array.isArray(song.song_resources) ? song.song_resources : [];
+  const uniqueSetKeys = Array.from(
+    new Set(
+      (setKeys || [])
+        .map((key) => normalizeKeyLabel(key))
+        .filter(Boolean)
+    )
+  );
+  if (!uniqueSetKeys.length) return [];
+
+  const generalNumberChart = songResources.find((resource) => {
+    if (resource?.type !== "chart") return false;
+    if (normalizeKeyLabel(resource?.key || "")) return false;
+    const chartType = resource.chart_content?.chart_type || resource.chart_type || "chord";
+    return chartType === "number";
+  });
+  if (!generalNumberChart) return [];
+
+  const sourceDoc = generalNumberChart.chart_content?.doc || generalNumberChart.doc || null;
+  if (!sourceDoc) return [];
+
+  const existingChordChartKeys = new Set();
+  songResources.forEach((resource) => {
+    if (resource?.type !== "chart") return;
+    const chartType = resource.chart_content?.chart_type || resource.chart_type || "chord";
+    if (chartType !== "chord") return;
+    const resourceKey = normalizeKeyLabel(resource?.key || "").toLowerCase();
+    if (!resourceKey) return;
+    existingChordChartKeys.add(resourceKey);
+  });
+
+  const baseOrder = Number(generalNumberChart.display_order);
+  const generatedOrder = Number.isFinite(baseOrder) ? baseOrder + 0.001 : -1;
+
+  return uniqueSetKeys
+    .filter((key) => parseKeyToPitchClass(key))
+    .filter((key) => !existingChordChartKeys.has(key.toLowerCase()))
+    .map((key) => ({
+      ...generalNumberChart,
+      id: `generated-number:${song.id}:${key.toLowerCase()}`,
+      key,
+      display_order: generatedOrder,
+      generatedFromNumber: true,
+      sourceDoc,
+      targetKey: key,
+      chart_content: {
+        ...(generalNumberChart.chart_content || {}),
+        chart_type: "chord",
+        scope: "key",
+        songKey: key,
+        doc: null,
+      },
+    }));
+}
+
 function buildPrintSetSectionKey(setSongId) {
   return `section:${setSongId}`;
 }
@@ -27463,10 +27523,16 @@ function buildPrintSetResourceEntry(song, resource) {
   const songTitle = song.title || "Untitled";
   const key = buildPrintSetResourceKey(songId, resource.id);
   const chartType = resource.chart_content?.chart_type || resource.chart_type || "chord";
+  const generatedFromNumber = !!resource.generatedFromNumber;
+  const targetKey = normalizeKeyLabel(resource.targetKey || resource.key || "");
 
   let title = resource.title || resource.file_name || resource.url || "Resource";
   if (resource.type === "chart") {
-    title = chartType === "number" ? "Number Chart" : "Chord Chart";
+    if (chartType === "number") {
+      title = "Number Chart";
+    } else {
+      title = generatedFromNumber ? "Chord Chart (Generated)" : "Chord Chart";
+    }
   }
 
   const metaParts = [];
@@ -27475,6 +27541,9 @@ function buildPrintSetResourceEntry(song, resource) {
     const typeLabel = chartType === "number" ? "Number chart" : "Chord chart";
     metaParts.push({ text: scopeLabel, kind: "key" });
     metaParts.push({ text: typeLabel, kind: "chart-type" });
+    if (generatedFromNumber) {
+      metaParts.push({ text: "Auto-generated", kind: "state" });
+    }
   } else if (resource.key) {
     metaParts.push({ text: `Key: ${resource.key}`, kind: "key" });
   }
@@ -27498,6 +27567,9 @@ function buildPrintSetResourceEntry(song, resource) {
     subtitle,
     metaParts,
     displayOrder: resource.display_order ?? Number.POSITIVE_INFINITY,
+    generatedFromNumber,
+    sourceDoc: resource.sourceDoc || resource.numberSourceDoc || null,
+    targetKey: targetKey || null,
   };
 }
 
@@ -27754,7 +27826,13 @@ async function renderPrintSetResources({
       bodyEl.className = "print-resource-body";
 
       if (entry.kind === "chart") {
-        const chartDoc = entry.resource?.chart_content?.doc || entry.resource?.doc;
+        let chartDoc = entry.resource?.chart_content?.doc || entry.resource?.doc;
+        if (!chartDoc && entry.generatedFromNumber && entry.sourceDoc && entry.targetKey) {
+          chartDoc = generateChordDocFromNumberDoc(entry.sourceDoc, entry.targetKey, {
+            songTitle: songTitle || entry.sourceDoc?.title || "Chord Chart",
+            layout: entry.resource?.chart_content?.layout || entry.resource?.layout || entry.sourceDoc?.settings?.layout || "one_column",
+          });
+        }
         if (!chartDoc) {
           const err = document.createElement("div");
           err.className = "print-resource-error";
@@ -28291,7 +28369,11 @@ function renderPrintSetResourceList(set) {
     header.appendChild(titleWrap);
     group.appendChild(header);
 
-    const printableResources = (song.song_resources || [])
+    const setKeysForSong = explicitKeys && explicitKeys.size
+      ? Array.from(explicitKeys)
+      : fallbackKeys;
+    const generatedChordCharts = buildGeneratedPrintSetChordChartResources(song, setKeysForSong);
+    const printableResources = [...(song.song_resources || []), ...generatedChordCharts]
       .filter(res => getPrintableResourceKind(res))
       .sort((a, b) => (a.display_order ?? Number.POSITIVE_INFINITY) - (b.display_order ?? Number.POSITIVE_INFINITY));
 
