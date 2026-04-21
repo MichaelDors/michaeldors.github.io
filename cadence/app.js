@@ -22552,6 +22552,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   <div class="song-details-section">
         <div class="song-details-header-wrapper">
           <div id="song-album-art-placeholder" class="song-album-art-container" data-can-upload="${canUploadAlbumArt ? '1' : '0'}" style="display:none;">
+            <img src="./vinyl.png" alt="" aria-hidden="true" class="song-album-art-vinyl" />
             <div class="album-art-skeleton skeleton" aria-hidden="true"></div>
             <img id="song-album-art-img" src="" alt="Album art for ${escapeHtml(songWithLinks.title || 'song')}" class="song-album-art" style="display:none;" />
             <div id="song-album-art-no-image" class="song-album-art-no-image hidden">No image</div>
@@ -31743,6 +31744,12 @@ function updateClickTrackButtons() {
       btn.classList.remove("active");
     }
   });
+
+  const songDetailsModal = el("song-details-modal");
+  const modalClickTrackBtn = songDetailsModal?.querySelector(".song-click-track .click-track-btn");
+  const modalVinyl = songDetailsModal?.querySelector(".song-album-art-vinyl");
+  const shouldSpinVinyl = !!modalVinyl && !!modalClickTrackBtn?.classList.contains("active");
+  modalVinyl?.classList.toggle("is-spinning", shouldSpinVinyl);
 }
 
 // Custom Searchable Dropdown Component
