@@ -11480,10 +11480,13 @@ function renderSetDetailSongs(set, animate = false) {
           }
         }
 
+        let transitionHeadsUpEl = null;
+
         if (isTagItem) {
           // Render as tag: song title + part chip (no " - Chorus" plain text)
           const tagSongTitle = setSong.song?.title ?? "Untitled";
           const partName = resolveTagPartName(tagInfo.tagType, tagInfo.customValue) || setSong.title || "Tag";
+          const tagTransition = getTagTransitionHeadsUp(setSong, set);
           const titleEl = songNode.querySelector(".song-title");
           titleEl.textContent = tagSongTitle;
           const chip = document.createElement("span");
@@ -11491,12 +11494,59 @@ function renderSetDetailSongs(set, animate = false) {
           chip.textContent = partName;
           titleEl.appendChild(chip);
 
+          if (tagTransition?.items?.length || tagTransition?.difficulty?.level === "difficult") {
+            const headsUpRow = document.createElement("div");
+            headsUpRow.className = "set-song-transition-heads-up";
+
+            tagTransition.items.forEach((item) => {
+              const itemText = document.createElement("span");
+              itemText.className = `set-song-transition-item ${item.tone}`;
+
+              const icon = document.createElement("i");
+              if (item.kind === "bpm") {
+                icon.className = item.tone === "loss" ? "fa-solid fa-arrow-down" : "fa-solid fa-arrow-up";
+              } else if (item.kind === "time-signature") {
+                icon.className = "fa-solid fa-wave-square";
+              } else if (item.kind === "key") {
+                icon.className = "fa-solid fa-music";
+              } else {
+                icon.className = "fa-solid fa-circle-info";
+              }
+              icon.setAttribute("aria-hidden", "true");
+
+              const label = document.createElement("span");
+              label.textContent = item.label;
+
+              itemText.appendChild(icon);
+              itemText.appendChild(label);
+              headsUpRow.appendChild(itemText);
+            });
+
+            if (tagTransition.difficulty?.level === "difficult") {
+              const difficultyText = document.createElement("span");
+              difficultyText.className = "set-song-transition-item difficult";
+              difficultyText.title = tagTransition.difficulty.explanation;
+              difficultyText.setAttribute("aria-label", tagTransition.difficulty.explanation);
+
+              const icon = document.createElement("i");
+              icon.className = "fa-solid fa-triangle-exclamation";
+              icon.setAttribute("aria-hidden", "true");
+
+              const label = document.createElement("span");
+              label.textContent = "Difficult Transition";
+
+              difficultyText.appendChild(icon);
+              difficultyText.appendChild(label);
+              headsUpRow.appendChild(difficultyText);
+            }
+
+            transitionHeadsUpEl = headsUpRow;
+          }
+
           // Add tag indicator class
           card.classList.add("set-song-tag-card");
 
-          const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0
-            ? setSong.song.song_keys.map(k => k.key).join(", ")
-            : null);
+          const displayKey = getSetSongDisplayKey(setSong);
           safeJoinMeta(songNode.querySelector(".song-meta"), [
             displayKey,
             setSong.song?.time_signature,
@@ -11716,9 +11766,7 @@ function renderSetDetailSongs(set, animate = false) {
           // Render as song
           songNode.querySelector(".song-title").textContent =
             setSong.song?.title ?? "Untitled";
-          const displayKey = setSong.key || (setSong.song?.song_keys && setSong.song.song_keys.length > 0
-            ? setSong.song.song_keys.map(k => k.key).join(", ")
-            : null);
+          const displayKey = getSetSongDisplayKey(setSong);
           safeJoinMeta(songNode.querySelector(".song-meta"), [
             displayKey,
             setSong.song?.time_signature,
@@ -11889,6 +11937,9 @@ function renderSetDetailSongs(set, animate = false) {
           });
         }
 
+        if (transitionHeadsUpEl) {
+          songsList.appendChild(transitionHeadsUpEl);
+        }
         songsList.appendChild(songNode);
       });
 
@@ -14979,6 +15030,173 @@ function getTagParentSetSong(setSong, set = state.selectedSet) {
   const tagInfo = parseTagDescription(setSong);
   if (!tagInfo?.parentSetSongId) return null;
   return set.set_songs.find(ss => String(ss.id) === String(tagInfo.parentSetSongId)) || null;
+}
+
+function getSetSongDisplayKey(setSong) {
+  if (!setSong) return null;
+  const overrideKey = normalizeKeyLabel(setSong.key);
+  if (overrideKey) return overrideKey;
+
+  const songKeys = Array.isArray(setSong.song?.song_keys)
+    ? setSong.song.song_keys.map(entry => normalizeKeyLabel(entry?.key)).filter(Boolean)
+    : [];
+  if (songKeys.length > 0) return songKeys.join(", ");
+
+  const fallbackKey = normalizeKeyLabel(setSong.song?.song_key);
+  return fallbackKey || null;
+}
+
+function getSetSongPrimaryKey(setSong) {
+  if (!setSong) return null;
+  const overrideKey = normalizeKeyLabel(setSong.key);
+  if (overrideKey) return overrideKey;
+
+  const songKeys = Array.isArray(setSong.song?.song_keys)
+    ? setSong.song.song_keys.map(entry => normalizeKeyLabel(entry?.key)).filter(Boolean)
+    : [];
+  if (songKeys.length > 0) return songKeys[0];
+
+  const fallbackKey = normalizeKeyLabel(setSong.song?.song_key);
+  return fallbackKey || null;
+}
+
+function formatTransitionMetricNumber(value) {
+  if (!Number.isFinite(value)) return "";
+  const rounded = Math.round(value * 10) / 10;
+  if (Number.isInteger(rounded)) return String(rounded);
+  return rounded.toFixed(1).replace(/\.0$/, "");
+}
+
+function joinNaturalLanguage(parts = []) {
+  const clean = parts.filter(Boolean);
+  if (clean.length === 0) return "";
+  if (clean.length === 1) return clean[0];
+  if (clean.length === 2) return `${clean[0]} and ${clean[1]}`;
+  return `${clean.slice(0, -1).join(", ")}, and ${clean[clean.length - 1]}`;
+}
+
+function parseTimeSignatureFraction(value) {
+  if (!value) return null;
+  const normalized = String(value).trim().toLowerCase();
+  const match = normalized.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (!match) return null;
+  const numerator = Number(match[1]);
+  const denominator = Number(match[2]);
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) {
+    return null;
+  }
+  return { numerator, denominator };
+}
+
+function areEquivalentTimeSignatures(a, b) {
+  const left = parseTimeSignatureFraction(a);
+  const right = parseTimeSignatureFraction(b);
+  if (!left || !right) return false;
+  return left.numerator * right.denominator === right.numerator * left.denominator;
+}
+
+function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
+  if (!setSong || !isTag(setSong)) return null;
+
+  const parentSetSong = getTagParentSetSong(setSong, set);
+  if (!parentSetSong?.song_id || isTag(parentSetSong)) return null;
+
+  const parentBpm = Number(parentSetSong.song?.bpm);
+  const tagBpm = Number(setSong.song?.bpm);
+  const hasComparableBpm = Number.isFinite(parentBpm) && Number.isFinite(tagBpm);
+  const bpmDelta = hasComparableBpm ? Math.round((tagBpm - parentBpm) * 10) / 10 : null;
+  const hasBpmChange = Number.isFinite(bpmDelta) && Math.abs(bpmDelta) > 0.01;
+
+  const parentTimeSignature = String(parentSetSong.song?.time_signature || "").trim();
+  const tagTimeSignature = String(setSong.song?.time_signature || "").trim();
+  const hasEquivalentTimeSignature = areEquivalentTimeSignatures(parentTimeSignature, tagTimeSignature);
+  const hasTimeSignatureChange = Boolean(
+    parentTimeSignature &&
+    tagTimeSignature &&
+    parentTimeSignature.toLowerCase() !== tagTimeSignature.toLowerCase() &&
+    !hasEquivalentTimeSignature
+  );
+
+  const parentKey = getSetSongPrimaryKey(parentSetSong);
+  const tagKey = getSetSongPrimaryKey(setSong);
+  const hasKeyChange = Boolean(
+    parentKey &&
+    tagKey &&
+    parentKey.toLowerCase() !== tagKey.toLowerCase()
+  );
+
+  const items = [];
+  if (hasBpmChange) {
+    const direction = bpmDelta > 0 ? "gain" : "loss";
+    items.push({
+      kind: "bpm",
+      tone: direction,
+      label: `${bpmDelta > 0 ? "+" : "-"}${formatTransitionMetricNumber(Math.abs(bpmDelta))} BPM`
+    });
+  }
+  if (hasTimeSignatureChange) {
+    items.push({
+      kind: "time-signature",
+      tone: "neutral",
+      label: `${parentTimeSignature} > ${tagTimeSignature}`
+    });
+  }
+  if (hasKeyChange) {
+    items.push({
+      kind: "key",
+      tone: "neutral",
+      label: `Key: ${parentKey} > ${tagKey}`
+    });
+  }
+
+  const changeCount = items.length;
+  const difficultyReasons = [];
+  let difficultyScore = 0;
+
+  if (hasBpmChange) {
+    const absBpmDelta = Math.abs(bpmDelta);
+    if (absBpmDelta >= 18) {
+      difficultyScore += 2;
+      difficultyReasons.push(`tempo jumps by ${formatTransitionMetricNumber(absBpmDelta)} BPM`);
+    } else if (absBpmDelta >= 10) {
+      difficultyScore += 1;
+      difficultyReasons.push(`tempo shifts by ${formatTransitionMetricNumber(absBpmDelta)} BPM`);
+    }
+  }
+
+  if (hasTimeSignatureChange) {
+    difficultyScore += 2;
+    difficultyReasons.push(`time signature changes from ${parentTimeSignature} to ${tagTimeSignature}`);
+  }
+
+  if (hasKeyChange) {
+    difficultyScore += 1;
+    difficultyReasons.push(`key changes from ${parentKey} to ${tagKey}`);
+  }
+
+  if (changeCount >= 2) {
+    difficultyScore += 1;
+  }
+
+  const difficulty =
+    difficultyScore >= 2
+      ? {
+        level: "difficult",
+        explanation: `Difficult because ${joinNaturalLanguage(difficultyReasons)}.`
+      }
+      : difficultyScore >= 1
+        ? { level: "moderate", explanation: "" }
+        : { level: "easy", explanation: "" };
+
+  if (items.length === 0 && difficulty.level !== "difficult") {
+    return null;
+  }
+
+  return {
+    parentSetSong,
+    items,
+    difficulty,
+  };
 }
 
 function getAssignmentSourceSetSong(setSong, set) {
