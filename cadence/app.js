@@ -22530,6 +22530,13 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
     !songWithResources.itunes_indexed_at &&
     !songWithResources.itunes_fetch_disabled &&
     !teamItunesDisabled;
+  const CD_DISC_CHANCE = 0.02;
+  const CD2_DISC_CHANCE = 0.02;
+  const decorativeDiscRoll = Math.random();
+  const decorativeDiscAsset =
+    decorativeDiscRoll < CD_DISC_CHANCE ? "./cd.png"
+      : decorativeDiscRoll < (CD_DISC_CHANCE + CD2_DISC_CHANCE) ? "./cd2.png"
+        : "./vinyl.png";
 
   // Ref to song with resources for templates
   // Ref to song with resources for templates
@@ -22557,7 +22564,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   <div class="song-details-section">
         <div class="song-details-header-wrapper">
           <div id="song-album-art-placeholder" class="song-album-art-container" data-can-upload="${canUploadAlbumArt ? '1' : '0'}" style="display:none;">
-            <img src="./vinyl.png" alt="" aria-hidden="true" class="song-album-art-vinyl" />
+            <img src="${decorativeDiscAsset}" alt="" aria-hidden="true" class="song-album-art-vinyl" />
             <div class="album-art-skeleton skeleton" aria-hidden="true"></div>
             <img id="song-album-art-img" src="" alt="Album art for ${escapeHtml(songWithLinks.title || 'song')}" class="song-album-art" style="display:none;" />
             <div id="song-album-art-no-image" class="song-album-art-no-image hidden">No image</div>
