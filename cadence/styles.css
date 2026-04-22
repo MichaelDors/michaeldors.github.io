@@ -3929,13 +3929,6 @@ textarea {
 
 .song-details-content {
   padding: 1.5rem 0;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    transparent 90%,
-    var(--resources-tint) 90%,
-    var(--resources-tint) 100%
-  );
 }
 
 .song-details-section {
