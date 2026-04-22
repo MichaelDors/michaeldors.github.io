@@ -3964,8 +3964,8 @@ textarea {
   transition-delay: 0s;
 }
 
-.song-album-art-container:hover .song-album-art-vinyl,
-.song-album-art-container:focus-within .song-album-art-vinyl {
+#song-details-modal .song-album-art-container:hover .song-album-art-vinyl,
+#song-details-modal .song-album-art-container:focus-within .song-album-art-vinyl {
   transition-delay: 90ms;
 }
 
@@ -3983,7 +3983,7 @@ textarea {
   }
 }
 
-.song-album-art-container:hover {
+#song-details-modal .song-album-art-container:hover {
   --album-art-shift-x: -42px;
   --album-art-shift-y: 3px;
   --album-art-tilt: -4deg;
@@ -3992,7 +3992,7 @@ textarea {
   --vinyl-tilt: -0.7deg;
 }
 
-.song-album-art-container:hover .album-art-overlay-controls {
+#song-details-modal .song-album-art-container:hover .album-art-overlay-controls {
   opacity: 1 !important;
   pointer-events: auto;
 }
