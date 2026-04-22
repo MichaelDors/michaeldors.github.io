@@ -3000,8 +3000,8 @@ ul.song-resource-usage-list {
   background: linear-gradient(
     to bottom,
     var(--song-details-modal-bg) 0%,
-    var(--song-details-modal-bg) 80%,
-    var(--resources-tint) 80%,
+    var(--song-details-modal-bg) 90%,
+    var(--resources-tint) 90%,
     var(--resources-tint) 100%
   );
   max-height: none;
