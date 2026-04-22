@@ -19669,15 +19669,17 @@ function getDistinctSongSearchFilterValues(filterKey) {
   }
 
   if (filterKey === "theme") {
-    const themeSet = new Set();
+    const themeMap = new Map();
     songs.forEach((song) => {
-      const themes = Array.isArray(song?.themes) ? song.themes : [];
+      const themes = getSongAllThemes(song);
       themes.forEach((t) => {
         const cleaned = normalizeSongTheme(t);
-        if (cleaned) themeSet.add(cleaned);
+        if (!cleaned) return;
+        const key = cleaned.toLowerCase();
+        if (!themeMap.has(key)) themeMap.set(key, cleaned);
       });
     });
-    return Array.from(themeSet).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+    return Array.from(themeMap.values()).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
   }
 
   return [];
@@ -20053,7 +20055,7 @@ function filterSongs(songs, queryRaw) {
 
       const timeMatch = songFieldMatchesSearch(song.time_signature || "", textLower);
       const durationMatch = song.duration_seconds ? songFieldMatchesSearch(formatDuration(song.duration_seconds), textLower) : false;
-      const themesStr = (Array.isArray(song.themes) ? song.themes : [])
+      const themesStr = getSongAllThemes(song)
         .map((t) => normalizeSongTheme(t))
         .filter(Boolean)
         .join(" ")
@@ -20537,7 +20539,10 @@ async function openSongEditModal(songId = null) {
       el("song-edit-title").value = songData.title || "";
       el("song-edit-artist").value = songData.artist || "";
       el("song-edit-description").value = songData.description || "";
-      renderSongThemes(songData.themes || [], { excludeSongId: songId });
+      renderSongThemes(songData.themes || [], {
+        excludeSongId: songId,
+        generatedThemes: songData.generated_themes || [],
+      });
 
       setupSuggestion("song-edit-bpm", songData.bpm, songData.suggested_bpm, "BPM");
       setupSuggestion("song-edit-time-signature", songData.time_signature, songData.suggested_time_signature, "Time Sig");
@@ -20592,7 +20597,7 @@ async function openSongEditModal(songId = null) {
     } else {
       // Reset fields if waiting for data to avoid confusion
       form.reset();
-      renderSongThemes([], { excludeSongId: songId });
+      renderSongThemes([], { excludeSongId: songId, generatedThemes: [] });
     }
 
     // Always load fresh song data (keys and links)
@@ -20644,7 +20649,7 @@ async function openSongEditModal(songId = null) {
         }
       } else {
         if (!song) {
-          renderSongThemes([], { excludeSongId: songId });
+          renderSongThemes([], { excludeSongId: songId, generatedThemes: [] });
           renderSongKeys([]);
           renderSongLinks([]);
         }
@@ -20653,7 +20658,7 @@ async function openSongEditModal(songId = null) {
       console.error("Error fetching song details for edit:", err);
       // Fallback: if we had local state, we're good. If not, user sees empty/partial form.
       if (!song) {
-        renderSongThemes([], { excludeSongId: songId });
+        renderSongThemes([], { excludeSongId: songId, generatedThemes: [] });
         renderSongKeys([]);
         renderSongLinks([]);
       }
@@ -20673,7 +20678,7 @@ async function openSongEditModal(songId = null) {
     });
 
     delete form.dataset.songId;
-    renderSongThemes([]);
+    renderSongThemes([], { generatedThemes: [] });
     renderSongKeys([]);
     renderSongLinks([]);
     // Hide delete button for new songs
@@ -22372,7 +22377,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
   // Set-song queries can include keys/resources but omit themes, which breaks
   // related-song theme matching if we don't hydrate here.
   let songWithResources = song;
-  const hasThemeList = Array.isArray(song?.themes);
+  const hasThemeList = Array.isArray(song?.themes) || Array.isArray(song?.generated_themes);
   if (!song.song_resources || !song.song_keys || !hasThemeList) {
     const { data } = await supabase
       .from("songs")
@@ -23642,13 +23647,36 @@ function normalizeSongTheme(value) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function getSongManualThemes(song) {
+  return (Array.isArray(song?.themes) ? song.themes : [])
+    .map((theme) => normalizeSongTheme(theme))
+    .filter(Boolean);
+}
+
+function getSongGeneratedThemes(song) {
+  return (Array.isArray(song?.generated_themes) ? song.generated_themes : [])
+    .map((theme) => normalizeSongTheme(theme))
+    .filter(Boolean);
+}
+
+function getSongAllThemes(song) {
+  const map = new Map();
+  getSongManualThemes(song).forEach((theme) => {
+    map.set(theme.toLowerCase(), theme);
+  });
+  getSongGeneratedThemes(song).forEach((theme) => {
+    const key = theme.toLowerCase();
+    if (!map.has(key)) map.set(key, theme);
+  });
+  return Array.from(map.values());
+}
+
 const RELATED_SONGS_MAX = 5;
 const RELATED_BPM_SIMILARITY_THRESHOLD = 6;
 
 function getSongThemeMap(song) {
   const map = new Map();
-  const themes = Array.isArray(song?.themes) ? song.themes : [];
-  themes.forEach((theme) => {
+  getSongAllThemes(song).forEach((theme) => {
     const cleaned = normalizeSongTheme(theme);
     if (!cleaned) return;
     map.set(cleaned.toLowerCase(), cleaned);
@@ -24501,7 +24529,7 @@ function getSongThemeSuggestions(excludeSongId = null) {
 
   songs.forEach((song) => {
     if (excludeSongId && String(song?.id) === String(excludeSongId)) return;
-    const themes = Array.isArray(song?.themes) ? song.themes : [];
+    const themes = getSongManualThemes(song);
     themes.forEach((theme) => {
       const cleaned = normalizeSongTheme(theme);
       if (!cleaned) return;
@@ -24532,7 +24560,55 @@ function buildSongThemeOptions(suggestions, currentThemes = []) {
     .map((theme) => ({ value: theme, label: theme }));
 }
 
-function renderSongThemes(themes = [], { excludeSongId = null } = {}) {
+function renderGeneratedSongThemes(themes = []) {
+  const generatedContainer = el("song-generated-themes-list");
+  if (!generatedContainer) return;
+
+  const list = Array.isArray(themes) ? themes : [];
+  const uniqueThemes = [];
+  const seen = new Set();
+  list.forEach((theme) => {
+    const cleaned = normalizeSongTheme(theme);
+    if (!cleaned) return;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    uniqueThemes.push(cleaned);
+  });
+
+  generatedContainer.dataset.initialThemes = JSON.stringify(uniqueThemes);
+
+  if (!uniqueThemes.length) {
+    generatedContainer.innerHTML = `<p class="muted small-text generated-themes-empty">No Trill-generated themes yet.</p>`;
+    return;
+  }
+
+  generatedContainer.innerHTML = uniqueThemes
+    .map((theme) => `
+      <span class="generated-theme-chip" data-theme="${escapeHtml(theme)}">
+        <button type="button" class="generated-theme-remove" aria-label="Remove generated theme ${escapeHtml(theme)}">
+          <i class="fa-solid fa-wave-square trill-logo-icon generated-theme-icon generated-theme-icon--trill" aria-hidden="true"></i>
+          <i class="fa-solid fa-xmark generated-theme-icon generated-theme-icon--remove" aria-hidden="true"></i>
+        </button>
+        <span>${escapeHtml(theme)}</span>
+      </span>
+    `)
+    .join("");
+
+  generatedContainer.querySelectorAll(".generated-theme-remove").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      const chip = event.currentTarget?.closest?.(".generated-theme-chip");
+      if (chip?.parentElement) {
+        chip.parentElement.removeChild(chip);
+      }
+      if (!generatedContainer.querySelector(".generated-theme-chip")) {
+        generatedContainer.innerHTML = `<p class="muted small-text generated-themes-empty">No Trill-generated themes yet.</p>`;
+      }
+    });
+  });
+}
+
+function renderSongThemes(themes = [], { excludeSongId = null, generatedThemes = [] } = {}) {
   const container = el("song-themes-list");
   if (!container) return;
 
@@ -24543,6 +24619,7 @@ function renderSongThemes(themes = [], { excludeSongId = null } = {}) {
 
   const list = Array.isArray(themes) ? themes : [];
   list.forEach((theme) => addSongThemeInput(theme, { container, focus: false, themeOptions }));
+  renderGeneratedSongThemes(generatedThemes);
 }
 
 function addSongThemeInput(value = "", { container = null, focus = true, themeOptions = null, excludeSongId = null } = {}) {
@@ -24613,6 +24690,26 @@ function collectSongThemes() {
     if (seen.has(key)) return;
     seen.add(key);
     themes.push(value);
+  });
+
+  return themes;
+}
+
+function collectGeneratedSongThemes() {
+  const container = el("song-generated-themes-list");
+  if (!container) return [];
+  const chips = Array.from(container.querySelectorAll(".generated-theme-chip"));
+  const seen = new Set();
+  const themes = [];
+
+  chips.forEach((chip) => {
+    const raw = chip.dataset.theme || chip.textContent || "";
+    const cleaned = normalizeSongTheme(raw);
+    if (!cleaned) return;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    themes.push(cleaned);
   });
 
   return themes;
@@ -26917,6 +27014,22 @@ async function handleSongEditSubmit(event) {
   const duration = parseDuration(el("song-edit-duration").value);
   const description = el("song-edit-description").value.trim() || null;
   const themes = collectSongThemes();
+  const generatedThemes = collectGeneratedSongThemes();
+  const generatedContainer = el("song-generated-themes-list");
+  let initialGeneratedThemes = [];
+  if (generatedContainer?.dataset?.initialThemes) {
+    try {
+      const parsed = JSON.parse(generatedContainer.dataset.initialThemes);
+      if (Array.isArray(parsed)) initialGeneratedThemes = parsed.map((theme) => normalizeSongTheme(theme)).filter(Boolean);
+    } catch (_err) {
+      initialGeneratedThemes = [];
+    }
+  }
+  const initialGeneratedSet = new Set(initialGeneratedThemes.map((theme) => theme.toLowerCase()));
+  const currentGeneratedSet = new Set(generatedThemes.map((theme) => theme.toLowerCase()));
+  const generatedThemesChanged =
+    initialGeneratedSet.size !== currentGeneratedSet.size ||
+    Array.from(initialGeneratedSet).some((theme) => !currentGeneratedSet.has(theme));
 
   if (!title) {
     toastError("Title is required.");
@@ -26938,9 +27051,13 @@ async function handleSongEditSubmit(event) {
     duration_seconds: duration,
     description,
     themes,
+    generated_themes: generatedThemes,
     created_by: state.session.user.id,
     team_id: state.currentTeamId,
   };
+  if (songId && generatedThemesChanged) {
+    songData.themes_generation_user_edited = true;
+  }
 
   let response;
   if (songId) {

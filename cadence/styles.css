@@ -3316,6 +3316,64 @@ textarea {
   flex-shrink: 0;
 }
 
+.song-generated-themes-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-height: 1.5rem;
+}
+
+.generated-theme-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 123, 81, 0.35);
+  background: rgba(255, 123, 81, 0.14);
+  color: var(--text-main);
+  font-size: 0.8rem;
+}
+
+.generated-theme-remove {
+  width: 1rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.generated-theme-icon {
+  line-height: 1;
+  font-size: 0.75rem;
+  transition: opacity 0.16s ease;
+}
+
+.generated-theme-icon--remove {
+  display: none;
+}
+
+.generated-theme-chip:hover .generated-theme-icon--trill,
+.generated-theme-remove:focus-visible .generated-theme-icon--trill {
+  display: none;
+}
+
+.generated-theme-chip:hover .generated-theme-icon--remove,
+.generated-theme-remove:focus-visible .generated-theme-icon--remove {
+  display: inline-block;
+  color: var(--danger-color);
+}
+
+.generated-themes-empty {
+  margin: 0;
+}
+
 .song-links-section {
   margin-bottom: 2rem;
   padding: 1rem;
@@ -3874,8 +3932,8 @@ textarea {
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    transparent 80%,
-    var(--resources-tint) 80%,
+    transparent 90%,
+    var(--resources-tint) 90%,
     var(--resources-tint) 100%
   );
 }
