@@ -4047,6 +4047,19 @@ textarea {
   --vinyl-tilt: -0.7deg;
 }
 
+#song-details-modal .song-album-art-container:has(.song-album-art-no-image:not(.hidden)) .song-album-art-vinyl {
+  display: none;
+}
+
+#song-details-modal .song-album-art-container:has(.song-album-art-no-image:not(.hidden)):hover {
+  --album-art-shift-x: 0px;
+  --album-art-shift-y: 0px;
+  --album-art-tilt: 0deg;
+  --vinyl-shift-x: 0px;
+  --vinyl-shift-y: 0px;
+  --vinyl-tilt: 0deg;
+}
+
 #song-details-modal .song-album-art-container:hover .album-art-overlay-controls {
   opacity: 1 !important;
   pointer-events: auto;

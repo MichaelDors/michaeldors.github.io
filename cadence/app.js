@@ -21359,8 +21359,8 @@ async function removeAlbumArtOverride(songId, filePath) {
  * @param {HTMLElement} container - The album art container element
  */
 function setupAlbumArtTilt(container) {
-  const img = container.querySelector('.song-album-art');
-  if (!img) return;
+  if (!container || container.dataset.albumArtTiltBound === "1") return;
+  container.dataset.albumArtTiltBound = "1";
 
   let rafId = null;
 
@@ -22562,7 +22562,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
             <img id="song-album-art-img" src="" alt="Album art for ${escapeHtml(songWithLinks.title || 'song')}" class="song-album-art" style="display:none;" />
             <div id="song-album-art-no-image" class="song-album-art-no-image hidden">No image</div>
             ${canUploadAlbumArt ? `
-            <div class="album-art-overlay-controls" id="album-art-overlay-controls" style="position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.5rem; opacity: 0; transition: opacity 0.2s;">
+            <div class="album-art-overlay-controls" id="album-art-overlay-controls" style="position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.5rem; opacity: 0;">
               <button type="button" class="btn small secondary" id="btn-album-art-pick" style="margin: 0; padding: 0.4rem 0.6rem;" title="Choose or upload album art">
                 <i class="fa-solid fa-upload album-art-overlay-icon"></i>
               </button>
@@ -23425,6 +23425,11 @@ function showSongAlbumArtNoImagePlaceholder(content) {
   if (imgEl) imgEl.style.display = "none";
   if (noImageEl) noImageEl.classList.remove("hidden");
   setSongDetailsTitleTint(content, null);
+
+  // Keep the interactive mouse-follow tilt for "No image" state too.
+  if (container && window.matchMedia('(hover: hover)').matches) {
+    setupAlbumArtTilt(container);
+  }
 }
 
 async function openSectionDetailsModal(setSong) {
