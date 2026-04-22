@@ -31749,7 +31749,17 @@ function updateClickTrackButtons() {
   const modalClickTrackBtn = songDetailsModal?.querySelector(".song-click-track .click-track-btn");
   const modalVinyl = songDetailsModal?.querySelector(".song-album-art-vinyl");
   const shouldSpinVinyl = !!modalVinyl && !!modalClickTrackBtn?.classList.contains("active");
-  modalVinyl?.classList.toggle("is-spinning", shouldSpinVinyl);
+  if (modalVinyl) {
+    if (shouldSpinVinyl) {
+      modalVinyl.classList.add("is-spinning");
+      modalVinyl.classList.remove("is-paused");
+    } else if (modalVinyl.classList.contains("is-spinning")) {
+      // Keep the current rotation frame when click track is paused.
+      modalVinyl.classList.add("is-paused");
+    } else {
+      modalVinyl.classList.remove("is-paused");
+    }
+  }
 }
 
 // Custom Searchable Dropdown Component

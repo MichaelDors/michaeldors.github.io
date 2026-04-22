@@ -3973,6 +3973,10 @@ textarea {
   animation: songDetailsVinylSpin 8s linear infinite;
 }
 
+.song-album-art-vinyl.is-spinning.is-paused {
+  animation-play-state: paused;
+}
+
 @keyframes songDetailsVinylSpin {
   from {
     transform: translate(calc(-50% + var(--vinyl-shift-x)), calc(-50% + var(--vinyl-shift-y))) rotate(var(--vinyl-tilt));
