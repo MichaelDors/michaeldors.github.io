@@ -2103,6 +2103,7 @@ ul.song-resource-usage-list {
 
 .set-song-transition-item .tempo-ratio-inline-icon {
   font-size: 0.9em;
+  margin-top:-3px;
 }
 
 .set-song-transition-item.icon-only {
