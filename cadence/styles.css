@@ -2097,6 +2097,14 @@ ul.song-resource-usage-list {
   color: color-mix(in srgb, #b91c1c 76%, var(--text-primary));
 }
 
+.set-song-transition-item.compatible {
+  color: color-mix(in srgb, #0f766e 74%, var(--text-primary));
+}
+
+.set-song-transition-item.tempo-ratio {
+  color: color-mix(in srgb, #7c3aed 74%, var(--text-primary));
+}
+
 .set-song-transition-item.difficult {
   color: color-mix(in srgb, #b45309 78%, var(--text-primary));
 }
