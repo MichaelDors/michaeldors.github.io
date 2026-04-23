@@ -11508,9 +11508,7 @@ function renderSetDetailSongs(set, animate = false) {
 
               const icon = document.createElement("i");
               if (item.kind === "bpm") {
-                icon.className = item.tone === "loss" ? "fa-solid fa-arrow-down" : "fa-solid fa-arrow-up";
-              } else if (item.kind === "tempo-ratio") {
-                icon.className = "fa-solid fa-calculator";
+                icon.className = item.direction === "loss" ? "fa-solid fa-arrow-down" : "fa-solid fa-arrow-up";
               } else if (item.kind === "time-signature") {
                 icon.className = "fa-solid fa-wave-square";
               } else if (item.kind === "key") {
@@ -11524,10 +11522,14 @@ function renderSetDetailSongs(set, animate = false) {
               label.textContent = item.label;
 
               itemText.appendChild(icon);
-              if (item.label) {
-                itemText.appendChild(label);
-              } else {
-                itemText.classList.add("icon-only");
+              itemText.appendChild(label);
+
+              if (item.kind === "bpm" && item.showTempoRatioIcon) {
+                const ratioIcon = document.createElement("i");
+                ratioIcon.className = "fa-solid fa-calculator tempo-ratio-inline-icon";
+                ratioIcon.setAttribute("aria-hidden", "true");
+                itemText.classList.add("has-inline-calculator");
+                itemText.appendChild(ratioIcon);
               }
               headsUpRow.appendChild(itemText);
             });
@@ -15138,11 +15140,32 @@ function getTempoRatioHint(parentBpm, nextBpm) {
 
   const isHalfTime = halfDistance <= doubleDistance;
   return {
-    ratio,
+    ratio: isHalfTime ? ratio * 2 : ratio / 2,
     badgeLabel: "",
     reasonLabel: isHalfTime ? "half-time" : "double-time",
     explanation: `Tempo lands near a ${isHalfTime ? "half-time" : "double-time"} feel (${formatTransitionMetricNumber(parentBpm)} -> ${formatTransitionMetricNumber(nextBpm)} BPM).`
   };
+}
+
+function getTempoContinuityScore(parentBpm, nextBpm, tempoRatioHint) {
+  if (!Number.isFinite(parentBpm) || !Number.isFinite(nextBpm) || parentBpm <= 0 || nextBpm <= 0) {
+    return null;
+  }
+
+  const rawRatio = nextBpm / parentBpm;
+  const nearHalfOrDoubleRatio = tempoRatioHint ? tempoRatioHint.ratio : null;
+  const normalizedRatio = Number.isFinite(nearHalfOrDoubleRatio) ? nearHalfOrDoubleRatio : rawRatio;
+  return Math.abs(normalizedRatio - 1);
+}
+
+function getBpmTransitionSeverity(parentBpm, nextBpm, tempoRatioHint) {
+  const continuityScore = getTempoContinuityScore(parentBpm, nextBpm, tempoRatioHint);
+  if (!Number.isFinite(continuityScore)) return 0;
+  if (continuityScore <= 0.08) return 0;
+  if (continuityScore <= 0.16) return 1;
+  if (continuityScore <= 0.26) return 2;
+  if (continuityScore <= 0.4) return 3;
+  return 4;
 }
 
 function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
@@ -15161,15 +15184,18 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
   const parentTimeSignature = String(parentSetSong.song?.time_signature || "").trim();
   const tagTimeSignature = String(setSong.song?.time_signature || "").trim();
   const hasEquivalentTimeSignature = areEquivalentTimeSignatures(parentTimeSignature, tagTimeSignature);
-  const hasTimeSignatureChange = Boolean(
+  const hasDifferentTimeSignatureText = Boolean(
     parentTimeSignature &&
     tagTimeSignature &&
-    parentTimeSignature.toLowerCase() !== tagTimeSignature.toLowerCase() &&
-    !hasEquivalentTimeSignature
+    parentTimeSignature.toLowerCase() !== tagTimeSignature.toLowerCase()
   );
   const hasPulseCompatibleTimeSignatureSwap =
-    hasTimeSignatureChange &&
+    hasDifferentTimeSignatureText &&
     isPulseCompatibleTimeSignatureSwap(parentTimeSignature, tagTimeSignature);
+  const hasTimeSignatureChange = Boolean(
+    hasDifferentTimeSignatureText &&
+    (!hasEquivalentTimeSignature || hasPulseCompatibleTimeSignatureSwap)
+  );
   const countsTowardDifficultyTimeSignatureChange =
     hasTimeSignatureChange && !hasPulseCompatibleTimeSignatureSwap;
 
@@ -15184,19 +15210,15 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
   const items = [];
   if (hasBpmChange) {
     const direction = bpmDelta > 0 ? "gain" : "loss";
+    const bpmSeverity = getBpmTransitionSeverity(parentBpm, tagBpm, tempoRatioHint);
     items.push({
       kind: "bpm",
-      tone: direction,
-      label: `${bpmDelta > 0 ? "+" : "-"}${formatTransitionMetricNumber(Math.abs(bpmDelta))} BPM`
+      direction,
+      tone: `bpm-severity-${bpmSeverity}`,
+      showTempoRatioIcon: Boolean(tempoRatioHint),
+      label: `${bpmDelta > 0 ? "+" : "-"}${formatTransitionMetricNumber(Math.abs(bpmDelta))} BPM`,
+      explanation: tempoRatioHint ? tempoRatioHint.explanation : ""
     });
-    if (tempoRatioHint) {
-      items.push({
-        kind: "tempo-ratio",
-        tone: "tempo-ratio",
-        label: tempoRatioHint.badgeLabel,
-        explanation: tempoRatioHint.explanation
-      });
-    }
   }
   if (hasTimeSignatureChange) {
     items.push({
