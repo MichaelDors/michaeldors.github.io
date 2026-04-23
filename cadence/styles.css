@@ -2052,6 +2052,10 @@ ul.song-resource-usage-list {
   z-index: 1;
 }
 
+.set-song-tag-card--continuation::before {
+  content: none;
+}
+
 .set-song-tag-card::after {
   content: none;
 }
@@ -2072,6 +2076,10 @@ ul.song-resource-usage-list {
   gap: 2rem;
   align-items: center;
   margin: 0.25rem 0 0.4rem 2.2rem;
+}
+
+.set-song-transition-heads-up.is-empty {
+  min-height: 0.9rem;
 }
 
 .set-song-transition-item {

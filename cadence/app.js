@@ -11356,6 +11356,15 @@ function renderSetDetailSongs(set, animate = false) {
         // Check if this is a tag
         const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
         const isTagItem = !!tagInfo;
+        const previousSetSong = index > 0 ? set.set_songs[index - 1] : null;
+        const previousTagInfo = previousSetSong && isTag(previousSetSong)
+          ? parseTagDescription(previousSetSong)
+          : null;
+        const isContinuationTagForSameSong = Boolean(
+          tagInfo?.parentSetSongId &&
+          previousTagInfo?.parentSetSongId &&
+          String(tagInfo.parentSetSongId) === String(previousTagInfo.parentSetSongId)
+        );
 
         // Check if this is a section (no song_id) or a song
         const isSection = !setSong.song_id && !isTagItem;
@@ -11494,69 +11503,74 @@ function renderSetDetailSongs(set, animate = false) {
           chip.textContent = partName;
           titleEl.appendChild(chip);
 
-          if (tagTransition?.items?.length || tagTransition?.difficulty?.level === "difficult") {
-            const headsUpRow = document.createElement("div");
-            headsUpRow.className = "set-song-transition-heads-up";
+          const headsUpRow = document.createElement("div");
+          headsUpRow.className = "set-song-transition-heads-up";
 
-            tagTransition.items.forEach((item) => {
-              const itemText = document.createElement("span");
-              itemText.className = `set-song-transition-item ${item.tone}`;
-              if (item.explanation) {
-                itemText.title = item.explanation;
-                itemText.setAttribute("aria-label", item.explanation);
-              }
-
-              const icon = document.createElement("i");
-              if (item.kind === "bpm") {
-                icon.className = item.direction === "loss" ? "fa-solid fa-arrow-down" : "fa-solid fa-arrow-up";
-              } else if (item.kind === "time-signature") {
-                icon.className = "fa-solid fa-wave-square";
-              } else if (item.kind === "key") {
-                icon.className = "fa-solid fa-music";
-              } else {
-                icon.className = "fa-solid fa-circle-info";
-              }
-              icon.setAttribute("aria-hidden", "true");
-
-              const label = document.createElement("span");
-              label.textContent = item.label;
-
-              itemText.appendChild(icon);
-              itemText.appendChild(label);
-
-              if (item.kind === "bpm" && item.showTempoRatioIcon) {
-                const ratioIcon = document.createElement("i");
-                ratioIcon.className = "fa-solid fa-calculator tempo-ratio-inline-icon";
-                ratioIcon.setAttribute("aria-hidden", "true");
-                itemText.classList.add("has-inline-calculator");
-                itemText.appendChild(ratioIcon);
-              }
-              headsUpRow.appendChild(itemText);
-            });
-
-            if (tagTransition.difficulty?.level === "difficult") {
-              const difficultyText = document.createElement("span");
-              difficultyText.className = "set-song-transition-item difficult";
-              difficultyText.title = tagTransition.difficulty.explanation;
-              difficultyText.setAttribute("aria-label", tagTransition.difficulty.explanation);
-
-              const icon = document.createElement("i");
-              icon.className = "fa-solid fa-triangle-exclamation";
-              icon.setAttribute("aria-hidden", "true");
-
-              const label = document.createElement("span");
-              label.textContent = "Difficult Transition";
-
-              difficultyText.appendChild(icon);
-              difficultyText.appendChild(label);
-              headsUpRow.appendChild(difficultyText);
+          (tagTransition?.items || []).forEach((item) => {
+            const itemText = document.createElement("span");
+            itemText.className = `set-song-transition-item ${item.tone}`;
+            if (item.explanation) {
+              itemText.title = item.explanation;
+              itemText.setAttribute("aria-label", item.explanation);
             }
 
-            transitionHeadsUpEl = headsUpRow;
+            const icon = document.createElement("i");
+            if (item.kind === "bpm") {
+              const directionTone = item.direction || item.tone;
+              icon.className = directionTone === "loss" ? "fa-solid fa-arrow-down" : "fa-solid fa-arrow-up";
+            } else if (item.kind === "time-signature") {
+              icon.className = "fa-solid fa-wave-square";
+            } else if (item.kind === "key") {
+              icon.className = "fa-solid fa-music";
+            } else {
+              icon.className = "fa-solid fa-circle-info";
+            }
+            icon.setAttribute("aria-hidden", "true");
+
+            const label = document.createElement("span");
+            label.textContent = item.label;
+
+            itemText.appendChild(icon);
+            itemText.appendChild(label);
+
+            if (item.kind === "bpm" && item.showTempoRatioIcon) {
+              const ratioIcon = document.createElement("i");
+              ratioIcon.className = "fa-solid fa-calculator tempo-ratio-inline-icon";
+              ratioIcon.setAttribute("aria-hidden", "true");
+              itemText.classList.add("has-inline-calculator");
+              itemText.appendChild(ratioIcon);
+            }
+            headsUpRow.appendChild(itemText);
+          });
+
+          if (tagTransition?.difficulty?.level === "difficult") {
+            const difficultyText = document.createElement("span");
+            difficultyText.className = "set-song-transition-item difficult";
+            difficultyText.title = tagTransition.difficulty.explanation;
+            difficultyText.setAttribute("aria-label", tagTransition.difficulty.explanation);
+
+            const icon = document.createElement("i");
+            icon.className = "fa-solid fa-triangle-exclamation";
+            icon.setAttribute("aria-hidden", "true");
+
+            const label = document.createElement("span");
+            label.textContent = "Difficult Transition";
+
+            difficultyText.appendChild(icon);
+            difficultyText.appendChild(label);
+            headsUpRow.appendChild(difficultyText);
           }
+
+          if (headsUpRow.childElementCount === 0) {
+            headsUpRow.classList.add("is-empty");
+          }
+          transitionHeadsUpEl = headsUpRow;
 
           // Add tag indicator class
           card.classList.add("set-song-tag-card");
+          if (isContinuationTagForSameSong) {
+            card.classList.add("set-song-tag-card--continuation");
+          }
 
           const displayKey = getSetSongDisplayKey(setSong);
           safeJoinMeta(songNode.querySelector(".song-meta"), [
