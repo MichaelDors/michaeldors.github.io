@@ -11501,10 +11501,16 @@ function renderSetDetailSongs(set, animate = false) {
             tagTransition.items.forEach((item) => {
               const itemText = document.createElement("span");
               itemText.className = `set-song-transition-item ${item.tone}`;
+              if (item.explanation) {
+                itemText.title = item.explanation;
+                itemText.setAttribute("aria-label", item.explanation);
+              }
 
               const icon = document.createElement("i");
               if (item.kind === "bpm") {
                 icon.className = item.tone === "loss" ? "fa-solid fa-arrow-down" : "fa-solid fa-arrow-up";
+              } else if (item.kind === "tempo-ratio") {
+                icon.className = "fa-solid fa-calculator";
               } else if (item.kind === "time-signature") {
                 icon.className = "fa-solid fa-wave-square";
               } else if (item.kind === "key") {
@@ -11518,7 +11524,11 @@ function renderSetDetailSongs(set, animate = false) {
               label.textContent = item.label;
 
               itemText.appendChild(icon);
-              itemText.appendChild(label);
+              if (item.label) {
+                itemText.appendChild(label);
+              } else {
+                itemText.classList.add("icon-only");
+              }
               headsUpRow.appendChild(itemText);
             });
 
@@ -15095,6 +15105,46 @@ function areEquivalentTimeSignatures(a, b) {
   return left.numerator * right.denominator === right.numerator * left.denominator;
 }
 
+function normalizeTimeSignature(value) {
+  if (!value) return "";
+  const parsed = parseTimeSignatureFraction(value);
+  if (parsed) {
+    return `${parsed.numerator}/${parsed.denominator}`;
+  }
+  return String(value).trim().toLowerCase();
+}
+
+function isPulseCompatibleTimeSignatureSwap(a, b) {
+  const left = normalizeTimeSignature(a);
+  const right = normalizeTimeSignature(b);
+  return (
+    (left === "6/8" && right === "3/4") ||
+    (left === "3/4" && right === "6/8")
+  );
+}
+
+function getTempoRatioHint(parentBpm, nextBpm) {
+  if (!Number.isFinite(parentBpm) || !Number.isFinite(nextBpm) || parentBpm <= 0 || nextBpm <= 0) {
+    return null;
+  }
+
+  const ratio = nextBpm / parentBpm;
+  const HALF_TEMPO_TOLERANCE = 0.08;
+  const halfDistance = Math.abs(ratio - 0.5);
+  const doubleDistance = Math.abs(ratio - 2);
+  if (halfDistance > HALF_TEMPO_TOLERANCE && doubleDistance > HALF_TEMPO_TOLERANCE) {
+    return null;
+  }
+
+  const isHalfTime = halfDistance <= doubleDistance;
+  return {
+    ratio,
+    badgeLabel: "",
+    reasonLabel: isHalfTime ? "half-time" : "double-time",
+    explanation: `Tempo lands near a ${isHalfTime ? "half-time" : "double-time"} feel (${formatTransitionMetricNumber(parentBpm)} -> ${formatTransitionMetricNumber(nextBpm)} BPM).`
+  };
+}
+
 function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
   if (!setSong || !isTag(setSong)) return null;
 
@@ -15106,6 +15156,7 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
   const hasComparableBpm = Number.isFinite(parentBpm) && Number.isFinite(tagBpm);
   const bpmDelta = hasComparableBpm ? Math.round((tagBpm - parentBpm) * 10) / 10 : null;
   const hasBpmChange = Number.isFinite(bpmDelta) && Math.abs(bpmDelta) > 0.01;
+  const tempoRatioHint = hasComparableBpm ? getTempoRatioHint(parentBpm, tagBpm) : null;
 
   const parentTimeSignature = String(parentSetSong.song?.time_signature || "").trim();
   const tagTimeSignature = String(setSong.song?.time_signature || "").trim();
@@ -15116,6 +15167,11 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
     parentTimeSignature.toLowerCase() !== tagTimeSignature.toLowerCase() &&
     !hasEquivalentTimeSignature
   );
+  const hasPulseCompatibleTimeSignatureSwap =
+    hasTimeSignatureChange &&
+    isPulseCompatibleTimeSignatureSwap(parentTimeSignature, tagTimeSignature);
+  const countsTowardDifficultyTimeSignatureChange =
+    hasTimeSignatureChange && !hasPulseCompatibleTimeSignatureSwap;
 
   const parentKey = getSetSongPrimaryKey(parentSetSong);
   const tagKey = getSetSongPrimaryKey(setSong);
@@ -15133,12 +15189,23 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
       tone: direction,
       label: `${bpmDelta > 0 ? "+" : "-"}${formatTransitionMetricNumber(Math.abs(bpmDelta))} BPM`
     });
+    if (tempoRatioHint) {
+      items.push({
+        kind: "tempo-ratio",
+        tone: "tempo-ratio",
+        label: tempoRatioHint.badgeLabel,
+        explanation: tempoRatioHint.explanation
+      });
+    }
   }
   if (hasTimeSignatureChange) {
     items.push({
       kind: "time-signature",
-      tone: "neutral",
-      label: `${parentTimeSignature} > ${tagTimeSignature}`
+      tone: hasPulseCompatibleTimeSignatureSwap ? "compatible" : "neutral",
+      label: `${parentTimeSignature} > ${tagTimeSignature}`,
+      explanation: hasPulseCompatibleTimeSignatureSwap
+        ? "Pulse-compatible signature swap (6/8 and 3/4), shown as a heads-up only."
+        : ""
     });
   }
   if (hasKeyChange) {
@@ -15149,22 +15216,40 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
     });
   }
 
-  const changeCount = items.length;
+  const changeCount = [hasBpmChange, countsTowardDifficultyTimeSignatureChange, hasKeyChange]
+    .filter(Boolean)
+    .length;
   const difficultyReasons = [];
   let difficultyScore = 0;
 
   if (hasBpmChange) {
     const absBpmDelta = Math.abs(bpmDelta);
+    let bpmDifficultyPoints = 0;
+    let bpmDifficultyReason = "";
     if (absBpmDelta >= 18) {
-      difficultyScore += 2;
-      difficultyReasons.push(`tempo jumps by ${formatTransitionMetricNumber(absBpmDelta)} BPM`);
+      bpmDifficultyPoints = 2;
+      bpmDifficultyReason = `tempo jumps by ${formatTransitionMetricNumber(absBpmDelta)} BPM`;
     } else if (absBpmDelta >= 10) {
-      difficultyScore += 1;
-      difficultyReasons.push(`tempo shifts by ${formatTransitionMetricNumber(absBpmDelta)} BPM`);
+      bpmDifficultyPoints = 1;
+      bpmDifficultyReason = `tempo shifts by ${formatTransitionMetricNumber(absBpmDelta)} BPM`;
+    }
+
+    if (tempoRatioHint && bpmDifficultyPoints > 0) {
+      bpmDifficultyPoints = Math.max(0, bpmDifficultyPoints - 1);
+      if (bpmDifficultyPoints > 0) {
+        bpmDifficultyReason = `${bpmDifficultyReason} with a near ${tempoRatioHint.reasonLabel} feel`;
+      } else {
+        bpmDifficultyReason = "";
+      }
+    }
+
+    difficultyScore += bpmDifficultyPoints;
+    if (bpmDifficultyReason) {
+      difficultyReasons.push(bpmDifficultyReason);
     }
   }
 
-  if (hasTimeSignatureChange) {
+  if (countsTowardDifficultyTimeSignatureChange) {
     difficultyScore += 2;
     difficultyReasons.push(`time signature changes from ${parentTimeSignature} to ${tagTimeSignature}`);
   }
