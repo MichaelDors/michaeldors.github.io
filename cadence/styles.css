@@ -2089,6 +2089,14 @@ ul.song-resource-usage-list {
   font-size: 0.82em;
 }
 
+.set-song-transition-item.has-inline-calculator {
+  gap: 0.22rem;
+}
+
+.set-song-transition-item .tempo-ratio-inline-icon {
+  font-size: 0.9em;
+}
+
 .set-song-transition-item.icon-only {
   gap: 0;
 }
@@ -2097,20 +2105,28 @@ ul.song-resource-usage-list {
   font-size: 0.95em;
 }
 
-.set-song-transition-item.gain {
-  color: color-mix(in srgb, #15803d 76%, var(--text-primary));
+.set-song-transition-item.bpm-severity-0 {
+  color: var(--text-secondary);
 }
 
-.set-song-transition-item.loss {
-  color: color-mix(in srgb, #b91c1c 76%, var(--text-primary));
+.set-song-transition-item.bpm-severity-1 {
+  color: color-mix(in srgb, #dc2626 28%, var(--text-primary));
+}
+
+.set-song-transition-item.bpm-severity-2 {
+  color: color-mix(in srgb, #dc2626 50%, var(--text-primary));
+}
+
+.set-song-transition-item.bpm-severity-3 {
+  color: color-mix(in srgb, #dc2626 72%, var(--text-primary));
+}
+
+.set-song-transition-item.bpm-severity-4 {
+  color: color-mix(in srgb, #991b1b 84%, var(--text-primary));
 }
 
 .set-song-transition-item.compatible {
   color: color-mix(in srgb, #0f766e 74%, var(--text-primary));
-}
-
-.set-song-transition-item.tempo-ratio {
-  color: color-mix(in srgb, #7c3aed 74%, var(--text-primary));
 }
 
 .set-song-transition-item.difficult {
