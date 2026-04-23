@@ -15240,7 +15240,7 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
       tone: hasPulseCompatibleTimeSignatureSwap ? "compatible" : "neutral",
       label: `${parentTimeSignature} > ${tagTimeSignature}`,
       explanation: hasPulseCompatibleTimeSignatureSwap
-        ? "Pulse-compatible signature swap (6/8 and 3/4), shown as a heads-up only."
+        ? "6/8 and 3/4 are compatible time signatures"
         : ""
     });
   }
