@@ -15184,15 +15184,18 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
   const parentTimeSignature = String(parentSetSong.song?.time_signature || "").trim();
   const tagTimeSignature = String(setSong.song?.time_signature || "").trim();
   const hasEquivalentTimeSignature = areEquivalentTimeSignatures(parentTimeSignature, tagTimeSignature);
-  const hasTimeSignatureChange = Boolean(
+  const hasDifferentTimeSignatureText = Boolean(
     parentTimeSignature &&
     tagTimeSignature &&
-    parentTimeSignature.toLowerCase() !== tagTimeSignature.toLowerCase() &&
-    !hasEquivalentTimeSignature
+    parentTimeSignature.toLowerCase() !== tagTimeSignature.toLowerCase()
   );
   const hasPulseCompatibleTimeSignatureSwap =
-    hasTimeSignatureChange &&
+    hasDifferentTimeSignatureText &&
     isPulseCompatibleTimeSignatureSwap(parentTimeSignature, tagTimeSignature);
+  const hasTimeSignatureChange = Boolean(
+    hasDifferentTimeSignatureText &&
+    (!hasEquivalentTimeSignature || hasPulseCompatibleTimeSignatureSwap)
+  );
   const countsTowardDifficultyTimeSignatureChange =
     hasTimeSignatureChange && !hasPulseCompatibleTimeSignatureSwap;
 
