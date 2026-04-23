@@ -2089,6 +2089,14 @@ ul.song-resource-usage-list {
   font-size: 0.82em;
 }
 
+.set-song-transition-item.icon-only {
+  gap: 0;
+}
+
+.set-song-transition-item.icon-only i {
+  font-size: 0.95em;
+}
+
 .set-song-transition-item.gain {
   color: color-mix(in srgb, #15803d 76%, var(--text-primary));
 }

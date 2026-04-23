@@ -11510,7 +11510,7 @@ function renderSetDetailSongs(set, animate = false) {
               if (item.kind === "bpm") {
                 icon.className = item.tone === "loss" ? "fa-solid fa-arrow-down" : "fa-solid fa-arrow-up";
               } else if (item.kind === "tempo-ratio") {
-                icon.className = "fa-solid fa-circle-half-stroke";
+                icon.className = "fa-solid fa-calculator";
               } else if (item.kind === "time-signature") {
                 icon.className = "fa-solid fa-wave-square";
               } else if (item.kind === "key") {
@@ -11524,7 +11524,11 @@ function renderSetDetailSongs(set, animate = false) {
               label.textContent = item.label;
 
               itemText.appendChild(icon);
-              itemText.appendChild(label);
+              if (item.label) {
+                itemText.appendChild(label);
+              } else {
+                itemText.classList.add("icon-only");
+              }
               headsUpRow.appendChild(itemText);
             });
 
@@ -15135,7 +15139,7 @@ function getTempoRatioHint(parentBpm, nextBpm) {
   const isHalfTime = halfDistance <= doubleDistance;
   return {
     ratio,
-    badgeLabel: isHalfTime ? "Approx. half-time" : "Approx. double-time",
+    badgeLabel: "",
     reasonLabel: isHalfTime ? "half-time" : "double-time",
     explanation: `Tempo lands near a ${isHalfTime ? "half-time" : "double-time"} feel (${formatTransitionMetricNumber(parentBpm)} -> ${formatTransitionMetricNumber(nextBpm)} BPM).`
   };
