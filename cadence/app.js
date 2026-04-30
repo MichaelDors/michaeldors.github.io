@@ -161,6 +161,7 @@ const SONG_SORT_STORAGE_KEY = "cadence-song-sort-option";
 const SONG_SORT_OPTIONS = new Set(["relevancy", "newest", "oldest", "alphabetical"]);
 const FILES_SORT_STORAGE_KEY = "cadence-files-sort-option";
 const FILES_SORT_OPTIONS = new Set(["relevancy", "newest", "oldest", "alphabetical"]);
+const LIVE_MODE_RESOURCE_MEMORY_STORAGE_KEY = "cadence-live-resource-memory-v1";
 const SYSTEM_FILE_LIBRARY_TITLE = "__CADENCE_FILE_LIBRARY__";
 const SYSTEM_FILE_LIBRARY_DESCRIPTION = "__cadence_system_file_library__";
 const TEAM_FILE_CATALOG_CACHE_MS = 60 * 1000;
@@ -349,6 +350,15 @@ const state = {
     active: null, // { mode: 'viewer'|'editor', songId, scope, songKey, readOnly, chart, songTitle }
     editorCursor: { lineIndex: 0, charIndex: 0 },
     drag: null, // internal drag state
+  },
+  liveMode: {
+    isOpen: false,
+    setId: null,
+    items: [],
+    activeIndex: 0,
+    activeResourceIdentity: null,
+    viewer: null,
+    renderToken: 0,
   },
   // Trill Chat State
   isAiChatOpen: false,
@@ -2835,6 +2845,11 @@ function bindEvents() {
       openPrintSetEditor(state.selectedSet);
     }
   });
+  el("btn-open-live-mode")?.addEventListener("click", () => {
+    if (state.selectedSet) {
+      void openLiveMode(state.selectedSet);
+    }
+  });
   el("btn-edit-set-detail")?.addEventListener("click", () => {
     if (state.selectedSet) {
       // Open the modal without hiding the detail view
@@ -3196,6 +3211,12 @@ function bindEvents() {
   el("file-viewer-modal")?.addEventListener("click", (e) => {
     if (e.target === el("file-viewer-modal")) closeFileViewer();
   });
+  el("close-live-mode")?.addEventListener("click", () => closeLiveMode());
+  el("live-mode-modal")?.addEventListener("click", (e) => {
+    if (e.target === el("live-mode-modal")) closeLiveMode();
+  });
+  el("live-mode-prev")?.addEventListener("click", () => navigateLiveMode(-1));
+  el("live-mode-next")?.addEventListener("click", () => navigateLiveMode(1));
   el("chart-editor-modal")?.addEventListener("click", (e) => {
     if (e.target === el("chart-editor-modal")) closeChordChartEditor();
   });
@@ -3228,6 +3249,11 @@ function bindEvents() {
   });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+    const liveMode = el("live-mode-modal");
+    if (liveMode && !liveMode.classList.contains("hidden")) {
+      closeLiveMode();
+      return;
+    }
     const fileViewer = el("file-viewer-modal");
     if (fileViewer && !fileViewer.classList.contains("hidden")) {
       closeFileViewer();
@@ -3240,9 +3266,25 @@ function bindEvents() {
     if (editor && !editor.classList.contains("hidden")) closeChordChartEditor();
     if (printEditor && !printEditor.classList.contains("hidden")) closePrintSetEditor();
   });
+  document.addEventListener("keydown", (e) => {
+    if (!state.liveMode?.isOpen) return;
+    if (e.defaultPrevented) return;
+    if (shouldIgnoreLiveModeArrowKey(e)) return;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      navigateLiveMode(-1);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      navigateLiveMode(1);
+    }
+  });
 
   // Keep the PDF pages fitted as viewport changes
   window.addEventListener("resize", () => {
+    const liveModeStage = el("live-mode-viewer-stage");
+    if (liveModeStage && state.liveMode?.isOpen && state.liveMode.viewer?.kind === "chart") {
+      fitAllChartPagesToContainer(liveModeStage);
+    }
     const viewerWrap = el("chart-viewer-page");
     if (viewerWrap && !el("chart-viewer-modal")?.classList.contains("hidden")) {
       fitAllChartPagesToContainer(viewerWrap);
@@ -10382,6 +10424,7 @@ function showSetDetail(set, options = {}) {
   const deleteBtn = el("btn-delete-set-detail");
   const viewAsMemberDetailBtn = el("btn-view-as-member-detail");
   const publishBtn = el("btn-publish-set-detail");
+  const liveBtn = el("btn-open-live-mode");
   const pinBtn = el("btn-pin-set-detail");
   const headerAddDropdown = el("header-add-dropdown-container");
   const mobileHeaderAddDropdown = el("mobile-header-add-dropdown-container");
@@ -10391,6 +10434,7 @@ function showSetDetail(set, options = {}) {
 
   if (editBtn) editBtn.classList.toggle("hidden", !isMgr);
   if (deleteBtn) deleteBtn.classList.toggle("hidden", !isMgr);
+  if (liveBtn) liveBtn.classList.remove("hidden");
 
   // Setup pin button
   if (pinBtn) {
@@ -11503,68 +11547,7 @@ function renderSetDetailSongs(set, animate = false) {
           chip.textContent = partName;
           titleEl.appendChild(chip);
 
-          const headsUpRow = document.createElement("div");
-          headsUpRow.className = "set-song-transition-heads-up";
-
-          (tagTransition?.items || []).forEach((item) => {
-            const itemText = document.createElement("span");
-            itemText.className = `set-song-transition-item ${item.tone}`;
-            if (item.explanation) {
-              itemText.title = item.explanation;
-              itemText.setAttribute("aria-label", item.explanation);
-            }
-
-            const icon = document.createElement("i");
-            if (item.kind === "bpm") {
-              const directionTone = item.direction || item.tone;
-              icon.className = directionTone === "loss" ? "fa-solid fa-arrow-down" : "fa-solid fa-arrow-up";
-            } else if (item.kind === "time-signature") {
-              icon.className = "fa-solid fa-wave-square";
-            } else if (item.kind === "key") {
-              icon.className = "fa-solid fa-music";
-            } else {
-              icon.className = "fa-solid fa-circle-info";
-            }
-            icon.setAttribute("aria-hidden", "true");
-
-            const label = document.createElement("span");
-            label.textContent = item.label;
-
-            itemText.appendChild(icon);
-            itemText.appendChild(label);
-
-            if (item.kind === "bpm" && item.showTempoRatioIcon) {
-              const ratioIcon = document.createElement("i");
-              ratioIcon.className = "fa-solid fa-calculator tempo-ratio-inline-icon";
-              ratioIcon.setAttribute("aria-hidden", "true");
-              itemText.classList.add("has-inline-calculator");
-              itemText.appendChild(ratioIcon);
-            }
-            headsUpRow.appendChild(itemText);
-          });
-
-          if (tagTransition?.difficulty?.level === "difficult") {
-            const difficultyText = document.createElement("span");
-            difficultyText.className = "set-song-transition-item difficult";
-            difficultyText.title = tagTransition.difficulty.explanation;
-            difficultyText.setAttribute("aria-label", tagTransition.difficulty.explanation);
-
-            const icon = document.createElement("i");
-            icon.className = "fa-solid fa-triangle-exclamation";
-            icon.setAttribute("aria-hidden", "true");
-
-            const label = document.createElement("span");
-            label.textContent = "Difficult Transition";
-
-            difficultyText.appendChild(icon);
-            difficultyText.appendChild(label);
-            headsUpRow.appendChild(difficultyText);
-          }
-
-          if (headsUpRow.childElementCount === 0) {
-            headsUpRow.classList.add("is-empty");
-          }
-          transitionHeadsUpEl = headsUpRow;
+          transitionHeadsUpEl = createTransitionHeadsUpElement(tagTransition);
 
           // Add tag indicator class
           card.classList.add("set-song-tag-card");
@@ -15182,30 +15165,27 @@ function getBpmTransitionSeverity(parentBpm, nextBpm, tempoRatioHint) {
   return 4;
 }
 
-function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
-  if (!setSong || !isTag(setSong)) return null;
+function getSetItemTransitionHeadsUp(previousSetSong, currentSetSong) {
+  if (!previousSetSong?.song_id || !currentSetSong?.song_id) return null;
 
-  const parentSetSong = getTagParentSetSong(setSong, set);
-  if (!parentSetSong?.song_id || isTag(parentSetSong)) return null;
-
-  const parentBpm = Number(parentSetSong.song?.bpm);
-  const tagBpm = Number(setSong.song?.bpm);
-  const hasComparableBpm = Number.isFinite(parentBpm) && Number.isFinite(tagBpm);
-  const bpmDelta = hasComparableBpm ? Math.round((tagBpm - parentBpm) * 10) / 10 : null;
+  const previousBpm = Number(previousSetSong.song?.bpm);
+  const currentBpm = Number(currentSetSong.song?.bpm);
+  const hasComparableBpm = Number.isFinite(previousBpm) && Number.isFinite(currentBpm);
+  const bpmDelta = hasComparableBpm ? Math.round((currentBpm - previousBpm) * 10) / 10 : null;
   const hasBpmChange = Number.isFinite(bpmDelta) && Math.abs(bpmDelta) > 0.01;
-  const tempoRatioHint = hasComparableBpm ? getTempoRatioHint(parentBpm, tagBpm) : null;
+  const tempoRatioHint = hasComparableBpm ? getTempoRatioHint(previousBpm, currentBpm) : null;
 
-  const parentTimeSignature = String(parentSetSong.song?.time_signature || "").trim();
-  const tagTimeSignature = String(setSong.song?.time_signature || "").trim();
-  const hasEquivalentTimeSignature = areEquivalentTimeSignatures(parentTimeSignature, tagTimeSignature);
+  const previousTimeSignature = String(previousSetSong.song?.time_signature || "").trim();
+  const currentTimeSignature = String(currentSetSong.song?.time_signature || "").trim();
+  const hasEquivalentTimeSignature = areEquivalentTimeSignatures(previousTimeSignature, currentTimeSignature);
   const hasDifferentTimeSignatureText = Boolean(
-    parentTimeSignature &&
-    tagTimeSignature &&
-    parentTimeSignature.toLowerCase() !== tagTimeSignature.toLowerCase()
+    previousTimeSignature &&
+    currentTimeSignature &&
+    previousTimeSignature.toLowerCase() !== currentTimeSignature.toLowerCase()
   );
   const hasPulseCompatibleTimeSignatureSwap =
     hasDifferentTimeSignatureText &&
-    isPulseCompatibleTimeSignatureSwap(parentTimeSignature, tagTimeSignature);
+    isPulseCompatibleTimeSignatureSwap(previousTimeSignature, currentTimeSignature);
   const hasTimeSignatureChange = Boolean(
     hasDifferentTimeSignatureText &&
     (!hasEquivalentTimeSignature || hasPulseCompatibleTimeSignatureSwap)
@@ -15213,18 +15193,18 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
   const countsTowardDifficultyTimeSignatureChange =
     hasTimeSignatureChange && !hasPulseCompatibleTimeSignatureSwap;
 
-  const parentKey = getSetSongPrimaryKey(parentSetSong);
-  const tagKey = getSetSongPrimaryKey(setSong);
+  const previousKey = getSetSongPrimaryKey(previousSetSong);
+  const currentKey = getSetSongPrimaryKey(currentSetSong);
   const hasKeyChange = Boolean(
-    parentKey &&
-    tagKey &&
-    parentKey.toLowerCase() !== tagKey.toLowerCase()
+    previousKey &&
+    currentKey &&
+    previousKey.toLowerCase() !== currentKey.toLowerCase()
   );
 
   const items = [];
   if (hasBpmChange) {
     const direction = bpmDelta > 0 ? "gain" : "loss";
-    const bpmSeverity = getBpmTransitionSeverity(parentBpm, tagBpm, tempoRatioHint);
+    const bpmSeverity = getBpmTransitionSeverity(previousBpm, currentBpm, tempoRatioHint);
     items.push({
       kind: "bpm",
       direction,
@@ -15238,7 +15218,7 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
     items.push({
       kind: "time-signature",
       tone: hasPulseCompatibleTimeSignatureSwap ? "compatible" : "neutral",
-      label: `${parentTimeSignature} > ${tagTimeSignature}`,
+      label: `${previousTimeSignature} > ${currentTimeSignature}`,
       explanation: hasPulseCompatibleTimeSignatureSwap
         ? "6/8 and 3/4 are compatible time signatures"
         : ""
@@ -15248,7 +15228,7 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
     items.push({
       kind: "key",
       tone: "neutral",
-      label: `Key: ${parentKey} > ${tagKey}`
+      label: `Key: ${previousKey} > ${currentKey}`
     });
   }
 
@@ -15287,12 +15267,12 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
 
   if (countsTowardDifficultyTimeSignatureChange) {
     difficultyScore += 2;
-    difficultyReasons.push(`time signature changes from ${parentTimeSignature} to ${tagTimeSignature}`);
+    difficultyReasons.push(`time signature changes from ${previousTimeSignature} to ${currentTimeSignature}`);
   }
 
   if (hasKeyChange) {
     difficultyScore += 1;
-    difficultyReasons.push(`key changes from ${parentKey} to ${tagKey}`);
+    difficultyReasons.push(`key changes from ${previousKey} to ${currentKey}`);
   }
 
   if (changeCount >= 2) {
@@ -15314,10 +15294,89 @@ function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
   }
 
   return {
-    parentSetSong,
+    previousSetSong,
+    currentSetSong,
     items,
     difficulty,
   };
+}
+
+function getTagTransitionHeadsUp(setSong, set = state.selectedSet) {
+  if (!setSong || !isTag(setSong)) return null;
+  const parentSetSong = getTagParentSetSong(setSong, set);
+  return getSetItemTransitionHeadsUp(parentSetSong, setSong);
+}
+
+function createTransitionHeadsUpElement(transition, options = {}) {
+  const {
+    className = "set-song-transition-heads-up",
+    emptyClass = "is-empty",
+  } = options;
+  const row = document.createElement("div");
+  row.className = className;
+
+  if (!transition?.items?.length) {
+    row.classList.add(emptyClass);
+    return row;
+  }
+
+  transition.items.forEach((item) => {
+    const itemText = document.createElement("span");
+    itemText.className = `set-song-transition-item ${item.tone}`;
+    if (item.explanation) {
+      itemText.title = item.explanation;
+      itemText.setAttribute("aria-label", item.explanation);
+    }
+
+    const icon = document.createElement("i");
+    if (item.kind === "bpm") {
+      const directionTone = item.direction || item.tone;
+      icon.className = directionTone === "loss" ? "fa-solid fa-arrow-down" : "fa-solid fa-arrow-up";
+    } else if (item.kind === "time-signature") {
+      icon.className = "fa-solid fa-wave-square";
+    } else if (item.kind === "key") {
+      icon.className = "fa-solid fa-music";
+    } else {
+      icon.className = "fa-solid fa-circle-info";
+    }
+    icon.setAttribute("aria-hidden", "true");
+
+    const label = document.createElement("span");
+    label.textContent = item.label;
+
+    itemText.appendChild(icon);
+    itemText.appendChild(label);
+
+    if (item.kind === "bpm" && item.showTempoRatioIcon) {
+      const ratioIcon = document.createElement("i");
+      ratioIcon.className = "fa-solid fa-calculator tempo-ratio-inline-icon";
+      ratioIcon.setAttribute("aria-hidden", "true");
+      itemText.classList.add("has-inline-calculator");
+      itemText.appendChild(ratioIcon);
+    }
+
+    row.appendChild(itemText);
+  });
+
+  if (transition?.difficulty?.level === "difficult") {
+    const difficultyText = document.createElement("span");
+    difficultyText.className = "set-song-transition-item difficult";
+    difficultyText.title = transition.difficulty.explanation;
+    difficultyText.setAttribute("aria-label", transition.difficulty.explanation);
+
+    const icon = document.createElement("i");
+    icon.className = "fa-solid fa-triangle-exclamation";
+    icon.setAttribute("aria-hidden", "true");
+
+    const label = document.createElement("span");
+    label.textContent = "Difficult Transition";
+
+    difficultyText.appendChild(icon);
+    difficultyText.appendChild(label);
+    row.appendChild(difficultyText);
+  }
+
+  return row;
 }
 
 function getAssignmentSourceSetSong(setSong, set) {
@@ -22668,7 +22727,7 @@ async function openSongDetailsModal(song, selectedKey = null, setSongContext = n
           <div class="related-songs-header">
             <div>
               <h3 class="section-title related-songs-title">Related Songs</h3>
-              <p class="related-songs-subtitle">Based on shared themes, then tempo</p>
+              <p class="related-songs-subtitle">Based on shared themes, title words, then tempo</p>
             </div>
           </div>
           <div class="related-songs-card">
@@ -23806,6 +23865,37 @@ function getSongAllThemes(song) {
 
 const RELATED_SONGS_MAX = 5;
 const RELATED_BPM_SIMILARITY_THRESHOLD = 6;
+const RELATED_TITLE_WORD_MIN_LENGTH = 4;
+const RELATED_TITLE_WORD_STOP_WORDS = new Set([
+  "about",
+  "above",
+  "after",
+  "again",
+  "along",
+  "also",
+  "amid",
+  "among",
+  "around",
+  "back",
+  "been",
+  "before",
+  "behind",
+  "below",
+  "beneath",
+  "beside",
+  "between",
+  "beyond",
+  "from",
+  "into",
+  "near",
+  "over",
+  "through",
+  "under",
+  "until",
+  "upon",
+  "with",
+  "without",
+]);
 
 function getSongThemeMap(song) {
   const map = new Map();
@@ -23829,8 +23919,67 @@ function getTempoCategory(bpm) {
   return "fast";
 }
 
+function getSongTitleRelationWords(song) {
+  const words = String(song?.title || "")
+    .toLowerCase()
+    .match(/[a-z0-9']+/g);
+
+  if (!words?.length) return [];
+
+  const seen = new Set();
+  return words
+    .map((word) => word.replace(/^'+|'+$/g, ""))
+    .filter((word) =>
+      word &&
+      word.length >= RELATED_TITLE_WORD_MIN_LENGTH &&
+      !RELATED_TITLE_WORD_STOP_WORDS.has(word)
+    )
+    .filter((word) => {
+      if (seen.has(word)) return false;
+      seen.add(word);
+      return true;
+    });
+}
+
+function getRelatedSongTitleWordMatches(songA, songB) {
+  const wordsA = getSongTitleRelationWords(songA);
+  const wordsB = getSongTitleRelationWords(songB);
+  if (!wordsA.length || !wordsB.length) return [];
+
+  const usedWordIndexes = new Set();
+  const matches = [];
+
+  wordsA.forEach((wordA) => {
+    let bestMatch = null;
+
+    wordsB.forEach((wordB, index) => {
+      if (usedWordIndexes.has(index)) return;
+
+      if (wordA === wordB) {
+        bestMatch = { index, label: wordA, score: 1 };
+        return;
+      }
+
+      const shorter = wordA.length <= wordB.length ? wordA : wordB;
+      const longer = shorter === wordA ? wordB : wordA;
+      if (!bestMatch && shorter.length >= RELATED_TITLE_WORD_MIN_LENGTH && longer.startsWith(shorter)) {
+        bestMatch = { index, label: shorter, score: 0.65 };
+      }
+    });
+
+    if (!bestMatch) return;
+    usedWordIndexes.add(bestMatch.index);
+    matches.push({
+      label: bestMatch.label,
+      score: bestMatch.score,
+    });
+  });
+
+  return matches;
+}
+
 /**
- * Symmetric relation check between two songs (same rules as Related Songs list).
+ * Symmetric relation check between two songs.
  * Order does not matter for whether a link exists; shared theme labels follow songA's map first.
  */
 function getSongPairRelationDetails(songA, songB) {
@@ -23851,6 +24000,9 @@ function getSongPairRelationDetails(songA, songB) {
   const baseTempo = getTempoCategory(baseBpm);
   const bpmDiff = baseBpm !== null && candidateBpm !== null ? Math.abs(baseBpm - candidateBpm) : null;
   const tempoMatch = !!baseTempo && baseTempo === getTempoCategory(candidateBpm);
+  const titleWordMatches = getRelatedSongTitleWordMatches(songA, songB);
+  const titleWordMatchLabels = titleWordMatches.map((match) => match.label);
+  const titleWordOverlapScore = titleWordMatches.reduce((sum, match) => sum + match.score, 0);
 
   const hasThemeMatch = sharedThemes.length > 0;
   const hasBpmMatch = bpmDiff !== null && (bpmDiff <= RELATED_BPM_SIMILARITY_THRESHOLD || tempoMatch);
@@ -23862,6 +24014,8 @@ function getSongPairRelationDetails(songA, songB) {
     sharedCount: sharedThemes.length,
     bpmDiff,
     tempoMatch,
+    titleWordMatches: titleWordMatchLabels,
+    titleWordOverlapScore,
     hasThemeMatch,
     hasBpmMatch,
   };
@@ -23882,12 +24036,17 @@ function getRelatedSongs(baseSong, allSongs, { limit = RELATED_SONGS_MAX } = {})
       sharedCount: details.sharedCount,
       bpmDiff: details.bpmDiff,
       tempoMatch: details.tempoMatch,
+      titleWordMatches: details.titleWordMatches,
+      titleWordOverlapScore: details.titleWordOverlapScore,
     });
   });
 
   results.sort((a, b) => {
     if (a.sharedCount !== b.sharedCount) return b.sharedCount - a.sharedCount;
     if (a.tempoMatch !== b.tempoMatch) return a.tempoMatch ? -1 : 1;
+    if (a.titleWordOverlapScore !== b.titleWordOverlapScore) {
+      return b.titleWordOverlapScore - a.titleWordOverlapScore;
+    }
 
     const aDiff = a.bpmDiff ?? Number.POSITIVE_INFINITY;
     const bDiff = b.bpmDiff ?? Number.POSITIVE_INFINITY;
@@ -24578,11 +24737,23 @@ function formatRelatedThemeLabel(sharedThemes) {
   return sharedThemes.length === 1 ? `Shared theme: ${label}` : `Shared themes: ${label}`;
 }
 
+function formatRelatedTitleWordLabel(titleWordMatches) {
+  if (!titleWordMatches?.length) return "";
+  const display = titleWordMatches.slice(0, 2);
+  let label = display.join(", ");
+  if (titleWordMatches.length > 2) {
+    label = `${label} +${titleWordMatches.length - 2}`;
+  }
+  return titleWordMatches.length === 1 ? `Shared title word: ${label}` : `Shared title words: ${label}`;
+}
+
 function buildRelatedSongRowHtml(entry, index) {
   const songTitle = escapeHtml(entry.song?.title || "Untitled");
   const themeLabel = formatRelatedThemeLabel(entry.sharedThemes);
+  const titleWordLabel = formatRelatedTitleWordLabel(entry.titleWordMatches);
   const chips = [];
   if (themeLabel) chips.push(themeLabel);
+  if (titleWordLabel) chips.push(titleWordLabel);
   if (entry.bpmDiff !== null && entry.bpmDiff <= RELATED_BPM_SIMILARITY_THRESHOLD) {
     chips.push(entry.bpmDiff === 0 ? "Same BPM" : `Similar BPM (±${entry.bpmDiff})`);
   } else if (entry.tempoMatch) {
@@ -25368,74 +25539,38 @@ function triggerFileDownloadFromViewer(url, fileName) {
   a.remove();
 }
 
-function closeFileViewer() {
-  const modal = el("file-viewer-modal");
-  const stage = el("file-viewer-stage");
-  const downloadBtn = el("btn-file-viewer-download");
-  if (stage) {
-    stage.querySelectorAll("iframe").forEach((frame) => {
-      frame.src = "about:blank";
-    });
-    stage.querySelectorAll("video, audio").forEach((media) => {
-      try {
-        media.pause();
-      } catch (_) { }
-      media.removeAttribute("src");
-    });
-    stage.innerHTML = "";
-  }
-  if (downloadBtn) {
-    downloadBtn.classList.add("hidden");
-    downloadBtn.onclick = null;
-  }
-  if (modal) {
-    modal.classList.add("hidden");
-    modal.setAttribute("aria-hidden", "true");
-  }
-  fileViewerSession = null;
+function clearMediaStage(stage) {
+  if (!stage) return;
+  stage.querySelectorAll("iframe").forEach((frame) => {
+    frame.src = "about:blank";
+  });
+  stage.querySelectorAll("video, audio").forEach((media) => {
+    try {
+      media.pause();
+    } catch (_) { }
+    media.removeAttribute("src");
+  });
+  stage.innerHTML = "";
 }
 
-async function openFileViewer({ title, fileName, fileType, filePath, audioKey = null, directUrl = null }) {
-  closeFileViewer();
-  let fileUrl = null;
+async function resolveViewerFileUrl({ filePath, directUrl = null }) {
   const trimmedDirect = directUrl && String(directUrl).trim() ? String(directUrl).trim() : null;
-  if (trimmedDirect) {
-    fileUrl = trimmedDirect;
-  } else if (filePath) {
-    fileUrl = await getFileUrl(filePath);
-  } else {
-    toastError("No file path for this resource.");
-    return;
-  }
-  if (!fileUrl) {
-    toastError("Unable to load file. Please try again later.");
-    return;
-  }
+  if (trimmedDirect) return trimmedDirect;
+  if (filePath) return await getFileUrl(filePath);
+  return null;
+}
 
+async function renderFileViewerStage(stage, { title, fileName, fileType, filePath, audioKey = null, directUrl = null }) {
+  if (!stage) return null;
+
+  clearMediaStage(stage);
+  const fileUrl = await resolveViewerFileUrl({ filePath, directUrl });
+  if (!fileUrl) return null;
+
+  const trimmedDirect = directUrl && String(directUrl).trim() ? String(directUrl).trim() : null;
   let kind = getFileViewerKind(fileType, fileName);
   if (trimmedDirect && isPdfResourceLink({ url: trimmedDirect, file_type: fileType, file_name: fileName })) {
     kind = "pdf";
-  }
-  fileViewerSession = { url: fileUrl, fileName: fileName || title || "download" };
-
-  const modal = el("file-viewer-modal");
-  const stage = el("file-viewer-stage");
-  const titleEl = el("file-viewer-title");
-  const subEl = el("file-viewer-subtitle");
-  const downloadBtn = el("btn-file-viewer-download");
-
-  if (!modal || !stage) return;
-
-  if (titleEl) titleEl.textContent = title || fileName || "File";
-  if (subEl) {
-    const parts = [];
-    if (fileName) parts.push(fileName);
-    if (fileType) parts.push(fileType);
-    subEl.textContent = parts.join(" · ");
-  }
-  if (downloadBtn) {
-    downloadBtn.classList.remove("hidden");
-    downloadBtn.onclick = () => triggerFileDownloadFromViewer(fileViewerSession?.url, fileViewerSession?.fileName);
   }
 
   if (kind === "pdf") {
@@ -25486,20 +25621,1164 @@ async function openFileViewer({ title, fileName, fileType, filePath, audioKey = 
     p.className = "muted";
     p.style.margin = "1rem 0";
     p.textContent = "Preview isn't available for this file type.";
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "btn primary";
-    btn.innerHTML = '<i class="fa-solid fa-download"></i> Download';
-    btn.addEventListener("click", () => triggerFileDownloadFromViewer(fileViewerSession?.url, fileViewerSession?.fileName));
     wrap.appendChild(iconWrap);
     wrap.appendChild(p);
-    wrap.appendChild(btn);
     stage.appendChild(wrap);
+  }
+
+  return {
+    url: fileUrl,
+    kind,
+    fileName: fileName || title || "download",
+  };
+}
+
+function closeFileViewer() {
+  const modal = el("file-viewer-modal");
+  const stage = el("file-viewer-stage");
+  const downloadBtn = el("btn-file-viewer-download");
+  if (stage) {
+    clearMediaStage(stage);
+  }
+  if (downloadBtn) {
+    downloadBtn.classList.add("hidden");
+    downloadBtn.onclick = null;
+  }
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  }
+  fileViewerSession = null;
+}
+
+async function openFileViewer({ title, fileName, fileType, filePath, audioKey = null, directUrl = null }) {
+  closeFileViewer();
+  if (!filePath && !(directUrl && String(directUrl).trim())) {
+    toastError("No file path for this resource.");
+    return;
+  }
+
+  const modal = el("file-viewer-modal");
+  const stage = el("file-viewer-stage");
+  const titleEl = el("file-viewer-title");
+  const subEl = el("file-viewer-subtitle");
+  const downloadBtn = el("btn-file-viewer-download");
+
+  if (!modal || !stage) return;
+
+  const viewerSession = await renderFileViewerStage(stage, {
+    title,
+    fileName,
+    fileType,
+    filePath,
+    audioKey,
+    directUrl,
+  });
+
+  if (!viewerSession?.url) {
+    toastError("Unable to load file. Please try again later.");
+    return;
+  }
+  fileViewerSession = { url: viewerSession.url, fileName: viewerSession.fileName };
+
+  if (titleEl) titleEl.textContent = title || fileName || "File";
+  if (subEl) {
+    const parts = [];
+    if (fileName) parts.push(fileName);
+    if (fileType) parts.push(fileType);
+    subEl.textContent = parts.join(" · ");
+  }
+  if (downloadBtn) {
+    downloadBtn.classList.remove("hidden");
+    downloadBtn.onclick = () => triggerFileDownloadFromViewer(fileViewerSession?.url, fileViewerSession?.fileName);
+  }
+  if (viewerSession.kind === "other") {
+    const fallback = stage.querySelector(".file-viewer-download-fallback");
+    if (fallback) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn primary";
+      btn.innerHTML = '<i class="fa-solid fa-download"></i> Download';
+      btn.addEventListener("click", () => triggerFileDownloadFromViewer(fileViewerSession?.url, fileViewerSession?.fileName));
+      fallback.appendChild(btn);
+    }
   }
 
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden", "false");
   el("close-file-viewer")?.focus();
+}
+
+function getLiveModeStoredResourceMemory() {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return {};
+    const raw = window.localStorage.getItem(LIVE_MODE_RESOURCE_MEMORY_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveLiveModeStoredResourceMemory(memory) {
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem(LIVE_MODE_RESOURCE_MEMORY_STORAGE_KEY, JSON.stringify(memory || {}));
+    }
+  } catch (_) {
+    // localStorage may be unavailable; fail soft
+  }
+}
+
+function isPlainSectionHeader(setSong) {
+  if (!setSong || setSong.song_id || isTag(setSong)) return false;
+  return !setSong.description &&
+    !setSong.notes &&
+    (!setSong.song_assignments || setSong.song_assignments.length === 0);
+}
+
+function buildLiveModeItems(set) {
+  const setSongs = Array.isArray(set?.set_songs) ? [...set.set_songs] : [];
+  return setSongs
+    .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
+    .filter((setSong) => !isPlainSectionHeader(setSong))
+    .map((setSong) => {
+      const tagInfo = isTag(setSong) ? parseTagDescription(setSong) : null;
+      const kind = tagInfo ? "tag" : (setSong.song_id ? "song" : "section");
+      return {
+        id: String(setSong.id),
+        kind,
+        setSong,
+        tagInfo,
+        effectiveKey: kind === "section" ? null : getSetSongPrimaryKey(setSong),
+      };
+    });
+}
+
+function getLiveModeMemoryContextKey(item) {
+  if (!item) return "";
+  const teamId = state.currentTeamId || "team";
+  if (item.kind === "section") {
+    return `team:${teamId}:section:${item.setSong?.id || "unknown"}`;
+  }
+  const songId = item.setSong?.song_id || item.setSong?.song?.id || "unknown";
+  const key = normalizeKeyLabel(item.effectiveKey || "") || "general";
+  return `team:${teamId}:song:${songId}:key:${key}`;
+}
+
+function getRememberedLiveModeResourceIdentity(item) {
+  const key = getLiveModeMemoryContextKey(item);
+  if (!key) return null;
+  const memory = getLiveModeStoredResourceMemory();
+  return memory[key] || null;
+}
+
+function rememberLiveModeResourceIdentity(item, resourceIdentity) {
+  const key = getLiveModeMemoryContextKey(item);
+  if (!key || !resourceIdentity) return;
+  const memory = getLiveModeStoredResourceMemory();
+  memory[key] = resourceIdentity;
+  saveLiveModeStoredResourceMemory(memory);
+}
+
+function getLiveModeItemBadge(item) {
+  if (!item) return "Item";
+  if (item.kind === "tag") {
+    const partName = resolveTagPartName(item.tagInfo?.tagType, item.tagInfo?.customValue) || item.setSong?.title || "Tag";
+    return `Tag • ${partName}`;
+  }
+  if (item.kind === "section") return "Section";
+  return "Song";
+}
+
+function getLiveModeItemTitle(item) {
+  if (!item) return "Untitled";
+  if (item.kind === "section") return item.setSong?.title || "Untitled Section";
+  return item.setSong?.song?.title || "Untitled";
+}
+
+function getLiveModeItemMetaParts(item) {
+  if (!item?.setSong) return [];
+  if (item.kind === "section") {
+    const duration = getSetSongDurationSeconds(item.setSong);
+    return [duration ? formatDuration(duration) : null].filter(Boolean);
+  }
+  const duration = getSetSongDurationSeconds(item.setSong);
+  return [
+    getSetSongDisplayKey(item.setSong),
+    item.setSong?.song?.time_signature || null,
+    item.setSong?.song?.bpm ? `${item.setSong.song.bpm} BPM` : null,
+    duration ? formatDuration(duration) : null,
+  ].filter(Boolean);
+}
+
+function getLiveModeItemDescription(item) {
+  if (!item?.setSong) return "";
+  if (item.kind === "section") return item.setSong.description || "";
+  return item.setSong.song?.description || "";
+}
+
+function getLiveModeItemNotes(item) {
+  return item?.setSong?.notes || "";
+}
+
+function getLiveModeItemSong(item) {
+  if (!item || item.kind === "section") return null;
+  return item.setSong?.song || null;
+}
+
+function getLiveModeItemAssignments(item, set = state.selectedSet) {
+  if (!item?.setSong) return [];
+  if (item.kind === "section") return Array.isArray(item.setSong.song_assignments) ? item.setSong.song_assignments : [];
+  const source = getAssignmentSourceSetSong(item.setSong, set);
+  return Array.isArray(source?.song_assignments) ? source.song_assignments : [];
+}
+
+async function hydrateLiveModeItem(item) {
+  if (!item?.setSong) return item;
+
+  if (item.kind === "section") {
+    const hasResources = Array.isArray(item.setSong.song_resources) || Array.isArray(item.setSong.song_links);
+    const hasAssignments = Array.isArray(item.setSong.song_assignments);
+    if (hasResources && hasAssignments) return item;
+
+    const { data } = await supabase
+      .from("set_songs")
+      .select(`
+        *,
+        song_resources(
+          id,
+          team_id,
+          type,
+          title,
+          url,
+          file_path,
+          file_name,
+          file_type,
+          key,
+          display_order,
+          chart_content,
+          created_at
+        ),
+        song_assignments(
+          id,
+          person_id,
+          person_name,
+          person_email,
+          pending_invite_id,
+          role,
+          status,
+          person:person_id(
+            id,
+            full_name
+          ),
+          pending_invite:pending_invite_id(
+            id,
+            full_name,
+            email
+          )
+        )
+      `)
+      .eq("id", item.setSong.id)
+      .single();
+
+    if (data) {
+      item.setSong = { ...item.setSong, ...data };
+    }
+    return item;
+  }
+
+  const song = item.setSong.song || {};
+  const hasSongResources = Array.isArray(song.song_resources);
+  const hasSongKeys = Array.isArray(song.song_keys);
+  if (hasSongResources && hasSongKeys) return item;
+
+  const { data } = await supabase
+    .from("songs")
+    .select(`
+      *,
+      song_keys(
+        id,
+        key
+      ),
+      song_resources(
+        id,
+        team_id,
+        type,
+        title,
+        url,
+        file_path,
+        file_name,
+        file_type,
+        key,
+        display_order,
+        chart_content,
+        created_at
+      )
+    `)
+    .eq("id", item.setSong.song_id)
+    .single();
+
+  if (data) {
+    item.setSong = {
+      ...item.setSong,
+      song: data,
+    };
+  }
+  item.effectiveKey = getSetSongPrimaryKey(item.setSong);
+  return item;
+}
+
+function getLiveModeResourceIconClass(entry) {
+  if (!entry) return "fa-file";
+  if (entry.viewerKind === "chart") return entry.chartType === "number" ? "fa-hashtag" : "fa-music";
+  if (entry.viewerKind === "external-link") return "fa-arrow-up-right-from-square";
+  return getFileIconClass(entry.fileType || "", entry.fileName || "");
+}
+
+function compareLiveModeEntries(a, b) {
+  const ao = typeof a?.displayOrder === "number" ? a.displayOrder : Number.POSITIVE_INFINITY;
+  const bo = typeof b?.displayOrder === "number" ? b.displayOrder : Number.POSITIVE_INFINITY;
+  if (ao !== bo) return ao - bo;
+  if (a?.viewerKind === "chart" && b?.viewerKind !== "chart") return -1;
+  if (a?.viewerKind !== "chart" && b?.viewerKind === "chart") return 1;
+  return String(a?.title || "").localeCompare(String(b?.title || ""));
+}
+
+function buildLiveModeChartEntry(resource, item, options = {}) {
+  const chartType = resource?.chart_content?.chart_type || resource?.chart_type || "chord";
+  const normalizedKey = normalizeKeyLabel(options.songKey || resource?.key || "");
+  const subtitleParts = [];
+  if (normalizedKey) subtitleParts.push(`Key: ${normalizedKey}`);
+  else subtitleParts.push("General");
+  subtitleParts.push(chartType === "number" ? "Number chart" : "Chord chart");
+  if (options.generatedFromNumber) subtitleParts.push("Auto-generated");
+
+  return {
+    resourceIdentity: options.resourceIdentity || `resource:${resource.id}`,
+    resourceId: resource?.id || null,
+    viewerKind: "chart",
+    title: chartType === "number" ? "Number Chart" : "Chord Chart",
+    subtitle: subtitleParts.join(" • "),
+    displayOrder: options.displayOrder ?? resource?.display_order ?? Number.POSITIVE_INFINITY,
+    groupLabel: options.groupLabel || "General",
+    defaultBucket: options.defaultBucket || 6,
+    chartType,
+    songId: item?.setSong?.song_id || null,
+    songTitle: item?.setSong?.song?.title || item?.setSong?.title || "",
+    scope: normalizedKey ? "key" : "general",
+    songKey: normalizedKey || null,
+    layout: options.layout || resource?.chart_content?.layout || resource?.layout,
+    doc: options.doc || resource?.chart_content?.doc || resource?.doc || null,
+    readOnly: !!options.readOnly,
+    generatedFromNumber: !!options.generatedFromNumber,
+    sourceDoc: options.sourceDoc || null,
+    targetKey: options.targetKey || normalizedKey || null,
+  };
+}
+
+function buildLiveModeResourceEntry(resource, item, options = {}) {
+  const normalizedKey = normalizeKeyLabel(resource?.key || "");
+  const isFileUpload = resource?.type === "file" || resource?.is_file_upload || !!resource?.file_path;
+  const isDirectPdf = !!resource?.url && isPdfResourceLink(resource);
+  const viewerKind = isFileUpload || isDirectPdf ? "file" : "external-link";
+  const title = resource?.title || resource?.file_name || resource?.url || "Resource";
+
+  const metaParts = [];
+  if (normalizedKey) metaParts.push(`Key: ${normalizedKey}`);
+  if (resource?.file_name) metaParts.push(resource.file_name);
+  else if (viewerKind === "external-link" && resource?.url) metaParts.push(resource.url);
+  if (resource?.file_type && isFileUpload) metaParts.push(resource.file_type);
+
+  return {
+    resourceIdentity: options.resourceIdentity || `resource:${resource.id || resource.file_path || resource.url || Math.random().toString(16).slice(2)}`,
+    resourceId: resource?.id || null,
+    viewerKind,
+    title,
+    subtitle: metaParts.join(" • "),
+    displayOrder: options.displayOrder ?? resource?.display_order ?? Number.POSITIVE_INFINITY,
+    groupLabel: options.groupLabel || "Resources",
+    defaultBucket: options.defaultBucket || 6,
+    url: resource?.url || null,
+    filePath: resource?.file_path || null,
+    fileName: resource?.file_name || null,
+    fileType: resource?.file_type || null,
+    audioKey: normalizedKey || item?.effectiveKey || null,
+  };
+}
+
+function groupLiveModeEntries(entries) {
+  const grouped = new Map();
+  entries.forEach((entry) => {
+    const label = entry.groupLabel || "Resources";
+    if (!grouped.has(label)) grouped.set(label, []);
+    grouped.get(label).push(entry);
+  });
+  return Array.from(grouped.entries()).map(([label, groupEntries]) => ({
+    label,
+    entries: [...groupEntries].sort(compareLiveModeEntries),
+  }));
+}
+
+function buildLiveModeResourceSections(item) {
+  if (!item?.setSong) return { sections: [], allEntries: [] };
+
+  if (item.kind === "section") {
+    const rawResources = Array.isArray(item.setSong.song_resources)
+      ? item.setSong.song_resources
+      : (Array.isArray(item.setSong.song_links) ? item.setSong.song_links : []);
+
+    const entries = rawResources.map((resource) => buildLiveModeResourceEntry(resource, item, {
+      groupLabel: "Resources",
+      defaultBucket: 6,
+    })).sort(compareLiveModeEntries);
+
+    return {
+      sections: entries.length ? [{ label: "Resources", entries }] : [],
+      allEntries: entries,
+    };
+  }
+
+  const song = item.setSong.song || {};
+  const allResources = Array.isArray(song.song_resources) ? song.song_resources : [];
+  const effectiveKey = normalizeKeyLabel(item.effectiveKey || "");
+  const allCharts = allResources
+    .filter((resource) => resource?.type === "chart" && resource?.chart_content?.doc)
+    .sort((a, b) => (a?.display_order ?? Number.POSITIVE_INFINITY) - (b?.display_order ?? Number.POSITIVE_INFINITY));
+  const allLinks = allResources
+    .filter((resource) => resource?.type === "link" || resource?.type === "file")
+    .sort((a, b) => (a?.display_order ?? Number.POSITIVE_INFINITY) - (b?.display_order ?? Number.POSITIVE_INFINITY));
+
+  const selectedKeyCharts = effectiveKey
+    ? allCharts.filter((resource) => normalizeKeyLabel(resource?.key || "") === effectiveKey)
+    : [];
+  const generalCharts = allCharts.filter((resource) => !normalizeKeyLabel(resource?.key || ""));
+  const selectedKeyLinks = effectiveKey
+    ? allLinks.filter((resource) => normalizeKeyLabel(resource?.key || "") === effectiveKey)
+    : [];
+  const generalLinks = allLinks.filter((resource) => !normalizeKeyLabel(resource?.key || ""));
+
+  const entries = [];
+  const exactKeyChartExists = selectedKeyCharts.some((resource) => (resource?.chart_content?.chart_type || "chord") === "chord");
+
+  selectedKeyCharts.forEach((resource) => {
+    entries.push(buildLiveModeChartEntry(resource, item, {
+      groupLabel: effectiveKey ? `Key: ${effectiveKey}` : "Current Key",
+      defaultBucket: (resource?.chart_content?.chart_type || "chord") === "chord" ? 1 : 6,
+    }));
+  });
+
+  if (!exactKeyChartExists && effectiveKey) {
+    const generalNumberChart = generalCharts.find((resource) => (resource?.chart_content?.chart_type || "chord") === "number");
+    if (generalNumberChart && parseKeyToPitchClass(effectiveKey)) {
+      entries.push(buildLiveModeChartEntry(generalNumberChart, item, {
+        groupLabel: `Key: ${effectiveKey}`,
+        resourceIdentity: `generated:${generalNumberChart.id}:${effectiveKey}`,
+        defaultBucket: 2,
+        generatedFromNumber: true,
+        readOnly: true,
+        sourceDoc: generalNumberChart.chart_content?.doc || null,
+        targetKey: effectiveKey,
+        songKey: effectiveKey,
+        layout: generalNumberChart.chart_content?.layout || "one_column",
+      }));
+    }
+  }
+
+  selectedKeyLinks.forEach((resource) => {
+    const isPreferredFile = resource?.type === "file" || isPdfResourceLink(resource);
+    entries.push(buildLiveModeResourceEntry(resource, item, {
+      groupLabel: effectiveKey ? `Key: ${effectiveKey}` : "Current Key",
+      defaultBucket: isPreferredFile ? 3 : 6,
+    }));
+  });
+
+  generalCharts.forEach((resource) => {
+    entries.push(buildLiveModeChartEntry(resource, item, {
+      groupLabel: "General",
+      defaultBucket: 4,
+    }));
+  });
+
+  generalLinks.forEach((resource) => {
+    const isPreferredFile = resource?.type === "file" || isPdfResourceLink(resource);
+    entries.push(buildLiveModeResourceEntry(resource, item, {
+      groupLabel: "General",
+      defaultBucket: isPreferredFile ? 5 : 6,
+    }));
+  });
+
+  const otherKeys = new Set();
+  allCharts.forEach((resource) => {
+    const key = normalizeKeyLabel(resource?.key || "");
+    if (key && key !== effectiveKey) otherKeys.add(key);
+  });
+  allLinks.forEach((resource) => {
+    const key = normalizeKeyLabel(resource?.key || "");
+    if (key && key !== effectiveKey) otherKeys.add(key);
+  });
+
+  Array.from(otherKeys).sort().forEach((key) => {
+    const keyCharts = allCharts.filter((resource) => normalizeKeyLabel(resource?.key || "") === key);
+    const keyLinks = allLinks.filter((resource) => normalizeKeyLabel(resource?.key || "") === key);
+    keyCharts.forEach((resource) => {
+      entries.push(buildLiveModeChartEntry(resource, item, {
+        groupLabel: `Key: ${key}`,
+        defaultBucket: 6,
+      }));
+    });
+    keyLinks.forEach((resource) => {
+      entries.push(buildLiveModeResourceEntry(resource, item, {
+        groupLabel: `Key: ${key}`,
+        defaultBucket: 6,
+      }));
+    });
+  });
+
+  return {
+    sections: groupLiveModeEntries(entries),
+    allEntries: [...entries].sort((a, b) => {
+      if ((a?.defaultBucket || 6) !== (b?.defaultBucket || 6)) {
+        return (a?.defaultBucket || 6) - (b?.defaultBucket || 6);
+      }
+      return compareLiveModeEntries(a, b);
+    }),
+  };
+}
+
+function selectLiveModeDefaultResource(item, allEntries) {
+  if (!Array.isArray(allEntries) || allEntries.length === 0) return null;
+  const remembered = getRememberedLiveModeResourceIdentity(item);
+  if (remembered) {
+    const rememberedEntry = allEntries.find((entry) => entry.resourceIdentity === remembered);
+    if (rememberedEntry) return rememberedEntry;
+  }
+  return allEntries[0] || null;
+}
+
+function createLiveModeArtworkElement(song, options = {}) {
+  const wrapper = document.createElement("div");
+  const useSongDetailsStyle = !!options.songDetailsStyle;
+  wrapper.className = options.className || (useSongDetailsStyle ? "song-album-art-container live-mode-album-art-container" : "live-mode-art");
+
+  let fallback;
+  let img;
+  if (useSongDetailsStyle) {
+    const vinyl = document.createElement("img");
+    vinyl.src = "./vinyl.png";
+    vinyl.alt = "";
+    vinyl.setAttribute("aria-hidden", "true");
+    vinyl.className = "song-album-art-vinyl";
+    wrapper.appendChild(vinyl);
+
+    const skeleton = document.createElement("div");
+    skeleton.className = "album-art-skeleton skeleton";
+    skeleton.setAttribute("aria-hidden", "true");
+    wrapper.appendChild(skeleton);
+
+    img = document.createElement("img");
+    img.className = "song-album-art";
+    img.alt = `Album art for ${song?.title || "song"}`;
+    img.style.display = "none";
+    wrapper.appendChild(img);
+
+    fallback = document.createElement("div");
+    fallback.className = "song-album-art-no-image";
+    fallback.textContent = "No image";
+    wrapper.appendChild(fallback);
+  } else {
+    fallback = document.createElement("span");
+    fallback.innerHTML = `<i class="fa-solid ${options.iconClass || "fa-record-vinyl"}" aria-hidden="true"></i>`;
+    wrapper.appendChild(fallback);
+
+    img = document.createElement("img");
+    img.alt = `Album art for ${song?.title || "song"}`;
+    img.style.display = "none";
+    wrapper.appendChild(img);
+  }
+
+  if (!song) return wrapper;
+
+  const renderToken = String(state.liveMode.renderToken);
+  getAlbumArt(song, song.title || "", {
+    disableItunesFallback: (state.userTeams?.find?.(team => team.id === state.currentTeamId)?.itunes_indexing_enabled === false)
+  }).then((art) => {
+    if (!state.liveMode.isOpen || String(state.liveMode.renderToken) !== renderToken) return;
+    const url = art?.small || art?.large;
+    if (!url) return;
+    img.src = url;
+    img.style.display = "block";
+    if (useSongDetailsStyle) {
+      wrapper.classList.add("album-art-loaded");
+      fallback.classList.add("hidden");
+    } else {
+      fallback.style.display = "none";
+    }
+  }).catch(() => { });
+
+  return wrapper;
+}
+
+function createLiveModeTransitionElement(transition) {
+  return createTransitionHeadsUpElement(transition, {
+    className: "set-song-transition-heads-up live-mode-transition-row",
+  });
+}
+
+function renderLiveModeAssignments(assignments) {
+  const list = document.createElement("div");
+  list.className = "live-mode-assignment-list";
+  assignments.forEach((assignment) => {
+    const card = document.createElement("div");
+    card.className = "live-mode-assignment-card";
+
+    const role = document.createElement("div");
+    role.className = "live-mode-assignment-role";
+    role.textContent = assignment?.role || "Unassigned";
+
+    const person = document.createElement("div");
+    person.className = "live-mode-assignment-person";
+    person.textContent = getSongDetailsAssignmentPersonName(assignment);
+
+    card.appendChild(role);
+    card.appendChild(person);
+    list.appendChild(card);
+  });
+  return list;
+}
+
+function createLiveModeEmptyState(title, message, iconClass = "fa-file-lines") {
+  const wrapper = document.createElement("div");
+  wrapper.className = "live-mode-empty-state";
+  wrapper.innerHTML = `
+    <i class="fa-solid ${iconClass}"></i>
+    <h3>${escapeHtml(title)}</h3>
+    <p>${escapeHtml(message)}</p>
+  `;
+  return wrapper;
+}
+
+function appendLiveModeDetailItem(container, label, value, options = {}) {
+  if (!container || value === null || value === undefined || value === "") return;
+  const item = document.createElement("div");
+  item.className = "detail-item";
+  const labelEl = document.createElement("span");
+  labelEl.className = "detail-label";
+  labelEl.textContent = label;
+  const valueEl = document.createElement("span");
+  valueEl.className = "detail-value";
+  if (options.muted) {
+    valueEl.style.color = "var(--text-muted)";
+    valueEl.style.fontStyle = "italic";
+  }
+  valueEl.textContent = String(value);
+  item.appendChild(labelEl);
+  item.appendChild(valueEl);
+  container.appendChild(item);
+}
+
+function renderLiveModeExternalLink(stage, entry) {
+  clearMediaStage(stage);
+  const card = document.createElement("div");
+  card.className = "live-mode-external-link-card";
+  card.innerHTML = `
+    <h3>${escapeHtml(entry?.title || "External Link")}</h3>
+    <p>This link can’t be previewed inline here, but you can open it in a new tab.</p>
+    <div class="live-mode-external-link-url">${escapeHtml(entry?.url || "")}</div>
+  `;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn primary";
+  btn.innerHTML = '<i class="fa-solid fa-arrow-up-right-from-square"></i> Open Link';
+  btn.addEventListener("click", () => {
+    if (!entry?.url) return;
+    window.open(entry.url, "_blank", "noopener,noreferrer");
+  });
+  card.appendChild(btn);
+  stage.appendChild(card);
+}
+
+async function renderLiveModeViewer(entry) {
+  const stage = el("live-mode-viewer-stage");
+  if (!stage) return;
+
+  const renderToken = String(state.liveMode.renderToken);
+  stage.scrollTop = 0;
+  clearMediaStage(stage);
+
+  if (!entry) {
+    stage.classList.remove("chart-page-wrap", "live-mode-file-stage");
+    stage.appendChild(createLiveModeEmptyState("No resource selected", "Select a chart or resource from the left pane to open it here."));
+    state.liveMode.viewer = null;
+    return;
+  }
+
+  if (entry.viewerKind === "chart") {
+    if (!entry.doc) {
+      stage.classList.remove("chart-page-wrap", "live-mode-file-stage");
+      stage.appendChild(createLiveModeEmptyState("Chart unavailable", "This chart is missing data and can’t be rendered right now."));
+      state.liveMode.viewer = null;
+      return;
+    }
+    stage.innerHTML = "";
+    stage.classList.remove("live-mode-file-stage");
+    stage.classList.add("chart-page-wrap");
+    renderChartDocIntoPage(stage, entry.doc, {
+      songTitle: entry.songTitle || entry.title || "Chord Chart",
+      subtitle: entry.subtitle || "",
+      layout: entry.layout,
+      readOnly: true,
+    });
+    requestAnimationFrame(() => {
+      if (String(state.liveMode.renderToken) !== renderToken) return;
+      fitAllChartPagesToContainer(stage);
+    });
+    state.liveMode.viewer = {
+      kind: "chart",
+      resourceIdentity: entry.resourceIdentity,
+    };
+    return;
+  }
+
+  stage.classList.remove("chart-page-wrap");
+  stage.classList.add("live-mode-file-stage");
+
+  if (entry.viewerKind === "external-link") {
+    renderLiveModeExternalLink(stage, entry);
+    state.liveMode.viewer = {
+      kind: "external-link",
+      resourceIdentity: entry.resourceIdentity,
+    };
+    return;
+  }
+
+  const session = await renderFileViewerStage(stage, {
+    title: entry.title,
+    fileName: entry.fileName,
+    fileType: entry.fileType,
+    filePath: entry.filePath,
+    audioKey: entry.audioKey,
+    directUrl: entry.url,
+  });
+
+  if (String(state.liveMode.renderToken) !== renderToken) return;
+
+  if (!session?.url) {
+    clearMediaStage(stage);
+    stage.classList.remove("chart-page-wrap", "live-mode-file-stage");
+    stage.appendChild(createLiveModeEmptyState("Unable to load resource", "This file or link could not be opened right now."));
+    state.liveMode.viewer = null;
+    return;
+  }
+
+  if (session.kind === "other") {
+    const fallback = stage.querySelector(".file-viewer-download-fallback");
+    if (fallback) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn primary";
+      btn.innerHTML = '<i class="fa-solid fa-download"></i> Download';
+      btn.addEventListener("click", () => triggerFileDownloadFromViewer(session.url, session.fileName));
+      fallback.appendChild(btn);
+    }
+  }
+
+  state.liveMode.viewer = {
+    kind: session.kind,
+    resourceIdentity: entry.resourceIdentity,
+  };
+}
+
+async function renderLiveMode() {
+  const content = el("live-mode-sidebar-content");
+  const upcomingEl = el("live-mode-upcoming");
+  const titleEl = el("live-mode-title");
+  const subtitleEl = el("live-mode-subtitle");
+  const positionEl = el("live-mode-position");
+  const prevBtn = el("live-mode-prev");
+  const nextBtn = el("live-mode-next");
+  if (!content || !upcomingEl) return;
+
+  const item = state.liveMode.items[state.liveMode.activeIndex] || null;
+  state.liveMode.renderToken += 1;
+
+  titleEl.textContent = `Live Mode${state.selectedSet?.title ? ` • ${state.selectedSet.title}` : ""}`;
+  subtitleEl.textContent = item ? getLiveModeItemTitle(item) : "No set item selected";
+  positionEl.textContent = item ? `${state.liveMode.activeIndex + 1} / ${state.liveMode.items.length}` : "0 / 0";
+  if (prevBtn) prevBtn.disabled = state.liveMode.activeIndex <= 0;
+  if (nextBtn) nextBtn.disabled = state.liveMode.activeIndex >= state.liveMode.items.length - 1;
+
+  if (!item) {
+    content.innerHTML = "";
+    content.appendChild(createLiveModeEmptyState("No live items", "This set doesn’t have any songs or sections ready for Live Mode."));
+    upcomingEl.innerHTML = "";
+    await renderLiveModeViewer(null);
+    return;
+  }
+
+  await hydrateLiveModeItem(item);
+
+  const { sections, allEntries } = buildLiveModeResourceSections(item);
+  let activeEntry = allEntries.find((entry) => entry.resourceIdentity === state.liveMode.activeResourceIdentity) || null;
+  if (!activeEntry) {
+    activeEntry = selectLiveModeDefaultResource(item, allEntries);
+    state.liveMode.activeResourceIdentity = activeEntry?.resourceIdentity || null;
+  }
+  if (activeEntry?.resourceIdentity) {
+    rememberLiveModeResourceIdentity(item, activeEntry.resourceIdentity);
+  }
+
+  content.innerHTML = "";
+  const song = getLiveModeItemSong(item);
+  const itemDescription = getLiveModeItemDescription(item);
+  const itemNotes = getLiveModeItemNotes(item);
+  const assignments = getLiveModeItemAssignments(item, state.selectedSet);
+  const bpm = song?.bpm || song?.suggested_bpm || null;
+  const durationSeconds = getSetSongDurationSeconds(item.setSong) || song?.suggested_duration || null;
+  const selectedKey = item.kind === "section" ? null : (getSetSongDisplayKey(item.setSong) || item.effectiveKey || song?.suggested_song_key || null);
+  const timeSignature = song?.time_signature || song?.suggested_time_signature || null;
+  const songKeys = Array.isArray(song?.song_keys)
+    ? song.song_keys.map((entry) => normalizeKeyLabel(entry?.key || "")).filter(Boolean)
+    : [];
+  const distinctSongKeys = Array.from(new Set(songKeys));
+  const selectedKeyNormalized = normalizeKeyLabel(selectedKey || "");
+  const isSingleKeyMatch = !!selectedKeyNormalized && distinctSongKeys.length === 1 && distinctSongKeys[0] === selectedKeyNormalized;
+  const hasLowerSections = true;
+
+  const details = document.createElement("div");
+  details.className = `song-details-content live-mode-song-details-content${hasLowerSections ? " song-details-content--has-resources" : ""}`;
+
+  const headerSection = document.createElement("div");
+  headerSection.className = "song-details-section";
+
+  const headerWrapper = document.createElement("div");
+  headerWrapper.className = "song-details-header-wrapper";
+  headerWrapper.appendChild(createLiveModeArtworkElement(song, {
+    songDetailsStyle: true,
+    className: "song-album-art-container live-mode-album-art-container",
+    iconClass: item.kind === "section" ? "fa-layer-group" : "fa-record-vinyl",
+  }));
+
+  const headerContent = document.createElement("div");
+  headerContent.className = "song-details-header-content";
+
+  const badge = document.createElement("div");
+  badge.className = "live-mode-item-badge";
+  badge.textContent = getLiveModeItemBadge(item);
+  headerContent.appendChild(badge);
+
+  const titleValue = document.createElement("h2");
+  titleValue.className = "song-details-title";
+  titleValue.textContent = getLiveModeItemTitle(item);
+  headerContent.appendChild(titleValue);
+
+  const detailMeta = document.createElement("div");
+  detailMeta.className = "song-details-meta";
+  appendLiveModeDetailItem(detailMeta, "BPM", bpm, { muted: !song?.bpm && !!song?.suggested_bpm });
+  if (isSingleKeyMatch) {
+    appendLiveModeDetailItem(detailMeta, "Key", selectedKeyNormalized);
+  } else if (distinctSongKeys.length) {
+    appendLiveModeDetailItem(detailMeta, distinctSongKeys.length === 1 ? "Key" : "Keys", distinctSongKeys.join(", "));
+  } else if (song?.suggested_song_key) {
+    appendLiveModeDetailItem(detailMeta, "Key", song.suggested_song_key, { muted: true });
+  }
+  if (selectedKeyNormalized && !isSingleKeyMatch && item.kind !== "section") {
+    appendLiveModeDetailItem(detailMeta, "Selected Key", selectedKeyNormalized);
+  }
+  appendLiveModeDetailItem(detailMeta, "Time Signature", timeSignature, { muted: !song?.time_signature && !!song?.suggested_time_signature });
+  if (durationSeconds) {
+    appendLiveModeDetailItem(detailMeta, "Duration", formatDuration(durationSeconds), { muted: !getSetSongDurationSeconds(item.setSong) && !!song?.suggested_duration });
+  }
+  if (detailMeta.children.length) {
+    headerContent.appendChild(detailMeta);
+  }
+
+  headerWrapper.appendChild(headerContent);
+  headerSection.appendChild(headerWrapper);
+
+  if (bpm) {
+    const clickTrack = document.createElement("div");
+    clickTrack.className = "song-click-track";
+    clickTrack.innerHTML = `
+      <div class="song-click-track-info">
+        <p class="song-click-track-title"><i class="fa-solid fa-drum"></i> Click Track</p>
+        <p class="song-click-track-description">Set to ${escapeHtml(String(bpm))} BPM</p>
+      </div>
+      <button class="btn primary click-track-btn" data-bpm="${escapeHtml(String(bpm))}" title="Click Track"></button>
+    `;
+    const clickTrackBtn = clickTrack.querySelector(".click-track-btn");
+    if (clickTrackBtn) {
+      clickTrackBtn.innerHTML = state.metronome.isPlaying && state.metronome.bpm === Number(bpm)
+        ? '<i class="fa-solid fa-pause"></i> Stop'
+        : '<i class="fa-solid fa-play"></i> Click';
+      clickTrackBtn.addEventListener("click", () => {
+        toggleMetronome(parseInt(clickTrackBtn.dataset.bpm, 10));
+        updateClickTrackButtons();
+      });
+    }
+    headerSection.appendChild(clickTrack);
+  }
+
+  details.appendChild(headerSection);
+
+  if (itemDescription) {
+    const descriptionSection = document.createElement("div");
+    descriptionSection.className = "song-details-section";
+    descriptionSection.innerHTML = `
+      <h3 class="section-title">Description</h3>
+      <p class="song-details-description">${escapeHtml(itemDescription)}</p>
+    `;
+    details.appendChild(descriptionSection);
+  }
+
+  if (itemNotes) {
+    const notesSection = document.createElement("div");
+    notesSection.className = "song-details-section";
+    notesSection.innerHTML = `
+      <h3 class="section-title">Notes</h3>
+      <p class="song-details-description">${escapeHtml(itemNotes)}</p>
+    `;
+    details.appendChild(notesSection);
+  }
+
+  const resourcesWrapper = document.createElement("div");
+  resourcesWrapper.className = "resources-section-wrapper live-mode-resources-wrapper";
+  resourcesWrapper.innerHTML = `
+    <div class="resources-wave-divider">
+      <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+        <defs>
+          <clipPath id="live-mode-clip-solid">
+            <rect x="0" y="0" width="900" height="120" />
+          </clipPath>
+          <clipPath id="live-mode-clip-dashed">
+            <rect x="900" y="0" width="300" height="120" />
+          </clipPath>
+        </defs>
+        <path d="M0,60 Q50,20 100,60 T200,60 T300,60 T400,60 T500,60 T600,60 T700,60 T800,60 T900,60 T1000,60 T1100,60 T1200,60 V120 H0 Z" class="shape-fill"></path>
+        <path d="M0,60 Q50,20 100,60 T200,60 T300,60 T400,60 T500,60 T600,60 T700,60 T800,60 T900,60 T1000,60 T1100,60 T1200,60" class="wave-border-solid" fill="none" vector-effect="non-scaling-stroke" clip-path="url(#live-mode-clip-solid)"></path>
+        <path d="M0,60 Q50,20 100,60 T200,60 T300,60 T400,60 T500,60 T600,60 T700,60 T800,60 T900,60 T1000,60 T1100,60 T1200,60" class="wave-border-dashed" fill="none" vector-effect="non-scaling-stroke" clip-path="url(#live-mode-clip-dashed)"></path>
+      </svg>
+    </div>
+  `;
+
+  const resourcesContent = document.createElement("div");
+  resourcesContent.className = "resources-content-area";
+
+  const resourcesSection = document.createElement("div");
+  resourcesSection.className = "song-details-section";
+  resourcesSection.innerHTML = '<h3 class="section-title">Resources & Links</h3>';
+
+  if (!sections.length) {
+    const empty = document.createElement("p");
+    empty.className = "song-details-description live-mode-resource-empty";
+    empty.textContent = "No resources available for this item.";
+    resourcesSection.appendChild(empty);
+  } else {
+    const resourcesList = document.createElement("div");
+    resourcesList.className = "song-details-links";
+
+    sections.forEach((section) => {
+      const group = document.createElement("div");
+      group.className = "live-mode-resource-group";
+
+      const heading = document.createElement("h4");
+      heading.className = "section-subtitle live-mode-resource-group-title";
+      heading.textContent = section.label;
+      group.appendChild(heading);
+
+      const list = document.createElement("div");
+      list.className = "live-mode-resource-list";
+
+      section.entries.forEach((entry) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "song-link-display live-mode-resource-button";
+        if (activeEntry?.resourceIdentity === entry.resourceIdentity) {
+          button.classList.add("is-active");
+        }
+
+        const icon = document.createElement("div");
+        icon.className = "song-link-favicon live-mode-resource-icon";
+        icon.innerHTML = `<i class="fa-solid ${getLiveModeResourceIconClass(entry)}" style="font-size: 1.05rem; color: var(--accent-color);"></i>`;
+
+        const text = document.createElement("div");
+        text.className = "song-link-content live-mode-resource-text";
+
+        const resourceTitle = document.createElement("div");
+        resourceTitle.className = "song-link-title live-mode-resource-title";
+        resourceTitle.textContent = entry.title || "Resource";
+
+        const resourceSubtitle = document.createElement("div");
+        resourceSubtitle.className = "song-link-url live-mode-resource-subtitle";
+        resourceSubtitle.textContent = entry.subtitle || "";
+
+        text.appendChild(resourceTitle);
+        text.appendChild(resourceSubtitle);
+        button.appendChild(icon);
+        button.appendChild(text);
+        button.addEventListener("click", () => {
+          void selectLiveModeResource(entry.resourceIdentity);
+        });
+        list.appendChild(button);
+      });
+
+      group.appendChild(list);
+      resourcesList.appendChild(group);
+    });
+
+    resourcesSection.appendChild(resourcesList);
+  }
+
+  resourcesContent.appendChild(resourcesSection);
+
+  if (assignments.length) {
+    const assignmentsSection = document.createElement("div");
+    assignmentsSection.className = "song-details-section";
+    assignmentsSection.innerHTML = '<h3 class="section-title">Assignments</h3><div class="song-details-assignments"></div>';
+    renderSongDetailsAssignmentsList(assignments, assignmentsSection.querySelector(".song-details-assignments"));
+    resourcesContent.appendChild(assignmentsSection);
+  }
+
+  const nextItem = state.liveMode.items[state.liveMode.activeIndex + 1] || null;
+  upcomingEl.innerHTML = "";
+  const upNextSection = document.createElement("div");
+  upNextSection.className = "song-details-section live-mode-up-next-section";
+  upNextSection.innerHTML = '<h3 class="section-title">Up Next</h3>';
+
+  if (!nextItem) {
+    const endState = document.createElement("div");
+    endState.className = "live-mode-upcoming-panel live-mode-upcoming-panel--end";
+    endState.innerHTML = `
+      <p class="live-mode-upcoming-kicker">Up Next</p>
+      <h3 class="live-mode-upcoming-title">End of set</h3>
+      <p class="live-mode-upcoming-meta">You’re on the last item in this set.</p>
+    `;
+    upNextSection.appendChild(endState);
+  } else {
+    const transitionToNext = getSetItemTransitionHeadsUp(item.setSong, nextItem.setSong);
+    const card = document.createElement("div");
+    card.className = "live-mode-upcoming-panel";
+    card.appendChild(createLiveModeArtworkElement(getLiveModeItemSong(nextItem), {
+      songDetailsStyle: true,
+      className: "song-album-art-container live-mode-album-art-container live-mode-upcoming-art",
+      iconClass: nextItem.kind === "section" ? "fa-layer-group" : "fa-record-vinyl",
+    }));
+
+    const copy = document.createElement("div");
+    copy.className = "live-mode-upcoming-copy";
+
+    const kicker = document.createElement("p");
+    kicker.className = "live-mode-upcoming-kicker";
+    kicker.textContent = "Up Next";
+    copy.appendChild(kicker);
+
+    const nextTitle = document.createElement("h3");
+    nextTitle.className = "live-mode-upcoming-title";
+    nextTitle.textContent = getLiveModeItemTitle(nextItem);
+    copy.appendChild(nextTitle);
+
+    const nextMeta = document.createElement("p");
+    nextMeta.className = "live-mode-upcoming-meta";
+    nextMeta.textContent = getLiveModeItemMetaParts(nextItem).join(" • ");
+    copy.appendChild(nextMeta);
+
+    if (transitionToNext) {
+      copy.appendChild(createLiveModeTransitionElement(transitionToNext));
+    }
+
+    card.appendChild(copy);
+    upNextSection.appendChild(card);
+  }
+
+  resourcesWrapper.appendChild(resourcesContent);
+  details.appendChild(resourcesWrapper);
+  content.appendChild(details);
+  upcomingEl.appendChild(upNextSection);
+  updateClickTrackButtons();
+
+  await renderLiveModeViewer(activeEntry);
+}
+
+async function setLiveModeActiveIndex(index) {
+  if (!state.liveMode.isOpen) return;
+  const items = state.liveMode.items || [];
+  if (!items.length) {
+    state.liveMode.activeIndex = 0;
+    state.liveMode.activeResourceIdentity = null;
+    await renderLiveMode();
+    return;
+  }
+
+  const nextIndex = Math.max(0, Math.min(index, items.length - 1));
+  state.liveMode.activeIndex = nextIndex;
+  state.liveMode.activeResourceIdentity = null;
+  await renderLiveMode();
+}
+
+async function selectLiveModeResource(resourceIdentity) {
+  if (!state.liveMode.isOpen) return;
+  state.liveMode.activeResourceIdentity = resourceIdentity || null;
+  const item = state.liveMode.items[state.liveMode.activeIndex] || null;
+  if (item && resourceIdentity) {
+    rememberLiveModeResourceIdentity(item, resourceIdentity);
+  }
+  await renderLiveMode();
+}
+
+function navigateLiveMode(direction) {
+  if (!state.liveMode.isOpen) return;
+  const nextIndex = state.liveMode.activeIndex + direction;
+  void setLiveModeActiveIndex(nextIndex);
+}
+
+function shouldIgnoreLiveModeArrowKey(event) {
+  const target = event.target;
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest('input, textarea, select, [contenteditable="true"], audio, video, iframe')
+  );
+}
+
+async function openLiveMode(set = state.selectedSet) {
+  if (!set) return;
+  const modal = el("live-mode-modal");
+  if (!modal) return;
+
+  state.liveMode.isOpen = true;
+  state.liveMode.setId = set.id || null;
+  state.liveMode.items = buildLiveModeItems(set);
+  state.liveMode.activeIndex = 0;
+  state.liveMode.activeResourceIdentity = null;
+  state.liveMode.viewer = null;
+  state.liveMode.renderToken = 0;
+
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+
+  await setLiveModeActiveIndex(0);
+}
+
+function closeLiveMode() {
+  const modal = el("live-mode-modal");
+  const stage = el("live-mode-viewer-stage");
+  if (!modal) return;
+
+  if (stage) {
+    clearMediaStage(stage);
+    stage.classList.remove("chart-page-wrap", "live-mode-file-stage");
+  }
+
+  closeModalWithAnimation(modal, () => {
+    modal.setAttribute("aria-hidden", "true");
+    state.liveMode.isOpen = false;
+    state.liveMode.setId = null;
+    state.liveMode.items = [];
+    state.liveMode.activeIndex = 0;
+    state.liveMode.activeResourceIdentity = null;
+    state.liveMode.viewer = null;
+    state.liveMode.renderToken = 0;
+  });
 }
 
 const AUDIO_TRANSPOSE_LIMITS = { min: -12, max: 12 };

@@ -518,6 +518,9 @@
               <button id="btn-export-set-print" class="btn secondary ripple-btn" type="button"><i
                   class="fa-solid fa-print"></i>
                 Print</button>
+              <button id="btn-open-live-mode" class="btn secondary ripple-btn" type="button"><i
+                  class="fa-solid fa-bullhorn"></i>
+                Live</button>
               <button id="btn-view-as-member-detail" class="btn secondary hidden ripple-btn" type="button"><i
                   class="fa-solid fa-user"></i>
                 Preview</button>
@@ -682,6 +685,52 @@
       </header>
       <div class="chart-modal-body file-viewer-body">
         <div id="file-viewer-stage" class="file-viewer-stage"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="live-mode-modal" class="chart-modal hidden" aria-hidden="true">
+    <div class="chart-modal-shell live-mode-shell" role="dialog" aria-modal="true" aria-labelledby="live-mode-title">
+      <header class="chart-modal-header live-mode-header">
+        <div class="chart-modal-header-left">
+          <button type="button" class="icon-btn" id="close-live-mode" aria-label="Close Live Mode">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+          <div class="chart-modal-title-wrap">
+            <div id="live-mode-title" class="chart-modal-title">Live Mode</div>
+            <div id="live-mode-subtitle" class="chart-modal-subtitle muted small-text"></div>
+          </div>
+        </div>
+        <div class="chart-modal-header-right">
+          <div id="live-mode-position" class="live-mode-position muted small-text"></div>
+        </div>
+      </header>
+      <div class="chart-modal-body live-mode-body">
+        <aside class="live-mode-sidebar">
+          <div class="live-mode-nav">
+            <button type="button" id="live-mode-prev" class="btn secondary">
+              <i class="fa-solid fa-arrow-left"></i> Previous
+            </button>
+            <button type="button" id="live-mode-next" class="btn secondary">
+              Next <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+          <div id="live-mode-sidebar-scroll" class="live-mode-sidebar-scroll">
+            <div id="live-mode-sidebar-content" class="live-mode-sidebar-content"></div>
+          </div>
+          <div id="live-mode-upcoming" class="live-mode-upcoming"></div>
+        </aside>
+        <main class="live-mode-main">
+          <div id="live-mode-viewer" class="live-mode-viewer">
+            <div id="live-mode-viewer-stage" class="live-mode-viewer-stage">
+              <div class="live-mode-empty-state">
+                <i class="fa-solid fa-file-lines"></i>
+                <h3>No resource selected</h3>
+                <p>Select a chart or resource from the left pane to open it here.</p>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   </div>
