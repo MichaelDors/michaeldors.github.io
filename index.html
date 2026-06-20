@@ -1296,6 +1296,21 @@
       justify-content: center;
     }
 
+    .hero-update-chip {
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      padding: 0.38rem 0.8rem;
+      border-radius: 999px;
+      border: 1px dashed color-mix(in srgb, var(--text-main) 22%, transparent);
+      background: transparent;
+      color: var(--text-subtle);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      line-height: 1;
+    }
+
     .title {
       margin: 0;
       font-size: clamp(2.5rem, 8vw, 4rem);
@@ -2719,6 +2734,7 @@
     <div class="sticker-layer" id="stickerLayer" aria-hidden="true"></div>
 
     <section class="hero" id="heroSection">
+      <p class="hero-update-chip" role="status">Site being updated</p>
       <h1 class="title" id="heroText">Creating digital experiences that make brands feel like themselves.</h1>
       <a href="projects.html" class="btn primary" id="mainButton">Discover More</a>
     </section>
