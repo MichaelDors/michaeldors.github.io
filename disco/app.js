@@ -127,7 +127,7 @@ function renderArtistPage(container, artist, releases) {
 
   container.innerHTML = `
     <section class="artist-hero">
-      <img class="artist-photo" src="${artist.imageUrl}" alt="${artist.name}" />
+      <img class="artist-photo" src="${artist.lowResImageUrl || artist.imageUrl}" data-high-res="${artist.imageUrl}" alt="${artist.name}" id="artistPhoto" />
       <h1 class="artist-title">${artist.name}</h1>
       <div class="artist-actions">
         ${socialsHtml}
@@ -159,6 +159,14 @@ function renderArtistPage(container, artist, releases) {
       Powered by <img src="https://raw.githubusercontent.com/MichaelDors/straightouttacomp/refs/heads/main/disco_light.png" alt="Disco" class="footer-icon"> by Michael Dors
     </footer>
   `;
+
+  // Progressive image load for artist pfp
+  const img = document.getElementById("artistPhoto");
+  if (img && img.dataset.highRes && img.src !== img.dataset.highRes) {
+    const highRes = new Image();
+    highRes.src = img.dataset.highRes;
+    highRes.onload = () => { img.src = highRes.src; };
+  }
 }
 
 function renderReleasePage(container, headerContainer, artist, release) {
@@ -168,7 +176,7 @@ function renderReleasePage(container, headerContainer, artist, release) {
     <header id="stickyHeader" class="sticky-header" aria-hidden="true" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
       <div class="sticky-header-content">
         <div class="sticky-cover-wrapper album-art-frame">
-          <img src="${release.coverUrl}" alt="" class="sticky-cover" />
+          <img src="${release.lowResCoverUrl || release.coverUrl}" data-high-res="${release.coverUrl}" alt="" class="sticky-cover" id="stickyCoverImg" />
         </div>
         <div class="sticky-meta">
           <span class="sticky-title">${release.title}</span>
@@ -191,7 +199,7 @@ function renderReleasePage(container, headerContainer, artist, release) {
     <div class="sticker-layer" id="stickerLayer" aria-hidden="true"></div>
     <section class="hero">
       <div class="cover-frame album-art-frame">
-        <img class="cover" id="albumCover" src="${release.coverUrl}" alt="${release.title} cover art" />
+        <img class="cover" id="albumCover" src="${release.lowResCoverUrl || release.coverUrl}" data-high-res="${release.coverUrl}" alt="${release.title} cover art" />
       </div>
       <div class="meta">
         <h1 class="title" id="albumTitle">${release.title}</h1>
@@ -230,6 +238,21 @@ function renderReleasePage(container, headerContainer, artist, release) {
 }
 
 function initInteractiveFeatures(release) {
+  // Progressive image load for release covers
+  const albumCover = document.getElementById("albumCover");
+  const stickyCoverImg = document.getElementById("stickyCoverImg");
+  
+  if (albumCover && albumCover.dataset.highRes && albumCover.src !== albumCover.dataset.highRes) {
+    const highRes = new Image();
+    highRes.src = albumCover.dataset.highRes;
+    highRes.onload = () => { albumCover.src = highRes.src; };
+  }
+  if (stickyCoverImg && stickyCoverImg.dataset.highRes && stickyCoverImg.src !== stickyCoverImg.dataset.highRes) {
+    const highRes = new Image();
+    highRes.src = stickyCoverImg.dataset.highRes;
+    highRes.onload = () => { stickyCoverImg.src = highRes.src; };
+  }
+
   // Sticky header elements
   const stickyHeader = document.getElementById("stickyHeader");
   const artistElement = document.getElementById("artistName");

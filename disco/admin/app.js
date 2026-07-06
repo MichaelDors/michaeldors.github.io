@@ -231,6 +231,7 @@ window.editArtist = (id) => {
   document.getElementById("artist-name").value = a.name;
   document.getElementById("artist-slug").value = a.slug;
   document.getElementById("artist-image").value = a.imageUrl;
+  document.getElementById("artist-lowres-image").value = a.lowResImageUrl || "";
   document.getElementById("artist-about").value = a.about || "";
   document.getElementById("artist-about-images").value = a.aboutImageUrls?.join(",") || "";
   
@@ -244,6 +245,7 @@ window.editArtist = (id) => {
 newArtistBtn.addEventListener("click", () => {
   document.getElementById("artist-id").value = "";
   artistForm.reset();
+  document.getElementById("artist-lowres-image").value = "";
   const builder = document.getElementById("artist-socials-builder");
   builder.innerHTML = "";
   createLinkRow(builder, { label: "Instagram", className: "instagram", url: "" });
@@ -252,6 +254,62 @@ newArtistBtn.addEventListener("click", () => {
 
 document.getElementById("add-social-btn").addEventListener("click", () => {
   createLinkRow(document.getElementById("artist-socials-builder"), { label: "", className: "instagram", url: "" });
+});
+
+document.getElementById("import-artist-itunes").addEventListener("click", async () => {
+  let name = document.getElementById("artist-name").value;
+  if (!name) {
+    name = prompt("Enter Artist Name to search on iTunes:");
+    if (!name) return;
+    document.getElementById("artist-name").value = name;
+  }
+  
+  const btn = document.getElementById("import-artist-itunes");
+  const originalText = btn.textContent;
+  btn.textContent = "Searching...";
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(name)}&entity=musicArtist&limit=1`);
+    const json = await res.json();
+    if (!json.results || json.results.length === 0) {
+      alert("Artist not found on iTunes.");
+      return;
+    }
+    
+    const artist = json.results[0];
+    document.getElementById("artist-name").value = artist.artistName;
+    document.getElementById("artist-slug").value = artist.artistName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+    if (artist.artistLinkUrl) {
+      btn.textContent = "Fetching PFP...";
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(artist.artistLinkUrl)}`;
+      const proxyRes = await fetch(proxyUrl);
+      const proxyJson = await proxyRes.json();
+      const html = proxyJson.contents;
+      
+      const ogImageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) || 
+                           html.match(/<meta\s+content="([^"]+)"\s+property="og:image"/i);
+      
+      if (ogImageMatch && ogImageMatch[1]) {
+        const fullUrl = ogImageMatch[1];
+        const artworkRegex = /\/(\d+)x(\d+)(.*?)\.(jpg|png|jpeg|webp)/i;
+        const highRes = fullUrl.replace(artworkRegex, "/1000x1000$3.$4");
+        const lowRes = fullUrl.replace(artworkRegex, "/100x100$3.$4");
+        
+        document.getElementById("artist-image").value = highRes;
+        document.getElementById("artist-lowres-image").value = lowRes;
+      } else {
+        alert("PFP found on Apple Music, but could not parse image. Please add manually.");
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error importing from iTunes: " + err.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
 });
 
 cancelArtistBtn.addEventListener("click", () => { artistForm.classList.add("hidden"); });
@@ -264,6 +322,7 @@ artistForm.addEventListener("submit", async (e) => {
     name: document.getElementById("artist-name").value,
     slug: document.getElementById("artist-slug").value,
     imageUrl: document.getElementById("artist-image").value,
+    lowResImageUrl: document.getElementById("artist-lowres-image").value || undefined,
     about: document.getElementById("artist-about").value,
     aboutImageUrls: document.getElementById("artist-about-images").value.split(",").map(s => s.trim()).filter(Boolean),
     socials: getLinksFromBuilder(document.getElementById("artist-socials-builder"))
@@ -291,6 +350,7 @@ window.editRelease = (id) => {
   document.getElementById("release-type").value = r.type;
   document.getElementById("release-year").value = r.year;
   document.getElementById("release-cover").value = r.coverUrl;
+  document.getElementById("release-lowres-cover").value = r.lowResCoverUrl || "";
   document.getElementById("release-date").value = r.releaseAtUtc || "";
   document.getElementById("release-about").value = r.about || "";
   document.getElementById("release-stickers").value = r.stickerUrls?.join(",") || "";
@@ -307,6 +367,7 @@ window.editRelease = (id) => {
 newReleaseBtn.addEventListener("click", () => {
   document.getElementById("release-id").value = "";
   releaseForm.reset();
+  document.getElementById("release-lowres-cover").value = "";
   const builder = document.getElementById("release-links-builder");
   builder.innerHTML = "";
   createLinkRow(builder, { label: "Spotify", className: "spotify", url: "" });
@@ -315,6 +376,59 @@ newReleaseBtn.addEventListener("click", () => {
 
 document.getElementById("add-link-btn").addEventListener("click", () => {
   createLinkRow(document.getElementById("release-links-builder"), { label: "", className: "spotify", url: "" });
+});
+
+document.getElementById("import-release-itunes").addEventListener("click", async () => {
+  let title = document.getElementById("release-title").value;
+  if (!title) {
+    title = prompt("Enter Album Name to search on iTunes:");
+    if (!title) return;
+    document.getElementById("release-title").value = title;
+  }
+
+  const btn = document.getElementById("import-release-itunes");
+  const originalText = btn.textContent;
+  btn.textContent = "Searching...";
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(title)}&entity=album&limit=1`);
+    const json = await res.json();
+    if (!json.results || json.results.length === 0) {
+      alert("Album not found on iTunes.");
+      return;
+    }
+
+    const album = json.results[0];
+    document.getElementById("release-title").value = album.collectionName;
+    document.getElementById("release-slug").value = album.collectionName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    document.getElementById("release-type").value = album.trackCount > 3 ? "Album" : "Single";
+    document.getElementById("release-year").value = album.releaseDate.substring(0, 4);
+    document.getElementById("release-date").value = album.releaseDate;
+
+    const imgUrl = album.artworkUrl100;
+    const artworkRegex = /\/(\d+)x(\d+)(.*?)\.(jpg|png|jpeg|webp)/i;
+    const highRes = imgUrl.replace(artworkRegex, "/3000x3000$3.$4");
+    const lowRes = imgUrl.replace(artworkRegex, "/100x100$3.$4");
+    
+    document.getElementById("release-cover").value = highRes;
+    document.getElementById("release-lowres-cover").value = lowRes;
+
+    if (album.collectionViewUrl) {
+      const builder = document.getElementById("release-links-builder");
+      const existingRows = getLinksFromBuilder(builder);
+      const hasApple = existingRows.some(l => l.className === "apple");
+      if (!hasApple) {
+        createLinkRow(builder, { label: "Apple Music", className: "apple", url: album.collectionViewUrl });
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error importing from iTunes: " + err.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
 });
 
 cancelReleaseBtn.addEventListener("click", () => { releaseForm.classList.add("hidden"); });
@@ -330,6 +444,7 @@ releaseForm.addEventListener("submit", async (e) => {
     type: document.getElementById("release-type").value,
     year: document.getElementById("release-year").value,
     coverUrl: document.getElementById("release-cover").value,
+    lowResCoverUrl: document.getElementById("release-lowres-cover").value || undefined,
     releaseAtUtc: document.getElementById("release-date").value,
     about: document.getElementById("release-about").value,
     stickerUrls: document.getElementById("release-stickers").value.split(",").map(s => s.trim()).filter(Boolean),

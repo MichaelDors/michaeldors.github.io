@@ -83,7 +83,14 @@
           <input type="hidden" id="artist-id" />
           <div class="form-group"><label>Name</label><input type="text" id="artist-name" required /></div>
           <div class="form-group"><label>Slug</label><input type="text" id="artist-slug" required /></div>
-          <div class="form-group"><label>Image URL</label><input type="url" id="artist-image" required /></div>
+          <div class="form-group">
+            <label>Image URL</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="url" id="artist-image" required />
+              <button type="button" id="import-artist-itunes" style="white-space: nowrap; background: #34c759;">Import from iTunes</button>
+            </div>
+          </div>
+          <div class="form-group"><label>Low-Res Image URL (Optional)</label><input type="url" id="artist-lowres-image" /></div>
           <div class="form-group"><label>About</label><textarea id="artist-about" rows="4"></textarea></div>
           <div class="form-group"><label>About Image URLs (comma separated)</label><input type="text" id="artist-about-images" /></div>
           <div class="form-group">
@@ -108,7 +115,14 @@
           <div class="form-group"><label>Slug</label><input type="text" id="release-slug" required /></div>
           <div class="form-group"><label>Type (e.g. Album)</label><input type="text" id="release-type" required /></div>
           <div class="form-group"><label>Year</label><input type="text" id="release-year" required /></div>
-          <div class="form-group"><label>Cover URL</label><input type="url" id="release-cover" required /></div>
+          <div class="form-group">
+            <label>Cover URL</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="url" id="release-cover" required />
+              <button type="button" id="import-release-itunes" style="white-space: nowrap; background: #34c759;">Import from iTunes</button>
+            </div>
+          </div>
+          <div class="form-group"><label>Low-Res Cover URL (Optional)</label><input type="url" id="release-lowres-cover" /></div>
           <div class="form-group"><label>Release Date UTC</label><input type="text" id="release-date" placeholder="e.g. July 3, 2026 00:00:00" /></div>
           <div class="form-group"><label>About</label><textarea id="release-about" rows="4"></textarea></div>
           <div class="form-group"><label>Sticker URLs (comma separated)</label><input type="text" id="release-stickers" /></div>
