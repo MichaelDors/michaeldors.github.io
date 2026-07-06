@@ -115,6 +115,15 @@ body {
   position: relative;
 }
 
+.artist-pfp-wrapper {
+  border-radius: 50% !important;
+}
+
+.artist-pfp-wrapper::before,
+.artist-pfp-wrapper::after {
+  border-radius: 50% !important;
+}
+
 .release-cover::before {
   content: "";
   position: absolute;

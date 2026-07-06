@@ -94,8 +94,8 @@ function renderArtistDirectory(container, artists) {
       <div class="release-grid">
         ${artists.map(artist => `
           <a class="release-card" href="/disco/${artist.slug}" onclick="navigate(event, '/disco/${artist.slug}')">
-            <div class="release-cover">
-              <img src="${artist.imageUrl}" alt="${artist.name}" />
+            <div class="release-cover artist-pfp-wrapper">
+              <img class="directory-pfp" src="${artist.lowResImageUrl || artist.imageUrl}" data-high-res="${artist.imageUrl}" alt="${artist.name}" />
             </div>
             <h3 class="release-title" style="text-align: center;">${artist.name}</h3>
           </a>
@@ -103,6 +103,16 @@ function renderArtistDirectory(container, artists) {
       </div>
     </section>
   `;
+
+  // Progressive image load for directory pfps
+  const pfps = container.querySelectorAll(".directory-pfp");
+  pfps.forEach(img => {
+    if (img.dataset.highRes && img.src !== img.dataset.highRes) {
+      const highRes = new Image();
+      highRes.src = img.dataset.highRes;
+      highRes.onload = () => { img.src = highRes.src; };
+    }
+  });
 }
 
 function renderArtistPage(container, artist, releases) {

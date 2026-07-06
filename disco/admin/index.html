@@ -5,54 +5,196 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Disco Admin</title>
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f5f5f7;
-      color: #333;
-      margin: 0;
-      padding: 40px;
+    :root {
+      --bg: #000000;
+      --text-main: #f5f5f7;
+      --text-subtle: #a1a1aa;
+      --btn-sheen: rgba(255, 255, 255, 0.05);
+      --btn-inner-top: rgba(255, 255, 255, 0.3);
+      --btn-inner-glow: rgba(255, 255, 255, 0.3);
+      --radius-cover: 24px;
+      --radius-button: 12px;
+      
+      --card-bg: #121214;
+      --border: rgba(255, 255, 255, 0.08);
+      --input-bg: #1e1e22;
+      --primary: #0a84ff;
     }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f5f5f7;
+        --text-main: #111111;
+        --text-subtle: #636366;
+        --btn-sheen: rgba(255, 255, 255, 0.35);
+        --btn-inner-top: rgba(255, 255, 255, 0.6);
+        --btn-inner-glow: rgba(255, 255, 255, 0.35);
+        
+        --card-bg: #ffffff;
+        --border: rgba(0, 0, 0, 0.08);
+        --input-bg: #f5f5f7;
+        --primary: #007aff;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      margin: 0;
+      padding: 40px 20px;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
     .container {
       max-width: 800px;
       margin: 0 auto;
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: var(--card-bg);
+      padding: 40px;
+      border-radius: var(--radius-cover);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
     }
-    h1, h2 { margin-top: 0; }
+
+    h1, h2 {
+      margin-top: 0;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
     .form-group {
-      margin-bottom: 15px;
+      margin-bottom: 20px;
     }
+
     label {
       display: block;
-      font-weight: bold;
-      margin-bottom: 5px;
+      font-size: 0.9rem;
+      color: var(--text-subtle);
+      margin-bottom: 8px;
+      font-weight: 600;
+      letter-spacing: -0.012em;
     }
+
     input, textarea, select {
       width: 100%;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
+      padding: 12px 16px;
+      background: var(--input-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-button);
       font-size: 1rem;
       box-sizing: border-box;
     }
-    button {
-      background: #007aff;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      font-size: 1rem;
-      border-radius: 6px;
-      cursor: pointer;
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
     }
-    button:hover { background: #005bb5; }
+
+    /* MATCHING PILL BUTTONS WITH CLIENT GLOSSY EFFECT */
+    button {
+      border: none;
+      border-radius: 6rem;
+      padding: 0.6rem 1.4rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: all 0.5s ease;
+      color: #ffffff;
+      background: var(--primary);
+      text-decoration: none;
+      box-sizing: border-box;
+    }
+
+    button::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 6rem;
+      background: linear-gradient(to bottom right, var(--btn-sheen), transparent);
+      pointer-events: none;
+      mix-blend-mode: screen;
+      z-index: 100;
+    }
+
+    button::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 6rem;
+      pointer-events: none;
+      z-index: 100;
+      box-shadow: inset 0 1.54px 0 var(--btn-inner-top), inset 0 0 18px var(--btn-inner-glow);
+    }
+
+    button:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    #import-artist-itunes, #import-release-itunes {
+      background: #30d158; /* Success green */
+    }
+
+    #add-social-btn, #add-link-btn {
+      background: #8e8e93; /* Neutral gray */
+    }
+
+    .list-item button {
+      background: #ff453a; /* Danger red */
+      padding: 6px 16px;
+      font-size: 0.85rem;
+    }
+
     .hidden { display: none !important; }
     #auth-view { text-align: center; max-width: 400px; margin: 0 auto; }
-    .tabs { margin-bottom: 20px; border-bottom: 1px solid #ccc; display: flex; gap: 10px; }
-    .tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; }
-    .tab.active { border-bottom-color: #007aff; font-weight: bold; }
-    .list-item { padding: 10px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+    .tabs {
+      margin-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 15px;
+    }
+
+    .tab {
+      padding: 12px 8px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      color: var(--text-subtle);
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+
+    .tab:hover {
+      color: var(--text-main);
+    }
+
+    .tab.active {
+      border-bottom-color: var(--primary);
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .list-item {
+      padding: 16px 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-button);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s ease;
+    }
+
+    .list-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
   </style>
 </head>
 <body>
