@@ -111,6 +111,100 @@ async function loadData() {
   }
 }
 
+const platformPresets = [
+  { label: "Spotify", className: "spotify" },
+  { label: "Apple Music", className: "apple" },
+  { label: "YouTube Music", className: "youtube" },
+  { label: "Amazon Music", className: "amazon" },
+  { label: "Deezer", className: "deezer" },
+  { label: "TIDAL", className: "tidal" },
+  { label: "Pandora", className: "pandora" },
+  { label: "Instagram", className: "instagram" },
+  { label: "Custom", className: "custom" },
+];
+
+function createLinkRow(container, initialData = { label: "", className: "spotify", url: "" }) {
+  const row = document.createElement("div");
+  row.style.display = "flex";
+  row.style.gap = "10px";
+  row.style.alignItems = "center";
+  row.style.marginBottom = "5px";
+  
+  const select = document.createElement("select");
+  select.style.width = "120px";
+  select.innerHTML = platformPresets.map(p => `
+    <option value="${p.className}" ${initialData.className === p.className ? "selected" : ""}>${p.label}</option>
+  `).join("");
+  
+  const labelInput = document.createElement("input");
+  labelInput.type = "text";
+  labelInput.placeholder = "Label";
+  labelInput.style.width = "100px";
+  labelInput.value = initialData.label || "";
+  if (initialData.className !== "custom") {
+    labelInput.style.display = "none";
+  }
+
+  select.addEventListener("change", () => {
+    if (select.value === "custom") {
+      labelInput.style.display = "block";
+      labelInput.value = "";
+    } else {
+      labelInput.style.display = "none";
+      const preset = platformPresets.find(p => p.className === select.value);
+      labelInput.value = preset ? preset.label : "";
+    }
+  });
+
+  const urlInput = document.createElement("input");
+  urlInput.type = "url";
+  urlInput.placeholder = "URL";
+  urlInput.style.flex = "1";
+  urlInput.required = true;
+  urlInput.value = initialData.url || "";
+
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.textContent = "✖";
+  removeBtn.style.background = "#ff3b30";
+  removeBtn.style.color = "white";
+  removeBtn.style.padding = "5px 10px";
+  removeBtn.addEventListener("click", () => row.remove());
+
+  row.appendChild(select);
+  row.appendChild(labelInput);
+  row.appendChild(urlInput);
+  row.appendChild(removeBtn);
+  
+  if (initialData.className !== "custom" && !initialData.label) {
+    const preset = platformPresets.find(p => p.className === select.value);
+    labelInput.value = preset ? preset.label : "";
+  }
+
+  container.appendChild(row);
+}
+
+function getLinksFromBuilder(container) {
+  const links = [];
+  const rows = container.children;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const select = row.querySelector("select");
+    const labelInput = row.querySelector("input[placeholder='Label']");
+    const urlInput = row.querySelector("input[placeholder='URL']");
+    if (select && urlInput && urlInput.value) {
+      links.push({
+        label: labelInput.value || select.options[select.selectedIndex].text,
+        className: select.value,
+        url: urlInput.value
+      });
+    }
+  }
+  return links;
+}
+
+let currentReleases = [];
+
 function renderArtists(artists) {
   artistsList.innerHTML = artists.map(a => `
     <div class="list-item">
@@ -121,6 +215,7 @@ function renderArtists(artists) {
 }
 
 function renderReleases(releases) {
+  currentReleases = releases;
   releasesList.innerHTML = releases.map(r => `
     <div class="list-item">
       <div><strong>${r.title}</strong> by ${r.artistName} (${r.slug})</div>
@@ -138,14 +233,25 @@ window.editArtist = (id) => {
   document.getElementById("artist-image").value = a.imageUrl;
   document.getElementById("artist-about").value = a.about || "";
   document.getElementById("artist-about-images").value = a.aboutImageUrls?.join(",") || "";
-  document.getElementById("artist-socials").value = JSON.stringify(a.socials || [], null, 2);
+  
+  const builder = document.getElementById("artist-socials-builder");
+  builder.innerHTML = "";
+  (a.socials || []).forEach(link => createLinkRow(builder, link));
+  
   artistForm.classList.remove("hidden");
 };
 
 newArtistBtn.addEventListener("click", () => {
   document.getElementById("artist-id").value = "";
   artistForm.reset();
+  const builder = document.getElementById("artist-socials-builder");
+  builder.innerHTML = "";
+  createLinkRow(builder, { label: "Instagram", className: "instagram", url: "" });
   artistForm.classList.remove("hidden");
+});
+
+document.getElementById("add-social-btn").addEventListener("click", () => {
+  createLinkRow(document.getElementById("artist-socials-builder"), { label: "", className: "instagram", url: "" });
 });
 
 cancelArtistBtn.addEventListener("click", () => { artistForm.classList.add("hidden"); });
@@ -160,7 +266,7 @@ artistForm.addEventListener("submit", async (e) => {
     imageUrl: document.getElementById("artist-image").value,
     about: document.getElementById("artist-about").value,
     aboutImageUrls: document.getElementById("artist-about-images").value.split(",").map(s => s.trim()).filter(Boolean),
-    socials: JSON.parse(document.getElementById("artist-socials").value)
+    socials: getLinksFromBuilder(document.getElementById("artist-socials-builder"))
   };
   try {
     if (id) {
@@ -174,11 +280,6 @@ artistForm.addEventListener("submit", async (e) => {
     artistError.textContent = err.message;
   }
 });
-
-// Release logic (global access for inline onclick)
-let currentReleases = [];
-const _renderReleases = renderReleases;
-renderReleases = (rels) => { currentReleases = rels; _renderReleases(rels); };
 
 window.editRelease = (id) => {
   const r = currentReleases.find(x => x._id === id);
@@ -194,7 +295,11 @@ window.editRelease = (id) => {
   document.getElementById("release-about").value = r.about || "";
   document.getElementById("release-stickers").value = r.stickerUrls?.join(",") || "";
   document.getElementById("release-about-images").value = r.aboutImageUrls?.join(",") || "";
-  document.getElementById("release-links").value = JSON.stringify(r.links || [], null, 2);
+  
+  const builder = document.getElementById("release-links-builder");
+  builder.innerHTML = "";
+  (r.links || []).forEach(link => createLinkRow(builder, link));
+
   document.getElementById("release-sort").value = r.sortOrder || 0;
   releaseForm.classList.remove("hidden");
 };
@@ -202,7 +307,14 @@ window.editRelease = (id) => {
 newReleaseBtn.addEventListener("click", () => {
   document.getElementById("release-id").value = "";
   releaseForm.reset();
+  const builder = document.getElementById("release-links-builder");
+  builder.innerHTML = "";
+  createLinkRow(builder, { label: "Spotify", className: "spotify", url: "" });
   releaseForm.classList.remove("hidden");
+});
+
+document.getElementById("add-link-btn").addEventListener("click", () => {
+  createLinkRow(document.getElementById("release-links-builder"), { label: "", className: "spotify", url: "" });
 });
 
 cancelReleaseBtn.addEventListener("click", () => { releaseForm.classList.add("hidden"); });
@@ -222,7 +334,7 @@ releaseForm.addEventListener("submit", async (e) => {
     about: document.getElementById("release-about").value,
     stickerUrls: document.getElementById("release-stickers").value.split(",").map(s => s.trim()).filter(Boolean),
     aboutImageUrls: document.getElementById("release-about-images").value.split(",").map(s => s.trim()).filter(Boolean),
-    links: JSON.parse(document.getElementById("release-links").value),
+    links: getLinksFromBuilder(document.getElementById("release-links-builder")),
     sortOrder: parseInt(document.getElementById("release-sort").value, 10) || 0,
   };
   try {

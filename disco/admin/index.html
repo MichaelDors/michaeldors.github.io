@@ -86,7 +86,11 @@
           <div class="form-group"><label>Image URL</label><input type="url" id="artist-image" required /></div>
           <div class="form-group"><label>About</label><textarea id="artist-about" rows="4"></textarea></div>
           <div class="form-group"><label>About Image URLs (comma separated)</label><input type="text" id="artist-about-images" /></div>
-          <div class="form-group"><label>Socials (JSON)</label><textarea id="artist-socials" rows="3">[{"label":"Instagram","className":"instagram","url":""}]</textarea></div>
+          <div class="form-group">
+            <label>Socials</label>
+            <div id="artist-socials-builder" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;"></div>
+            <button type="button" id="add-social-btn" style="background:#34c759; color:white; padding:5px 10px; font-size:0.9rem;">+ Add Social Link</button>
+          </div>
           <button type="submit">Save Artist</button>
           <button type="button" id="cancel-artist-btn" style="background:#ccc; color:#333;">Cancel</button>
           <p id="artist-error" style="color:red;"></p>
@@ -109,7 +113,11 @@
           <div class="form-group"><label>About</label><textarea id="release-about" rows="4"></textarea></div>
           <div class="form-group"><label>Sticker URLs (comma separated)</label><input type="text" id="release-stickers" /></div>
           <div class="form-group"><label>About Image URLs (comma separated)</label><input type="text" id="release-about-images" /></div>
-          <div class="form-group"><label>Links (JSON)</label><textarea id="release-links" rows="3">[{"label":"Spotify","className":"spotify","url":""}]</textarea></div>
+          <div class="form-group">
+            <label>Streaming Links</label>
+            <div id="release-links-builder" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;"></div>
+            <button type="button" id="add-link-btn" style="background:#34c759; color:white; padding:5px 10px; font-size:0.9rem;">+ Add Streaming Link</button>
+          </div>
           <div class="form-group"><label>Sort Order</label><input type="number" id="release-sort" value="0" /></div>
           <button type="submit">Save Release</button>
           <button type="button" id="cancel-release-btn" style="background:#ccc; color:#333;">Cancel</button>
