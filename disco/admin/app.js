@@ -1,8 +1,8 @@
 import { ConvexClient } from "https://esm.sh/convex/browser";
 
 const CONVEX_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-  ? "https://good-capybara-664.convex.cloud/"
-  : "https://giddy-shepherd-959.convex.cloud/";
+  ? "https://good-capybara-664.convex.cloud"
+  : "https://giddy-shepherd-959.convex.cloud";
 const convex = new ConvexClient(CONVEX_URL);
 
 let sessionToken = localStorage.getItem("discoAdminToken");
