@@ -256,56 +256,99 @@ document.getElementById("add-social-btn").addEventListener("click", () => {
   createLinkRow(document.getElementById("artist-socials-builder"), { label: "", className: "instagram", url: "" });
 });
 
+async function fetchHtmlViaProxy(url) {
+  const proxies = [
+    target => `https://corsproxy.io/?${encodeURIComponent(target)}`,
+    target => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(target)}`,
+    target => `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`
+  ];
+
+  for (let i = 0; i < proxies.length; i++) {
+    try {
+      const proxyUrl = proxies[i](url);
+      const res = await fetch(proxyUrl);
+      if (!res.ok) continue;
+      if (proxyUrl.includes("allorigins.win")) {
+        const json = await res.json();
+        if (json && json.contents) return json.contents;
+      } else {
+        const text = await res.text();
+        if (text && text.length > 500) return text;
+      }
+    } catch (e) {
+      console.warn(`Proxy ${i} failed:`, e);
+    }
+  }
+  throw new Error("All CORS proxies failed to fetch the page.");
+}
+
 document.getElementById("import-artist-itunes").addEventListener("click", async () => {
-  let name = document.getElementById("artist-name").value;
-  if (!name) {
-    name = prompt("Enter Artist Name to search on iTunes:");
-    if (!name) return;
-    document.getElementById("artist-name").value = name;
+  let nameOrUrl = document.getElementById("artist-name").value.trim();
+  if (!nameOrUrl) {
+    nameOrUrl = prompt("Enter Artist Name or Apple Music Artist URL to import:");
+    if (!nameOrUrl) return;
+    document.getElementById("artist-name").value = nameOrUrl;
   }
   
   const btn = document.getElementById("import-artist-itunes");
   const originalText = btn.textContent;
-  btn.textContent = "Searching...";
+  btn.textContent = "Importing...";
   btn.disabled = true;
 
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(name)}&entity=musicArtist&limit=1`);
-    const json = await res.json();
-    if (!json.results || json.results.length === 0) {
-      alert("Artist not found on iTunes.");
-      return;
-    }
-    
-    const artist = json.results[0];
-    document.getElementById("artist-name").value = artist.artistName;
-    document.getElementById("artist-slug").value = artist.artistName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    let artistLinkUrl = "";
+    let artistName = "";
 
-    if (artist.artistLinkUrl) {
-      btn.textContent = "Fetching PFP...";
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(artist.artistLinkUrl)}`;
-      const proxyRes = await fetch(proxyUrl);
-      const proxyJson = await proxyRes.json();
-      const html = proxyJson.contents;
+    if (nameOrUrl.startsWith("http")) {
+      artistLinkUrl = nameOrUrl;
+    } else {
+      const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(nameOrUrl)}&entity=musicArtist&limit=1`);
+      const json = await res.json();
+      if (!json.results || json.results.length === 0) {
+        alert("Artist not found on iTunes.");
+        return;
+      }
+      const artist = json.results[0];
+      artistName = artist.artistName;
+      artistLinkUrl = artist.artistLinkUrl;
+      
+      document.getElementById("artist-name").value = artistName;
+      document.getElementById("artist-slug").value = artistName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    }
+
+    if (artistLinkUrl) {
+      btn.textContent = "Scraping PFP...";
+      const html = await fetchHtmlViaProxy(artistLinkUrl);
       
       const ogImageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) || 
-                           html.match(/<meta\s+content="([^"]+)"\s+property="og:image"/i);
+                           html.match(/<meta\s+content="([^"]+)"\s+property="og:image"/i) ||
+                           html.match(/"image"\s*:\s*"([^"]+)"/);
       
       if (ogImageMatch && ogImageMatch[1]) {
         const fullUrl = ogImageMatch[1];
-        const artworkRegex = /\/(\d+)x(\d+)(.*?)\.(jpg|png|jpeg|webp)/i;
-        const highRes = fullUrl.replace(artworkRegex, "/1000x1000$3.$4");
-        const lowRes = fullUrl.replace(artworkRegex, "/100x100$3.$4");
+        const artworkRegex = /\/\d+x\d+[^/]*\.(jpg|png|jpeg|webp)$/i;
+        const highRes = fullUrl.replace(artworkRegex, "/1000x1000.$1");
+        const lowRes = fullUrl.replace(artworkRegex, "/100x100.$1");
         
         document.getElementById("artist-image").value = highRes;
         document.getElementById("artist-lowres-image").value = lowRes;
       } else {
-        alert("PFP found on Apple Music, but could not parse image. Please add manually.");
+        alert("Could not extract PFP from Apple Music page. Please add manually.");
+      }
+
+      if (nameOrUrl.startsWith("http")) {
+        const nameMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+?)\s+on\s+Apple\s+Music"/i) || 
+                          html.match(/<title>‎?([^<]+?)\s+-\s+Apple\s+Music<\/title>/i);
+        if (nameMatch && nameMatch[1]) {
+          artistName = nameMatch[1].trim();
+          document.getElementById("artist-name").value = artistName;
+          document.getElementById("artist-slug").value = artistName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        }
       }
     }
   } catch (err) {
     console.error(err);
-    alert("Error importing from iTunes: " + err.message);
+    alert("Error importing artist: " + err.message);
   } finally {
     btn.textContent = originalText;
     btn.disabled = false;
@@ -379,52 +422,76 @@ document.getElementById("add-link-btn").addEventListener("click", () => {
 });
 
 document.getElementById("import-release-itunes").addEventListener("click", async () => {
-  let title = document.getElementById("release-title").value;
-  if (!title) {
-    title = prompt("Enter Album Name to search on iTunes:");
-    if (!title) return;
-    document.getElementById("release-title").value = title;
+  let titleOrUrl = document.getElementById("release-title").value.trim();
+  if (!titleOrUrl) {
+    titleOrUrl = prompt("Enter Album Name or Apple Music Album URL to import:");
+    if (!titleOrUrl) return;
+    document.getElementById("release-title").value = titleOrUrl;
   }
 
   const btn = document.getElementById("import-release-itunes");
   const originalText = btn.textContent;
-  btn.textContent = "Searching...";
+  btn.textContent = "Importing...";
   btn.disabled = true;
 
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(title)}&entity=album&limit=1`);
-    const json = await res.json();
-    if (!json.results || json.results.length === 0) {
-      alert("Album not found on iTunes.");
-      return;
+    let album = null;
+
+    if (titleOrUrl.startsWith("http")) {
+      const idMatch = titleOrUrl.match(/\/album\/[^/]+\/(\d+)/i) || titleOrUrl.match(/\/album\/(\d+)/i);
+      const albumId = idMatch ? idMatch[1] : null;
+      if (!albumId) {
+        alert("Could not parse Album ID from URL.");
+        return;
+      }
+      const res = await fetch(`https://itunes.apple.com/lookup?id=${albumId}`);
+      const json = await res.json();
+      if (!json.results || json.results.length === 0) {
+        alert("Album not found on iTunes lookup.");
+        return;
+      }
+      album = json.results[0];
+    } else {
+      const artistId = document.getElementById("release-artist").value;
+      const artist = allArtists.find(a => a._id === artistId);
+      const searchTerm = artist ? `${artist.name} ${titleOrUrl}` : titleOrUrl;
+
+      const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=album&limit=1`);
+      const json = await res.json();
+      if (!json.results || json.results.length === 0) {
+        alert("Album not found on iTunes.");
+        return;
+      }
+      album = json.results[0];
     }
 
-    const album = json.results[0];
-    document.getElementById("release-title").value = album.collectionName;
-    document.getElementById("release-slug").value = album.collectionName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    document.getElementById("release-type").value = album.trackCount > 3 ? "Album" : "Single";
-    document.getElementById("release-year").value = album.releaseDate.substring(0, 4);
-    document.getElementById("release-date").value = album.releaseDate;
+    if (album) {
+      document.getElementById("release-title").value = album.collectionName;
+      document.getElementById("release-slug").value = album.collectionName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      document.getElementById("release-type").value = album.trackCount > 3 ? "Album" : "Single";
+      document.getElementById("release-year").value = album.releaseDate.substring(0, 4);
+      document.getElementById("release-date").value = album.releaseDate;
 
-    const imgUrl = album.artworkUrl100;
-    const artworkRegex = /\/(\d+)x(\d+)(.*?)\.(jpg|png|jpeg|webp)/i;
-    const highRes = imgUrl.replace(artworkRegex, "/3000x3000$3.$4");
-    const lowRes = imgUrl.replace(artworkRegex, "/100x100$3.$4");
-    
-    document.getElementById("release-cover").value = highRes;
-    document.getElementById("release-lowres-cover").value = lowRes;
+      const imgUrl = album.artworkUrl100;
+      const artworkRegex = /\/\d+x\d+[^/]*\.(jpg|png|jpeg|webp)$/i;
+      const highRes = imgUrl.replace(artworkRegex, "/3000x3000.$1");
+      const lowRes = imgUrl.replace(artworkRegex, "/100x100.$1");
+      
+      document.getElementById("release-cover").value = highRes;
+      document.getElementById("release-lowres-cover").value = lowRes;
 
-    if (album.collectionViewUrl) {
-      const builder = document.getElementById("release-links-builder");
-      const existingRows = getLinksFromBuilder(builder);
-      const hasApple = existingRows.some(l => l.className === "apple");
-      if (!hasApple) {
-        createLinkRow(builder, { label: "Apple Music", className: "apple", url: album.collectionViewUrl });
+      if (album.collectionViewUrl) {
+        const builder = document.getElementById("release-links-builder");
+        const existingRows = getLinksFromBuilder(builder);
+        const hasApple = existingRows.some(l => l.className === "apple");
+        if (!hasApple) {
+          createLinkRow(builder, { label: "Apple Music", className: "apple", url: album.collectionViewUrl });
+        }
       }
     }
   } catch (err) {
     console.error(err);
-    alert("Error importing from iTunes: " + err.message);
+    alert("Error importing release: " + err.message);
   } finally {
     btn.textContent = originalText;
     btn.disabled = false;
