@@ -102,7 +102,7 @@ async function loadData() {
 
     // Update release form artist dropdown
     const select = document.getElementById("release-artist");
-    select.innerHTML = allArtists.map(a => \`<option value="\${a._id}">\${a.name}</option>\`).join("");
+    select.innerHTML = allArtists.map(a => `<option value="${a._id}">${a.name}</option>`).join("");
   } catch(e) {
     console.error(e);
     if(e.message.includes("Unauthorized")) {
@@ -112,21 +112,21 @@ async function loadData() {
 }
 
 function renderArtists(artists) {
-  artistsList.innerHTML = artists.map(a => \`
+  artistsList.innerHTML = artists.map(a => `
     <div class="list-item">
-      <div><strong>\${a.name}</strong> (\${a.slug})</div>
-      <button onclick="editArtist('\${a._id}')">Edit</button>
+      <div><strong>${a.name}</strong> (${a.slug})</div>
+      <button onclick="editArtist('${a._id}')">Edit</button>
     </div>
-  \`).join("");
+  `).join("");
 }
 
 function renderReleases(releases) {
-  releasesList.innerHTML = releases.map(r => \`
+  releasesList.innerHTML = releases.map(r => `
     <div class="list-item">
-      <div><strong>\${r.title}</strong> by \${r.artistName} (\${r.slug})</div>
-      <button onclick="editRelease('\${r._id}')">Edit</button>
+      <div><strong>${r.title}</strong> by ${r.artistName} (${r.slug})</div>
+      <button onclick="editRelease('${r._id}')">Edit</button>
     </div>
-  \`).join("");
+  `).join("");
 }
 
 window.editArtist = (id) => {

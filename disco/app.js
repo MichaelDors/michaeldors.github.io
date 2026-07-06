@@ -155,7 +155,7 @@ function renderArtistPage(container, artist, releases) {
 }
 
 function renderReleasePage(container, headerContainer, artist, release) {
-  document.title = \`Stream \${release.title}\`;
+  document.title = `Stream ${release.title}`;
 
   headerContainer.innerHTML = `
     <header id="stickyHeader" class="sticky-header" aria-hidden="true" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
@@ -175,10 +175,10 @@ function renderReleasePage(container, headerContainer, artist, release) {
   `;
 
   const linksHtml = release.links?.length > 0
-    ? release.links.map(link => \`<a class="btn \${link.className}" href="\${link.url}" target="_blank" rel="noopener noreferrer">\${link.label}</a>\`).join("")
-    : \`<p class="missing-platform">Streaming links coming soon.</p>\`;
+    ? release.links.map(link => `<a class="btn ${link.className}" href="${link.url}" target="_blank" rel="noopener noreferrer">${link.label}</a>`).join("")
+    : '<p class="missing-platform">Streaming links coming soon.</p>';
 
-  const aboutImagesHtml = release.aboutImageUrls?.map(src => \`<img class="carousel-img" src="\${src}" alt="About This Album" draggable="false" />\`).join("") || "";
+  const aboutImagesHtml = release.aboutImageUrls?.map(src => `<img class="carousel-img" src="${src}" alt="About This Album" draggable="false" />`).join("") || "";
 
   container.innerHTML = `
     <div class="sticker-layer" id="stickerLayer" aria-hidden="true"></div>
