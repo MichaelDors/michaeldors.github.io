@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Disco Admin</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f7;
+      color: #333;
+      margin: 0;
+      padding: 40px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1, h2 { margin-top: 0; }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      background: #007aff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #005bb5; }
+    .hidden { display: none !important; }
+    #auth-view { text-align: center; max-width: 400px; margin: 0 auto; }
+    #dashboard-view { display: none; }
+    .tabs { margin-bottom: 20px; border-bottom: 1px solid #ccc; display: flex; gap: 10px; }
+    .tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; }
+    .tab.active { border-bottom-color: #007aff; font-weight: bold; }
+    .list-item { padding: 10px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="auth-view">
+      <h1>Disco Admin</h1>
+      <form id="login-form">
+        <div class="form-group">
+          <input type="password" id="password" placeholder="Admin Password" required />
+        </div>
+        <button type="submit">Login</button>
+        <p id="login-error" style="color:red;"></p>
+      </form>
+    </div>
+
+    <div id="dashboard-view">
+      <h1>Disco Dashboard</h1>
+      <div class="tabs">
+        <div class="tab active" data-target="artists">Artists</div>
+        <div class="tab" data-target="releases">Releases</div>
+      </div>
+      
+      <div id="artists-panel">
+        <button id="new-artist-btn" style="margin-bottom: 15px;">+ New Artist</button>
+        <div id="artists-list"></div>
+        <form id="artist-form" class="hidden" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+          <h3>Edit Artist</h3>
+          <input type="hidden" id="artist-id" />
+          <div class="form-group"><label>Name</label><input type="text" id="artist-name" required /></div>
+          <div class="form-group"><label>Slug</label><input type="text" id="artist-slug" required /></div>
+          <div class="form-group"><label>Image URL</label><input type="url" id="artist-image" required /></div>
+          <div class="form-group"><label>About</label><textarea id="artist-about" rows="4"></textarea></div>
+          <div class="form-group"><label>About Image URLs (comma separated)</label><input type="text" id="artist-about-images" /></div>
+          <div class="form-group"><label>Socials (JSON)</label><textarea id="artist-socials" rows="3">[{"label":"Instagram","className":"instagram","url":""}]</textarea></div>
+          <button type="submit">Save Artist</button>
+          <button type="button" id="cancel-artist-btn" style="background:#ccc; color:#333;">Cancel</button>
+          <p id="artist-error" style="color:red;"></p>
+        </form>
+      </div>
+
+      <div id="releases-panel" class="hidden">
+        <button id="new-release-btn" style="margin-bottom: 15px;">+ New Release</button>
+        <div id="releases-list"></div>
+        <form id="release-form" class="hidden" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+          <h3>Edit Release</h3>
+          <input type="hidden" id="release-id" />
+          <div class="form-group"><label>Artist</label><select id="release-artist" required></select></div>
+          <div class="form-group"><label>Title</label><input type="text" id="release-title" required /></div>
+          <div class="form-group"><label>Slug</label><input type="text" id="release-slug" required /></div>
+          <div class="form-group"><label>Type (e.g. Album)</label><input type="text" id="release-type" required /></div>
+          <div class="form-group"><label>Year</label><input type="text" id="release-year" required /></div>
+          <div class="form-group"><label>Cover URL</label><input type="url" id="release-cover" required /></div>
+          <div class="form-group"><label>Release Date UTC</label><input type="text" id="release-date" placeholder="e.g. July 3, 2026 00:00:00" /></div>
+          <div class="form-group"><label>About</label><textarea id="release-about" rows="4"></textarea></div>
+          <div class="form-group"><label>Sticker URLs (comma separated)</label><input type="text" id="release-stickers" /></div>
+          <div class="form-group"><label>About Image URLs (comma separated)</label><input type="text" id="release-about-images" /></div>
+          <div class="form-group"><label>Links (JSON)</label><textarea id="release-links" rows="3">[{"label":"Spotify","className":"spotify","url":""}]</textarea></div>
+          <div class="form-group"><label>Sort Order</label><input type="number" id="release-sort" value="0" /></div>
+          <button type="submit">Save Release</button>
+          <button type="button" id="cancel-release-btn" style="background:#ccc; color:#333;">Cancel</button>
+          <p id="release-error" style="color:red;"></p>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/disco/admin/app.js"></script>
+</body>
+</html>
