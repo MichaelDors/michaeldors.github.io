@@ -296,55 +296,137 @@ document.getElementById("import-artist-itunes").addEventListener("click", async 
   btn.disabled = true;
 
   try {
-    let artistLinkUrl = "";
     let artistName = "";
+    let artistLinkUrl = "";
 
     if (nameOrUrl.startsWith("http")) {
-      artistLinkUrl = nameOrUrl;
-    } else {
-      const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(nameOrUrl)}&entity=musicArtist&limit=1`);
-      const json = await res.json();
-      if (!json.results || json.results.length === 0) {
-        alert("Artist not found on iTunes.");
-        return;
-      }
-      const artist = json.results[0];
-      artistName = artist.artistName;
-      artistLinkUrl = artist.artistLinkUrl;
-      
-      document.getElementById("artist-name").value = artistName;
-      document.getElementById("artist-slug").value = artistName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    }
-
-    if (artistLinkUrl) {
-      btn.textContent = "Scraping PFP...";
-      const html = await fetchHtmlViaProxy(artistLinkUrl);
-      
-      const ogImageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) || 
-                           html.match(/<meta\s+content="([^"]+)"\s+property="og:image"/i) ||
-                           html.match(/"image"\s*:\s*"([^"]+)"/);
-      
-      if (ogImageMatch && ogImageMatch[1]) {
-        const fullUrl = ogImageMatch[1];
-        const artworkRegex = /\/\d+x\d+[^/]*\.(jpg|png|jpeg|webp)$/i;
-        const highRes = fullUrl.replace(artworkRegex, "/1000x1000.$1");
-        const lowRes = fullUrl.replace(artworkRegex, "/100x100.$1");
-        
-        document.getElementById("artist-image").value = highRes;
-        document.getElementById("artist-lowres-image").value = lowRes;
-      } else {
-        alert("Could not extract PFP from Apple Music page. Please add manually.");
-      }
-
-      if (nameOrUrl.startsWith("http")) {
-        const nameMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+?)\s+on\s+Apple\s+Music"/i) || 
-                          html.match(/<title>‎?([^<]+?)\s+-\s+Apple\s+Music<\/title>/i);
-        if (nameMatch && nameMatch[1]) {
-          artistName = nameMatch[1].trim();
-          document.getElementById("artist-name").value = artistName;
-          document.getElementById("artist-slug").value = artistName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      const idMatch = nameOrUrl.match(/\/artist\/[^/]+\/(\d+)/i) || nameOrUrl.match(/\/artist\/(\d+)/i);
+      const artistId = idMatch ? idMatch[1] : null;
+      if (artistId) {
+        btn.textContent = "Resolving name...";
+        const res = await fetch(`https://itunes.apple.com/lookup?id=${artistId}`);
+        const json = await res.json();
+        if (json.results && json.results.length > 0) {
+          artistName = json.results[0].artistName;
+          artistLinkUrl = json.results[0].artistLinkUrl || nameOrUrl;
         }
       }
+      if (!artistName) {
+        const pathParts = nameOrUrl.split("/artist/")[1]?.split("/");
+        if (pathParts && pathParts[0]) {
+          artistName = decodeURIComponent(pathParts[0]).replace(/-/g, " ");
+        }
+        artistLinkUrl = nameOrUrl;
+      }
+    } else {
+      btn.textContent = "Searching iTunes...";
+      const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(nameOrUrl)}&entity=musicArtist&limit=1`);
+      const json = await res.json();
+      if (json.results && json.results.length > 0) {
+        artistName = json.results[0].artistName;
+        artistLinkUrl = json.results[0].artistLinkUrl;
+      } else {
+        artistName = nameOrUrl;
+      }
+    }
+
+    if (!artistName) {
+      alert("Could not determine artist name.");
+      return;
+    }
+
+    document.getElementById("artist-name").value = artistName;
+    document.getElementById("artist-slug").value = artistName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+    let imageImported = false;
+
+    // A. Try official Apple Music profile picture scraping via Convex server-side Action
+    if (artistLinkUrl) {
+      try {
+        btn.textContent = "Scraping Apple Music...";
+        const rawPfpUrl = await convex.action("actions:fetchArtistPfp", { artistLinkUrl });
+        if (rawPfpUrl) {
+          const artworkRegex = /\/\d+x\d+[^/]*\.(jpg|png|jpeg|webp)$/i;
+          const highRes = rawPfpUrl.replace(artworkRegex, "/1000x1000.$1");
+          const lowRes = rawPfpUrl.replace(artworkRegex, "/100x100.$1");
+          
+          document.getElementById("artist-image").value = highRes;
+          document.getElementById("artist-lowres-image").value = lowRes;
+          imageImported = true;
+          console.log("Successfully scraped AM profile picture via Convex Action");
+        }
+      } catch (e) {
+        console.warn("Convex server-side scrape failed:", e);
+      }
+    }
+
+    // B. Try Wikidata (CORS-free, clean Wikimedia Commons photos)
+    if (!imageImported) {
+      try {
+        btn.textContent = "Checking Wikidata...";
+        const searchUrl = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(artistName)}&language=en&format=json&origin=*`;
+        const searchRes = await fetch(searchUrl);
+        if (searchRes.ok) {
+          const searchJson = await searchRes.json();
+          if (searchJson.search && searchJson.search.length > 0) {
+            const entityId = searchJson.search[0].id;
+            const entityUrl = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${entityId}&props=claims&format=json&origin=*`;
+            const entityRes = await fetch(entityUrl);
+            if (entityRes.ok) {
+              const entityJson = await entityRes.json();
+              const claims = entityJson.entities[entityId].claims;
+              const p18 = claims.P18;
+              if (p18 && p18.length > 0 && p18[0].mainsnak && p18[0].mainsnak.datavalue) {
+                const filename = p18[0].mainsnak.datavalue.value;
+                btn.textContent = "Resolving image...";
+                
+                const getCommonsUrl = async (width) => {
+                  const commonsUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=File:${encodeURIComponent(filename)}&prop=imageinfo&iiprop=url&iiurlwidth=${width}&format=json&origin=*`;
+                  const res = await fetch(commonsUrl);
+                  const json = await res.json();
+                  const pages = json.query.pages;
+                  const pageId = Object.keys(pages)[0];
+                  return pages[pageId].imageinfo[0].thumburl || pages[pageId].imageinfo[0].url;
+                };
+                
+                const highRes = await getCommonsUrl(1000);
+                const lowRes = await getCommonsUrl(100);
+                
+                document.getElementById("artist-image").value = highRes;
+                document.getElementById("artist-lowres-image").value = lowRes;
+                imageImported = true;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Wikidata import failed:", e);
+      }
+    }
+
+    // C. iTunes Top Album Cover fallback
+    if (!imageImported) {
+      try {
+        btn.textContent = "Using top album artwork...";
+        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=album&limit=1`);
+        const json = await res.json();
+        if (json.results && json.results.length > 0) {
+          const imgUrl = json.results[0].artworkUrl100;
+          const artworkRegex = /\/\d+x\d+[^/]*\.(jpg|png|jpeg|webp)$/i;
+          const highRes = imgUrl.replace(artworkRegex, "/1000x1000.$1");
+          const lowRes = imgUrl.replace(artworkRegex, "/100x100.$1");
+          
+          document.getElementById("artist-image").value = highRes;
+          document.getElementById("artist-lowres-image").value = lowRes;
+          imageImported = true;
+        }
+      } catch (e) {
+        console.warn("iTunes top album fallback failed:", e);
+      }
+    }
+
+    if (!imageImported) {
+      alert("Autofilled metadata, but could not retrieve artist photo automatically. Please paste the image URL manually.");
     }
   } catch (err) {
     console.error(err);
