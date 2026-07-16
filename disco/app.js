@@ -321,7 +321,6 @@ function initInteractiveFeatures(release) {
   // --- STICKER SYSTEM ---
   const hero = document.querySelector(".hero");
   const stickerLayer = document.getElementById("stickerLayer");
-  const albumCover = document.getElementById("albumCover");
   const actions = document.querySelector(".actions");
   const title = document.getElementById("albumTitle");
   const artist = document.getElementById("artistName");
