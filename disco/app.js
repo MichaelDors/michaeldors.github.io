@@ -24,11 +24,11 @@ async function route() {
 
   const appRoot = document.getElementById("app-root");
   const headerContainer = document.getElementById("header-container");
-  
+
   // Clear loading state
   appRoot.innerHTML = '<div class="loader"></div>';
   headerContainer.innerHTML = '';
-  
+
   const path = window.location.pathname.replace(/\/$/, "");
   const segments = path.replace("/disco", "").split("/").filter(Boolean);
 
@@ -222,7 +222,7 @@ function renderReleasePage(container, headerContainer, artist, release) {
       <div class="actions">
         ${linksHtml}
       </div>
-      <p class="missing-platform">Don't see your favorite platform? We may still be there!</p>
+      <p class="missing-platform">Don't see your favorite platform? This release may still be there!</p>
     </section>
 
     ${release.about ? `
@@ -251,7 +251,7 @@ function initInteractiveFeatures(release) {
   // Progressive image load for release covers
   const albumCover = document.getElementById("albumCover");
   const stickyCoverImg = document.getElementById("stickyCoverImg");
-  
+
   if (albumCover && albumCover.dataset.highRes && albumCover.src !== albumCover.dataset.highRes) {
     const highRes = new Image();
     highRes.src = albumCover.dataset.highRes;
@@ -312,7 +312,7 @@ function initInteractiveFeatures(release) {
     if (countdownEl) countdownEl.textContent = timeStr;
     if (stickyCountdownEl) stickyCountdownEl.textContent = timeStr;
   }
-  
+
   if (targetDate) {
     renderCountdown();
     countdownInterval = setInterval(renderCountdown, 1000);
@@ -328,7 +328,7 @@ function initInteractiveFeatures(release) {
   const carouselTrack = document.getElementById("carouselTrack");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const storageKey = `stickerLayout${release.slug}.v1`;
-  
+
   let dragState = null;
   let zCounter = 40;
   let imageMetaCache = {};
@@ -358,7 +358,7 @@ function initInteractiveFeatures(release) {
     state[id] = data;
     try {
       localStorage.setItem(storageKey, JSON.stringify(state));
-    } catch (error) {}
+    } catch (error) { }
   }
 
   function randomInRange(min, max) {
@@ -909,7 +909,7 @@ function initInteractiveFeatures(release) {
     if (stickerData.el.hasPointerCapture(event.pointerId)) {
       try {
         stickerData.el.releasePointerCapture(event.pointerId);
-      } catch (e) {}
+      } catch (e) { }
     }
     stickerData.el.classList.remove("dragging");
 
@@ -1197,7 +1197,7 @@ function initInteractiveFeatures(release) {
       if (dragState.sticker.el.hasPointerCapture(dragState.pointerId)) {
         try {
           dragState.sticker.el.releasePointerCapture(dragState.pointerId);
-        } catch (error) {}
+        } catch (error) { }
       }
       dragState.sticker.el.classList.remove("dragging");
       dragState = null;
@@ -1205,7 +1205,7 @@ function initInteractiveFeatures(release) {
 
     try {
       localStorage.removeItem(storageKey);
-    } catch (error) {}
+    } catch (error) { }
 
     loadAllImageMeta(stickerSources).then(metaBySource => {
       mountStickers(metaBySource);
@@ -1279,7 +1279,7 @@ function initInteractiveFeatures(release) {
   };
 }
 
-window.navigate = function(event, path) {
+window.navigate = function (event, path) {
   event.preventDefault();
   event.stopPropagation();
   window.history.pushState(null, null, path);
