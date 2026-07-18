@@ -335,7 +335,7 @@ function initInteractiveFeatures(release) {
   const stickerSources = release.stickerUrls || [];
   let activeStickers = [];
 
-  if (!hero || !stickerLayer || !albumCover || !actions || stickerSources.length === 0) {
+  if (!hero || !stickerLayer || !albumCover || !actions) {
     return () => {
       window.removeEventListener("scroll", checkScroll);
       if (countdownInterval) clearInterval(countdownInterval);
