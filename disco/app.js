@@ -222,7 +222,7 @@ function renderReleasePage(container, headerContainer, artist, release) {
       <div class="actions">
         ${linksHtml}
       </div>
-      <p class="missing-platform">Don't see your favorite platform? This release may still be there!</p>
+      <p class="missing-platform">Don't see your favorite platform? This release may still be there.</p>
     </section>
 
     ${release.about ? `
