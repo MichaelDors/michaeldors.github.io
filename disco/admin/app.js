@@ -120,10 +120,11 @@ const platformPresets = [
   { label: "TIDAL", className: "tidal" },
   { label: "Pandora", className: "pandora" },
   { label: "Instagram", className: "instagram" },
+  { label: "Pre-Save", className: "presave" },
   { label: "Custom", className: "custom" },
 ];
 
-function createLinkRow(container, initialData = { label: "", className: "spotify", url: "" }) {
+function createLinkRow(container, initialData = { label: "", className: "spotify", url: "", openInIframe: false }) {
   const row = document.createElement("div");
   row.style.display = "flex";
   row.style.gap = "10px";
@@ -141,18 +142,38 @@ function createLinkRow(container, initialData = { label: "", className: "spotify
   labelInput.placeholder = "Label";
   labelInput.style.width = "100px";
   labelInput.value = initialData.label || "";
-  if (initialData.className !== "custom") {
+  if (initialData.className !== "custom" && initialData.className !== "presave") {
     labelInput.style.display = "none";
   }
 
+  const iframeLabel = document.createElement("label");
+  iframeLabel.style.display = "flex";
+  iframeLabel.style.alignItems = "center";
+  iframeLabel.style.gap = "4px";
+  iframeLabel.style.fontSize = "12px";
+  iframeLabel.style.whiteSpace = "nowrap";
+  iframeLabel.style.cursor = "pointer";
+  
+  const iframeCheckbox = document.createElement("input");
+  iframeCheckbox.type = "checkbox";
+  iframeCheckbox.className = "link-iframe-checkbox";
+  iframeCheckbox.checked = initialData.openInIframe || initialData.className === "presave";
+  
+  iframeLabel.appendChild(iframeCheckbox);
+  iframeLabel.appendChild(document.createTextNode("Iframe Modal"));
+
   select.addEventListener("change", () => {
-    if (select.value === "custom") {
+    if (select.value === "custom" || select.value === "presave") {
       labelInput.style.display = "block";
-      labelInput.value = "";
+      if (select.value === "presave") {
+        labelInput.value = labelInput.value || "Pre-Save";
+        iframeCheckbox.checked = true;
+      }
     } else {
       labelInput.style.display = "none";
       const preset = platformPresets.find(p => p.className === select.value);
       labelInput.value = preset ? preset.label : "";
+      iframeCheckbox.checked = false;
     }
   });
 
@@ -174,9 +195,10 @@ function createLinkRow(container, initialData = { label: "", className: "spotify
   row.appendChild(select);
   row.appendChild(labelInput);
   row.appendChild(urlInput);
+  row.appendChild(iframeLabel);
   row.appendChild(removeBtn);
   
-  if (initialData.className !== "custom" && !initialData.label) {
+  if (initialData.className !== "custom" && initialData.className !== "presave" && !initialData.label) {
     const preset = platformPresets.find(p => p.className === select.value);
     labelInput.value = preset ? preset.label : "";
   }
@@ -192,11 +214,13 @@ function getLinksFromBuilder(container) {
     const select = row.querySelector("select");
     const labelInput = row.querySelector("input[placeholder='Label']");
     const urlInput = row.querySelector("input[placeholder='URL']");
+    const iframeCheckbox = row.querySelector(".link-iframe-checkbox");
     if (select && urlInput && urlInput.value) {
       links.push({
         label: labelInput.value || select.options[select.selectedIndex].text,
         className: select.value,
-        url: urlInput.value
+        url: urlInput.value,
+        openInIframe: iframeCheckbox ? iframeCheckbox.checked : select.value === "presave"
       });
     }
   }

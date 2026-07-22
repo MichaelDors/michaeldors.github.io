@@ -200,7 +200,13 @@ function renderReleasePage(container, headerContainer, artist, release) {
   `;
 
   const linksHtml = release.links?.length > 0
-    ? release.links.map(link => `<a class="btn ${link.className}" href="${link.url}" target="_blank" rel="noopener noreferrer">${link.label}</a>`).join("")
+    ? release.links.map(link => {
+        const isPresave = link.className === "presave" || link.openInIframe;
+        if (isPresave) {
+          return `<a class="btn ${link.className}" href="${link.url}" data-iframe="true" data-title="${release.title} - ${link.label}">${link.label}</a>`;
+        }
+        return `<a class="btn ${link.className}" href="${link.url}" target="_blank" rel="noopener noreferrer">${link.label}</a>`;
+      }).join("")
     : `<p class="missing-platform">Streaming links coming soon.</p>`;
 
   const aboutImagesHtml = release.aboutImageUrls?.map(src => `<img class="carousel-img" src="${src}" alt="About This Album" draggable="false" />`).join("") || "";
@@ -1288,5 +1294,86 @@ window.navigate = function (event, path) {
 
 window.addEventListener("popstate", route);
 
+// Fullscreen Iframe Modal for Pre-Save links
+function openIframeModal(url, title = "Pre-Save") {
+  let modal = document.getElementById("presave-iframe-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "presave-iframe-modal";
+    modal.className = "iframe-modal-overlay";
+    modal.innerHTML = `
+      <div class="iframe-modal-header">
+        <span class="iframe-modal-title" id="iframeModalTitle"></span>
+        <button class="iframe-modal-close" id="iframeModalClose" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="iframe-modal-body">
+        <div class="iframe-modal-loader" id="iframeModalLoader">
+          <div class="loader"></div>
+          <span>Loading Pre-Save...</span>
+        </div>
+        <iframe class="iframe-modal-frame" id="iframeModalFrame" allow="autoplay; clipboard-write; encrypted-media; fullscreen" frameborder="0"></iframe>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const closeBtn = modal.querySelector("#iframeModalClose");
+    closeBtn.addEventListener("click", closeIframeModal);
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeIframeModal();
+    });
+  }
+
+  const titleEl = modal.querySelector("#iframeModalTitle");
+  const iframe = modal.querySelector("#iframeModalFrame");
+  const loader = modal.querySelector("#iframeModalLoader");
+
+  titleEl.textContent = title;
+  loader.style.display = "flex";
+  iframe.style.opacity = "0";
+
+  iframe.onload = () => {
+    loader.style.display = "none";
+    iframe.style.opacity = "1";
+  };
+
+  iframe.src = url;
+  modal.classList.add("active");
+  document.body.style.overflow = "hidden";
+
+  window.addEventListener("keydown", handleIframeModalEsc);
+}
+
+function closeIframeModal() {
+  const modal = document.getElementById("presave-iframe-modal");
+  if (modal) {
+    modal.classList.remove("active");
+    const iframe = modal.querySelector("#iframeModalFrame");
+    if (iframe) iframe.src = "about:blank";
+  }
+  document.body.style.overflow = "";
+  window.removeEventListener("keydown", handleIframeModalEsc);
+}
+
+function handleIframeModalEsc(e) {
+  if (e.key === "Escape") {
+    closeIframeModal();
+  }
+}
+
+// Global delegated click handler for iframe modal links
+document.addEventListener("click", (e) => {
+  const target = e.target.closest("a[data-iframe='true'], a.btn.presave");
+  if (target) {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = target.getAttribute("href");
+    const title = target.getAttribute("data-title") || target.textContent.trim() || "Pre-Save";
+    if (url) {
+      openIframeModal(url, title);
+    }
+  }
+});
+
 // Start router
-route();;
+route();
