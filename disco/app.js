@@ -1304,14 +1304,17 @@ function openIframeModal(url, title = "Pre-Save") {
     modal.innerHTML = `
       <div class="iframe-modal-header">
         <span class="iframe-modal-title" id="iframeModalTitle"></span>
-        <button class="iframe-modal-close" id="iframeModalClose" aria-label="Close modal">&times;</button>
+        <div class="iframe-modal-actions">
+          <a class="iframe-modal-external-btn" id="iframeModalExternalBtn" target="_blank" rel="noopener noreferrer">Open in Tab ↗</a>
+          <button class="iframe-modal-close" id="iframeModalClose" aria-label="Close modal">&times;</button>
+        </div>
       </div>
       <div class="iframe-modal-body">
         <div class="iframe-modal-loader" id="iframeModalLoader">
           <div class="loader"></div>
           <span>Loading Pre-Save...</span>
         </div>
-        <iframe class="iframe-modal-frame" id="iframeModalFrame" allow="autoplay; clipboard-write; encrypted-media; fullscreen" frameborder="0"></iframe>
+        <iframe class="iframe-modal-frame" id="iframeModalFrame" allow="autoplay; clipboard-write; encrypted-media; fullscreen; payment; microphone; camera; storage-access" sandbox="allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation" frameborder="0"></iframe>
       </div>
     `;
     document.body.appendChild(modal);
@@ -1325,10 +1328,12 @@ function openIframeModal(url, title = "Pre-Save") {
   }
 
   const titleEl = modal.querySelector("#iframeModalTitle");
+  const externalBtn = modal.querySelector("#iframeModalExternalBtn");
   const iframe = modal.querySelector("#iframeModalFrame");
   const loader = modal.querySelector("#iframeModalLoader");
 
   titleEl.textContent = title;
+  if (externalBtn) externalBtn.href = url;
   loader.style.display = "flex";
   iframe.style.opacity = "0";
 
