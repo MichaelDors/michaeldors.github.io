@@ -5,6 +5,49 @@ const CONVEX_URL = window.location.hostname === "localhost" || window.location.h
   : "https://giddy-shepherd-959.convex.cloud";
 const convex = new ConvexClient(CONVEX_URL);
 
+function sync_iframe_url() {
+  // Check if the app is currently running inside an iframe
+  if (window.top !== window.self) {
+    let current_path = window.location.pathname;
+
+    // Strip out the '/disco' folder path so it looks clean on dors.fyi
+    if (current_path.startsWith('/disco')) {
+      current_path = current_path.substring(6);
+    }
+    // Ensure the root path formats correctly
+    if (current_path === '') {
+      current_path = '/';
+    }
+
+    const message_payload = JSON.stringify({
+      type: 'route_change',
+      path: current_path
+    });
+
+    // Send the new path up to the parent window
+    window.parent.postMessage(message_payload, '*');
+  }
+}
+
+// 1. Fire on initial app load
+sync_iframe_url();
+
+// 2. Fire when the user clicks the browser's back or forward buttons
+window.addEventListener('popstate', sync_iframe_url);
+
+// 3. Intercept the SPA router (Any time your app pushes a new URL to the history)
+const original_push_state = history.pushState;
+history.pushState = function () {
+  original_push_state.apply(this, arguments);
+  sync_iframe_url();
+};
+
+const original_replace_state = history.replaceState;
+history.replaceState = function () {
+  original_replace_state.apply(this, arguments);
+  sync_iframe_url();
+};
+
 let sessionToken = localStorage.getItem("discoAdminToken");
 let allArtists = [];
 
@@ -124,7 +167,7 @@ const platformPresets = [
   { label: "Custom", className: "custom" },
 ];
 
-function createLinkRow(container, initialData = { label: "", className: "spotify", url: "", openInIframe: false }) {
+function createLinkRow(container, initialData = { label: "", className: "spotify", url: "" }) {
   const row = document.createElement("div");
   row.style.display = "flex";
   row.style.gap = "10px";
@@ -146,34 +189,16 @@ function createLinkRow(container, initialData = { label: "", className: "spotify
     labelInput.style.display = "none";
   }
 
-  const iframeLabel = document.createElement("label");
-  iframeLabel.style.display = "flex";
-  iframeLabel.style.alignItems = "center";
-  iframeLabel.style.gap = "4px";
-  iframeLabel.style.fontSize = "12px";
-  iframeLabel.style.whiteSpace = "nowrap";
-  iframeLabel.style.cursor = "pointer";
-  
-  const iframeCheckbox = document.createElement("input");
-  iframeCheckbox.type = "checkbox";
-  iframeCheckbox.className = "link-iframe-checkbox";
-  iframeCheckbox.checked = initialData.openInIframe || initialData.className === "presave";
-  
-  iframeLabel.appendChild(iframeCheckbox);
-  iframeLabel.appendChild(document.createTextNode("Iframe Modal"));
-
   select.addEventListener("change", () => {
     if (select.value === "custom" || select.value === "presave") {
       labelInput.style.display = "block";
-      if (select.value === "presave") {
-        labelInput.value = labelInput.value || "Pre-Save";
-        iframeCheckbox.checked = true;
+      if (select.value === "presave" && !labelInput.value) {
+        labelInput.value = "Pre-Save";
       }
     } else {
       labelInput.style.display = "none";
       const preset = platformPresets.find(p => p.className === select.value);
       labelInput.value = preset ? preset.label : "";
-      iframeCheckbox.checked = false;
     }
   });
 
@@ -195,7 +220,6 @@ function createLinkRow(container, initialData = { label: "", className: "spotify
   row.appendChild(select);
   row.appendChild(labelInput);
   row.appendChild(urlInput);
-  row.appendChild(iframeLabel);
   row.appendChild(removeBtn);
   
   if (initialData.className !== "custom" && initialData.className !== "presave" && !initialData.label) {
@@ -214,13 +238,11 @@ function getLinksFromBuilder(container) {
     const select = row.querySelector("select");
     const labelInput = row.querySelector("input[placeholder='Label']");
     const urlInput = row.querySelector("input[placeholder='URL']");
-    const iframeCheckbox = row.querySelector(".link-iframe-checkbox");
     if (select && urlInput && urlInput.value) {
       links.push({
         label: labelInput.value || select.options[select.selectedIndex].text,
         className: select.value,
-        url: urlInput.value,
-        openInIframe: iframeCheckbox ? iframeCheckbox.checked : select.value === "presave"
+        url: urlInput.value
       });
     }
   }

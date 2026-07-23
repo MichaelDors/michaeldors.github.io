@@ -6,6 +6,49 @@ const CONVEX_URL = window.location.hostname === "localhost" || window.location.h
   : "https://giddy-shepherd-959.convex.cloud";
 const convex = new ConvexClient(CONVEX_URL);
 
+function sync_iframe_url() {
+  // Check if the app is currently running inside an iframe
+  if (window.top !== window.self) {
+    let current_path = window.location.pathname;
+
+    // Strip out the '/disco' folder path so it looks clean on dors.fyi
+    if (current_path.startsWith('/disco')) {
+      current_path = current_path.substring(6);
+    }
+    // Ensure the root path formats correctly
+    if (current_path === '') {
+      current_path = '/';
+    }
+
+    const message_payload = JSON.stringify({
+      type: 'route_change',
+      path: current_path
+    });
+
+    // Send the new path up to the parent window
+    window.parent.postMessage(message_payload, '*');
+  }
+}
+
+// 1. Fire on initial app load
+sync_iframe_url();
+
+// 2. Fire when the user clicks the browser's back or forward buttons
+window.addEventListener('popstate', sync_iframe_url);
+
+// 3. Intercept the SPA router (Any time your app pushes a new URL to the history)
+const original_push_state = history.pushState;
+history.pushState = function () {
+  original_push_state.apply(this, arguments);
+  sync_iframe_url();
+};
+
+const original_replace_state = history.replaceState;
+history.replaceState = function () {
+  original_replace_state.apply(this, arguments);
+  sync_iframe_url();
+};
+
 // Route restoration logic for SPA on GitHub Pages
 const urlParams = new URLSearchParams(window.location.search);
 const p = urlParams.get('p');
@@ -201,12 +244,12 @@ function renderReleasePage(container, headerContainer, artist, release) {
 
   const linksHtml = release.links?.length > 0
     ? release.links.map(link => {
-        const isPresave = link.className === "presave" || link.openInIframe;
-        if (isPresave) {
-          return `<a class="btn ${link.className}" href="${link.url}" data-iframe="true" data-title="${release.title} - ${link.label}">${link.label}</a>`;
-        }
-        return `<a class="btn ${link.className}" href="${link.url}" target="_blank" rel="noopener noreferrer">${link.label}</a>`;
-      }).join("")
+      const isPresave = link.className === "presave";
+      if (isPresave) {
+        return `<a class="btn ${link.className}" href="${link.url}" data-iframe="true" data-title="${release.title} - ${link.label}">${link.label}</a>`;
+      }
+      return `<a class="btn ${link.className}" href="${link.url}" target="_blank" rel="noopener noreferrer">${link.label}</a>`;
+    }).join("")
     : `<p class="missing-platform">Streaming links coming soon.</p>`;
 
   const aboutImagesHtml = release.aboutImageUrls?.map(src => `<img class="carousel-img" src="${src}" alt="About This Album" draggable="false" />`).join("") || "";
