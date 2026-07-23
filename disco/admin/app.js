@@ -21,7 +21,8 @@ function sync_iframe_url() {
 
     const message_payload = JSON.stringify({
       type: 'route_change',
-      path: current_path
+      path: current_path,
+      title: document.title
     });
 
     // Send the new path up to the parent window
@@ -47,6 +48,16 @@ history.replaceState = function () {
   original_replace_state.apply(this, arguments);
   sync_iframe_url();
 };
+
+// 4. Observe title changes to sync dynamic title updates
+const targetTitle = document.querySelector('title');
+if (targetTitle) {
+  new MutationObserver(() => sync_iframe_url()).observe(targetTitle, {
+    childList: true,
+    characterData: true,
+    subtree: true
+  });
+}
 
 let sessionToken = localStorage.getItem("discoAdminToken");
 let allArtists = [];
@@ -132,23 +143,23 @@ async function loadData() {
   try {
     allArtists = await convex.query("queries:getAllArtists", {});
     renderArtists(allArtists);
-    
+
     // Load releases (naive: load all by iterating, in reality we'd want a getAllReleases query, but we can just use our existing ones)
     // Actually, we need to fetch all releases. Let's add a query if it doesn't exist, or just loop artists.
     // For now, let's fetch releases per artist to build the list.
     let allReleases = [];
     for (const artist of allArtists) {
       const rels = await convex.query("queries:getReleasesByArtist", { artistId: artist._id });
-      allReleases = allReleases.concat(rels.map(r => ({...r, artistName: artist.name})));
+      allReleases = allReleases.concat(rels.map(r => ({ ...r, artistName: artist.name })));
     }
     renderReleases(allReleases);
 
     // Update release form artist dropdown
     const select = document.getElementById("release-artist");
     select.innerHTML = allArtists.map(a => `<option value="${a._id}">${a.name}</option>`).join("");
-  } catch(e) {
+  } catch (e) {
     console.error(e);
-    if(e.message.includes("Unauthorized")) {
+    if (e.message.includes("Unauthorized")) {
       sessionToken = null; localStorage.removeItem("discoAdminToken"); init();
     }
   }
@@ -173,13 +184,13 @@ function createLinkRow(container, initialData = { label: "", className: "spotify
   row.style.gap = "10px";
   row.style.alignItems = "center";
   row.style.marginBottom = "5px";
-  
+
   const select = document.createElement("select");
   select.style.width = "120px";
   select.innerHTML = platformPresets.map(p => `
     <option value="${p.className}" ${initialData.className === p.className ? "selected" : ""}>${p.label}</option>
   `).join("");
-  
+
   const labelInput = document.createElement("input");
   labelInput.type = "text";
   labelInput.placeholder = "Label";
@@ -221,7 +232,7 @@ function createLinkRow(container, initialData = { label: "", className: "spotify
   row.appendChild(labelInput);
   row.appendChild(urlInput);
   row.appendChild(removeBtn);
-  
+
   if (initialData.className !== "custom" && initialData.className !== "presave" && !initialData.label) {
     const preset = platformPresets.find(p => p.className === select.value);
     labelInput.value = preset ? preset.label : "";
@@ -280,11 +291,11 @@ window.editArtist = (id) => {
   document.getElementById("artist-lowres-image").value = a.lowResImageUrl || "";
   document.getElementById("artist-about").value = a.about || "";
   document.getElementById("artist-about-images").value = a.aboutImageUrls?.join(",") || "";
-  
+
   const builder = document.getElementById("artist-socials-builder");
   builder.innerHTML = "";
   (a.socials || []).forEach(link => createLinkRow(builder, link));
-  
+
   artistForm.classList.remove("hidden");
 };
 
@@ -335,7 +346,7 @@ document.getElementById("import-artist-itunes").addEventListener("click", async 
     if (!nameOrUrl) return;
     document.getElementById("artist-name").value = nameOrUrl;
   }
-  
+
   const btn = document.getElementById("import-artist-itunes");
   const originalText = btn.textContent;
   btn.textContent = "Importing...";
@@ -395,7 +406,7 @@ document.getElementById("import-artist-itunes").addEventListener("click", async 
           const artworkRegex = /\/\d+x\d+[^/]*\.(jpg|png|jpeg|webp)$/i;
           const highRes = rawPfpUrl.replace(artworkRegex, "/1000x1000.$1");
           const lowRes = rawPfpUrl.replace(artworkRegex, "/100x100.$1");
-          
+
           document.getElementById("artist-image").value = highRes;
           document.getElementById("artist-lowres-image").value = lowRes;
           imageImported = true;
@@ -425,7 +436,7 @@ document.getElementById("import-artist-itunes").addEventListener("click", async 
               if (p18 && p18.length > 0 && p18[0].mainsnak && p18[0].mainsnak.datavalue) {
                 const filename = p18[0].mainsnak.datavalue.value;
                 btn.textContent = "Resolving image...";
-                
+
                 const getCommonsUrl = async (width) => {
                   const commonsUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=File:${encodeURIComponent(filename)}&prop=imageinfo&iiprop=url&iiurlwidth=${width}&format=json&origin=*`;
                   const res = await fetch(commonsUrl);
@@ -434,10 +445,10 @@ document.getElementById("import-artist-itunes").addEventListener("click", async 
                   const pageId = Object.keys(pages)[0];
                   return pages[pageId].imageinfo[0].thumburl || pages[pageId].imageinfo[0].url;
                 };
-                
+
                 const highRes = await getCommonsUrl(1000);
                 const lowRes = await getCommonsUrl(100);
-                
+
                 document.getElementById("artist-image").value = highRes;
                 document.getElementById("artist-lowres-image").value = lowRes;
                 imageImported = true;
@@ -461,7 +472,7 @@ document.getElementById("import-artist-itunes").addEventListener("click", async 
           const artworkRegex = /\/\d+x\d+[^/]*\.(jpg|png|jpeg|webp)$/i;
           const highRes = imgUrl.replace(artworkRegex, "/1000x1000.$1");
           const lowRes = imgUrl.replace(artworkRegex, "/100x100.$1");
-          
+
           document.getElementById("artist-image").value = highRes;
           document.getElementById("artist-lowres-image").value = lowRes;
           imageImported = true;
@@ -506,7 +517,7 @@ artistForm.addEventListener("submit", async (e) => {
     }
     artistForm.classList.add("hidden");
     loadData();
-  } catch(err) {
+  } catch (err) {
     artistError.textContent = err.message;
   }
 });
@@ -526,7 +537,7 @@ window.editRelease = (id) => {
   document.getElementById("release-about").value = r.about || "";
   document.getElementById("release-stickers").value = r.stickerUrls?.join(",") || "";
   document.getElementById("release-about-images").value = r.aboutImageUrls?.join(",") || "";
-  
+
   const builder = document.getElementById("release-links-builder");
   builder.innerHTML = "";
   (r.links || []).forEach(link => createLinkRow(builder, link));
@@ -604,7 +615,7 @@ document.getElementById("import-release-itunes").addEventListener("click", async
       const artworkRegex = /\/\d+x\d+[^/]*\.(jpg|png|jpeg|webp)$/i;
       const highRes = imgUrl.replace(artworkRegex, "/3000x3000.$1");
       const lowRes = imgUrl.replace(artworkRegex, "/100x100.$1");
-      
+
       document.getElementById("release-cover").value = highRes;
       document.getElementById("release-lowres-cover").value = lowRes;
 
@@ -655,7 +666,7 @@ releaseForm.addEventListener("submit", async (e) => {
     }
     releaseForm.classList.add("hidden");
     loadData();
-  } catch(err) {
+  } catch (err) {
     releaseError.textContent = err.message;
   }
 });

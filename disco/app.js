@@ -22,7 +22,8 @@ function sync_iframe_url() {
 
     const message_payload = JSON.stringify({
       type: 'route_change',
-      path: current_path
+      path: current_path,
+      title: document.title
     });
 
     // Send the new path up to the parent window
@@ -48,6 +49,16 @@ history.replaceState = function () {
   original_replace_state.apply(this, arguments);
   sync_iframe_url();
 };
+
+// 4. Observe title changes to sync dynamic title updates
+const targetTitle = document.querySelector('title');
+if (targetTitle) {
+  new MutationObserver(() => sync_iframe_url()).observe(targetTitle, {
+    childList: true,
+    characterData: true,
+    subtree: true
+  });
+}
 
 // Route restoration logic for SPA on GitHub Pages
 const urlParams = new URLSearchParams(window.location.search);
