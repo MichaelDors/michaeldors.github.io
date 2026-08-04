@@ -5917,18 +5917,22 @@ i {
     size: letter;
   }
 
+  /* Page breaks for print resources */
+  .print-resources {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  #print-set-container .print-resource-group,
+  #print-set-container .print-resource-item {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
   /* Ensure all print content is visible */
   #print-set-container *,
   #print-chart-container * {
     visibility: visible !important;
-  }
-
-  #print-set-container div,
-  #print-set-container p,
-  #print-set-container h1,
-  #print-set-container h2,
-  #print-set-container h3 {
-    display: block !important;
   }
 
   #print-set-container table {

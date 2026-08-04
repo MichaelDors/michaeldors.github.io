@@ -29164,6 +29164,45 @@ async function getPdfPageImages(url) {
   }
 }
 
+async function waitForContainerMedia(container) {
+  if (!container) return;
+  try {
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+  } catch (e) {
+    // Ignore font loading errors
+  }
+
+  const images = Array.from(container.querySelectorAll("img"));
+  if (images.length === 0) return;
+
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete && img.naturalWidth > 0) {
+        return img.decode ? img.decode().catch(() => {}) : Promise.resolve();
+      }
+      return new Promise((resolve) => {
+        let finished = false;
+        const done = () => {
+          if (finished) return;
+          finished = true;
+          img.removeEventListener("load", done);
+          img.removeEventListener("error", done);
+          if (img.decode) {
+            img.decode().then(resolve).catch(resolve);
+          } else {
+            resolve();
+          }
+        };
+        img.addEventListener("load", done);
+        img.addEventListener("error", done);
+        setTimeout(done, 3000);
+      });
+    })
+  );
+}
+
 async function renderPrintSetResources({
   set,
   resources,
@@ -29679,17 +29718,21 @@ async function openPrintSet(set, options = {}, selectedResources = [], callbacks
   const wrapper = el("print-set-container");
   if (!wrapper || !set) return;
 
-  // Ensure chart container is empty
+  // Ensure chart container is empty & hidden
   const chartWrapper = el("print-chart-container");
   if (chartWrapper) {
     const chartContent = el("print-chart-content");
     if (chartContent) chartContent.innerHTML = "";
+    chartWrapper.classList.add("hidden");
     chartWrapper.setAttribute("aria-hidden", "true");
   }
 
-  await renderSetPrintPreview(set, options, selectedResources);
-  // Keep it visually hidden on screen; print styles will reveal it
+  // Reveal container for DOM layout and rendering
+  wrapper.classList.remove("hidden");
   wrapper.setAttribute("aria-hidden", "false");
+
+  await renderSetPrintPreview(set, options, selectedResources);
+  await waitForContainerMedia(wrapper);
 
   // Track print usage
   trackPostHogEvent('set_printed', {
@@ -29701,6 +29744,7 @@ async function openPrintSet(set, options = {}, selectedResources = [], callbacks
   const afterPrint = () => {
     if (didCleanup) return;
     didCleanup = true;
+    wrapper.classList.add("hidden");
     wrapper.setAttribute("aria-hidden", "true");
     window.removeEventListener("afterprint", afterPrint);
     if (typeof callbacks.onAfterPrint === "function") {
@@ -29709,15 +29753,12 @@ async function openPrintSet(set, options = {}, selectedResources = [], callbacks
   };
   window.addEventListener("afterprint", afterPrint);
 
-  // Small delay to ensure DOM is updated before print dialog
+  // Allow DOM to settle and repaint before triggering print dialog
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       window.print();
     });
   });
-
-  // Fallback in case afterprint doesn't fire
-  setTimeout(afterPrint, 3000);
 }
 
 function syncPrintSetOptionsUI(options) {
@@ -32483,6 +32524,7 @@ function closeChordChartEditor() {
   });
 }
 
+
 function renderChartToPrintContainer({ songTitle, subtitle, doc, layout }) {
   const wrapper = el("print-chart-container");
   let content = el("print-chart-content");
@@ -32502,17 +32544,19 @@ function renderChartToPrintContainer({ songTitle, subtitle, doc, layout }) {
   if (setWrapper) {
     const setContent = el("print-set-content");
     if (setContent) setContent.innerHTML = "";
+    setWrapper.classList.add("hidden");
     setWrapper.setAttribute("aria-hidden", "true");
   }
 
   // renderChartDocIntoPage handles pagination and renders pages directly into content
   content.innerHTML = "";
   renderChartDocIntoPage(content, doc, { songTitle, subtitle, layout, readOnly: true });
+  wrapper.classList.remove("hidden");
   wrapper.setAttribute("aria-hidden", "false");
   return true;
 }
 
-function openPrintChartFromActive() {
+async function openPrintChartFromActive() {
   const active = state.chordCharts.active;
   if (!active?.chart?.doc) return;
 
