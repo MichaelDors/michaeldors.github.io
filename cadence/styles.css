@@ -5842,7 +5842,7 @@ i {
     color: #000 !important;
   }
 
-  /* Ensure the chart prints without the on-screen "card" look */
+  /* Ensure every page item (chart, PDF page, section) takes its own dedicated page */
   #print-chart-container .chart-page,
   #print-set-container .chart-page {
     box-shadow: none !important;
@@ -5851,45 +5851,64 @@ i {
     width: 100% !important;
     height: auto !important;
     padding: 0.4in !important;
-    page-break-after: always;
-    break-after: page;
-  }
-
-  #print-chart-container .chart-page:last-child,
-  #print-set-container .chart-page:last-child {
-    page-break-after: auto;
-    break-after: auto;
+    page-break-before: always !important;
+    break-before: page !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   #print-chart-container .chart-page-outer,
   #print-set-container .chart-page-outer {
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  #print-set-container .print-resources {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #print-set-container .print-resource-group,
+  #print-set-container .print-resource-item,
+  #print-set-container .print-resource-body {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   #print-set-container .print-pdf-page-wrap {
-    page-break-after: always;
-    break-after: page;
-  }
-
-  #print-set-container .print-pdf-page-wrap:last-child {
-    page-break-after: auto;
-    break-after: auto;
+    page-break-before: always !important;
+    break-before: page !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   #print-set-container .print-pdf-page,
   #print-set-container .print-image-resource {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    display: block !important;
+    margin: 0 auto !important;
     box-shadow: none !important;
   }
 
   #print-set-container .print-section-page {
-    page-break-after: always;
-    break-after: page;
-  }
-
-  #print-set-container .print-section-page.print-section-page--last {
-    page-break-after: auto;
-    break-after: auto;
+    page-break-before: always !important;
+    break-before: page !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   .print-set-header {
