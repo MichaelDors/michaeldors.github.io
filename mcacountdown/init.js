@@ -1,4 +1,6 @@
 (function () {
+    const betaAppScriptSrc = "betaapp.js?v=20260830-3";
+
     if (parameter('cardmode') && parameter('id')) {
         console.log('cardmode is true and id is present, initializing for local use');
         return;
@@ -35,7 +37,7 @@
         window._obtainedData = true;
         window._initJsLoaded = true;
         const script = document.createElement("script");
-        script.src = "betaapp.js";
+        script.src = betaAppScriptSrc;
         script.onload = function () {
             // Dispatch the event after betaapp.js has loaded and set up its event listener
             document.dispatchEvent(new Event("data-ready"));
@@ -278,7 +280,7 @@
 
                 if (!existingScript && !scriptAlreadyLoaded) {
                     const script = document.createElement("script");
-                    script.src = "betaapp.js";
+                    script.src = betaAppScriptSrc;
                     script.onload = function () {
                         // Dispatch the event after betaapp.js has loaded and set up its event listener
                         document.dispatchEvent(new Event("data-ready"));

@@ -28,6 +28,11 @@ let dataReadyExecuted = false;
 let isInCooldown = false;
 let lastDatabaseSync = 0;
 const DATABASE_SYNC_COOLDOWN = 5000; // 5 seconds
+let pendingDatabaseSync = null;
+let databaseSyncTimeout = null;
+let databaseSyncInFlight = false;
+let previewUpdateTimeout = null;
+let pendingPreviewUrl = null;
 
 // Initialize the gear icon update flag
 window.gearIconUpdated = false;
@@ -38,16 +43,38 @@ window.userEditorStatus = null;
 // Global variable for progress bar position
 let progressbarposition = "null";
 
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
+function updatePreviewIframe(previewUrl) {
+    const previewIframe = document.getElementById('previewiframe');
+    const settingsPane = document.getElementById('settings');
+
+    if (!previewIframe || parameter('cardmode')) {
+        return;
+    }
+
+    pendingPreviewUrl = previewUrl;
+    clearTimeout(previewUpdateTimeout);
+
+    // The preview is a complete second copy of the app. Keep it unloaded while
+    // settings are closed so it cannot consume memory in the background.
+    if (!settingsPane || settingsPane.classList.contains('hidden')) {
+        if (previewIframe.getAttribute('src')) {
+            previewIframe.src = 'about:blank';
+            previewIframe.removeAttribute('src');
+        }
+        return;
+    }
+
+    // Coalesce rapid option changes and render only the most recent state.
+    previewUpdateTimeout = setTimeout(() => {
+        if (!pendingPreviewUrl || settingsPane.classList.contains('hidden')) {
+            return;
+        }
+
+        const normalizedPreviewUrl = new URL(pendingPreviewUrl, window.location.href).href;
+        if (previewIframe.src !== normalizedPreviewUrl) {
+            previewIframe.src = pendingPreviewUrl;
+        }
+    }, 250);
 }
 
 function updateTitlePosition(fontSize) {
@@ -801,7 +828,8 @@ if(!getParameterFromSource('schedule')){
 }
   
       //set up countdown schedules
-      if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("schedule")){  
+      const hasActiveSchedule = getParameterFromSource("schedule") !== "null" && Boolean(getParameterFromSource("schedule"));
+      if(hasActiveSchedule){
           document.getElementById("clock").style.display = "none"; //hide clock
           document.getElementById("countdowntitle").style.display = "none"; //hide title
       document.getElementById("optionsdatecontainer").style.display = "none"; //hide end date area of options
@@ -816,8 +844,8 @@ if(!getParameterFromSource('schedule')){
       document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
   
           if(!getParameterFromSource("date")){
-              document.getElementById("autopilotpopup").remove(); //removes the Autopilot popup if a schedule exists
-              document.getElementById("autopilotpopupmobile").remove(); //same with mobile Autopilot popup   
+              document.getElementById("autopilotpopup")?.remove(); //removes the Autopilot popup if a schedule exists
+              document.getElementById("autopilotpopupmobile")?.remove(); //same with mobile Autopilot popup
           }
       }
       else{
@@ -864,10 +892,10 @@ if(!getParameterFromSource('schedule')){
               }
               var countDownDate = new Date(document.querySelector(".datepicker").value); //sets the datepicker in settings to the correct date + time
       
-              document.getElementById("autopilotpopup").remove(); //removes the Autopilot popup if a date exists
-              document.getElementById("autopilotpopupmobile").remove(); //same with mobile Autopilot popup
+              document.getElementById("autopilotpopup")?.remove(); //removes the Autopilot popup if a date exists
+              document.getElementById("autopilotpopupmobile")?.remove(); //same with mobile Autopilot popup
           }
-          else { //if there is no date parameter
+          else if (!hasActiveSchedule) { // Autopilot applies only to ordinary countdowns
               const savedLinks = localStorage.getItem("dashboardsaved"); //get dashboard save data
       
 
@@ -1181,7 +1209,7 @@ class ConfettiManager {
 
           function startEmojiPopCycle() {
             // Don't start if already running
-            if (emojiPopInterval) return;
+            if (emojiPopInterval || parameter('cardmode')) return;
             
             emojiPopNext();
             emojiPopInterval = setInterval(emojiPopNext, 5000);
@@ -1373,9 +1401,16 @@ function spawnIcon(el) {
 }
 
 function initFloatingIcons() {
+    if (parameter('cardmode')) {
+        return;
+    }
+
     document.querySelectorAll('.float-icons').forEach(el => {
         setInterval(() => {
-          if (Math.random() < 0.3) spawnIcon(el);
+          const settingsPane = document.getElementById('settings');
+          if (settingsPane && !settingsPane.classList.contains('hidden') && Math.random() < 0.3) {
+              spawnIcon(el);
+          }
         }, 300);
       });
 }
@@ -1610,6 +1645,7 @@ function initFloatingIcons() {
           }, 150);
           includeMenu.classList.remove('visible', 'opened');
           updateoptions();
+          syncCookiesToCloud();
         });
       });
       
@@ -1705,22 +1741,20 @@ function initFloatingIcons() {
       '&progress=' + document.getElementById("progressdatepicker").value + 
       '&progressposition=' + progressbarposition + 
           '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
-          '&schedule=' + (getParameterFromSource('schedule') || parameter('schedule') || 'null');
+          '&schedule=' + (
+              ((getParameterFromSource('schedule') && getParameterFromSource('schedule') !== 'null') ||
+               (parameter('schedule') && parameter('schedule') !== 'null'))
+                  ? schedule_encodeSchedule()
+                  : 'null'
+          ) +
+          (parameter('cardmode') ? '&cardmode=true' : '');
 
           window.CountdownDataSource = parameterstring;
 
           var refresh = window.location.protocol + "//" + window.location.host + window.location.pathname + parameterstring;
           
           // Check if parameters have actually changed to avoid unnecessary iframe reloads
-          var previewUrl = refresh + "&cardmode=true";
-          var currentPreviewSrc = document.getElementById("previewiframe").src;
-          var shouldReloadPreview = currentPreviewSrc !== previewUrl;
-          
-          // Add 5-second cooldown for preview iframe updates
-          var now = Date.now();
-          var lastPreviewUpdate = window.lastPreviewUpdate || 0;
-          var previewCooldown = 5000; // 5 seconds in milliseconds
-          var shouldReloadPreview = shouldReloadPreview && (now - lastPreviewUpdate >= previewCooldown);
+          var previewUrl = parameter('cardmode') ? refresh : refresh + "&cardmode=true";
           
           // Only update URL if it's actually different to avoid unnecessary history entries
           if(window.CountdownDataSourceOrigin == "url"){
@@ -1730,13 +1764,7 @@ function initFloatingIcons() {
   
             document.getElementById("linkinput").value = refresh; //refresh the link
             document.getElementById("linkinput-info").value = refresh; //refresh the info pane link
-            // Only reload preview iframe if parameters have changed and cooldown has passed
-            if (shouldReloadPreview) {
-                if(!parameter('cardmode')){
-                document.getElementById("previewiframe").src = previewUrl;
-                }
-                window.lastPreviewUpdate = now; // Update the timestamp when iframe is reloaded
-            }
+            updatePreviewIframe(previewUrl);
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(cdtitle);
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
                 document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
@@ -1750,13 +1778,7 @@ function initFloatingIcons() {
             window.history.replaceState({path: dbrefresh}, '', dbrefresh);
             document.getElementById("linkinput").value = dbrefresh; //refresh the link
             document.getElementById("linkinput-info").value = dbrefresh; //refresh the info pane link
-            // Only reload preview iframe if parameters have changed and cooldown has passed
-            if (shouldReloadPreview) {
-                if(!parameter('cardmode')){
-                document.getElementById("previewiframe").src = previewUrl;
-                }
-                window.lastPreviewUpdate = now; // Update the timestamp when iframe is reloaded
-            }
+            updatePreviewIframe(previewUrl);
             document.getElementById("locallinkinput").value = "https://michaeldors.com/mcacountdown/betatimer#" + encodeURIComponent(getParameterFromSource('title'));
             if(document.getElementById('qrcodecontainerdiv').offsetWidth > document.getElementById("localshortcutcontainerdiv").style.width){
                 document.getElementById("localshortcutcontainerdiv").style.width = document.getElementById('qrcodecontainerdiv').offsetWidth + 'px';
@@ -1803,17 +1825,27 @@ function initFloatingIcons() {
       
       async function syncCountdownToDatabase(countdownData) {
         console.log("uploading cd to db - init");
-          // Check cooldown
+          pendingDatabaseSync = countdownData;
+
+          // Queue a trailing save instead of dropping changes made during the cooldown.
           const now = Date.now();
-          if (now - lastDatabaseSync < DATABASE_SYNC_COOLDOWN) {
-            console.log("uploading cd to db - stopped via cooldown");
+          const cooldownRemaining = Math.max(0, DATABASE_SYNC_COOLDOWN - (now - lastDatabaseSync));
+          if (databaseSyncInFlight || cooldownRemaining > 0) {
+              console.log("uploading cd to db - queued during cooldown");
               isInCooldown = true;
-              // Set a timeout to reset the cooldown flag after the cooldown period
-              setTimeout(() => {
-                  isInCooldown = false;
-              }, DATABASE_SYNC_COOLDOWN - (now - lastDatabaseSync));
+              clearTimeout(databaseSyncTimeout);
+              databaseSyncTimeout = setTimeout(() => {
+                  if (pendingDatabaseSync !== null) {
+                      syncCountdownToDatabase(pendingDatabaseSync);
+                  }
+              }, Math.max(cooldownRemaining, 100));
               return;
           }
+
+          const dataToSync = pendingDatabaseSync;
+          pendingDatabaseSync = null;
+          databaseSyncInFlight = true;
+          isInCooldown = true;
           
           try {
 
@@ -1892,33 +1924,66 @@ function initFloatingIcons() {
               console.log("uploading cd to db " + countdownData);
               
               // Use existing ID if available, otherwise generate new one
-                  const countdownId = window.CountdownDataID || generateShortId();
-    window.CountdownDataID = countdownId;
-    // Reset gear icon update flag when countdown ID changes
-    window.gearIconUpdated = false;
-    console.log("id" + window.CountdownDataID);
+              const isNewCountdown = !window.CountdownDataID;
+              const countdownId = window.CountdownDataID || generateShortId();
               console.log("uploading cd to db " + countdownId);
               
-              // Save to database
-              const { error } = await window.supabaseClient
-                  .from('countdown')
-                  .upsert({
-                      id: countdownId,
-                      data: JSON.stringify(countdownData),
-                      creator: user.id,
-                      collaborator_ids: [],
-                      visibility: 1 // unlisted by default
-                  }, { onConflict: ['id'] });
+              // Update existing rows without overwriting ownership/collaborators.
+              // Insert metadata only when the countdown is first created.
+              let error;
+              if (isNewCountdown) {
+                  const result = await window.supabaseClient
+                      .from('countdown')
+                      .insert({
+                          id: countdownId,
+                          data: dataToSync,
+                          creator: user.id,
+                          collaborator_ids: [],
+                          visibility: 1 // unlisted by default
+                      })
+                      .select('id')
+                      .single();
+                  error = result.error;
+              } else {
+                  const result = await window.supabaseClient
+                      .from('countdown')
+                      .update({ data: dataToSync })
+                      .eq('id', countdownId)
+                      .select('id')
+                      .maybeSingle();
+                  error = result.error;
+
+                  if (!error && !result.data) {
+                      error = new Error('Countdown update did not match an editable row');
+                  }
+              }
                   
               if (error) {
                   console.error('[syncCountdownToDatabase] Database sync failed:', error.message);
               } else {
+                  if (isNewCountdown) {
+                      window.CountdownDataID = countdownId;
+                      window.gearIconUpdated = false;
+                  }
                   console.log('[syncCountdownToDatabase] Countdown synced to database');
-                  lastDatabaseSync = now;
-                  isInCooldown = false;
+                  lastDatabaseSync = Date.now();
               }
           } catch (error) {
               console.error('[syncCountdownToDatabase] Error during database sync:', error);
+          } finally {
+              databaseSyncInFlight = false;
+
+              if (pendingDatabaseSync !== null) {
+                  isInCooldown = true;
+                  clearTimeout(databaseSyncTimeout);
+                  databaseSyncTimeout = setTimeout(() => {
+                      if (pendingDatabaseSync !== null) {
+                          syncCountdownToDatabase(pendingDatabaseSync);
+                      }
+                  }, Math.max(0, DATABASE_SYNC_COOLDOWN - (Date.now() - lastDatabaseSync)));
+              } else {
+                  isInCooldown = false;
+              }
           }
       }
   
@@ -1926,9 +1991,10 @@ function initFloatingIcons() {
           var query = window.location.search.substring(1);
           var parameters = query.split('&');
           for (var i = 0; i < parameters.length; i++) {
-              var pair = parameters[i].split('=');
-              if (pair[0] == name) {
-                  return pair[1];
+              var separatorIndex = parameters[i].indexOf('=');
+              var key = separatorIndex === -1 ? parameters[i] : parameters[i].slice(0, separatorIndex);
+              if (key == name) {
+                  return separatorIndex === -1 ? '' : parameters[i].slice(separatorIndex + 1);
               }
           }
           return null;
@@ -1943,9 +2009,10 @@ function initFloatingIcons() {
         var query = window.CountdownDataSource.substring(1);
         var parameters = query.split('&');
         for (var i = 0; i < parameters.length; i++) {
-            var pair = parameters[i].split('=');
-            if (pair[0] == name) {
-                return pair[1];
+            var separatorIndex = parameters[i].indexOf('=');
+            var key = separatorIndex === -1 ? parameters[i] : parameters[i].slice(0, separatorIndex);
+            if (key == name) {
+                return separatorIndex === -1 ? '' : parameters[i].slice(separatorIndex + 1);
             }
         }
         return null;
@@ -1986,6 +2053,7 @@ function initFloatingIcons() {
               isUserEditor().then(editorStatus => {
                   window.userEditorStatus = editorStatus;
                   handleSettingsLogic(editorStatus);
+                  SetCountDowngeneral();
               });
               return;
           }
@@ -2526,7 +2594,7 @@ if(getParameterFromSource('progressposition') && getParameterFromSource('progres
                 startConfettiManagerAnimation();
           }
   
-      }, 1);
+      }, parameter('cardmode') ? 250 : 100);
 
 function stopConfettiManagerAnimation(){
     stopConfetti();
@@ -2613,14 +2681,6 @@ function stopConfettiManagerAnimation(){
           }
 
 
-          if(!getParameterFromSource('cardmode') == "1"){
-            // Use debounce to limit execution to once every 30 seconds
-            const debouncedCookieSync = debounce(() => {
-             syncCookiesToCloud();
-            }, 30000);
-            debouncedCookieSync();
-          }
-  
       }
   
   
@@ -2634,6 +2694,7 @@ function stopConfettiManagerAnimation(){
               setCookie('memsav', 'true', '70');
           }
           updateoptions();
+          syncCookiesToCloud();
       }
   
   
@@ -2646,6 +2707,7 @@ function stopConfettiManagerAnimation(){
               setCookie('coce', 'true', '70');
           }
           updateoptions();
+          syncCookiesToCloud();
       }
 
 function contrast(){ //increase contrast set or remove cookie
@@ -2655,6 +2717,8 @@ function contrast(){ //increase contrast set or remove cookie
     else{
         setCookie('increasecontrast', 'true', '70');
     }
+    updateoptions();
+    syncCookiesToCloud();
 }
   
       function soce() { //disable end sound set or remove cookie 
@@ -2665,6 +2729,7 @@ function contrast(){ //increase contrast set or remove cookie
               setCookie('soce', 'true', '70');
           }
           updateoptions();
+          syncCookiesToCloud();
       }
   
   
@@ -2676,6 +2741,7 @@ function contrast(){ //increase contrast set or remove cookie
               setCookie('lcdu', 'true', '70');
           }
           updateoptions();
+          syncCookiesToCloud();
       }
   
   
@@ -3279,7 +3345,7 @@ function contrast(){ //increase contrast set or remove cookie
           }
       }
   
-      if(autocircle){
+      if(autocircle && !parameter('cardmode')){
       autocountdownInterval = setInterval(updateCountdown, 10);
       }
   
@@ -3644,12 +3710,29 @@ function contrast(){ //increase contrast set or remove cookie
           ];
   
           function schedule_encodeSchedule() {
-              return btoa(JSON.stringify({ schedule_events, schedule_exceptions }));
+              const json = JSON.stringify({ schedule_events, schedule_exceptions });
+              const bytes = new TextEncoder().encode(json);
+              let binary = '';
+              bytes.forEach(byte => {
+                  binary += String.fromCharCode(byte);
+              });
+
+              return btoa(binary)
+                  .replace(/\+/g, '-')
+                  .replace(/\//g, '_')
+                  .replace(/=+$/, '');
           }
   
           function schedule_decodeSchedule(encoded) {
               try {
-                  const decoded = JSON.parse(atob(encoded));
+                  const normalized = decodeURIComponent(encoded)
+                      .replace(/ /g, '+')
+                      .replace(/-/g, '+')
+                      .replace(/_/g, '/');
+                  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+                  const binary = atob(padded);
+                  const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+                  const decoded = JSON.parse(new TextDecoder().decode(bytes));
                   return {
                       schedule_events: decoded.schedule_events || [],
                       schedule_exceptions: decoded.schedule_exceptions || {}
@@ -3715,11 +3798,18 @@ function contrast(){ //increase contrast set or remove cookie
   
           function schedule_resetAll(){
               history.replaceState(null, '', `?schedule=null`);
+              schedule_events = [];
+              schedule_exceptions = {};
               schedule_loadScheduleFromURL();
+              schedule_updateEventList();
+              schedule_updateExceptionList();
+              SetCountDowngeneral();
           }
   
           function schedule_loadScheduleFromURL() {
-              const encodedSchedule = getParameterFromSource('schedule') || parameter('schedule');
+              // Prefer a just-edited URL value; database source data is the fallback
+              // used on the initial ?id= load.
+              const encodedSchedule = parameter('schedule') || getParameterFromSource('schedule');
               console.log("[schedule_loadScheduleFromURL] Loading schedule:", encodedSchedule);
               
               if (encodedSchedule && encodedSchedule !== "null") {
@@ -3735,6 +3825,8 @@ function contrast(){ //increase contrast set or remove cookie
                   }
               } else {
                   console.log("[schedule_loadScheduleFromURL] No schedule parameter found");
+                  schedule_events = [];
+                  schedule_exceptions = {};
               }
           }
 
@@ -5758,15 +5850,7 @@ function searchsettings() {
 
 
 function syncCookiesToCloud() {
-    // Use window-scoped variables to avoid ReferenceError on first use
-    if (typeof window.lastCookieSync === "undefined") window.lastCookieSync = 0;
     if (typeof window.lastSyncedCookies === "undefined") window.lastSyncedCookies = "";
-
-    const now = Date.now();
-    // 10s cooldown
-    if (now - window.lastCookieSync < 10000) {
-        return;
-    }
 
     if (typeof window.supabaseClient !== "undefined" && window.supabaseClient.auth) {
         window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
@@ -5789,7 +5873,6 @@ function syncCookiesToCloud() {
                     if (updateError) {
                         console.error('[betaapp] Error updating settings:', updateError);
                     } else {
-                        window.lastCookieSync = Date.now();
                         window.lastSyncedCookies = localCookies;
                         console.log('[betaapp] Settings synced to cloud successfully');
                     }
