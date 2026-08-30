@@ -1,5 +1,5 @@
 (function () {
-    const betaAppScriptSrc = "betaapp.js?v=20260830-3";
+    const betaAppScriptSrc = "betaapp.js?v=20260830-5";
 
     if (parameter('cardmode') && parameter('id')) {
         console.log('cardmode is true and id is present, initializing for local use');

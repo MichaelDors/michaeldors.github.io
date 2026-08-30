@@ -1755,6 +1755,98 @@ backdrop-filter: blur(12px);
     overflow-y: visible;
 }
 
+#autopilotpopup {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    width: 100%;
+    height: clamp(180px, 22vh, 260px);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+    border-top: 3px solid white;
+    color: white;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+
+#manualpilot,
+#autopilot {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+#manualpilot {
+    padding: clamp(24px, 4vw, 64px);
+    background-image: url(calendarbg.png);
+    background-position: center;
+    background-size: cover;
+    cursor: pointer;
+}
+
+#manualpilot .manualpilot-title {
+    display: flex;
+    align-items: center;
+    gap: clamp(16px, 2vw, 32px);
+    margin: 0;
+    color: white !important;
+    font-size: clamp(28px, 2.6vw, 48px);
+    line-height: 1.1;
+}
+
+#autopilot {
+    padding: clamp(24px, 4vw, 64px);
+    padding-right: clamp(110px, 11vw, 180px);
+    border-left: 3px solid white;
+    background: linear-gradient(to right, #141414, #01fe5e);
+}
+
+#autopilotinfo {
+    min-width: 0;
+}
+
+#autopilot .timekeeper-badge {
+    display: inline-block;
+    margin: 0 0 14px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    background-color: white;
+    line-height: 1;
+}
+
+#autopilotprediction {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: white !important;
+    font-size: clamp(28px, 2.6vw, 48px);
+    line-height: 1.1;
+}
+
+.autopilot-divider-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    margin: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #141414;
+    color: white !important;
+    font-size: clamp(24px, 2vw, 36px);
+    line-height: 1;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
 #autopilotpopupmobile {
     display: none;
 }
@@ -2326,9 +2418,19 @@ backdrop-filter: blur(12px);
 
 .autopilot-countdown-container {
     position: absolute;
-    top: 30%;
-    left: 94%;
-    display: inline-block;
+    top: 50%;
+    right: clamp(28px, 4vw, 72px);
+    left: auto;
+    display: block;
+    width: 64px;
+    height: 64px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    transform: translateY(-50%);
+    cursor: pointer;
 }
 
 .autopilot-countdown-number {
@@ -2357,10 +2459,10 @@ backdrop-filter: blur(12px);
     }
 
     .autopilot-countdown-circle .progressbarr {
-        stroke-dasharray: 170; /* Adjusted for the new circumference */
-        stroke-dashoffset: 170;
+        stroke-dasharray: 169.65;
+        stroke-dashoffset: 0;
         stroke-width: 4; /* Adjusted for the inset effect */
-        stroke: #01fb5d; /* Progress bar color */
+        stroke: white;
         fill: #141414;
         stroke-linecap: round; /* Rounds out the start and end of the stroke */
         stroke-linejoin: round;

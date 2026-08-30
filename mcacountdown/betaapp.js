@@ -34,6 +34,13 @@ let databaseSyncInFlight = false;
 let previewUpdateTimeout = null;
 let pendingPreviewUrl = null;
 
+// Schedule state must exist before the early onload render calls
+// SetCountDowngeneral(). The database schedule is preserved until it has been
+// decoded into these collections.
+let schedule_events = [];
+let schedule_exceptions = {};
+let schedule_isInitialized = false;
+
 // Initialize the gear icon update flag
 window.gearIconUpdated = false;
 
@@ -1731,6 +1738,11 @@ function initFloatingIcons() {
               }
           });
   
+          const sourceSchedule = parameter('schedule') || getParameterFromSource('schedule');
+          const encodedSchedule = schedule_isInitialized
+              ? schedule_encodeSchedule()
+              : (sourceSchedule && sourceSchedule !== 'null' ? sourceSchedule : 'null');
+
           var parameterstring = 
           '?date=' + document.querySelector(".datepicker").value + 
           colorParams + 
@@ -1741,12 +1753,7 @@ function initFloatingIcons() {
       '&progress=' + document.getElementById("progressdatepicker").value + 
       '&progressposition=' + progressbarposition + 
           '&endingsound=' + btoa(document.getElementById("audioLink").value) + 
-          '&schedule=' + (
-              ((getParameterFromSource('schedule') && getParameterFromSource('schedule') !== 'null') ||
-               (parameter('schedule') && parameter('schedule') !== 'null'))
-                  ? schedule_encodeSchedule()
-                  : 'null'
-          ) +
+          '&schedule=' + encodedSchedule +
           (parameter('cardmode') ? '&cardmode=true' : '');
 
           window.CountdownDataSource = parameterstring;
@@ -2909,7 +2916,7 @@ function contrast(){ //increase contrast set or remove cookie
       var thisyear = new Date().getFullYear();
   
       function MES() { //MCA End of School
-          document.querySelector(".datepicker").value = '2026-05-21T11:30';
+          document.querySelector(".datepicker").value = '2027-05-27T11:30';
           SetCountDowngeneral();
       }
       function EASTER() { //Easter
@@ -3316,43 +3323,52 @@ function contrast(){ //increase contrast set or remove cookie
   
       //Autopilot animation
       const autocircle = document.querySelector('.autopilot-countdown-circle .progressbarr');
-      let autocountdown = 10000;
-      let autocountdownInterval;
-  
-      function updateCountdown() {
-        if(autocircle && autocircle.getBBox().width !== 0){
-            const length = autocircle.getTotalLength();
-        }
-          if(autocircle){
-              const offset = length - (length * (10000 + autocountdown) / 10000);
-              autocircle.style.strokeDashoffset = offset;
-              if (autocountdown < 1) {
-                  if(document.getElementById("autopilotpopup") || document.getElementById("autopilotpopupmobile")){
-                  document.getElementById("autopilotpopup").style.opacity = "0";
-                  document.getElementById("autopilotpopupmobile").style.opacity = "0";
-                  }
-  
-                  autocircle.remove();
-              }
-              if (autocountdown === "-0") {
-                  clearInterval(autocountdownInterval);
-                  document.getElementById("autopilotpopup").remove();
-                  document.getElementById("autopilotpopupmobile").remove();
-              }
-              autocountdown -= 10;
-          }else{
-              clearInterval(autocountdownInterval);
+      const autoCountdownDuration = 10000;
+      let autoCountdownFrame;
+      let autoCountdownStartedAt;
+
+      function dismissAutopilotPanel() {
+          ["autopilotpopup", "autopilotpopupmobile"].forEach((panelId) => {
+              const panel = document.getElementById(panelId);
+              if (!panel) return;
+
+              panel.style.opacity = "0";
+              panel.style.pointerEvents = "none";
+              window.setTimeout(() => panel.remove(), 500);
+          });
+      }
+
+      function updateCountdown(timestamp) {
+          if (!autocircle || !autocircle.isConnected) return;
+
+          if (autoCountdownStartedAt === undefined) {
+              autoCountdownStartedAt = timestamp;
+          }
+
+          const circleLength = autocircle.getTotalLength();
+          const elapsed = timestamp - autoCountdownStartedAt;
+          const progress = Math.min(elapsed / autoCountdownDuration, 1);
+
+          autocircle.style.strokeDasharray = `${circleLength}`;
+          autocircle.style.strokeDashoffset = `${circleLength * progress}`;
+
+          if (progress < 1) {
+              autoCountdownFrame = window.requestAnimationFrame(updateCountdown);
+          } else {
+              dismissAutopilotPanel();
           }
       }
-  
-      if(autocircle && !parameter('cardmode')){
-      autocountdownInterval = setInterval(updateCountdown, 10);
+
+      if (autocircle && !parameter('cardmode')) {
+          autoCountdownFrame = window.requestAnimationFrame(updateCountdown);
       }
-  
+
       //close the autopilot popup
       function closeautopanel() {
-          document.getElementById("autopilotpopup").style.opacity = "0";
-          document.getElementById("autopilotpopupmobile").style.opacity = "0";
+          if (autoCountdownFrame) {
+              window.cancelAnimationFrame(autoCountdownFrame);
+          }
+          dismissAutopilotPanel();
       }
   
   
@@ -3691,8 +3707,6 @@ function contrast(){ //increase contrast set or remove cookie
   }
   
   //Countdown Schedule 
-  let schedule_events = [];
-          let schedule_exceptions = {};
           let schedule_editingEvent = null;
           let schedule_editingExceptionDay = null;
           let schedule_isPickingExceptionDay = false;
@@ -3818,6 +3832,7 @@ function contrast(){ //increase contrast set or remove cookie
                       console.log("[schedule_loadScheduleFromURL] Decoded schedule:", decoded);
                       schedule_events = decoded.schedule_events;
                       schedule_exceptions = decoded.schedule_exceptions;
+                      schedule_isInitialized = true;
                       schedule_updateEventList();
                       schedule_updateExceptionList();
                   } catch (error) {
@@ -3827,6 +3842,7 @@ function contrast(){ //increase contrast set or remove cookie
                   console.log("[schedule_loadScheduleFromURL] No schedule parameter found");
                   schedule_events = [];
                   schedule_exceptions = {};
+                  schedule_isInitialized = true;
               }
           }
 
@@ -4798,6 +4814,7 @@ function contrast(){ //increase contrast set or remove cookie
               document.getElementById('schedule-progress').style.width = '0%';
   
               const upcomingClassesEl = document.getElementById('schedule-upcomingClasses');
+              upcomingClassesEl.innerHTML = '';
               tomorrowSchedule.forEach(event => {
                   const upcomingEl = document.createElement('div');
                   upcomingEl.className = 'schedule-upcoming-class';
