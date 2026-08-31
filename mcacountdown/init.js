@@ -1,11 +1,6 @@
 (function () {
     const betaAppScriptSrc = "betaapp.js?v=20260830-7";
 
-    if (parameter('cardmode') && parameter('id')) {
-        console.log('cardmode is true and id is present, initializing for local use');
-        return;
-    }
-
     if (window._initJsLoaded) {
         console.log("init.js already loaded, exiting immediately");
         return; // this return is valid, because we're inside a function now
@@ -31,7 +26,10 @@
         }
     }
 
-    if (parameter('cardmode') && !existingScript && !scriptAlreadyLoaded && !window._betaAppAppended) {
+    // URL-based cards can initialize directly from their query string. Saved
+    // countdown cards carry an id and must continue through the database/cache
+    // loader below before betaapp.js starts.
+    if (parameter('cardmode') && !parameter('id') && !existingScript && !scriptAlreadyLoaded && !window._betaAppAppended) {
         window.CountdownDataSource = window.location.search;
         window.CountdownDataSourceOrigin = "url";
         window._obtainedData = true;
