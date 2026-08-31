@@ -3710,7 +3710,7 @@ function contrast(){ //increase contrast set or remove cookie
           let schedule_editingEvent = null;
           let schedule_editingExceptionDay = null;
           let schedule_isPickingExceptionDay = false;
-          const schedule_hourHeight = 64;
+          const schedule_hourHeight = 56;
           const schedule_minutesPerDay = 1440;
           const schedule_dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
           const schedule_dayIcons = [
@@ -3780,6 +3780,11 @@ function contrast(){ //increase contrast set or remove cookie
   
       document.querySelector(".schedule-editor").style.display = ""; //show the schedule editor
       document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
+      schedule_events = [];
+      schedule_exceptions = {};
+      schedule_updateEventList();
+      schedule_updateExceptionList();
+      schedule_resetForm();
       document.title = "Countdown Schedule";
       showToast('Schedule created successfully!', 'success');
 
@@ -4288,7 +4293,7 @@ function contrast(){ //increase contrast set or remove cookie
   
                   schedule_updateEventList();
                   schedule_updateExceptionList();
-                  schedule_resetForm();
+                  schedule_resetForm(true);
                   schedule_updateURL();
                   schedule_updateScheduleViewer();
               }
@@ -4365,7 +4370,7 @@ function contrast(){ //increase contrast set or remove cookie
               document.getElementById('addtoexceptionbutton').style.display = schedule_editingExceptionDay === null ? "" : "none";
           }
 
-          function schedule_handleGridSlotClick(mouseEvent, day = null) {
+          function schedule_handleGridSlotClick(mouseEvent, day = null, displayDay = null) {
               if (mouseEvent.target.closest('.schedule-calendar-event-action')) {
                   return;
               }
@@ -4382,39 +4387,41 @@ function contrast(){ //increase contrast set or remove cookie
               schedule_prepareSlotTarget(day, minutes);
               document.getElementById("schedule-eventTitle").scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-              const targetLabel = day === null ? 'Regular Schedule' : schedule_getDayName(day);
+              const targetLabel = day === null
+                  ? `Regular schedule${displayDay !== null ? ` (${schedule_getDayName(displayDay)})` : ''}`
+                  : `${schedule_getDayName(day)} override`;
               showToast(`${targetLabel} selected at ${schedule_formatTime(schedule_minutesToTime(minutes))}`, 'info');
           }
 
           function schedule_updateAddButtonText() {
               const addButton = document.getElementById('schedule-addOrUpdateEventBtn');
+              const editorTarget = document.getElementById('schedule-editorTarget');
               if (!addButton) {
                   return;
               }
 
+              if (editorTarget) {
+                  const isOverride = schedule_editingExceptionDay !== null;
+                  editorTarget.classList.toggle('is-override', isOverride);
+                  editorTarget.innerHTML = isOverride
+                      ? `<i class="fa-solid fa-calendar-day"></i> ${schedule_getDayName(schedule_editingExceptionDay)} override`
+                      : '<i class="fa-solid fa-layer-group"></i> Regular schedule';
+              }
+
               if (schedule_editingEvent) {
-                  if (schedule_editingExceptionDay !== null) {
-                      addButton.innerHTML = `<i class="fa-solid fa-check-circle"></i> Update ${schedule_getDayName(schedule_editingExceptionDay)}`;
-                  } else {
-                      addButton.innerHTML = '<i class="fa-solid fa-check-circle"></i> Update Event';
-                  }
+                  addButton.innerHTML = '<i class="fa-solid fa-check"></i> Save changes';
                   return;
               }
 
-              if (schedule_editingExceptionDay !== null) {
-                  addButton.innerHTML = `<i class="fa-solid fa-calendar-day"></i> Add to ${schedule_getDayName(schedule_editingExceptionDay)}`;
-              } else {
-                  addButton.innerHTML = '<i class="fa-solid fa-plus-circle"></i> Add to Regular Schedule';
-              }
+              addButton.innerHTML = '<i class="fa-solid fa-plus"></i> Add event';
           }
 
           function schedule_updateDayColumnHighlights() {
-              const regularColumn = document.querySelector('.schedule-calendar-day-regular');
-              if (regularColumn) {
+              document.querySelectorAll('.schedule-calendar-day-regular').forEach(regularColumn => {
                   const regularSelected = schedule_editingExceptionDay === null && !schedule_isPickingExceptionDay;
                   regularColumn.classList.toggle('is-select-target', regularSelected && !schedule_editingEvent);
                   regularColumn.classList.toggle('is-editing-target', regularSelected && Boolean(schedule_editingEvent));
-              }
+              });
 
               document.querySelectorAll('.schedule-calendar-day-exception').forEach(dayCard => {
                   const isTarget = String(dayCard.dataset.dayKey) === String(schedule_editingExceptionDay);
@@ -4455,14 +4462,14 @@ function contrast(){ //increase contrast set or remove cookie
 
           function selectexceptiontoaddevent(){
               if (!Object.keys(schedule_exceptions).length) {
-                  document.getElementById("schedule-addDayCard").scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'end' });
-                  showToast('Create an exception day on the right first, then click its time grid.', 'info');
+                  document.getElementById("exceptiondaycontainer").scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  showToast('Use the + beside a weekday to create its override.', 'info');
                   return;
               }
               schedule_isPickingExceptionDay = true;
               document.getElementById("exceptiondaycontainer").scrollIntoView({ behavior: 'smooth', block: 'nearest' });
               schedule_updateDayColumnHighlights();
-              showToast('Pick an exception day column, then click the time slot you want.', 'info');
+              showToast('Pick an orange override column, then click the time you want.', 'info');
           }
   
           function schedule_removeEvent(index, isException = false, day = null) {
@@ -4481,7 +4488,6 @@ function contrast(){ //increase contrast set or remove cookie
               schedule_updateExceptionList();
               schedule_updateURL();
               schedule_updateScheduleViewer();
-              document.getElementById("schedule-eventTitle").scrollIntoView();
 
           }
   
@@ -4543,11 +4549,12 @@ function contrast(){ //increase contrast set or remove cookie
               `;
           }
 
-          function schedule_renderDayGrid(events, day = null) {
+          function schedule_renderDayGrid(events, day = null, displayDay = null) {
               const gridTarget = day === null ? 'null' : `'${day}'`;
+              const displayDayTarget = displayDay === null ? 'null' : `'${displayDay}'`;
 
               return `
-                  <div class="schedule-calendar-grid" onclick="schedule_handleGridSlotClick(event, ${gridTarget})" style="height:${schedule_hourHeight * 24}px;">
+                  <div class="schedule-calendar-grid" onclick="schedule_handleGridSlotClick(event, ${gridTarget}, ${displayDayTarget})" style="height:${schedule_hourHeight * 24}px;">
                       ${events.map((event, index) => schedule_renderEventCard(
                           event,
                           day === null
@@ -4563,10 +4570,8 @@ function contrast(){ //increase contrast set or remove cookie
           }
   
           function schedule_updateEventList() {
-              const eventList = document.getElementById('schedule-eventList');
               schedule_buildTimeAxis();
-              eventList.innerHTML = schedule_renderDayGrid(schedule_events, null);
-              schedule_updateDayColumnHighlights();
+              schedule_renderWeekCalendar();
           }
 
           function schedule_updateAddDayOptions() {
@@ -4599,50 +4604,58 @@ function contrast(){ //increase contrast set or remove cookie
               });
           }
   
-          function schedule_updateExceptionList() {
-              const exceptionList = document.getElementById('schedule-exceptionList');
-              exceptionList.innerHTML = '';
+          function schedule_renderWeekCalendar() {
+              const dayColumns = document.getElementById('schedule-dayColumns');
+              if (!dayColumns) {
+                  return;
+              }
 
-              Object.keys(schedule_exceptions)
-                  .sort((a, b) => Number(a) - Number(b))
-                  .forEach(day => {
-                      const dayEvents = schedule_exceptions[day];
-                      const dayName = schedule_getDayName(day);
-                      const dayCard = document.createElement('section');
-                      dayCard.className = 'schedule-calendar-day schedule-calendar-day-exception';
-                      dayCard.dataset.dayKey = day;
-                      dayCard.innerHTML = `
-                          <div class="schedule-calendar-day-header">
-                              <p class="schedule-calendar-day-kicker"><i class="fa-solid ${schedule_getDayIcon(day)}"></i> Exception Day</p>
+              dayColumns.innerHTML = '';
+
+              schedule_dayNames.forEach((dayName, dayIndex) => {
+                  const day = String(dayIndex);
+                  const hasOverride = Object.prototype.hasOwnProperty.call(schedule_exceptions, day);
+                  const dayEvents = hasOverride ? schedule_exceptions[day] : schedule_events;
+                  const dayCard = document.createElement('section');
+                  dayCard.className = `schedule-calendar-day ${hasOverride ? 'schedule-calendar-day-exception' : 'schedule-calendar-day-regular'}`;
+                  dayCard.dataset.dayKey = day;
+                  dayCard.innerHTML = `
+                      <div class="schedule-calendar-day-header">
+                          <div class="schedule-calendar-day-heading">
                               <h2>${dayName}</h2>
-                              <p class="schedule-calendar-day-description">Custom schedule for ${dayName}.</p>
+                              <p class="schedule-calendar-day-kicker">${hasOverride ? 'Override' : 'Regular'}</p>
                           </div>
-                          <div class="schedule-calendar-day-actions">
-                              <a class="schedule-calendar-day-action primary addeventtoexceptionday" onclick="event.preventDefault(); schedule_editEvent(null, true, '${day}'); return false;"><i class="fa-solid fa-plus-circle"></i> New Event</a>
-                              <a class="schedule-calendar-day-action warning" onclick="event.preventDefault(); schedule_removeExceptionDay('${day}'); return false;"><i class="fa-solid fa-trash"></i> Remove Day</a>
-                          </div>
-                          <div class="schedule-calendar-day-body">
-                              ${schedule_renderDayGrid(dayEvents, day)}
-                          </div>
-                      `;
-                      exceptionList.appendChild(dayCard);
-                  });
+                          ${hasOverride
+                              ? `<button type="button" class="schedule-calendar-day-header-action" title="Remove ${dayName} override" aria-label="Remove ${dayName} override" onclick="event.preventDefault(); schedule_removeExceptionDay('${day}');"><i class="fa-solid fa-rotate-left"></i></button>`
+                              : `<button type="button" class="schedule-calendar-day-header-action" title="Create ${dayName} override" aria-label="Create ${dayName} override" onclick="event.preventDefault(); schedule_addExceptionDay('${day}');"><i class="fa-solid fa-plus"></i></button>`
+                          }
+                      </div>
+                      <div class="schedule-calendar-day-body">
+                          ${schedule_renderDayGrid(dayEvents, hasOverride ? day : null, day)}
+                      </div>
+                  `;
+                  dayColumns.appendChild(dayCard);
+              });
 
-              schedule_updateAddDayOptions();
               schedule_updateDayColumnHighlights();
           }
+
+          function schedule_updateExceptionList() {
+              schedule_renderWeekCalendar();
+          }
   
-          function schedule_resetForm() {
+          function schedule_resetForm(preserveTarget = false) {
+              const previousTargetDay = schedule_editingExceptionDay;
               document.getElementById('schedule-eventTitle').value = '';
               document.getElementById('schedule-startTime').value = '';
               document.getElementById('schedule-endTime').value = '';
               schedule_resettimeinputs();
               schedule_editingEvent = null;
-              schedule_editingExceptionDay = null;
+              schedule_editingExceptionDay = preserveTarget ? previousTargetDay : null;
               schedule_isPickingExceptionDay = false;
               schedule_updateAddButtonText();
               schedule_updateDayColumnHighlights();
-              document.getElementById('addtoexceptionbutton').style.display = "";
+              document.getElementById('addtoexceptionbutton').style.display = schedule_editingExceptionDay === null ? "" : "none";
           }
   
           function schedule_getScheduleForDay(date) {
