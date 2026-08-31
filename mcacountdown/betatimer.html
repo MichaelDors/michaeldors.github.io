@@ -22,7 +22,7 @@
     <script src="Dependencies/confetti.js"></script>
     <script src="Dependencies/qrcode.min.js"></script>
 
-	<link rel="stylesheet" id="stylesheetmain" href="betastyle.css?v=20260830-5"/>
+	<link rel="stylesheet" id="stylesheetmain" href="betastyle.css?v=20260830-7"/>
     <style id="animationHandler"></style>
 
     <meta property="og:image" content="https://michaeldors.com/mcacountdown/sharepanels/defaultshare.jpg" />
@@ -537,8 +537,8 @@
                         <div class="schedule-event-composer" aria-labelledby="editscheduletag">
                             <div class="schedule-event-composer-heading">
                                 <div>
-                                    <p class="schedule-section-eyebrow">Event editor</p>
-                                    <h2 id="editscheduletag">Add an event</h2>
+                                    <h2 id="editscheduletag"><i class="fa-solid fa-calendar-plus"></i> Add an event</h2>
+                                    <p class="schedule-event-composer-copy">Choose a time below or enter the details here.</p>
                                 </div>
                                 <span class="schedule-editor-target" id="schedule-editorTarget"><i class="fa-solid fa-layer-group"></i> Regular schedule</span>
                             </div>
@@ -566,13 +566,10 @@
                             <div class="schedule-calendar-shell">
                                 <div class="schedule-calendar-toolbar">
                                     <div>
-                                        <p class="schedule-section-eyebrow">Weekly schedule</p>
-                                        <h2>Calendar</h2>
+                                        <h2><i class="fa-solid fa-calendar-week"></i> Weekly schedule</h2>
                                         <p class="schedule-calendar-toolbar-text">Click an empty time to add an event. Use <i class="fa-solid fa-plus"></i> beside a day to give it a different schedule.</p>
                                     </div>
                                     <div class="schedule-calendar-toolbar-actions">
-                                        <span class="schedule-calendar-legend"><i class="fa-solid fa-circle"></i> Regular</span>
-                                        <span class="schedule-calendar-legend is-override"><i class="fa-solid fa-circle"></i> Override</span>
                                         <button type="button" class="schedule-calendar-toolbar-action" onclick="schedule_selectRegularDay();"><i class="fa-solid fa-layer-group"></i> Edit regular</button>
                                     </div>
                                 </div>
