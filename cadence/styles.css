@@ -4269,7 +4269,7 @@ textarea {
   }
 }
 
-#song-details-modal .song-album-art-container:hover {
+#song-details-modal .song-album-art-container.album-art-loaded:hover {
   --album-art-shift-x: -42px;
   --album-art-shift-y: 3px;
   --album-art-tilt: -4deg;

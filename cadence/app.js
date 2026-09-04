@@ -21434,6 +21434,7 @@ async function displayAlbumArt(content, albumArtData, song) {
   placeholder.dataset.collapseToken = "";
   placeholder.classList.remove("album-art-collapsed", "album-art-loaded");
   placeholder.classList.add("album-art-loading");
+  placeholder.style.removeProperty("transform");
   // Hide the image while loading so we don't flash stale content
   img.style.display = "none";
 
@@ -21747,7 +21748,7 @@ function setupAlbumArtTilt(container) {
   let rafId = null;
 
   container.addEventListener('mousemove', (e) => {
-    if (shouldReduceMotion()) {
+    if (container.classList.contains("album-art-loading") || shouldReduceMotion()) {
       if (rafId) cancelAnimationFrame(rafId);
       rafId = null;
       container.style.removeProperty("transform");
@@ -21759,7 +21760,7 @@ function setupAlbumArtTilt(container) {
 
     rafId = requestAnimationFrame(() => {
       rafId = null;
-      if (shouldReduceMotion()) {
+      if (container.classList.contains("album-art-loading") || shouldReduceMotion()) {
         container.style.removeProperty("transform");
         return;
       }
@@ -23746,6 +23747,7 @@ function showSongAlbumArtLoadingPlaceholder(content) {
   container.dataset.collapseToken = "";
   container.classList.remove("album-art-collapsed", "album-art-loaded");
   container.classList.add("album-art-loading");
+  container.style.removeProperty("transform");
 
   if (imgEl) imgEl.style.display = "none";
   if (noImageEl) noImageEl.classList.add("hidden");
