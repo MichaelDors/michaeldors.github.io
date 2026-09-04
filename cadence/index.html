@@ -1835,8 +1835,11 @@
           <p class="set-date"></p>
         </div>
         <div style="display: flex; gap: 0.5rem;">
-          <button class="btn small ghost pin-set-btn" title="Pin set">
-            <i class="fa-solid fa-thumbtack"></i>
+          <button class="btn small ghost pin-set-btn" type="button" title="Pin set" aria-label="Pin set"
+            aria-pressed="false">
+            <span class="pin-set-stage" aria-hidden="true">
+              <i class="fa-solid fa-thumbtack"></i>
+            </span>
           </button>
           <button class="btn small ghost edit-set-btn hidden">Edit</button>
           <button class="btn small ghost delete-set-btn hidden">Delete</button>

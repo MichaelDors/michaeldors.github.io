@@ -154,6 +154,9 @@ const isInviteLink = window.__isInviteLink;
 
 // Initialize FastAverageColor
 const fac = new FastAverageColor();
+const reducedMotionMediaQuery = typeof window.matchMedia === "function"
+  ? window.matchMedia("(prefers-reduced-motion: reduce)")
+  : null;
 
 let supabase = null;
 
@@ -931,7 +934,7 @@ function removeToast(toast) {
     if (toast.parentElement) {
       toast.parentElement.removeChild(toast);
     }
-  }, 300);
+  }, getMotionAwareDelay(300));
 }
 
 // Convenience functions
@@ -993,7 +996,7 @@ function closeModalWithAnimation(modalElement, onHidden) {
     if (onHidden) {
       onHidden();
     }
-  }, 250); // Slightly longer than 0.2s to be safe
+  }, getMotionAwareDelay(250)); // Slightly longer than 0.2s to be safe
 }
 
 const modalFocusState = new Map();
@@ -1701,6 +1704,60 @@ function initTabAnimations() {
   }
 }
 
+let reducedMotionPreferenceListenerBound = false;
+
+function clearMotionDrivenTransforms() {
+  document.querySelectorAll(".set-add-song-cover-stack").forEach((coverStack) => {
+    coverStack.classList.remove("is-hovering", "is-entry-pending");
+    coverStack.querySelectorAll(".set-add-song-cover").forEach((cover) => {
+      cover.classList.remove("is-cleared");
+      cover.style.setProperty("--cover-drift-x", "0px");
+      cover.style.setProperty("--cover-drift-y", "0px");
+      cover.style.setProperty("--cover-tilt-x", "0deg");
+      cover.style.setProperty("--cover-tilt-y", "0deg");
+      cover.style.setProperty("--cover-hover-scale", "1");
+      cover.style.setProperty("--cover-entry-y", "0px");
+      cover.style.setProperty("--cover-entry-scale", "1");
+      cover.style.opacity = "1";
+    });
+  });
+
+  document.querySelectorAll('[data-album-art-tilt-bound="1"]').forEach((container) => {
+    container.style.removeProperty("transform");
+  });
+}
+
+function syncReducedMotionPreference(event = reducedMotionMediaQuery) {
+  if (!event?.matches) {
+    document.querySelectorAll(".set-add-song-cover-stack").forEach((coverStack) => {
+      setupSetDetailAddSongCoverInteraction(coverStack.closest(".add-song-half"), coverStack);
+    });
+    scheduleAiChatFabPulse(el("ai-chat-fab"));
+    return;
+  }
+
+  if (aiChatFabPulseTimeout) {
+    clearTimeout(aiChatFabPulseTimeout);
+    aiChatFabPulseTimeout = null;
+  }
+  el("ai-chat-fab")?.classList.remove("ai-chat-fab--burst");
+  Object.values(state.lottieAnimations || {}).forEach((animation) => animation?.pause?.());
+  clearMotionDrivenTransforms();
+}
+
+function initReducedMotionPreference() {
+  if (!reducedMotionMediaQuery || reducedMotionPreferenceListenerBound) return;
+  reducedMotionPreferenceListenerBound = true;
+
+  if (typeof reducedMotionMediaQuery.addEventListener === "function") {
+    reducedMotionMediaQuery.addEventListener("change", syncReducedMotionPreference);
+  } else if (typeof reducedMotionMediaQuery.addListener === "function") {
+    reducedMotionMediaQuery.addListener(syncReducedMotionPreference);
+  }
+
+  syncReducedMotionPreference(reducedMotionMediaQuery);
+}
+
 async function init() {
   showBootLoader("Checking your session...");
   // Initialize color picker visibility logic
@@ -1708,6 +1765,7 @@ async function init() {
 
   // Initialize tab animations
   initTabAnimations();
+  initReducedMotionPreference();
 
   // Setup modal animation listeners
   setupModalObservers();
@@ -2254,7 +2312,7 @@ function bindEvents() {
       setTimeout(() => {
         element.classList.add("hidden");
         element.classList.remove("animate-out");
-      }, 250); // Matches CSS animation duration
+      }, getMotionAwareDelay(250)); // Matches CSS animation duration
     }
   }
 
@@ -7917,6 +7975,142 @@ function recalculateSetDetailAssignmentPills() {
   });
 }
 
+const PIN_SET_MOTION = Object.freeze({
+  pin: Object.freeze({ className: "is-pin-landing", animationName: "cadence-pin-drive", duration: 620, impactAt: 335 }),
+  unpin: Object.freeze({ className: "is-pin-releasing", animationName: "cadence-pin-release", duration: 210, impactAt: 0 }),
+});
+const pinSetMutationsInFlight = new Set();
+
+function ensurePinSetButtonStage(pinBtn) {
+  if (!pinBtn) return { stage: null, icon: null, label: null };
+
+  pinBtn.classList.add("pin-set-btn");
+  let stage = pinBtn.querySelector(".pin-set-stage");
+  let icon = pinBtn.querySelector("i");
+
+  if (!stage && icon) {
+    stage = document.createElement("span");
+    stage.className = "pin-set-stage";
+    stage.setAttribute("aria-hidden", "true");
+    icon.replaceWith(stage);
+    stage.appendChild(icon);
+  }
+
+  let label = pinBtn.querySelector(".pin-set-label");
+  if (pinBtn.id === "btn-pin-set-detail" && !label) {
+    Array.from(pinBtn.childNodes).forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) node.remove();
+    });
+    label = document.createElement("span");
+    label.className = "pin-set-label";
+    pinBtn.appendChild(label);
+  }
+
+  return { stage, icon, label };
+}
+
+function syncPinSetButtonState(pinBtn, isPinned, setId = null) {
+  if (!pinBtn) return;
+  const { icon, label } = ensurePinSetButtonStage(pinBtn);
+  const actionLabel = isPinned ? "Unpin set" : "Pin set";
+
+  if (setId !== null && setId !== undefined) pinBtn.dataset.setId = String(setId);
+  pinBtn.classList.toggle("pinned", isPinned);
+  pinBtn.title = actionLabel;
+  pinBtn.setAttribute("aria-label", actionLabel);
+  pinBtn.setAttribute("aria-pressed", String(isPinned));
+
+  if (icon) {
+    icon.classList.remove("fa-regular", "fa-thumbtack-slash");
+    icon.classList.add("fa-solid", "fa-thumbtack");
+  }
+  if (label) label.textContent = isPinned ? "Unpin" : "Pin";
+}
+
+function getPinSetButtons(setId, fallbackButton = null) {
+  const normalizedId = String(setId);
+  const buttons = Array.from(document.querySelectorAll(".pin-set-btn"))
+    .filter((button) => button.dataset.setId === normalizedId);
+
+  if (fallbackButton && !buttons.includes(fallbackButton)) buttons.push(fallbackButton);
+  return buttons;
+}
+
+function setPinSetButtonsBusy(setId, isBusy, action, fallbackButton = null) {
+  getPinSetButtons(setId, fallbackButton).forEach((button) => {
+    button.classList.toggle("is-pin-pending", isBusy && action === "pin" && !shouldReduceMotion());
+    if (isBusy) {
+      button.setAttribute("aria-busy", "true");
+      button.setAttribute("aria-disabled", "true");
+    } else {
+      button.removeAttribute("aria-busy");
+      button.removeAttribute("aria-disabled");
+      button.classList.remove("is-pin-pending", "is-pin-landing", "is-pin-releasing");
+    }
+  });
+}
+
+async function playPinSetButtonMotion(setId, action, fallbackButton, onImpact) {
+  const motion = PIN_SET_MOTION[action];
+  const buttons = getPinSetButtons(setId, fallbackButton);
+  const primaryStage = ensurePinSetButtonStage(fallbackButton || buttons[0]).stage;
+  let impactFired = false;
+  let impactTimer = null;
+
+  const fireImpact = () => {
+    if (impactFired) return;
+    impactFired = true;
+    onImpact?.();
+  };
+
+  buttons.forEach((button) => {
+    button.classList.remove("is-pin-pending", "is-pin-landing", "is-pin-releasing");
+  });
+
+  if (!motion || !primaryStage || shouldReduceMotion() || document.hidden) {
+    fireImpact();
+    return;
+  }
+
+  // Restart cleanly when a set is shown in both Your Sets and All Sets.
+  void primaryStage.offsetWidth;
+  buttons.forEach((button) => button.classList.add(motion.className));
+
+  if (motion.impactAt > 0) {
+    impactTimer = window.setTimeout(fireImpact, motion.impactAt);
+  } else {
+    fireImpact();
+  }
+
+  await new Promise((resolve) => {
+    let fallbackTimer = null;
+    const animatedIcon = primaryStage.querySelector("i");
+
+    const finish = () => {
+      primaryStage.removeEventListener("animationend", handleAnimationEnd);
+      primaryStage.removeEventListener("animationcancel", handleAnimationEnd);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+      resolve();
+    };
+    const handleAnimationEnd = (event) => {
+      if (event.target === animatedIcon && event.animationName === motion.animationName) finish();
+    };
+    const handleVisibilityChange = () => {
+      if (document.hidden) finish();
+    };
+
+    primaryStage.addEventListener("animationend", handleAnimationEnd);
+    primaryStage.addEventListener("animationcancel", handleAnimationEnd);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    fallbackTimer = window.setTimeout(finish, motion.duration + 100);
+  });
+
+  if (impactTimer) window.clearTimeout(impactTimer);
+  fireImpact();
+  buttons.forEach((button) => button.classList.remove(motion.className));
+}
+
 function renderSetCard(set, container, index = 0, animate = true, baseDelay = 0) {
   const template = document.getElementById("set-card-template");
   const node = template.content.cloneNode(true);
@@ -7942,21 +8136,7 @@ function renderSetCard(set, container, index = 0, animate = true, baseDelay = 0)
 
   // Update pin button state
   if (pinBtn) {
-    const isPinned = set.is_pinned === true;
-    const icon = pinBtn.querySelector("i");
-    if (icon) {
-      if (isPinned) {
-        icon.classList.remove("fa-solid", "fa-thumbtack");
-        icon.classList.add("fa-solid", "fa-thumbtack-slash");
-        pinBtn.title = "Unpin set";
-        pinBtn.classList.add("pinned");
-      } else {
-        icon.classList.remove("fa-solid", "fa-thumbtack-slash");
-        icon.classList.add("fa-solid", "fa-thumbtack");
-        pinBtn.title = "Pin set";
-        pinBtn.classList.remove("pinned");
-      }
-    }
+    syncPinSetButtonState(pinBtn, set.is_pinned === true, set.id);
     pinBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
       await togglePinSet(set, pinBtn);
@@ -8286,8 +8466,12 @@ function switchTab(tabName, options = {}) {
     Object.keys(state.lottieAnimations).forEach(key => {
       if (state.lottieAnimations[key]) {
         if (key === tabName) {
-          // Reset to 0 and play
-          state.lottieAnimations[key].goToAndPlay(0, true);
+          if (shouldReduceMotion()) {
+            state.lottieAnimations[key].goToAndStop(0, true);
+          } else {
+            // Reset to 0 and play
+            state.lottieAnimations[key].goToAndPlay(0, true);
+          }
         } else {
           // Stop (resets to 0 usually in stop mode if passing true/frame, or just pause)
           // goToAndStop(0) resets to beginning
@@ -10237,7 +10421,11 @@ function canChatWithTrill() {
 let aiChatFabPulseTimeout = null;
 
 function shouldReduceMotion() {
-  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return Boolean(reducedMotionMediaQuery?.matches);
+}
+
+function getMotionAwareDelay(durationMs) {
+  return shouldReduceMotion() ? 0 : durationMs;
 }
 
 function scheduleAiChatFabPulse(fab) {
@@ -10438,23 +10626,7 @@ function showSetDetail(set, options = {}) {
 
   // Setup pin button
   if (pinBtn) {
-    const isPinned = set.is_pinned === true;
-    const icon = pinBtn.querySelector("i");
-
-    // Update initial button state
-    if (icon) {
-      if (isPinned) {
-        icon.classList.remove("fa-regular", "fa-thumbtack");
-        icon.classList.add("fa-solid", "fa-thumbtack");
-        pinBtn.innerHTML = '<i class="fa-solid fa-thumbtack-slash"></i>\n                Unpin';
-        pinBtn.classList.add("pinned");
-      } else {
-        icon.classList.remove("fa-solid", "fa-thumbtack");
-        icon.classList.add("fa-regular", "fa-thumbtack");
-        pinBtn.innerHTML = '<i class="fa-solid fa-thumbtack"></i>\n                Pin';
-        pinBtn.classList.remove("pinned");
-      }
-    }
+    syncPinSetButtonState(pinBtn, set.is_pinned === true, set.id);
 
     // Remove existing event listeners by cloning the button
     const newPinBtn = pinBtn.cloneNode(true);
@@ -10462,15 +10634,6 @@ function showSetDetail(set, options = {}) {
     const finalPinBtn = el("btn-pin-set-detail");
     finalPinBtn.addEventListener("click", async () => {
       await togglePinSet(set, finalPinBtn);
-      // Update the button text after toggling
-      const updatedIsPinned = set.is_pinned === true;
-      if (updatedIsPinned) {
-        finalPinBtn.innerHTML = '<i class="fa-solid fa-thumbtack-slash"></i>\n                Unpin';
-        finalPinBtn.classList.add("pinned");
-      } else {
-        finalPinBtn.innerHTML = '<i class="fa-solid fa-thumbtack"></i>\n                Pin';
-        finalPinBtn.classList.remove("pinned");
-      }
     });
   }
 
@@ -10901,6 +11064,17 @@ function setupSetDetailAddSongCoverInteraction(addSongHalf, coverStack) {
   const stepAnimation = () => {
     rafId = null;
 
+    if (shouldReduceMotion()) {
+      targetActiveIndex = -1;
+      currentActiveIndex = -1;
+      targetBiasX = 0;
+      targetBiasY = 0;
+      currentBiasX = 0;
+      currentBiasY = 0;
+      applyTransforms();
+      return;
+    }
+
     const activeEase = targetActiveIndex < 0 ? 0.16 : 0.24;
     currentActiveIndex += (targetActiveIndex - currentActiveIndex) * activeEase;
     currentBiasX += (targetBiasX - currentBiasX) * 0.2;
@@ -10963,6 +11137,10 @@ function setupSetDetailAddSongCoverInteraction(addSongHalf, coverStack) {
   });
 
   coverStack.addEventListener("pointermove", (event) => {
+    if (shouldReduceMotion()) {
+      resetInteraction();
+      return;
+    }
     if (coverStack.classList.contains("is-entry-pending")) return;
     if ((Date.now() - interactionBoundAt) < interactionWarmupMs) return;
     const activeCover = event.target?.closest?.(".set-add-song-cover");
@@ -12093,7 +12271,11 @@ function hideSetDetail() {
   }
   // Play Sets tab lottie
   if (state.lottieAnimations?.sets) {
-    state.lottieAnimations.sets.goToAndPlay(0, true);
+    if (shouldReduceMotion()) {
+      state.lottieAnimations.sets.goToAndStop(0, true);
+    } else {
+      state.lottieAnimations.sets.goToAndPlay(0, true);
+    }
   }
   // Re-render Sets tab with ripple animation after dashboard is visible
   requestAnimationFrame(() => {
@@ -15674,7 +15856,7 @@ function closeHeaderDropdown() {
       setTimeout(() => {
         element.classList.add("hidden");
         element.classList.remove("animate-out");
-      }, 250);
+      }, getMotionAwareDelay(250));
     }
   };
 
@@ -15795,6 +15977,7 @@ async function getWeeksSinceLastPerformance(songsToUse = null) {
   const { data, error } = await supabase
     .from("set_songs")
     .select(`
+      id,
       song_id,
       set:set_id (
         id,
@@ -15832,11 +16015,11 @@ async function getWeeksSinceLastPerformance(songsToUse = null) {
         // Prefer keeping the set object reference for the link
         if (dateValue >= now) {
           if (!entry.next || dateValue < entry.next.date) {
-            entry.next = { date: dateValue, setId: setData.id };
+            entry.next = { date: dateValue, setId: setData.id, setSongId: item.id };
           }
         } else {
           if (!entry.last || dateValue > entry.last.date) {
-            entry.last = { date: dateValue, setId: setData.id };
+            entry.last = { date: dateValue, setId: setData.id, setSongId: item.id };
           }
         }
 
@@ -15865,6 +16048,7 @@ async function getWeeksSinceLastPerformance(songsToUse = null) {
         diffWeeks,
         label: displayLabel,
         setId: entry.next.setId,
+        setSongId: entry.next.setSongId,
         type: 'future'
       });
     } else if (entry.last) {
@@ -15885,6 +16069,7 @@ async function getWeeksSinceLastPerformance(songsToUse = null) {
         diffWeeks: signedWeeks,
         label: weeksAgo === 0 ? "This week" : `-${weeksAgo}w`,
         setId: entry.last.setId,
+        setSongId: entry.last.setSongId,
         type: 'past'
       });
     }
@@ -17383,11 +17568,19 @@ function showDeleteConfirmModal(name, message, onConfirm, options = {}) {
 async function togglePinSet(set, pinBtn) {
   if (!state.profile?.id) {
     toastError("You must be logged in to pin sets");
-    return;
+    return false;
   }
 
+  const setKey = String(set.id);
+  if (pinSetMutationsInFlight.has(setKey)) return false;
+
   const isPinned = set.is_pinned === true;
-  const icon = pinBtn.querySelector("i");
+  const action = isPinned ? "unpin" : "pin";
+  const shouldRestoreFocus = document.activeElement === pinBtn;
+  const originListId = pinBtn?.closest("#your-sets-list, #sets-list")?.id || null;
+  pinSetMutationsInFlight.add(setKey);
+  setPinSetButtonsBusy(set.id, true, action, pinBtn);
+  triggerSelectionHaptic();
 
   try {
     if (isPinned) {
@@ -17401,25 +17594,19 @@ async function togglePinSet(set, pinBtn) {
       if (error) {
         console.error("Error unpinning set:", error);
         toastError("Unable to unpin set. Please try again.");
-        return;
+        return false;
       }
 
       // Update local state
       set.is_pinned = false;
-      if (icon) {
-        icon.classList.remove("fa-solid", "fa-thumbtack");
-        icon.classList.add("fa-regular", "fa-thumbtack");
-        pinBtn.title = "Pin set";
-        pinBtn.classList.remove("pinned");
-      }
+      await playPinSetButtonMotion(set.id, "unpin", pinBtn, () => toastSuccess("Set unpinned"));
+      getPinSetButtons(set.id, pinBtn).forEach((button) => syncPinSetButtonState(button, false, set.id));
 
       // Track unpin
       trackPostHogEvent('set_unpinned', {
         set_id: set.id,
         team_id: state.currentTeamId
       });
-
-      toastSuccess("Set unpinned");
     } else {
       // Pin: insert into pinned_sets
       const { error } = await supabase
@@ -17442,18 +17629,17 @@ async function togglePinSet(set, pinBtn) {
           } else {
             toastError("Unable to pin set. Please try again.");
           }
-          return;
+          return false;
         }
       }
 
       // Update local state
       set.is_pinned = true;
-      if (icon) {
-        icon.classList.remove("fa-regular", "fa-thumbtack");
-        icon.classList.add("fa-solid", "fa-thumbtack");
-        pinBtn.title = "Unpin set";
-        pinBtn.classList.add("pinned");
-      }
+      await playPinSetButtonMotion(set.id, "pin", pinBtn, () => {
+        getPinSetButtons(set.id, pinBtn).forEach((button) => syncPinSetButtonState(button, true, set.id));
+        toastSuccess("Set pinned");
+      });
+      getPinSetButtons(set.id, pinBtn).forEach((button) => syncPinSetButtonState(button, true, set.id));
 
       // Track pin
       trackPostHogEvent('set_pinned', {
@@ -17463,15 +17649,26 @@ async function togglePinSet(set, pinBtn) {
 
       // Update aggregate metrics
       setTimeout(() => sendAggregateMetrics(), 1000);
-
-      toastSuccess("Set pinned");
     }
 
     // Reload sets to update the "Your Sets" section
     await loadSets();
+    if (shouldRestoreFocus) {
+      const replacementButtons = getPinSetButtons(set.id);
+      const sameListButton = originListId
+        ? replacementButtons.find((button) => button.closest("#your-sets-list, #sets-list")?.id === originListId)
+        : null;
+      const replacementButton = pinBtn?.isConnected ? pinBtn : sameListButton || replacementButtons[0];
+      replacementButton?.focus({ preventScroll: true });
+    }
+    return true;
   } catch (err) {
     console.error("Error toggling pin:", err);
     toastError("An error occurred. Please try again.");
+    return false;
+  } finally {
+    pinSetMutationsInFlight.delete(setKey);
+    setPinSetButtonsBusy(set.id, false, action, pinBtn);
   }
 }
 
@@ -20518,7 +20715,7 @@ async function renderSongCatalog(animate = true) {
         if (sortOption === 'relevancy' && weeksSinceMap) {
           const info = weeksSinceMap.get(song.id);
           if (info && info.label) {
-            html += `<span class="badge-relevancy" data-set-id="${info.setId || ''}" style="cursor: pointer; background-color: var(--bg-tertiary); color: var(--text-main); padding: 2px 6px; border-radius: 4px; font-size: 0.7em; font-weight: 600; letter-spacing: 0.5px;" title="Click to view set">${info.label}</span>`;
+            html += `<span class="badge-relevancy" data-set-id="${info.setId || ''}" data-set-song-id="${info.setSongId || ''}" style="cursor: pointer; background-color: var(--bg-tertiary); color: var(--text-main); padding: 2px 6px; border-radius: 4px; font-size: 0.7em; font-weight: 600; letter-spacing: 0.5px;" title="Click to view song in set">${info.label}</span>`;
           }
         }
         return html;
@@ -20550,19 +20747,24 @@ async function renderSongCatalog(animate = true) {
         e.stopPropagation();
         e.preventDefault();
         const setId = relevancyBadge.dataset.setId;
+        const setSongId = relevancyBadge.dataset.setSongId;
         if (setId) {
           const set = state.sets.find(s => String(s.id) === String(setId));
           if (set) {
             showSetDetail(set, { withHaptics: true });
-            // When navigating from the song list, ensure the set detail view
-            // scrolls to the top of the set details section.
-            // Use a small timeout so layout has time to update.
-            setTimeout(() => {
-              const detailSection = document.getElementById("set-detail");
-              if (detailSection) {
-                detailSection.scrollIntoView({ behavior: "smooth", block: "start" });
-              }
-            }, 50);
+            // Wait for the set-list layout to settle, then reveal the exact
+            // occurrence represented by the weeks badge.
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const targetSong = Array.from(
+                  document.querySelectorAll("#detail-songs-list [data-set-song-id]")
+                ).find(node => String(node.dataset.setSongId) === String(setSongId));
+                targetSong?.scrollIntoView({
+                  behavior: shouldReduceMotion() ? "auto" : "smooth",
+                  block: "center"
+                });
+              });
+            });
           }
         }
       });
@@ -21442,7 +21644,7 @@ async function displayAlbumArt(content, albumArtData, song) {
         modal.classList.add("hidden");
         modal.classList.remove("closing");
         isClosing = false;
-      }, 300);
+      }, getMotionAwareDelay(300));
     };
 
     // Close button handler
@@ -21545,10 +21747,23 @@ function setupAlbumArtTilt(container) {
   let rafId = null;
 
   container.addEventListener('mousemove', (e) => {
+    if (shouldReduceMotion()) {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+      container.style.removeProperty("transform");
+      return;
+    }
+
     // Use requestAnimationFrame for smoother animation
     if (rafId) cancelAnimationFrame(rafId);
 
     rafId = requestAnimationFrame(() => {
+      rafId = null;
+      if (shouldReduceMotion()) {
+        container.style.removeProperty("transform");
+        return;
+      }
+
       const rect = container.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -21566,6 +21781,7 @@ function setupAlbumArtTilt(container) {
 
   container.addEventListener('mouseleave', () => {
     if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
     container.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)';
   });
 }
@@ -27357,7 +27573,10 @@ function createLinkRow(link, index, key) {
           }
 
           // Keep this resource row in view after selection
-          div.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          div.scrollIntoView({
+            behavior: shouldReduceMotion() ? "auto" : "smooth",
+            block: "nearest"
+          });
         }
       });
     }
@@ -27789,7 +28008,10 @@ function addFileUploadToSection(key) {
   updateLinkOrder(sectionContent);
 
   // Scroll the new upload row into view and auto-open the Cadence file manager
-  linkRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  linkRow.scrollIntoView({
+    behavior: shouldReduceMotion() ? "auto" : "smooth",
+    block: "nearest"
+  });
   const pickFileBtn = linkRow.querySelector(".song-link-pick-file");
   if (pickFileBtn) {
     requestAnimationFrame(() => {
@@ -28307,7 +28529,10 @@ function addSectionFileUploadToSection(key, containerId = "section-links-list") 
   updateSectionLinkOrder(sectionContent, containerId);
 
   // Scroll the new upload row into view and auto-open the Cadence file manager
-  linkRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  linkRow.scrollIntoView({
+    behavior: shouldReduceMotion() ? "auto" : "smooth",
+    block: "nearest"
+  });
   const pickFileBtn = linkRow.querySelector(".section-link-pick-file");
   if (pickFileBtn) {
     requestAnimationFrame(() => {
@@ -30179,7 +30404,7 @@ function closeMailtoActionMenu(options = {}) {
   menu.classList.add("animate-out");
   setTimeout(() => {
     menu.remove();
-  }, 250);
+  }, getMotionAwareDelay(250));
 }
 
 function ensureMailtoActionMenuListeners() {
@@ -37291,7 +37516,7 @@ function closeChatTabMenu(menu) {
     menu.classList.add("hidden");
     menu.classList.remove("animate-out");
     menu.style.visibility = "";
-  }, 250);
+  }, getMotionAwareDelay(250));
 }
 
 function closeChatTabMenus(exceptMenu = null) {
@@ -38788,7 +39013,7 @@ function renderSetChatPanel(set) {
         });
       }
       list.appendChild(wrap);
-      wrap.scrollIntoView({ behavior: "smooth" });
+      wrap.scrollIntoView({ behavior: shouldReduceMotion() ? "auto" : "smooth" });
       wrap.title = "Click to dismiss";
       const remove = () => { wrap.remove(); };
       wrap.style.cursor = "pointer";
