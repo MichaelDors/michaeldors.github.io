@@ -105,31 +105,57 @@ html, body {
     background: #8426ff;
 }
 
-input[type="color"] {
-    transition: 0.5s all;
-}
-
 ::selection {
     color: white;
     background: #8426ff;
 }
 
-.colorpicker {
-    margin: 10px;
-    height: 0.5in;
-    width: 1in;
-    font-size: 20px;
-    font-weight: 100;
-    border-radius: 20px;
-    outline: 1px solid #8426ff;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    /*vertical-align:top;*/
-    display:inline-block;
+#colorPickersContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    width: min(464px, calc(100% - 40px));
+    margin: 10px auto;
 }
 
-.fgcolorpicker::after{
+.colorpicker-container {
+    /* Four per row; spare room is shared by every picker on that row. */
+    flex: 1 1 max(56px, calc((100% - 60px) / 4));
+    min-width: 0;
+    position: relative;
+    cursor: grab;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.colorpicker-container.dragging {
+    opacity: 0.4;
+}
+
+.colorpicker-container.drag-over {
+    transform: translateY(-3px);
+}
+
+.colorpicker-container:active {
+    cursor: grabbing;
+}
+
+.colorpicker {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 48px;
+    margin: 0;
+    padding: 4px;
+    border-radius: 20px;
+    border: 1px solid var(--inputborder);
+    outline: 1px solid #8426ff;
+    background: var(--inputbackground);
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.colorpicker-container[data-adaptive="true"]::after {
     content: "\f042";
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
@@ -140,57 +166,47 @@ input[type="color"] {
     mix-blend-mode: difference;
     color: white;
     font-size: 24px;
+    pointer-events: none;
 }
 
-.clradd{
-    margin-top:15px;
-    width:calc(1.5in + 30px) !important;
-    color:white;
-    font-weight: 100;
+.colorpicker:disabled {
+    cursor: inherit;
+}
+
+.colorpicker-container[data-adaptive="true"] .colorpicker {
+    pointer-events: none;
+}
+
+.colorpicker-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    width: min(464px, calc(100% - 40px));
+    margin: 25px auto;
+}
+
+.clradd,
+.clraddfg {
+    flex: 1 1 150px;
+    min-height: 52px;
+    padding: 14px 12px;
+    border: 0;
+    border-radius: 20px;
+    background: #8426ff;
+    color: white;
+    box-shadow: 0 5px 0 #4d00b2, inset 0 1.54px 0 rgba(255, 255, 255, 0.3);
+    font: 100 18px 'Fredoka One', sans-serif;
     cursor: pointer;
-    transition:0.5s all ease;
-    filter: grayscale(0%) !important;
+    transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-.clraddfg{
-    margin-top:15px;
-    width:2in !important;
-    color:white;
-    font-weight: 100;
-    cursor: pointer;
-    transition:0.5s all ease;
-    filter: grayscale(0%) !important;
+.colorpicker-actions button:hover:not(:disabled) {
+    transform: translateY(2px);
 }
 
-.clraddoff{
-    filter: grayscale(100%) !important;
-    cursor: not-allowed !important;
-    transition: 0.5s all ease;
-}
-
-.colorpicker-container {
-transition: all 0.2s; /* Delay width transition until after opacity */
-width: auto; /* Adjust as needed */
-opacity: 1;
-transform:scale(1);
-position: relative;
-display: inline-block;
-cursor: move;
-transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.colorpicker-container.drag-over {
-    transform: scale(1.1);
-}
-
-.colorpicker-container:active {
-    cursor: grabbing;
-}
-
-
-#colorPickersContainer{
-    transition:0.25s all ease;
-    font-size:0;
+.colorpicker-actions button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 #backgroundpickercontainer{
@@ -266,47 +282,18 @@ transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .disabledcolorpicker {
-    margin: 10px;
-    height: 0.5in;
-    width: 1in;
-    font-size: 20px;
-    font-weight: 100;
-    border-radius: 20px;
-    outline: 1px solid #202020;
-    background: var(--mainbgcolor);
-    border: none;
     opacity: 0.5;
+    filter: grayscale(1);
     cursor: not-allowed;
 }
 
-    .disabledcolorpicker::-webkit-color-swatch {
-        border-radius: 15px;
-        border: none;
-        width: 35px;
-        margin-left: 1px;
-        margin-right: 1px;
-        filter: grayscale();
-    }
-
-    .disabledcolorpicker::-moz-color-swatch {
-        border-radius: 15px;
-        border: none;
-        width: 35px;
-        margin-left: 1px;
-        margin-right: 1px;
-        filter: grayscale();
-    }
-
-.colorpicker:focus {
-    margin: 10px;
-    height: 0.5in;
-    width: 1in;
-    font-size: 20px;
-    font-weight: 100;
-    border-radius: 20px;
-    outline: 1px solid #8426ff;
-    background: transparent;
-    animation: pulseborder 2s infinite;
+.colorpicker:focus-visible,
+.colorpicker-container:focus-visible,
+.colorpicker-actions button:focus-visible,
+.remove-button:focus-visible {
+    outline: 2px solid #8426ff;
+    outline-offset: 4px;
+    box-shadow: 0 0 0 5px rgba(132, 38, 255, 0.15);
 }
 
 button{
@@ -315,34 +302,50 @@ button{
 
 .remove-button {
     position: absolute;
-    top: 0px;
-    right: 0px;
+    top: -10px;
+    right: -10px;
+    display: grid;
+    place-items: center;
     width: 30px;
     height: 30px;
-background: rgba(255, 0, 0, 0.46);
-border-radius: 16px;
-box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-backdrop-filter: blur(6.8px);
--webkit-backdrop-filter: blur(6.8px);
-border: 1px solid rgba(255, 0, 0, 0.64);
-    color: white;
+    padding: 0;
     border-radius: 50%;
-    text-align: center;
-    line-height: 25px;
+    border: 1px solid rgba(255, 0, 0, 0.64);
+    background: rgba(210, 0, 0, 0.75);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+    color: white;
+    font: 20px 'Fredoka One', sans-serif;
     cursor: pointer;
-    opacity:0;
-    transition:opacity 0.3s ease-in-out;
-    font-family: Fredoka One;
-    font-size:initial;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 1;
 }
 
-
-.colorpicker-container:hover .remove-button,
-.colorpicker:focus + .remove-button {
-    opacity:1;
+.remove-button[hidden] {
+    display: none;
 }
 
+.colorpicker-container:hover .remove-button:not(:disabled),
+.colorpicker-container:focus-within .remove-button:not(:disabled) {
+    opacity: 1;
+}
 
+@media (hover: none), (pointer: coarse) {
+    .remove-button:not(:disabled) {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .colorpicker-container,
+    .colorpicker,
+    .remove-button,
+    .colorpicker-actions button {
+        transition: none;
+    }
+}
 
 @keyframes pulseborder {
     1% {
@@ -378,20 +381,22 @@ border: 1px solid rgba(255, 0, 0, 0.64);
 }
 
 
+.colorpicker::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
 .colorpicker::-webkit-color-swatch {
     border-radius: 15px;
     border: none;
-    width: 35px;
-    margin-left: 1px;
-    margin-right: 1px;
+    width: 100%;
+    height: 100%;
 }
 
 .colorpicker::-moz-color-swatch {
     border-radius: 15px;
     border: none;
-    width: 35px;
-    margin-left: 1px;
-    margin-right: 1px;
+    width: 100%;
+    height: 100%;
 }
 
 .datepicker {
@@ -2160,29 +2165,11 @@ backdrop-filter: blur(12px);
         font-size: 25px;
     }
 
-    .colorpicker {
-        margin: 10px;
-        height: 0.5in;
-        width: 0.7in;
-        font-size: 15px;
-        font-weight: 100;
-        border-radius: 20px;
-        outline: 1px solid #8426ff;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        vertical-align:top;
-        display:inline-block;
-    }
-
     #presetupScheduleContent{
         max-width:60vw;
     }
     #dangerzone{
         max-width:60vw;
-    }
-    .disabledcolorpicker{
-        width:0.7in;
     }
 
     .backgroundpicker {
@@ -2251,27 +2238,6 @@ backdrop-filter: blur(12px);
         border-radius: 20px;
     }
     
-
-    .clradd{
-        margin-top:15px;
-        width:calc(1.25in + 30px) !important;
-        color:white;
-        font-weight: 100;
-        cursor: pointer;
-        transition:0.5s all ease;
-        filter: grayscale(0%) !important;
-    }
-    
-    .clraddfg{
-        margin-top:15px;
-        width:1.75in !important;
-        color:white;
-        font-weight: 100;
-        cursor: pointer;
-        transition:0.5s all ease;
-        filter: grayscale(0%) !important;
-    }
-
 
     #qrcode img {
         max-width:30%;

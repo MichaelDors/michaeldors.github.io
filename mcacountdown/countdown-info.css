@@ -1,0 +1,41 @@
+/* Additions to the existing info pane and Options; existing cards stay unchanged. */
+.countdown-info-editor {
+    width: min(480px, calc(100% - 40px));
+    margin: 48px auto;
+    text-align: left;
+    color: var(--mainforegroundcolor);
+    font-family: 'Dosis', sans-serif;
+}
+.countdown-info-editor h2 { font-family: 'Dosis', sans-serif; text-align: center; }
+.countdown-info-editor .texttip { margin: 12px 0 20px; line-height: 1.5; }
+#countdown-info-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+#countdown-info-fields label { display: block; margin: 20px 0 8px; font-size: 20px; }
+#countdown-info-fields .input {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    padding: 14px 16px;
+    font: 600 18px/1.5 'Dosis', sans-serif;
+    color: var(--mainforegroundcolor);
+    background: var(--inputbackground);
+}
+#countdown-info-fields textarea { resize: vertical; min-height: 100px; border-radius: 20px; }
+#countdown-info-fields :disabled { opacity: .6; cursor: not-allowed; }
+.countdown-info-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.countdown-info-actions button:disabled { opacity: .5; cursor: default; }
+#countdown-info-status { min-height: 1.5em; margin-bottom: 0; }
+#countdown-info-status.info-save-error { color: var(--mainforegroundcolor); font-weight: 700; }
+.countdown-owner-info { margin-bottom: 40px; color: var(--mainforegroundcolor); text-align: left; }
+.countdown-owner-info h2 { margin: 0 0 16px; font: 600 24px/1.3 'Dosis', sans-serif; }
+.countdown-owner-info h3 { margin: 20px 0 8px; font: 600 18px/1.3 'Dosis', sans-serif; }
+.countdown-owner-info p, .countdown-owner-info a { font: 600 18px/1.55 'Dosis', sans-serif; }
+#owner-info-description, #owner-info-address { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+#owner-info-url { display: inline; overflow-wrap: anywhere; color: inherit; text-decoration: underline; text-underline-offset: 3px; padding: 0; margin: 0; border-radius: 0; box-shadow: none; background: transparent; top: 0; user-select: text; }
+.countdown-owner-info .owner-info-disclaimer { font-size: 14px; line-height: 1.5; margin: 24px 0 0; opacity: .8; }
+#countdown-info-unavailable { margin: 0 0 32px; font: 600 16px/1.5 'Dosis', sans-serif; color: var(--mainforegroundcolor); }
+#countdown-info-unavailable button { border: 0; background: transparent; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.countdown-info-editor :focus-visible { outline: 2px solid var(--one); outline-offset: 3px; }
+.countdown-owner-info [hidden], .countdown-owner-info[hidden], #countdown-info-unavailable[hidden], #countdown-info-retry[hidden] { display: none; }

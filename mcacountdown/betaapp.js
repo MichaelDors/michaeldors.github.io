@@ -33,6 +33,11 @@ let databaseSyncTimeout = null;
 let databaseSyncInFlight = false;
 let previewUpdateTimeout = null;
 let pendingPreviewUrl = null;
+let settingsEditorRequest = null;
+let viewerPreviewActive = false;
+let viewerPreviewChanging = false;
+let infoViewerSignedIn = false;
+const countdownIsCard = new URLSearchParams(window.location.search).has('cardmode');
 
 // Schedule state must exist before the early onload render calls
 // SetCountDowngeneral(). The database schedule is preserved until it has been
@@ -47,6 +52,79 @@ window.gearIconUpdated = false;
 // Global variable to store user editor status
 window.userEditorStatus = null;
 
+// Preview changes presentation only. Keep the real owner/collaborator status
+// intact so exiting preview (or refreshing auth) restores the right controls.
+function hasCountdownEditorControls() {
+    return window.userEditorStatus === true && !viewerPreviewActive;
+}
+
+function updateCountdownAccessUI() {
+    if (window.userEditorStatus !== true) viewerPreviewActive = false;
+    const editing = hasCountdownEditorControls();
+    const canPreview = window.userEditorStatus === true && !!window.CountdownDataID && !countdownIsCard;
+    document.getElementById('start-viewer-preview').hidden = !canPreview;
+    document.getElementById('viewer-preview-bar').hidden = !viewerPreviewActive;
+    document.body.classList.toggle('viewer-preview', viewerPreviewActive);
+
+    const title = document.getElementById('countdowntitle');
+    if (title) {
+        title.readOnly = viewerPreviewActive || (!!window.CountdownDataID && !editing);
+        title.title = title.readOnly ? 'Countdown title' : "Update or add this Countdown's title";
+    }
+
+    const pane = document.getElementById(editing ? 'settings' : 'infoPane');
+    const opening = pane.classList.contains('hidden');
+    const gear = document.getElementById('gear');
+    const icon = document.getElementById('innergear');
+    icon.classList.remove('fa-gear', 'fa-info');
+    icon.classList.add(editing ? 'fa-gear' : 'fa-info');
+    gear.setAttribute('aria-controls', pane.id);
+    gear.setAttribute('aria-expanded', String(!opening));
+    gear.setAttribute('aria-label', `${opening ? 'Open' : 'Close'} countdown ${editing ? 'options' : 'information'}`);
+    updateInfoViewerActions();
+}
+
+function updateInfoViewerActions() {
+    const signedIn = viewerPreviewActive
+        ? document.getElementById('viewer-preview-audience').value === 'signed-in'
+        : infoViewerSignedIn;
+    document.getElementById('infosignup').style.display = signedIn ? 'none' : '';
+    document.getElementById('infoclonecd').style.display = signedIn ? '' : 'none';
+}
+
+function startViewerPreview() {
+    if (viewerPreviewChanging || viewerPreviewActive || window.userEditorStatus !== true ||
+        !window.CountdownDataID || countdownIsCard) return;
+    viewerPreviewChanging = true;
+    const enter = () => {
+        viewerPreviewActive = true;
+        viewerPreviewChanging = false;
+        updateCountdownAccessUI();
+        document.getElementById('exit-viewer-preview').focus({ preventScroll: true });
+    };
+    if (!document.getElementById('settings').classList.contains('hidden')) settings(enter);
+    else enter();
+}
+
+function exitViewerPreview() {
+    if (viewerPreviewChanging || !viewerPreviewActive) return;
+    viewerPreviewChanging = true;
+    const exit = () => {
+        viewerPreviewActive = false;
+        viewerPreviewChanging = false;
+        updateCountdownAccessUI();
+        document.getElementById('gear').focus({ preventScroll: true });
+    };
+    if (!document.getElementById('infoPane').classList.contains('hidden')) settings(exit);
+    else exit();
+}
+
+document.getElementById('info-signup-link').addEventListener('click', event => {
+    if (!viewerPreviewActive) return;
+    event.preventDefault();
+    showToast('Viewers can sign up here to create their own countdowns.', 'info');
+});
+
 // Global variable for progress bar position
 let progressbarposition = "null";
 
@@ -54,16 +132,16 @@ function updatePreviewIframe(previewUrl) {
     const previewIframe = document.getElementById('previewiframe');
     const settingsPane = document.getElementById('settings');
 
-    if (!previewIframe || parameter('cardmode')) {
+    if (!previewIframe || countdownIsCard) {
         return;
     }
 
-    pendingPreviewUrl = previewUrl;
+    if (previewUrl) pendingPreviewUrl = previewUrl;
     clearTimeout(previewUpdateTimeout);
 
     // The preview is a complete second copy of the app. Keep it unloaded while
     // settings are closed so it cannot consume memory in the background.
-    if (!settingsPane || settingsPane.classList.contains('hidden')) {
+    if (!settingsPane || settingsPane.classList.contains('hidden') || window.MinutehandSettings?.isPreviewVisible() === false) {
         if (previewIframe.getAttribute('src')) {
             previewIframe.src = 'about:blank';
             previewIframe.removeAttribute('src');
@@ -73,7 +151,7 @@ function updatePreviewIframe(previewUrl) {
 
     // Coalesce rapid option changes and render only the most recent state.
     previewUpdateTimeout = setTimeout(() => {
-        if (!pendingPreviewUrl || settingsPane.classList.contains('hidden')) {
+        if (!pendingPreviewUrl || settingsPane.classList.contains('hidden') || window.MinutehandSettings?.isPreviewVisible() === false) {
             return;
         }
 
@@ -190,9 +268,12 @@ function updateTitlePosition(fontSize) {
               colorfour: 'ff9900'
           };
   
-          // Filter out parameters that match defaults
+          // Only the complete default palette is equivalent to an omitted palette.
+          // Removing one of its colors is still an edit that needs to be saved.
+          const hasDefaultPalette = Object.entries(defaults).every(([key, value]) => params.get(key) === value) &&
+              !['color5', 'color6', 'color7', 'color8'].some(key => params.has(key));
           const filteredParams = [...params.entries()].filter(([key, value]) => {
-              if (defaults[key] && value === defaults[key]) {
+              if (hasDefaultPalette && defaults[key] && value === defaults[key]) {
                   return false;
               }
               return true;
@@ -424,83 +505,9 @@ function cardmodemanager(){
           css.style.setProperty('--typeface', "Fredoka One");
       }
       
-      // Update colors
-      const legacyParams = [
-          { param: 'colorone', id: 'color1', cssVar: '--one', defaultColor: '#8426ff' },
-          { param: 'colortwo', id: 'color2', cssVar: '--two', defaultColor: '#3ab6ff' },
-          { param: 'colorthree', id: 'color3', cssVar: '--three', defaultColor: '#00df52' },
-          { param: 'colorfour', id: 'color4', cssVar: '--four', defaultColor: '#ff9900' }
-      ];
-      
-      // Check if any color parameters exist
-      const hasAnyColorParams = legacyParams.some(({param}) => getParameterFromSource(param)) || 
-          Array.from({length: 4}, (_, i) => i + 5).some(i => getParameterFromSource(`color${i}`));
-      
-      if (hasAnyColorParams) {
-          legacyParams.forEach(({param, id, cssVar}) => {
-              if (getParameterFromSource(param)) {
-                  const paramValue = getParameterFromSource(param);
-                  if (paramValue === 'fg') {
-                      if (!document.getElementById(id)) {
-                          addForegroundColorPicker("auto");
-                      } else {
-                          const picker = document.getElementById(id);
-                          picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
-                          picker.dataset.useThemeColor = 'true';
-                          picker.classList.add("fgcolorpicker");
-                          picker.disabled = true;
-                          picker.style.cursor = "default";
-                      }
-                  } else {
-                      const colorToUse = '#' + paramValue;
-                      if (!document.getElementById(id)) {
-                          addColorPicker("auto");
-                      }
-                      const picker = document.getElementById(id);
-                      if (picker) {
-                          picker.value = colorToUse;
-                          css.style.setProperty(cssVar, colorToUse);
-                          css.style.setProperty(`--color${id.slice(-1)}`, colorToUse);
-                      }
-                  }
-              }
-          });
-          
-          // Handle additional color parameters (color5 through color8)
-          for (let i = 5; i <= 8; i++) {
-              const colorParam = getParameterFromSource(`color${i}`);
-              if (colorParam && colorParam !== "null") {
-                  if (colorParam === 'fg') {
-                      if (!document.getElementById(`color${i}`)) {
-                          addForegroundColorPicker("auto");
-                      }
-                      const picker = document.getElementById(`color${i}`);
-                      if (picker) {
-                          picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
-                          picker.dataset.useThemeColor = 'true';
-                          css.style.setProperty(`--color${i}`, 'var(--mainforegroundcolor)');
-                          picker.classList.add("fgcolorpicker");
-                          picker.disabled = true;
-                          picker.style.cursor = "default";
-                      }
-                  } else {
-                      const colorToUse = '#' + colorParam;
-                      if (!document.getElementById(`color${i}`)) {
-                          addColorPicker("auto");
-                      }
-                      const picker = document.getElementById(`color${i}`);
-                      if (picker) {
-                          picker.value = colorToUse;
-                          css.style.setProperty(`--color${i}`, colorToUse);
-                      }
-                  }
-              }
-          }
-          
-          // Adjust height of color picker container after updates
-          adjustHeightOfColorPickerContainer();
-      }
-      
+      MinutehandColors.loadFromSource(getParameterFromSource);
+      updateColorAnimations();
+
       // Update background
       var bgstring = "none";
       if (getParameterFromSource('atc') && getParameterFromSource('atc') != "none" && getParameterFromSource('atc') != "undefined") {
@@ -726,114 +733,11 @@ if(!getParameterFromSource('schedule')){
       
       document.body.scrollTop = document.documentElement.scrollTop = 0; //sometimes browsers are weird and you start already scrolled down a little
   
-      //text colors
-      var css = document.querySelector(':root'); //easily allowing JS to reference CSS variables
-      let colorPickerCount = 4;  //set the default value to 4, as it will always be 4 on load
-  
-  // Handle legacy color parameters (colorone through colorfour)
-  const legacyParams = [
-      { param: 'colorone', id: 'color1', cssVar: '--one', defaultColor: '#8426ff' },
-      { param: 'colortwo', id: 'color2', cssVar: '--two', defaultColor: '#3ab6ff' },
-      { param: 'colorthree', id: 'color3', cssVar: '--three', defaultColor: '#00df52' },
-      { param: 'colorfour', id: 'color4', cssVar: '--four', defaultColor: '#ff9900' }
-  ];
-  
-  // Check if any color parameters exist
-  const hasAnyColorParams = legacyParams.some(({param}) => getParameterFromSource(param)) || 
-      Array.from({length: 4}, (_, i) => i + 5).some(i => getParameterFromSource(`color${i}`));
-  
-  if (!hasAnyColorParams) {
-      // No color parameters found, set up default colors
-      legacyParams.forEach(({id, cssVar, defaultColor}) => {
-          if (!document.getElementById(id)) {
-              addColorPicker("auto");
-          }
-          document.getElementById(id).value = defaultColor;
-          css.style.setProperty(cssVar, defaultColor);
-          css.style.setProperty(`--color${id.slice(-1)}`, defaultColor);
-      });
-  } else {
-      // Handle existing color parameters
-      legacyParams.forEach(({param, id, cssVar}) => {
-        if (getParameterFromSource(param)) {
-            if (getParameterFromSource(param) === "null") {
-                console.log(`Colors(${id.slice(-1)}) could not be imported properly.`);
-            } else {
-                const picker = document.getElementById(id);
-                picker.addEventListener('dragstart', handleDragStart);
-                picker.addEventListener('dragend', handleDragEnd);
-                picker.addEventListener('dragover', handleDragOver);
-                picker.addEventListener('drop', handleDrop);
-                const paramValue = getParameterFromSource(param);
-                if (paramValue === 'fg') {
-                    // This is a foreground color
-                    if (!document.getElementById(id)) {
-                        addForegroundColorPicker("auto");
+      // Use the same palette loader for the initial source and subsequent saved updates.
+      var css = document.querySelector(':root');
+      MinutehandColors.init({ onChange: SetCountDowngeneral, onInput: updateColorAnimations });
+      MinutehandColors.loadFromSource(getParameterFromSource);
 
-                    } else {
-                        const picker = document.getElementById(id);
-                        picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
-                        picker.dataset.useThemeColor = 'true';
-                        picker.classList.add("fgcolorpicker");
-                        picker.disabled = true;
-                        picker.style.cursor = "default";
-                    }
-                } else {
-                    const colorToUse = '#' + paramValue;
-                    if (!document.getElementById(id)) {
-                        addColorPicker("auto");
-                        adjustHeightOfColorPickerContainer();
-                    }
-                    document.getElementById(id).value = colorToUse;
-                    css.style.setProperty(cssVar, colorToUse);
-                    css.style.setProperty(`--color${id.slice(-1)}`, colorToUse);
-                }
-            }
-        } else {
-            // Remove color picker if parameter doesn't exist
-            const picker = document.getElementById(id);
-            if (picker) {
-                picker.parentElement.remove();
-            }
-        }
-    });
-  
-      // Handle additional color parameters (color5 through color8)
-      for (let i = 5; i <= 8; i++) {
-        const colorParam = getParameterFromSource(`color${i}`);
-        if (colorParam && colorParam !== "null") {
-            if (colorParam === 'fg') {
-                // This is a foreground color
-                if (!document.getElementById(`color${i}`)) {
-                    addForegroundColorPicker("auto");
-                }
-                const picker = document.getElementById(`color${i}`);
-                if (picker) {
-                    picker.value = getComputedStyle(document.documentElement).getPropertyValue('--mainforegroundcolor').trim();
-                    picker.dataset.useThemeColor = 'true';
-                    css.style.setProperty(`--color${i}`, 'var(--mainforegroundcolor)');
-                    picker.classList.add("fgcolorpicker");
-                    picker.disabled = true;
-                    picker.style.cursor = "default";
-                }
-            } else {
-                const colorToUse = '#' + colorParam;
-                if (!document.getElementById(`color${i}`)) {
-                    addColorPicker("auto");
-                }
-                document.getElementById(`color${i}`).value = colorToUse;
-                css.style.setProperty(`--color${i}`, colorToUse);
-            }
-        }
-    }
-
-    // Update colorPickerCount to match actual number of pickers
-    const container = document.getElementById('colorPickersContainer');
-    if (container) {
-        colorPickerCount = container.getElementsByClassName('colorpicker-container').length;
-    }
-}
-  
       //set up countdown schedules
       const hasActiveSchedule = getParameterFromSource("schedule") !== "null" && Boolean(getParameterFromSource("schedule"));
       if(hasActiveSchedule){
@@ -1342,39 +1246,6 @@ class ConfettiManager {
           });
           
 
-          function updateActiveSection() {
-            if(!document.getElementById("settings").classList.contains("hidden")){
-            const sections = document.querySelectorAll('h1[id]:not(#personalSettingsOverlay h1[id])');
-            const sidebarLinks = document.querySelectorAll('.sidebaranchor');
-            
-            // Get the current scroll position
-            const scrollPosition = window.scrollY;
-            
-            // Find the current section
-            let currentSection = '';
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop - 100; // Offset to trigger slightly before reaching section
-                if (scrollPosition >= sectionTop) {
-                    currentSection = section.id;
-                }
-            });
-            
-            // Update active state of sidebar links
-            sidebarLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('href') === `#${currentSection}`) {
-                    link.classList.add('active');
-                }
-            });
-        }
-        }
-        
-        // Add scroll event listener
-        window.addEventListener('scroll', updateActiveSection);
-        // Call once on load to set initial state
-        window.addEventListener('load', updateActiveSection);
-
-
 function spawnIcon(el) {
   const icon = document.createElement('i');
   const icons = [
@@ -1664,35 +1535,15 @@ function initFloatingIcons() {
       }
   
       function SetCountDowngeneral() { //gets called quite a bit, updates all settings and parameters to match the current state
+        // Viewer interactions must not serialize controls or enqueue new saves.
+        // Saves already queued before preview remain free to finish.
+        if (viewerPreviewActive) return;
         countDownDate = new Date(document.querySelector(".datepicker").value);
         var css = document.querySelector(':root');
-        var colors = [];
-        var colorsNormalized = [];
-        
-        // Get all color pickers dynamically
-        const colorPickers = document.querySelectorAll('.colorpicker, .disabledcolorpicker');
-        colorPickers.forEach((picker, index) => {
-            // If this picker is marked to use theme color, get the current theme color
-            if (picker.dataset.useThemeColor === 'true') {
-                const computedStyle = getComputedStyle(document.documentElement);
-                const themeColor = computedStyle.getPropertyValue('--mainforegroundcolor').trim();
-                picker.value = themeColor;
-                colors[index] = 'fg';
-                colorsNormalized[index] = 'fg';
-            } else {
-                colors[index] = picker.value;
-                colorsNormalized[index] = picker.value.replace("#", "");
-            }
-            css.style.setProperty(`--color${index + 1}`, colors[index]);
-        });
+        MinutehandColors.refresh();
+        const colorsNormalized = MinutehandColors.values();
+        updateColorAnimations();
 
-        // Maintain backwards compatibility with old CSS variables
-        css.style.setProperty('--one', colors[0] || '#8426ff');
-        css.style.setProperty('--two', colors[1] || '#3ab6ff');
-        css.style.setProperty('--three', colors[2] || '#00ff5e');
-        css.style.setProperty('--four', colors[3] || '#ff9900');
-        adjustHeightOfColorPickerContainer();
-  
           var cdtitle = document.getElementById("countdowntitle").value; //set the title
   
       updateSaveButtonText();
@@ -1739,7 +1590,11 @@ function initFloatingIcons() {
           });
   
           const sourceSchedule = parameter('schedule') || getParameterFromSource('schedule');
-          const encodedSchedule = schedule_isInitialized
+          // Loading the schedule editor also initializes empty collections for
+          // ordinary timers. Opening Options must not convert those to schedules.
+          const scheduleEnabled = (sourceSchedule && sourceSchedule !== 'null') ||
+              document.querySelector('.schedule-editor').style.display !== 'none';
+          const encodedSchedule = schedule_isInitialized && scheduleEnabled
               ? schedule_encodeSchedule()
               : (sourceSchedule && sourceSchedule !== 'null' ? sourceSchedule : 'null');
 
@@ -1971,6 +1826,7 @@ function initFloatingIcons() {
                   if (isNewCountdown) {
                       window.CountdownDataID = countdownId;
                       window.gearIconUpdated = false;
+                      updateGearIconForUser();
                   }
                   console.log('[syncCountdownToDatabase] Countdown synced to database');
                   lastDatabaseSync = Date.now();
@@ -2042,32 +1898,54 @@ function initFloatingIcons() {
       }, false);
 
 //settings
-      function settings() {
+      function settings(afterChange) {
           if(getCookie("cookiesAccepted")){
-  
-          if (document.getElementById("autopilotpopup")) {
-              document.getElementById("autopilotpopup").remove();
-          } //if settings is opened while the autpilot popup is still up, get rid of it
-  
-          if (document.getElementById("autopilotpopupmobile")) {
-              document.getElementById("autopilotpopupmobile").remove();
-          } //same but autopilot mobile
   
           // Check if user is an editor
           let isEditor = window.userEditorStatus;
           
           if (isEditor === null) {
-              isUserEditor().then(editorStatus => {
+              if (settingsEditorRequest) return;
+              settingsEditorRequest = isUserEditor().then(editorStatus => {
                   window.userEditorStatus = editorStatus;
-                  handleSettingsLogic(editorStatus);
-                  SetCountDowngeneral();
-              });
+                  updateCountdownAccessUI();
+                  transitionSettings(hasCountdownEditorControls());
+              }).catch(error => {
+                  console.error('Could not open countdown options:', error);
+              }).finally(() => { settingsEditorRequest = null; });
               return;
           }
           
           // Use stored value
-          handleSettingsLogic(isEditor);
-          
+          transitionSettings(hasCountdownEditorControls());
+
+          function transitionSettings(editorStatus) {
+              const pane = document.getElementById(editorStatus ? 'settings' : 'infoPane');
+              const opening = pane.classList.contains('hidden');
+              const update = () => {
+                  applySettings(editorStatus);
+                  if (editorStatus) window.MinutehandSettings?.setOpen(opening);
+                  const gear = document.getElementById('gear');
+                  gear.setAttribute('aria-expanded', String(opening));
+                  gear.setAttribute('aria-controls', pane.id);
+                  gear.setAttribute('aria-label', `${opening ? 'Close' : 'Open'} countdown ${editorStatus ? 'options' : 'information'}`);
+                  const closeButton = Array.from(pane.querySelectorAll('[onclick*="settings()"]'))
+                      .find(button => button.getClientRects().length);
+                  if (opening) {
+                      pane.tabIndex = -1;
+                      (closeButton || pane).focus({ preventScroll: true });
+                  } else {
+                      gear.focus({ preventScroll: true });
+                  }
+                  if (typeof afterChange === 'function') afterChange();
+              };
+              if (window.MinutehandMotion) {
+                  MinutehandMotion.change(opening ? 'options-open' : 'options-close', update);
+              } else {
+                  update();
+              }
+          }
+
           function handleSettingsLogic(isEditor) {
               if (isEditor) {
                   // User is editor - show normal settings
@@ -2087,7 +1965,7 @@ function initFloatingIcons() {
                       document.body.scrollTop = document.documentElement.scrollTop = 0; //scroll to top for good measure
                   }
                   else { //if settings is already opened (Being closed)
-                      if(getParameterFromSource("schedule") != "null"){ //if user is using Countdown Schedule
+                      if(getParameterFromSource("schedule") && getParameterFromSource("schedule") !== "null"){ //if user is using Countdown Schedule
                           document.getElementById("schedule").style.display = ""; //unhide schedule
                           document.getElementById("clock").style.display = "none"; //hide clock
                           document.getElementById("countdowntitle").style.display = "none"; //hide title
@@ -2147,6 +2025,16 @@ function initFloatingIcons() {
               }
           }
 
+          function applySettings(isEditor) {
+          if (document.getElementById("autopilotpopup")) {
+              document.getElementById("autopilotpopup").remove();
+          } //if settings is opened while the autpilot popup is still up, get rid of it
+
+          if (document.getElementById("autopilotpopupmobile")) {
+              document.getElementById("autopilotpopupmobile").remove();
+          } //same but autopilot mobile
+
+          handleSettingsLogic(isEditor);
           if(document.getElementById("progressdatepicker").value && document.getElementById("progressdatepicker").value !== "null"){
             document.getElementById("progress-bar").style.display = "";
             if(getParameterFromSource("atc") !== "none"){
@@ -2162,8 +2050,10 @@ function initFloatingIcons() {
           else{
             document.getElementById("progress-bar").style.display = "none";
           }
-  
-          SetCountDowngeneral();
+
+          if (isEditor && typeof afterChange !== 'function') SetCountDowngeneral();
+          updatePreviewIframe();
+          }
           }
           else{
               document.getElementById("cookie-banner").classList.add("failedcookiebanner");
@@ -2173,55 +2063,6 @@ function initFloatingIcons() {
           }
       }
 
-// Improved searchsettings function for settings search
-function searchsettings() {
-    const input = document.getElementById("searchbarinput");
-    const filter = input.value.toLowerCase();
-    const resultsContainer = document.getElementById("search-results");
-    resultsContainer.innerHTML = "";
-
-    if (!filter) {
-        resultsContainer.classList.add("hidden");
-        return;
-    }
-
-    const headings = document.querySelectorAll('#settings h1[id], #settings h2[id], #settings h3[id]');
-    let found = false;
-
-    headings.forEach(heading => {
-        let combinedText = heading.textContent.toLowerCase();
-        let sibling = heading.nextElementSibling;
-        let collectedText = "";
-
-        while (sibling && !['H1','H2','H3'].includes(sibling.tagName)) {
-            collectedText += " " + sibling.textContent.toLowerCase();
-            sibling = sibling.nextElementSibling;
-        }
-
-        combinedText += collectedText;
-
-        if (combinedText.includes(filter)) {
-            const resultBtn = document.createElement("button");
-            resultBtn.className = "searchresultbtn";
-            resultBtn.textContent = heading.textContent;
-            resultBtn.onclick = () => {
-                heading.scrollIntoView({ behavior: "smooth", block: "start" });
-                document.getElementById("searchbarinput").value = "";
-                resultsContainer.innerHTML = "";
-                resultsContainer.classList.add("hidden");
-
-                if (window.innerWidth < 768) {
-                    settings(); // close settings on mobile
-                }
-            };
-            resultsContainer.appendChild(resultBtn);
-            found = true;
-        }
-    });
-
-    resultsContainer.classList.toggle("hidden", !found);
-}
-  
       //grey out color pickers and theme color for background
       if (!isNaN(getParameterFromSource("atc"))) { //if animated background is enabled
           document.getElementById("animatedbackground").classList.remove("hidden"); //unhide background
@@ -2539,6 +2380,9 @@ function searchsettings() {
               }
           }
   
+if(enablecardmode != "1"){
+    window.MinutehandLayout?.fitCountdown();
+}
 if(enablecardmode == "1"){
      cardmodemanager();
   }
@@ -2601,6 +2445,7 @@ if(getParameterFromSource('progressposition') && getParameterFromSource('progres
                 startConfettiManagerAnimation();
           }
   
+          window.MinutehandMotion?.pageReady();
       }, parameter('cardmode') ? 250 : 100);
 
 function stopConfettiManagerAnimation(){
@@ -2772,23 +2617,7 @@ function contrast(){ //increase contrast set or remove cookie
           bgstring = "none"; //set the background var to none
   
           var css = document.querySelector(':root'); //access the CSS variables
-          // Remove any additional color pickers beyond the first four
-          const container = document.getElementById('colorPickersContainer');
-          while (container.children.length > 4) {
-              container.lastChild.remove();
-          }
-          colorPickerCount = 4;
-          // Reset the original four color pickers
-          document.getElementById("color1").value = "#8426ff";
-          document.getElementById("color2").value = "#3ab6ff";
-          document.getElementById("color3").value = "#00ff5e";
-          document.getElementById("color4").value = "#ff9900";
-          // Reset CSS variables
-          css.style.setProperty('--one', "#8426ff");
-          css.style.setProperty('--two', "#3ab6ff");
-          css.style.setProperty('--three', "#00ff5e");
-          css.style.setProperty('--four', "#ff9900");
-          adjustHeightOfColorPickerContainer();
+          MinutehandColors.reset();
           css.style.setProperty('--typeface', "Fredoka One"); //reset typeface
   
           localStorage.removeItem('dashboardsaved'); //reset dashboard
@@ -3079,24 +2908,15 @@ function contrast(){ //increase contrast set or remove cookie
       });
   
   
-      //Function to enable color when a background is disabled
+      // Keep the palette intact while an animated background is using its own colors.
       function enablecolor() {
-          const colorPickers = document.querySelectorAll('input[type="color"]');
-          colorPickers.forEach(picker => {
-              picker.classList.add("colorpicker");
-              picker.classList.remove("disabledcolorpicker");
-          });
+          MinutehandColors.setDisabled(false);
       }
-  
-      //Function to disable color when a background is enabled
+
       function disablecolor() {
-          const colorPickers = document.querySelectorAll('input[type="color"]');
-          colorPickers.forEach(picker => {
-              picker.classList.remove("colorpicker");
-              picker.classList.add("disabledcolorpicker");
-          });
+          MinutehandColors.setDisabled(true);
       }
-  
+
       function setbg(bgint, method) {
         // Clear any pending timeouts to prevent race conditions
         if (window.bgTimeoutId) {
@@ -3551,6 +3371,7 @@ function contrast(){ //increase contrast set or remove cookie
       //set countdown title
       function setcountdowntitle(from) {
           var fronttitlepicker = document.getElementById("countdowntitle");
+          if (viewerPreviewActive || fronttitlepicker.readOnly) return;
           var settingstitlepicker = document.getElementById("cdtitlesettings");
           if (from == 'settings') { //if it's set from settings, set the front one
               fronttitlepicker.value = settingstitlepicker.value;
@@ -3563,148 +3384,6 @@ function contrast(){ //increase contrast set or remove cookie
           updateSaveButtonText(); // Update save button text when title changes
           SetCountDowngeneral();
       }
-  
-      //generate a random color when adding colors to the text animation
-      function getRandomColor() {
-    var letters = '0123456789ABCDEF';
-    var color = '#';
-    for (var i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)];
-    }
-    return color;
-  }
-  
-      //create a new color picker
-  function addColorPicker(method) {
-      if (colorPickerCount < 8) {
-          colorPickerCount++;
-          const container = document.getElementById('colorPickersContainer');
-          const newColorPickerContainer = document.createElement('div');
-          newColorPickerContainer.className = 'colorpicker-container';
-          newColorPickerContainer.draggable = true;
-          
-          // Add drag event listeners
-          newColorPickerContainer.addEventListener('dragstart', handleDragStart);
-          newColorPickerContainer.addEventListener('dragend', handleDragEnd);
-          newColorPickerContainer.addEventListener('dragover', handleDragOver);
-          newColorPickerContainer.addEventListener('drop', handleDrop);
-  
-          const newColorPicker = document.createElement('input');
-          newColorPicker.className = 'colorpicker';
-          if(getParameterFromSource("atc")){
-            newColorPicker.classList.add("disabledcolorpicker");
-          }
-          newColorPicker.id = `color${colorPickerCount}`;
-          newColorPicker.type = 'color';
-          newColorPicker.value = getRandomColor();
-          newColorPicker.onblur = SetCountDowngeneral;
-  
-          const removeButton = document.createElement('div');
-          removeButton.className = 'remove-button';
-          removeButton.innerHTML = '-';
-          removeButton.title = "Remove this color";
-          removeButton.onclick = function() { removeColorPicker(removeButton); };
-  
-          newColorPickerContainer.appendChild(newColorPicker);
-          newColorPickerContainer.appendChild(removeButton);
-  
-          container.appendChild(newColorPickerContainer);
-  
-          if(document.querySelector(".colorpickerlinebreak")){
-              document.querySelector(".colorpickerlinebreak").remove();
-          }
-          const colorpickersocontainer = document.getElementById('colorPickersContainer');
-          if (colorpickersocontainer.children.length > 4) {
-              const newBR = document.createElement('br');
-              newBR.className = 'colorpickerlinebreak';
-              colorpickersocontainer.insertBefore(newBR, colorpickersocontainer.children[4]);
-          }
-          
-          if(colorpickersocontainer.children.length > 8){
-              document.querySelector(".clradd").classList.add("clraddoff");
-          }
-          else{
-              document.querySelector(".clradd").classList.remove("clraddoff");
-          }
-
-          if(colorpickersocontainer.children.length > 8){
-            document.querySelector(".clraddfg").classList.add("clraddoff");
-        }
-        else{
-            document.querySelector(".clraddfg").classList.remove("clraddoff");
-        }
-
-  
-          adjustHeightOfColorPickerContainer();
-          updateColorAnimations();
-  
-          if(method !== "auto"){
-              SetCountDowngeneral();
-              newColorPicker.focus();
-              newColorPicker.click();
-          }
-      }
-  }
-  
-  //remove the color picker that the clicked remove button is appended to
-  function removeColorPicker(button) {
-      const container = button.parentElement;
-      container.style.transform = 'scale(0)';
-      setTimeout(() => {
-      container.remove();
-      colorPickerCount--;
-      const colorpickersocontainer = document.getElementById('colorPickersContainer');
-      if(document.querySelector(".colorpickerlinebreak")){
-          document.querySelector(".colorpickerlinebreak").remove();
-      }
-          if (colorpickersocontainer.children.length > 4) {
-              const newBR = document.createElement('br');
-              newBR.className = 'colorpickerlinebreak';
-              colorpickersocontainer.insertBefore(newBR, colorpickersocontainer.children[4]);
-          }
-  
-          if(colorpickersocontainer.children.length > 8){
-              document.querySelector(".clradd").classList.add("clraddoff");
-          }
-          else{
-              document.querySelector(".clradd").classList.remove("clraddoff");
-          }
-
-          if(colorpickersocontainer.children.length > 8){
-            document.querySelector(".clraddfg").classList.add("clraddoff");
-        }
-        else{
-            document.querySelector(".clraddfg").classList.remove("clraddoff");
-        }
-      
-      adjustHeightOfColorPickerContainer();
-      SetCountDowngeneral();
-      updateColorAnimations();
-      }, 300);
-  }
-  
-  //adjusts the height of color picker container. is called after any changes
-  function adjustHeightOfColorPickerContainer() {
-      const container = document.getElementById('colorPickersContainer');
-      const children = container.children;
-      let numRows = Math.ceil(children.length / 4); // Calculate the number of rows (1 or 2)
-      let maxHeight = 0;
-  
-      // Find the maximum height of a single color picker (assuming uniform height for simplicity)
-      for (let i = 0; i < children.length; i++) {
-          if (children[i].offsetHeight > maxHeight) {
-              maxHeight = children[i].offsetHeight;
-          }
-      }
-  
-      // Adjust numRows calculation to avoid extra spacing when exactly 8 pickers are present
-      if (children.length === 9) {
-          numRows = 2; // Explicitly set to 2 rows when there are exactly 8 children
-      }
-  
-      // Set the container height based on the number of rows and the maximum height of a single row
-      container.style.height = `${numRows * maxHeight}px`;
-  }
   
   //Countdown Schedule 
           let schedule_editingEvent = null;
@@ -4914,6 +4593,7 @@ function contrast(){ //increase contrast set or remove cookie
   }
   
   function savetodash() {
+      if (viewerPreviewActive) return;
       const url = window.location.href; // Get the current page URL
       const urlObj = new URL(url);
       const title = urlObj.searchParams.get('title');
@@ -5082,10 +4762,13 @@ function contrast(){ //increase contrast set or remove cookie
       let input = '';
       return (event) => {
           if (event.key === 'Escape') {
-            if(document.getElementById('personalSettingsOverlay').style.display = "none"){
-              settings();
-            }else{
+            if (document.getElementById('personalSettingsOverlay').style.display === 'flex') {
                 closePersonalSettings();
+            } else if (!document.getElementById('settings').classList.contains('hidden') ||
+                       !document.getElementById('infoPane').classList.contains('hidden')) {
+                settings();
+            } else if (viewerPreviewActive) {
+                exitViewerPreview();
             }
             return;
           }
@@ -5110,8 +4793,7 @@ function contrast(){ //increase contrast set or remove cookie
               return;
           }
           
-          const colorPickers = document.querySelectorAll('.colorpicker');
-          const colors = Array.from(colorPickers).map(picker => picker.value);
+          const colors = MinutehandColors.cssColors();
           
           if (colors.length === 0) {
               styleTag.textContent = ''; // Clear animations if no colors
@@ -5152,10 +4834,7 @@ function contrast(){ //increase contrast set or remove cookie
               }
           });
       
-          // Force browser to reflow by removing and re-adding the style element
-          const newStyle = document.createElement('style');
-          newStyle.id = 'animationhandler';
-          newStyle.textContent = `
+          const keyframes = `
               @keyframes backgroundgradient {
                   ${textKeyframes}
               }
@@ -5163,9 +4842,8 @@ function contrast(){ //increase contrast set or remove cookie
                   ${bgKeyframes}
               }
           `;
-          
-          //styleTag.parentNode.replaceChild(newStyle, styleTag);
-          styleTag.innerHTML = newStyle.textContent;
+          // This also runs during timer updates. Preserve the animation until the palette changes.
+          if (styleTag.textContent !== keyframes) styleTag.textContent = keyframes;
       }
   
       
@@ -5269,8 +4947,10 @@ function contrast(){ //increase contrast set or remove cookie
         }
 
         function setLightMode() {
+            const themeChanged = document.documentElement.style.getPropertyValue('--mainforegroundcolor') !== '#000000';
             document.documentElement.style.setProperty('--mainbgcolor', '#ffffff');
             document.documentElement.style.setProperty('--mainforegroundcolor', '#000000');
+            if (themeChanged) MinutehandColors.refresh();
             document.documentElement.style.setProperty('--selectedgreen', '#00d04c');
             document.documentElement.style.setProperty('--selectedgreengradient', 'linear-gradient(to bottom right, #ffffff00, #00d04c44)');
             document.documentElement.style.setProperty('--inputbackground', 'radial-gradient(circle at 12% -35%, rgba(255, 255, 255, 0.98), transparent 46%), radial-gradient(circle at 108% 125%, rgba(132, 38, 255, 0.18), transparent 54%), linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(246, 240, 255, 0.66))');
@@ -5308,8 +4988,10 @@ function contrast(){ //increase contrast set or remove cookie
         }
         
         function setDarkMode() {
+            const themeChanged = document.documentElement.style.getPropertyValue('--mainforegroundcolor') !== '#ffffff';
             document.documentElement.style.setProperty('--mainbgcolor', '#141414');
             document.documentElement.style.setProperty('--mainforegroundcolor', '#ffffff');
+            if (themeChanged) MinutehandColors.refresh();
             document.documentElement.style.setProperty('--selectedgreen', '#01FE5E');
             document.documentElement.style.setProperty('--selectedgreengradient', 'linear-gradient(to bottom right, #14141400, #01fe5e34)');
             document.documentElement.style.setProperty('--inputbackground', 'radial-gradient(circle at 12% -35%, rgba(255, 255, 255, 0.15), transparent 46%), radial-gradient(circle at 108% 125%, rgba(132, 38, 255, 0.30), transparent 54%), linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(132, 38, 255, 0.10))');
@@ -5510,174 +5192,6 @@ SetCountDowngeneral(); // Update any theme-colored pickers
         }
 
 
-      // Add these new drag-and-drop handler functions
-      let draggedItem = null;
-
-      function handleDragStart(e) {
-          draggedItem = this;
-          this.style.opacity = '0.4';
-          
-          // Create a custom drag image that matches the color picker
-          const dragImage = this.cloneNode(true);
-          dragImage.style.opacity = '0.7';
-          dragImage.style.position = 'absolute';
-          dragImage.style.top = '-1000px';
-          document.body.appendChild(dragImage);
-          e.dataTransfer.setDragImage(dragImage, 20, 20);
-          
-          // Remove the drag image after it's no longer needed
-      setTimeout(() => {
-              document.body.removeChild(dragImage);
-          }, 0);
-      }
-
-      function handleDragEnd(e) {
-          this.style.opacity = '1';
-          
-          const containers = document.querySelectorAll('.colorpicker-container');
-          containers.forEach(container => {
-              container.classList.remove('drag-over');
-          });
-      }
-
-      function handleDragOver(e) {
-          e.preventDefault();
-          this.classList.add('drag-over');
-      }
-
-      function handleDrop(e) {
-          e.preventDefault();
-          this.classList.remove('drag-over');
-          
-          if (this === draggedItem) return;
-          
-          const container = document.getElementById('colorPickersContainer');
-          const allItems = [...container.getElementsByClassName('colorpicker-container')];
-          const draggedIndex = allItems.indexOf(draggedItem);
-          const droppedIndex = allItems.indexOf(this);
-          
-          if (draggedIndex < droppedIndex) {
-              this.parentNode.insertBefore(draggedItem, this.nextSibling);
-          } else {
-              this.parentNode.insertBefore(draggedItem, this);
-          }
-          
-          // Update the line break position
-          if(document.querySelector(".colorpickerlinebreak")){
-              document.querySelector(".colorpickerlinebreak").remove();
-          }
-          if (container.children.length > 4) {
-              const newBR = document.createElement('br');
-              newBR.className = 'colorpickerlinebreak';
-              container.insertBefore(newBR, container.children[4]);
-          }
-
-          // Defer remove button update until after DOM order is correct
-          setTimeout(() => {
-              const allItems = [...container.getElementsByClassName('colorpicker-container')];
-              allItems.forEach((item, idx) => {
-                  const removeBtn = item.querySelector('.remove-button');
-                  if (removeBtn) {
-                      if (idx === 0) {
-                          removeBtn.style.cssText += "opacity:0 !important; user-select: none; cursor: default;";
-                      } else {
-                          removeBtn.style.opacity = "";
-                          removeBtn.style.userSelect = "";
-                          removeBtn.style.cursor = "";
-                      }
-                  }
-              });
-          }, 0);
-
-          adjustHeightOfColorPickerContainer();
-          updateColorAnimations();
-              SetCountDowngeneral();
-          }
-
-
-      // Initialize drag-and-drop for existing color pickers
-      window.addEventListener('load', () => {
-          const containers = document.querySelectorAll('.colorpicker-container');
-          containers.forEach(container => {
-              container.draggable = true;
-              container.addEventListener('dragstart', handleDragStart);
-              container.addEventListener('dragend', handleDragEnd);
-              container.addEventListener('dragover', handleDragOver);
-              container.addEventListener('drop', handleDrop);
-          });
-      });
-  
-
-        function addForegroundColorPicker(method) {
-            if (colorPickerCount < 8) {
-                colorPickerCount++;
-                const container = document.getElementById('colorPickersContainer');
-                const newColorPickerContainer = document.createElement('div');
-                newColorPickerContainer.className = 'colorpicker-container';
-                newColorPickerContainer.draggable = true;
-                
-                // Add drag event listeners
-                newColorPickerContainer.addEventListener('dragstart', handleDragStart);
-                newColorPickerContainer.addEventListener('dragend', handleDragEnd);
-                newColorPickerContainer.addEventListener('dragover', handleDragOver);
-                newColorPickerContainer.addEventListener('drop', handleDrop);
-        
-                const newColorPicker = document.createElement('input');
-                newColorPicker.className = 'colorpicker disabledcolorpicker fgcolorpicker';
-                newColorPicker.id = `color${colorPickerCount}`;
-                newColorPicker.type = 'color';
-                newColorPicker.disabled = true;
-                newColorPicker.style.cursor = "default";
-                newColorPicker.title = "This color dynamically changes with your system theme";
-                // Use CSS variable for theme color
-                const computedStyle = getComputedStyle(document.documentElement);
-                const themeColor = computedStyle.getPropertyValue('--mainforegroundcolor').trim();
-                newColorPicker.value = themeColor;
-                newColorPicker.dataset.useThemeColor = 'true'; // Mark this picker as using theme color
-                newColorPicker.onblur = SetCountDowngeneral;
-        
-                const removeButton = document.createElement('div');
-                removeButton.className = 'remove-button';
-                removeButton.innerHTML = '-';
-                removeButton.onclick = function() { removeColorPicker(removeButton); };
-        
-                newColorPickerContainer.appendChild(newColorPicker);
-                newColorPickerContainer.appendChild(removeButton);
-        
-                container.appendChild(newColorPickerContainer);
-        
-                if(document.querySelector(".colorpickerlinebreak")){
-                    document.querySelector(".colorpickerlinebreak").remove();
-                }
-                const colorpickersocontainer = document.getElementById('colorPickersContainer');
-                if (colorpickersocontainer.children.length > 4) {
-                    const newBR = document.createElement('br');
-                    newBR.className = 'colorpickerlinebreak';
-                    colorpickersocontainer.insertBefore(newBR, colorpickersocontainer.children[4]);
-                }
-                
-                if(colorpickersocontainer.children.length > 8){
-                    document.querySelector(".clradd").classList.add("clraddoff");
-                }
-                else{
-                    document.querySelector(".clradd").classList.remove("clraddoff");
-                }
-        
-                if(colorpickersocontainer.children.length > 8){
-                    document.querySelector(".clraddfg").classList.add("clraddoff");
-                }
-                else{
-                    document.querySelector(".clraddfg").classList.remove("clraddoff");
-                }
-        
-                adjustHeightOfColorPickerContainer();
-                updateColorAnimations();
-                if(method !== "auto"){
-          SetCountDowngeneral();
-                        }
-                    }
-                }
-                
                 document.querySelectorAll('.pfp-stack').forEach(stack=>{
                     const avatars = stack.querySelectorAll('.pfp');
                     avatars.forEach((av,i)=>{
@@ -5837,11 +5351,14 @@ SetCountDowngeneral(); // Update any theme-colored pickers
 
 
                   function openPersonalSettings() {
+                    window.MinutehandSettings?.beforePersonalSettings();
                     document.getElementById('personalSettingsOverlay').style.display = 'flex';
+                    document.querySelector('.personal-settings-close').focus();
                   }
                 
                   function closePersonalSettings() {
                     document.getElementById('personalSettingsOverlay').style.display = 'none';
+                    window.MinutehandSettings?.afterPersonalSettings();
                   }
 
 
@@ -5849,7 +5366,7 @@ SetCountDowngeneral(); // Update any theme-colored pickers
 // --- Search settings functionality ---
 function searchsettings() {
     const input = document.getElementById("searchbarinput");
-    const filter = input.value.toLowerCase();
+    const filter = input.value.trim().toLowerCase();
     const resultsContainer = document.getElementById("search-results");
     resultsContainer.innerHTML = "";
 
@@ -5862,6 +5379,7 @@ function searchsettings() {
     let found = false;
     
     sections.forEach(section => {
+        if (!section.getClientRects().length) return;
         const fullText = [
             section.textContent,
             section.nextElementSibling?.textContent
@@ -5872,14 +5390,11 @@ function searchsettings() {
             resultBtn.className = "searchresultbtn";
             resultBtn.textContent = section.textContent;
             resultBtn.onclick = () => {
-                section.scrollIntoView({ behavior: "smooth", block: "start" });
+                window.MinutehandSettings?.navigateTo(section);
                 document.getElementById("searchbarinput").value = "";
                 resultsContainer.innerHTML = "";
                 resultsContainer.classList.add("searchhidden");
-    
-                if (window.innerWidth < 768) {
-                    settings(); // close settings on mobile
-                }
+
             };
             resultsContainer.appendChild(resultBtn);
             found = true;
@@ -6047,6 +5562,9 @@ async function updateGearIconForUser() {
     if (window.gearIconUpdated) {
         return;
     }
+
+    // Load owner details independently so a failed request never blocks the pane.
+    window.MinutehandInfo?.load();
     
     try {
         const isEditor = await isUserEditor();
@@ -6054,53 +5572,17 @@ async function updateGearIconForUser() {
         // Store the editor status globally for reuse
         window.userEditorStatus = isEditor;
         
-        const gearIcon = document.getElementById('innergear');
-        const gearButton = document.getElementById('gear');
-        
-        if (gearIcon && gearButton) {
-            if (isEditor) {
-                // User is editor - show gear icon and normal settings behavior
-                gearIcon.className = 'fa-solid fa-gear';
-                gearButton.onclick = settings;
-            } else {
-                // User is not editor - show info icon and info pane behavior
-                gearIcon.className = 'fa-solid fa-info';
-                gearButton.onclick = settings; // The settings function now handles both cases
-            }
-        }
+        updateCountdownAccessUI();
 
         // Check if user is logged in and show/hide appropriate divs
         try {
             const { data, error } = await window.supabaseClient.auth.getUser();
             
-            const infosignupDiv = document.getElementById('infosignup');
-            const infoclonecdDiv = document.getElementById('infoclonecd');
-            
-            // Check if data exists and has a user property
-            if (data && data.user && !error) {
-                // User is logged in - hide infosignup, show infoclonecd
-                if (infosignupDiv) {
-                    infosignupDiv.style.display = 'none';
-                }
-                if (infoclonecdDiv) {
-                    infoclonecdDiv.style.display = '';
-                }
-            } else {
-                // User is not logged in - show infosignup, hide infoclonecd
-                if (infosignupDiv) {
-                    infosignupDiv.style.display = '';
-                }
-                if (infoclonecdDiv) {
-                    infoclonecdDiv.style.display = 'none';
-                }
-            }
+            infoViewerSignedIn = !!(data && data.user && !error);
         } catch (authError) {
-            // Default to showing signup and hiding clonecd when auth fails
-            const infosignupDiv = document.getElementById('infosignup');
-            const infoclonecdDiv = document.getElementById('infoclonecd');
-            if (infosignupDiv) infosignupDiv.style.display = '';
-            if (infoclonecdDiv) infoclonecdDiv.style.display = 'none';
+            infoViewerSignedIn = false;
         }
+        updateInfoViewerActions();
 
         // Update info pane with countdown creator info
         if (window.CountdownDataID) {
@@ -6240,6 +5722,10 @@ async function updateGearIconForUser() {
 }
 
 async function clonecountdown() {
+    if (viewerPreviewActive) {
+        showToast('Viewers can clone this countdown to make their own changes.', 'info');
+        return;
+    }
     try {
         // Check if user is authenticated
         if (typeof window.supabaseClient === "undefined" || !window.supabaseClient.auth) {
@@ -6383,6 +5869,7 @@ function setupAuthListener() {
             
             // Update gear icon when auth state changes
             if (window.CountdownDataID) {
+                window.gearIconUpdated = false;
                 updateGearIconForUser();
             }
         });

@@ -1,0 +1,122 @@
+/* A shared depth and timing language for navigation and Options. */
+@view-transition {
+    navigation: auto;
+}
+
+:root {
+    --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --motion-origin: 50% 50%;
+}
+
+html[data-motion]::view-transition-group(root) {
+    animation-duration: 520ms;
+    animation-timing-function: var(--motion-ease);
+}
+
+html[data-motion]::view-transition-old(root),
+html[data-motion]::view-transition-new(root) {
+    mix-blend-mode: normal;
+    transform-origin: var(--motion-origin);
+    backface-visibility: hidden;
+    animation-fill-mode: both;
+    animation-timing-function: var(--motion-ease);
+}
+
+html[data-motion="countdown-open"]::view-transition-old(root) {
+    animation-name: dashboard-recede;
+    animation-duration: 360ms;
+}
+
+html[data-motion="countdown-open"]::view-transition-new(root) {
+    animation-name: countdown-arrive;
+    animation-duration: 520ms;
+}
+
+html[data-motion="countdown-close"]::view-transition-old(root) {
+    animation-name: countdown-depart;
+    animation-duration: 320ms;
+    z-index: 2;
+}
+
+html[data-motion="countdown-close"]::view-transition-new(root) {
+    animation-name: dashboard-return;
+    animation-duration: 520ms;
+}
+
+html[data-motion="options-open"]::view-transition-old(root) {
+    animation-name: options-underlay-out;
+    animation-duration: 400ms;
+}
+
+html[data-motion="options-open"]::view-transition-new(root) {
+    animation-name: options-arrive;
+    animation-duration: 520ms;
+}
+
+html[data-motion="options-close"]::view-transition-old(root) {
+    animation-name: options-depart;
+    animation-duration: 340ms;
+    z-index: 2;
+}
+
+html[data-motion="options-close"]::view-transition-new(root) {
+    animation-name: options-underlay-in;
+    animation-duration: 480ms;
+}
+
+html[data-motion-waiting]::view-transition-old(root),
+html[data-motion-waiting]::view-transition-new(root) {
+    animation-play-state: paused;
+}
+
+html[data-motion-arriving] body { opacity: 0; }
+
+@keyframes dashboard-recede {
+    to { opacity: 0; transform: scale(1.045); }
+}
+
+@keyframes countdown-arrive {
+    from { opacity: 0; transform: translateY(18px) scale(0.965); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes countdown-depart {
+    to { opacity: 0; transform: translateY(18px) scale(0.965); }
+}
+
+@keyframes dashboard-return {
+    from { opacity: 0; transform: scale(1.045); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes options-underlay-out {
+    to { opacity: 0; transform: translateX(-12px) scale(0.975); }
+}
+
+@keyframes options-arrive {
+    from { opacity: 0; transform: translateX(48px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes options-depart {
+    to { opacity: 0; transform: translateX(48px); }
+}
+
+@keyframes options-underlay-in {
+    from { opacity: 0; transform: translateX(-12px) scale(0.975); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    @view-transition { navigation: none; }
+
+    html[data-motion]::view-transition-group(root),
+    html[data-motion]::view-transition-old(root),
+    html[data-motion]::view-transition-new(root) {
+        animation: none !important;
+        transform: none !important;
+    }
+
+    html[data-motion-arriving] body { opacity: 1; }
+    html:root { scroll-behavior: auto; }
+}

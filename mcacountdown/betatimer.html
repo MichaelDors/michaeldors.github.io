@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="motion.css?v=20260926-1">
+    <script src="motion.js?v=20260926-1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
@@ -15,14 +17,16 @@
     <meta name="theme-color" content="#8426ff" />
 
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
     <title>Minutehand</title>
 
     <script src="Dependencies/confetti.js"></script>
     <script src="Dependencies/qrcode.min.js"></script>
 
-	<link rel="stylesheet" id="stylesheetmain" href="betastyle.css?v=20260830-7"/>
+	<link rel="stylesheet" id="stylesheetmain" href="betastyle.css?v=20260929-1"/>
+    <link rel="stylesheet" href="responsive.css?v=20260929-2">
+    <link rel="stylesheet" href="countdown-info.css?v=20260930-1">
     <style id="animationHandler"></style>
 
     <meta property="og:image" content="https://michaeldors.com/mcacountdown/sharepanels/defaultshare.jpg" />
@@ -36,7 +40,10 @@
     <script src="supabaseclient.js"></script>
 
     <script src="timekeeper.js" defer></script>
-    <script src="init.js?v=20260830-8" defer></script>
+    <script src="color-pickers.js?v=20260929-1" defer></script>
+    <script src="settings-layout.js?v=20260929-1" defer></script>
+    <script src="countdown-info.js?v=20260930-1" defer></script>
+    <script src="init.js?v=20260930-1" defer></script>
     
 </head>
 
@@ -78,7 +85,7 @@
     <svg style="display: none;" class="curve left" viewBox="0 0 80 45" preserveAspectRatio="none">
       <path d="M80,0 L80,45 L0,45 C30,45 50,0 80,0" fill="black"/>
     </svg>
-    <a id="gear" class="settings hidden" onclick="settings();" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index:1000000;"><i id="innergear" class="fa-solid fa-gear"></i></a>
+    <a id="gear" class="settings hidden" role="button" tabindex="0" aria-label="Open countdown options" aria-controls="settings" aria-expanded="false" onclick="settings();" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" style="margin: 0; position: absolute; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%); z-index:1000000;"><i id="innergear" class="fa-solid fa-gear"></i></a>
     <div class="center"></div>
     <svg class="curve right" viewBox="0 0 80 45" preserveAspectRatio="none">
       <path d="M0,0 C30,0 50,45 80,45 L0,45 L0,0" fill="black"/>
@@ -93,6 +100,15 @@
     </center>
 
     <div id="toast-container"></div>
+
+    <div id="viewer-preview-bar" aria-label="Viewer preview controls" hidden>
+        <span class="viewer-preview-label"><i class="fa-regular fa-eye" aria-hidden="true"></i> Viewer preview</span>
+        <select id="viewer-preview-audience" aria-label="Preview audience" onchange="updateInfoViewerActions();">
+            <option value="signed-out">Signed-out viewer</option>
+            <option value="signed-in">Signed-in viewer</option>
+        </select>
+        <button type="button" id="exit-viewer-preview" onclick="exitViewerPreview();">Exit preview</button>
+    </div>
 
     <div class="cookiebanner" id="cookie-banner">
         <img id="cookiebannerimg" src="Backgrounds/cookie_bite.png">
@@ -116,11 +132,11 @@
     </center>
 
     <div id="personalSettingsOverlay" class="personal-settings-overlay">
-        <div class="personal-settings-popup">
-          <button class="personal-settings-close" onclick="closePersonalSettings()"><i class="fa-solid fa-circle-xmark"></i></button>
+        <div class="personal-settings-popup" role="dialog" aria-modal="true" aria-label="Personal settings">
+          <button type="button" class="personal-settings-close" aria-label="Close personal settings" onclick="closePersonalSettings()"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i></button>
         <center>
           <div class="personal-settings-content">
-            <div style="width:100%; margin:0px; padding:0px; border-top: #fe980070 2px solid; border-bottom: #fe980070 2px solid; margin-top: 50px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
+            <div class="options-section-heading" style="width:100%; margin:0px; padding:0px; border-top: #fe980070 2px solid; border-bottom: #fe980070 2px solid; margin-top: 50px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(254,154,0,0.2))">
                 <h1><i style="color: #FE9A00" class="fa-solid fa-user-lock"></i> Personal Settings</h1>
             </div>
             <h1 class="textelement">
@@ -265,17 +281,24 @@
         </div>
       </div>
 
-    <div class="hidden" id="settings">
-        <div id="settingssidebar">
-            <a style="position: absolute; left:6%; top:2.7%; font-size: 35px; color:var(--mainforegroundcolor) !important;" class="aintext" title="Close options" onclick="settings(); SetCountDowngeneral();"><i class="fa-solid fa-circle-left"></i></a>
+    <div class="hidden" id="settings" aria-label="Countdown options">
+        <div id="settings-menu-backdrop" aria-hidden="true"></div>
+        <aside id="settingssidebar" aria-label="Options menu">
+            <div class="settings-sidebar-header">
+                <button type="button" id="close-options" class="settings-icon-button" aria-label="Close options" onclick="settings();"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button>
+                <span>Options</span>
+                <button type="button" id="close-settings-menu" class="settings-icon-button" aria-label="Close options menu"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            </div>
 
             <div style="position: relative;">
-                <input id="searchbarinput" type="input" onkeyup="searchsettings()" list="settingsheaders" placeholder="Search for an option">
+                <input id="searchbarinput" type="search" oninput="searchsettings()" aria-label="Search options" placeholder="Search for an option">
             </div>
             <div id="search-results" class="search-results searchhidden"></div>
 
-            <div id="settingssidebarpaneshareable">
+            <nav id="settingssidebarpaneshareable" aria-label="Options sections">
                 <a class="sidebaranchor" href="#generaloptions"><i style="background:#8426FF; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-regular fa-clock"></i> General</a>
+                <br>
+                <a class="sidebaranchor" href="#countdowninfooptions"><i style="background:#8426FF; color:white;" class="fa-solid fa-circle-info"></i> Viewer info</a>
                 <br>
                 <a class="sidebaranchor" href="#customizationoptions"><i style="background:#3ab6ff; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-palette"></i> Styling</a>
                 <br>
@@ -284,39 +307,49 @@
                 <a class="sidebaranchor" href="#scheduleoptions"><i style="background:#FF9900; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-calendar"></i> Schedule</a>
                 <br>
                 <a id="optionsprogressanchor" class="sidebaranchor" href="#progressoptions"><i style="background:#8426FF; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-spinner"></i> Progress</a>
-            </div>
+            </nav>
+            <button type="button" id="start-viewer-preview" class="settings-done viewer-preview-launch" onclick="startViewerPreview();" hidden>
+                <i class="fa-regular fa-eye" aria-hidden="true"></i> Preview as viewer
+            </button>
             <div id="previewiframecontainer">
                 <p class="preview-label">Preview:</p>
                 <div class="iframe-aspect-wrapper">
-                  <iframe frameborder="0" allowfullscreen loading="lazy" title="Countdown preview" id="previewiframe"></iframe>
+                  <iframe frameborder="0" allowfullscreen loading="lazy" title="Countdown preview" tabindex="-1" id="previewiframe"></iframe>
                 </div>
               </div>
-        </div>
-        <div  id="accountDropdownButton">
+        <div class="settings-account">
+        <button type="button" id="accountDropdownButton" aria-label="Account, personal settings, and dashboard">
         <div class="pfp-stack">
-            <div class="pfp"><img id="userpfp" src="" alt=""></div>
+            <div class="pfp"><i class="fa-solid fa-user" aria-hidden="true"></i><img id="userpfp" src="" alt=""></div>
         </div>
-        <p class="pfp-name" id="usrname"></p>
+        <p class="pfp-name" id="usrname">Your account</p>
         <p class="pfp-detail" id="usrdetail">Settings, dashboard, and more</p>
-    </div>
-        <div class="dropdown-container" style="position:fixed; left:25px; bottom:85px; z-index: 1000001;" id="accountDropdown">
+    </button>
+        <div class="dropdown-container" id="accountDropdown">
             <div class="dropdown-menu dropup" id="accountMenu">
-              <div class="dropdown-item" onclick="openPersonalSettings();">
+              <button type="button" class="dropdown-item" onclick="openPersonalSettings();">
                 <i class="fa-solid fa-user"></i> Settings
-              </div>
-              <div class="dropdown-item" onclick="window.location.href='countdowndashboard'">
+              </button>
+              <button type="button" class="dropdown-item" onclick="if(window.MinutehandMotion) MinutehandMotion.navigate('countdowndashboard'); else window.location.href='countdowndashboard';">
                 <i class="fa-solid fa-border-all"></i> Dashboard
-              </div>
-              <div class="dropdown-item dropdown-warning" onclick="logoutUser();">
+              </button>
+              <button type="button" class="dropdown-item dropdown-warning" onclick="logoutUser();">
                 <i class="fa-solid fa-right-from-bracket"></i> Log Out
-              </div>
+              </button>
             </div>
           </div>
+        </div>
+        </aside>
           <div class="save-bar visible" id="saveBar">
             <span class="save-text" id="savetext"></span>
-            <a title="Save to Countdown Dashboard" id="savedash" class="savedash" style="margin-top:0px" onclick="savetodash();"><i class="fa-solid fa-star"></i> Save</a>
+            <a role="button" tabindex="0" title="Save to Countdown Dashboard" id="savedash" class="savedash" style="margin-top:0px" onclick="savetodash();" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }"><i class="fa-solid fa-star"></i> Save</a>
         </div>
         <div id="settingsmainpane">
+            <header class="settings-mobile-toolbar">
+                <button type="button" id="settings-menu-toggle" class="settings-icon-button" aria-label="Open options menu" aria-controls="settingssidebar" aria-expanded="false"><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
+                <div class="settings-toolbar-title"><span>Options</span><span id="settings-current-section">General</span></div>
+                <button type="button" class="settings-done" onclick="settings();">Done</button>
+            </header>
             <center id="mainpanebodycontainer" style="margin-top:100px">
 
 
@@ -343,7 +376,7 @@
 
 		</div>
 
-        <div style="width:100%; margin:0px; padding:0px; border-top: #8426FF70 2px solid; border-bottom: #8426FF70 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #8426ff39)">
+        <div class="options-section-heading" style="width:100%; margin:0px; padding:0px; border-top: #8426FF70 2px solid; border-bottom: #8426FF70 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #8426ff39)">
             <h1 id="generaloptions"><i style="color: #8426FF" class="fa-solid fa-clock"></i> General</h1>
         </div>
 
@@ -352,7 +385,7 @@
                     Date
                 </h2>
 
-                <input class="datepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
+                <input class="datepicker" type="datetime-local" aria-labelledby="datetag" onblur="SetCountDowngeneral();" />
                 <div class="wrapper">
                     <div class="icon"><i id="left" class="fa-solid fa-angle-left"></i></div>
                     <ul class="tabs-box" id="tabs-box">
@@ -364,19 +397,23 @@
                 <h2 id="titletag" class="textelement" style="font-family: 'Dosis';">
                     Title
                 </h2>
-                <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" placeholder="Pick a title" style="margin-bottom:100px;" />
-                <button style="background:transparent; border:none; outline:none; cursor:pointer">
-                    <i id="magictitle" title="Timekeeper will automatically select a title for your Countdown" class="fa fa-wand-magic-sparkles" style="transform:scale(1.75); padding-left:10px;" onclick="magictitle(); autopilotsparkle(event);"></i>
+                <div class="options-control-row options-title-row">
+                <input onblur="setcountdowntitle('settings');" id="cdtitlesettings" class="input" aria-labelledby="titletag" placeholder="Pick a title" />
+                <button type="button" class="settings-icon-button" aria-label="Choose a title automatically" onclick="magictitle(); autopilotsparkle(event);">
+                    <i id="magictitle" title="Timekeeper will automatically select a title for your Countdown" class="fa fa-wand-magic-sparkles" aria-hidden="true"></i>
                 </button>
+                </div>
                 <h2 class="textelement" style="font-family: 'Dosis';" id="linkoptions">
                     Sharing
                 </h2>
 
                 <div id="sharingcenter">
-                <input id="linkinput" class="input" style="margin-bottom:30px;"/>
-                <button style="background:transparent; border:none; outline:none; cursor:pointer">
-                    <i title="Copy link" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlink(); showToast('Shareable link copied', 'success');"></i>
+                <div class="options-control-row">
+                <input id="linkinput" class="input" aria-label="Shareable countdown link"/>
+                <button type="button" class="settings-icon-button" aria-label="Copy countdown link" onclick="copyinputtextlink(); showToast('Shareable link copied', 'success');">
+                    <i class="fa fa-clone" aria-hidden="true"></i>
                 </button>
+                </div>
                 <div id="qrcodecontainerdiv" style="border-radius: 20px; background: linear-gradient(to bottom right, #FFFFFF, #FFFFFF, #BD8BFF);margin-bottom:20px; padding: 20px; color: black; height: 180px; width:fit-content; max-width:75%;">
                     <div id="qrcode" style="float: left; box-shadow: #ffffff 1px 1px 25px; padding-top: 15px; padding-left:20px; transform:scale(1.1)"></div>
                     <div style="float:left; padding-left:30px; text-align:left;">
@@ -412,7 +449,27 @@
                         View your personal shortcut <i class="fa-solid fa-chevron-right"></i>
                     </p>
                 </a>
-                <div style="width:100%; margin:0px; padding:0px; border-top: #39B8FB70 2px solid; border-bottom: #39B8FB70 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
+                <section class="countdown-info-editor" aria-labelledby="countdowninfooptions">
+                    <h2 id="countdowninfooptions">Viewer information</h2>
+                    <p class="texttip" id="countdown-info-help">Add optional text, a website URL, or an address for anyone who can view this countdown. Only share details you want viewers to see.</p>
+                    <form id="countdown-info-form" aria-describedby="countdown-info-help" novalidate>
+                        <fieldset id="countdown-info-fields" disabled>
+                            <label for="countdown-info-description">Text</label>
+                            <textarea class="input" id="countdown-info-description" rows="5" maxlength="4000" placeholder="What should viewers know?"></textarea>
+                            <label for="countdown-info-url">Website URL</label>
+                            <input class="input" id="countdown-info-url" type="text" inputmode="url" autocomplete="url" autocapitalize="none" spellcheck="false" maxlength="2048" placeholder="https://example.com">
+                            <label for="countdown-info-address">Address</label>
+                            <textarea class="input" id="countdown-info-address" rows="3" maxlength="500" placeholder="Venue or street address"></textarea>
+                        </fieldset>
+                        <div class="countdown-info-actions">
+                            <button class="settings-done" id="countdown-info-save" type="submit" disabled>Save information</button>
+                            <button class="settings-done" id="countdown-info-retry" type="button" hidden>Try again</button>
+                        </div>
+                        <p class="texttip" id="countdown-info-status" role="status" aria-live="polite">Loading information…</p>
+                    </form>
+                </section>
+
+                <div class="options-section-heading" style="width:100%; margin:0px; padding:0px; border-top: #39B8FB70 2px solid; border-bottom: #39B8FB70 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), rgba(57,184,251,0.2))">
                     <h1 id="customizationoptions"><i style="color: #39B8FB" class="fa-solid fa-palette"></i> Styling</h1>
                 </div>
 
@@ -421,26 +478,11 @@
                 </h2>
 
 
-                <div id="colorPickersContainer">
-                    <div class="colorpicker-container">
-                        <input class="colorpicker" id="color1" type="color" value="#8426ff" onblur="SetCountDowngeneral();"/>
-                        <div class="remove-button" style="opacity:0 !important; user-select: none; cursor: default;">-</div>
-                    </div>
-                    <div class="colorpicker-container">
-                        <input class="colorpicker" id="color2" type="color" value="#3ab6ff" onblur="SetCountDowngeneral();"/>
-                        <div class="remove-button" onclick="removeColorPicker(this)" title="Remove this color">-</div>
-                    </div>
-                    <div class="colorpicker-container">
-                        <input class="colorpicker" id="color3" type="color" value="#00df52" onblur="SetCountDowngeneral();"/>
-                        <div class="remove-button" onclick="removeColorPicker(this)" title="Remove this color">-</div>
-                    </div>
-                    <div class="colorpicker-container">
-                        <input class="colorpicker" id="color4" type="color" value="#ff9900" onblur="SetCountDowngeneral();"/>
-                        <div class="remove-button" onclick="removeColorPicker(this)" title="Remove this color">-</div>
-                    </div>
+                <div id="colorPickersContainer" role="group" aria-labelledby="foregroundcolorstag"></div>
+                <div class="colorpicker-actions">
+                    <button type="button" class="clradd" onclick="MinutehandColors.add()"><i class="fa-solid fa-plus-circle" aria-hidden="true"></i> Add Color</button>
+                    <button type="button" title="Add a color that dynamically changes with your system theme" class="clraddfg" onclick="MinutehandColors.add(true)"><i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i> Add Adaptive</button>
                 </div>
-                <a class="clradd" onmouseup="addColorPicker()"><i class="fa-solid fa-plus-circle"></i> Add Color</a>
-                <a title="Add a color that dynamically changes with your system theme" class="clraddfg" onmouseup="addForegroundColorPicker()"><i class="fa-solid fa-circle-half-stroke"></i> Add Adaptive</a>
 
                 <p class="texttip" style="margin-bottom:100px">
                     The foreground elements will cycle through the chosen colors
@@ -470,16 +512,19 @@
                 <h2 class="textelement" id="typefacetag" style="font-family: 'Dosis';">
                     Typeface
                 </h2>
+                <div class="options-picker-grid">
                 <a class="aintext selectedfontpicker" id="fredoka" style="font-family:'Fredoka One'" onmouseup="FontFredoka('Manual'); SetCountDowngeneral();">12:34</a>
                 <a class="aintext fontpicker" id="poppins" style="font-family:'Poppins'" onmouseup="FontPoppins('Manual'); SetCountDowngeneral();">12:34</a>
                 <a class="aintext fontpicker" id="dmserif" style="font-family: 'DM Serif Display', serif;" onmouseup="FontDMSerif('Manual'); SetCountDowngeneral();">12:34</a>
                 <a class="aintext fontpicker" id="michroma" style="font-family:'Michroma'; font-size:15px; margin-bottom:100px;" onmouseup="FontMichroma('Manual'); SetCountDowngeneral();">12:34</a>
+                </div>
 
 		<div id="optionsendingcontainer">
-                <div style="width:100%; margin:0px; padding:0px; border-top: #00DF5270 2px solid; border-bottom: #00DF5270 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #00df522f)">
+                <div class="options-section-heading" style="width:100%; margin:0px; padding:0px; border-top: #00DF5270 2px solid; border-bottom: #00DF5270 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #00df522f)">
                     <h1 id="endingoptions"><i style="color: #00DF52" class="fa-solid fa-flag-checkered"></i> Ending</h1>
                 </div>
                 <h2 class="textelement" id="confettioptionstag" style="font-family: 'Dosis';">Confetti Options</h2>
+                <div class="options-picker-grid">
                 <a title="Default confetti themed to your colors" class="aintext selectedfontpicker" id="defaultconfetti" onmouseup="ConfettiModeDefault(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-solid fa-palette"></i></a>
                 <a title="Input an emoji or symbol to use as confetti" class="aintext fontpicker" id="emojiconfetti" style="position:relative;" onmouseup="ConfettiModeEmoji(); SetCountDowngeneral();">
                     <span id="emojiOverlay"></span>
@@ -487,14 +532,15 @@
                 </a>
                 <a title="Festive snowflakes instead of confetti" class="aintext fontpicker" id="snowconfetti" onmouseup="ConfettiModeSnow(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-solid fa-snowflake"></i></a>
                 <a title="Disable confetti on this Countdown (you can disable confetti on all Countdowns in your Personal Settings)" class="aintext fontpicker" id="noconfetti" onmouseup="ConfettiModeNone(); SetCountDowngeneral();"><i style="height:96px; display: inline-block; text-align: center; line-height: 96px; font-size:20px" class="fa-regular fa-circle-xmark"></i></a>
+                </div>
                 <br>
                 <br>
                 <a class="aintext texttip" onclick="openPersonalSettings();" href="#appearanceoptions" class="texttip" style="text-decoration: underline; margin-bottom: 100px;">You can disable confetti for all countdowns in your Personal Settings.</a>
                 <h2 class="textelement" id="endingsoundtag" style="font-family: 'Dosis';">Ending Sound</h2>
-                <div class="container">
-                    <input class="input" type="text" id="audioLink" onblur="SetCountDowngeneral();" placeholder="Audio link">
-		        <button style="background:transparent; border:none; outline:none; cursor:pointer">
-           		 <i title="Clear Ending Sound" class="fa-solid fa-circle-xmark" style="transform:scale(1.75); padding-left:10px;" onclick="resetendsoundinput();"></i>
+                <div class="options-control-row">
+                    <input class="input" type="text" id="audioLink" aria-labelledby="endingsoundtag" onblur="SetCountDowngeneral();" placeholder="Audio link">
+		        <button type="button" class="settings-icon-button" aria-label="Clear ending sound" onclick="resetendsoundinput();">
+                 <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
         		</button>
                 </div>
                 <p class="texttip">
@@ -504,7 +550,7 @@
                 </p>
                 <a class="aintext texttip" onclick="openPersonalSettings();" href="#eouoptions" style=" text-decoration: underline; margin-bottom:100px;">You can disable ending sounds for all countdowns in your Personal Settings.</a>
 		</div>
-        <div style="width:100%; margin:0px; padding:0px; border-top: #ff990070 2px solid; border-bottom: #ff990070 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #ff990035)">
+        <div class="options-section-heading" style="width:100%; margin:0px; padding:0px; border-top: #ff990070 2px solid; border-bottom: #ff990070 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #ff990035)">
             <h1 id="scheduleoptions"><i style="color: #ff9900" class="fa-solid fa-calendar"></i> Countdown Schedule</h1>
         </div>
 
@@ -584,15 +630,17 @@
                     </div>
                 </div>
 		<div id="optionsprogresscontainer">
-                <div style="width:100%; margin:0px; padding:0px; border-top: #8426FF70 2px solid; border-bottom: #8426FF70 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #8426ff27)">
+                <div class="options-section-heading" style="width:100%; margin:0px; padding:0px; border-top: #8426FF70 2px solid; border-bottom: #8426FF70 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #8426ff27)">
                     <h1 id="progressoptions"><i style="color: #8426FF" class="fa-solid fa-spinner"></i> Progress</h1>
                 </div>
                 <div id="progressdatepickercontainer">
 		<h2 id="startingdaytag" style="font-family: 'Dosis';">Starting Date</h2>
-		<input id="progressdatepicker" class="progressdatepicker" type="datetime-local" onblur="SetCountDowngeneral();" />
-        <button style="background:transparent; border:none; outline:none; cursor:pointer">
-            <i title="Turn off Progress" class="fa-solid fa-circle-xmark" style="transform:scale(1.75); padding-left:10px;" onclick="resetprogressinput();"></i>
+        <div class="options-control-row">
+		<input id="progressdatepicker" class="progressdatepicker" type="datetime-local" aria-labelledby="startingdaytag" onblur="SetCountDowngeneral();" />
+        <button type="button" class="settings-icon-button" aria-label="Clear starting date" onclick="resetprogressinput();">
+            <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
         </button>
+        </div>
         <p class="texttip" style="margin-bottom:100px">
             Displays a progress bar to visualize the percent completion, if the event has a starting date
         </p>
@@ -671,8 +719,12 @@
     <canvas id="profileCanvas" width="200" height="200" style="display: none;"></canvas>
 
     <!-- Info Pane for non-editor users -->
-    <div class="hidden" id="infoPane">
+    <div class="hidden" id="infoPane" aria-label="Countdown information">
         <div id="infosidebar">
+            <div class="info-pane-header">
+                <span>Countdown info</span>
+                <button type="button" class="settings-icon-button" aria-label="Close countdown information" onclick="settings();"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            </div>
                         <div id="infopreloader" style="text-align: center; padding: 20px; display: none; margin-left:20px;">
                             <video autoplay loop muted style="width: calc(100vw * 0.10); height: calc(100vw * 0.10); border-radius: 2000000px;">
                                 <source src="Preloader.mp4" type="video/mp4">
@@ -692,24 +744,42 @@
                 <br>
                 <div id="infoclonecd">
                     <p class="texttip" style="margin: 2px 0 0 0; line-height:1.2;">Clone to make your own changes</p>
-                    <a class="blackbtn" style="margin-top: 10px; margin-bottom: 7px;" onclick="clonecountdown();">
+                    <a class="blackbtn" role="button" tabindex="0" style="margin-top: 10px; margin-bottom: 7px;" onclick="clonecountdown();" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }">
                         <i class="fa-solid fa-clone"></i> Clone This Countdown
                     </a>
                 </div>
                 <div id="infosignup">
                     <p class="texttip" style="margin: 2px 0 0 0; line-height:1.2; text-align:center;">Sign up to make your own changes</p>
-                    <a class="blackbtn" href="https://michaeldors.com/mcacountdown/auth" style="margin-top: 10px; margin-bottom: 7px; margin-left:13px;">
+                    <a id="info-signup-link" class="blackbtn" href="https://michaeldors.com/mcacountdown/auth" style="margin-top: 10px; margin-bottom: 7px; margin-left:13px;">
                         <i class="fa-solid fa-right-to-bracket"></i> Sign Up for Free
                     </a>
                 </div>
                 <p id="officialtexttip" class="texttip" style="margin: 20px 0 10px 0; line-height:1.2; font-size:12px !important;"><i class="fa-solid fa-circle-check"></i> This Countdown is from an official account</p>
             </div>
 
+            <section id="countdown-owner-info" class="countdown-owner-info" aria-labelledby="owner-info-heading" hidden>
+                <h2 id="owner-info-heading">From the owner</h2>
+                <p id="owner-info-description" hidden></p>
+                <div id="owner-info-url-row" hidden>
+                    <h3>Website</h3>
+                    <a id="owner-info-url" class="aintext" target="_blank" rel="noopener noreferrer ugc" aria-label="Owner-provided website (opens in a new tab)"></a>
+                </div>
+                <div id="owner-info-address-row" hidden>
+                    <h3>Address</h3>
+                    <p id="owner-info-address"></p>
+                </div>
+                <p class="owner-info-disclaimer">These details are provided by the countdown owner. Minutehand does not verify or endorse them.</p>
+            </section>
+            <div id="countdown-info-unavailable" role="status" hidden>
+                Owner-provided information is temporarily unavailable.
+                <button id="countdown-info-viewer-retry" type="button">Try again</button>
+            </div>
+
             <div id="sharingcenter-info">
                 <p>Link</p>
-                <input id="linkinput-info" class="input" style="margin-bottom:10px; margin-left:7px;"/>
-                <button style="background:transparent; border:none; outline:none; cursor:pointer">
-                    <i title="Copy link" class="fa fa-clone" style="transform:scale(1.75); padding-left:10px;" onclick="copyinputtextlinkInfo(); showToast('Shareable link copied', 'success');"></i>
+                <input id="linkinput-info" class="input" aria-label="Shareable countdown link" readonly style="margin-bottom:10px; margin-left:7px;"/>
+                <button type="button" aria-label="Copy countdown link" style="background:transparent; border:none; cursor:pointer" onclick="copyinputtextlinkInfo(); showToast('Shareable link copied', 'success');">
+                    <i class="fa fa-clone" aria-hidden="true" style="transform:scale(1.75); padding-left:10px;"></i>
                 </button>
                 <p>QR Code</p>
                 <div id="qrcodecontainerdiv-info" style="border-radius: 20px; margin-bottom:20px; height: 180px; width:fit-content; max-width:75%; margin-top:-10px;">

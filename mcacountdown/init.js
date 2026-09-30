@@ -1,5 +1,5 @@
 (function () {
-    const betaAppScriptSrc = "betaapp.js?v=20260830-7";
+    const betaAppScriptSrc = "betaapp.js?v=20260930-1";
 
     if (window._initJsLoaded) {
         console.log("init.js already loaded, exiting immediately");
