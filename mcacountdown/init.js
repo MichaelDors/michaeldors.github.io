@@ -1,5 +1,5 @@
 (function () {
-    const betaAppScriptSrc = "betaapp.js?v=20260930-1";
+    const betaAppScriptSrc = "betaapp.js?v=20261026-3";
 
     if (window._initJsLoaded) {
         console.log("init.js already loaded, exiting immediately");
@@ -47,65 +47,32 @@
     }
 
 
-    // Cache management functions
-    function getCountdownCache(id) {
-        try {
-            const cacheStr = localStorage.getItem('countdown_cache');
-            if (!cacheStr) return null;
-            const cache = JSON.parse(cacheStr);
-            return cache[id] || null;
-        } catch (error) {
-            console.error('Error reading countdown cache:', error);
-            return null;
+    // Saved countdowns must be authorized on every visit. Never render an old
+    // payload after access has been revoked or visibility has changed.
+    try { localStorage.removeItem('countdown_cache'); } catch {}
+    function unavailable() {
+        // A running timer owns intervals and media. Navigation tears those down
+        // before showing the unavailable state after sign-out or revocation.
+        if (window._betaAppAppended) {
+            location.replace('countdown-unavailable.html?id=' + encodeURIComponent(window.CountdownDataID || ''));
+            return;
         }
+        window.CountdownDataSource = '';
+        window.CountdownUserData = null;
+        window.userEditorStatus = false;
+        const panel = document.createElement('main');
+        panel.className = 'countdown-unavailable';
+        panel.setAttribute('role', 'alert');
+        const heading = document.createElement('h1'); heading.textContent = 'Countdown unavailable';
+        const message = document.createElement('p');
+        message.textContent = 'This countdown may be private, removed, or temporarily offline. Sign in with an invited account or try again.';
+        const signIn = document.createElement('a'); signIn.href = 'auth?id=' + encodeURIComponent(window.CountdownDataID || ''); signIn.textContent = 'Sign in';
+        const retry = document.createElement('button'); retry.textContent = 'Try again'; retry.onclick = () => location.reload();
+        const dashboard = document.createElement('a'); dashboard.href = 'countdowndashboard.html'; dashboard.textContent = 'Back to dashboard';
+        panel.append(heading, message, signIn, retry, dashboard);
+        document.body.replaceChildren(panel);
     }
-
-    function saveCountdownToCache(id, data) {
-        try {
-            const cacheStr = localStorage.getItem('countdown_cache');
-            let cache = cacheStr ? JSON.parse(cacheStr) : {};
-
-            cache[id] = {
-                data: data,
-                lastVisited: Date.now()
-            };
-
-            // Prune to keep only last 10
-            cache = pruneCountdownCache(cache);
-
-            localStorage.setItem('countdown_cache', JSON.stringify(cache));
-        } catch (error) {
-            console.error('Error saving countdown to cache:', error);
-        }
-    }
-
-    function getRecentCountdowns() {
-        try {
-            const cacheStr = localStorage.getItem('countdown_cache');
-            if (!cacheStr) return [];
-            const cache = JSON.parse(cacheStr);
-            return Object.keys(cache).map(id => ({
-                id: id,
-                ...cache[id]
-            })).sort((a, b) => b.lastVisited - a.lastVisited);
-        } catch (error) {
-            console.error('Error getting recent countdowns:', error);
-            return [];
-        }
-    }
-
-    function pruneCountdownCache(cache) {
-        const entries = Object.entries(cache);
-        if (entries.length <= 10) return cache;
-
-        // Sort by lastVisited, keep only the 10 most recent
-        entries.sort((a, b) => b[1].lastVisited - a[1].lastVisited);
-        const pruned = {};
-        for (let i = 0; i < 10; i++) {
-            pruned[entries[i][0]] = entries[i][1];
-        }
-        return pruned;
-    }
+    window.MinutehandAccessUnavailable = unavailable;
 
     async function getCountdownData(id) {
         window.CountdownDataID = id;
@@ -114,7 +81,7 @@
         try {
             const { data, error } = await window.supabaseClient
                 .from('countdown')
-                .select('data')
+                .select('data, revision')
                 .eq('id', id)
                 .single();
 
@@ -124,6 +91,7 @@
             }
 
             if (data && data.data) {
+                window.CountdownRevision = data.revision;
                 // Strip surrounding quotes if present
                 let queryString = data.data;
                 if (queryString.startsWith('"') && queryString.endsWith('"')) {
@@ -146,7 +114,7 @@
             // Fetch countdown data including creator, created_at, clonedfrom, and collaborator_ids
             const { data: countdownData, error: countdownError } = await window.supabaseClient
                 .from('countdown')
-                .select('creator, created_at, clonedfrom, collaborator_ids')
+                .select('creator, created_at, clonedfrom, collaborator_ids, visibility, revision')
                 .eq('id', id)
                 .maybeSingle();
 
@@ -189,61 +157,26 @@
         if (!window._obtainedData && !window._betaAppAppended) {
             if (parameter('id')) {
                 const countdownId = parameter('id');
-                let loadedFromCache = false;
-
-                // Check cache first for immediate preload
-                const cachedData = getCountdownCache(countdownId);
-                if (cachedData && cachedData.data) {
-                    console.log('[Cache] Loading countdown from cache:', countdownId);
-                    window.CountdownDataSource = cachedData.data;
-                    window.CountdownDataSourceOrigin = "db";
-                    window._obtainedData = true;
-                    loadedFromCache = true;
-
-                    // Update lastVisited timestamp to maintain LRU order
-                    saveCountdownToCache(countdownId, cachedData.data);
-                }
-
-                // Always fetch from database (trust cloud as source of truth)
                 const sourceCountdowndata = await getCountdownData(countdownId);
-                if (sourceCountdowndata) {
-                    // Always update with cloud data
-                    window.CountdownDataSource = sourceCountdowndata;
-                    window.CountdownDataSourceOrigin = "db";
-
-                    // If we loaded from cache, dispatch event to update UI
-                    if (loadedFromCache) {
-                        console.log('[Cache] Cloud data arrived, updating countdown');
-                        document.dispatchEvent(new CustomEvent('countdown-data-updated'));
-                    } else {
-                        // First time load, mark as obtained
-                        window._obtainedData = true;
-                    }
-
-                    // Save to cache
-                    saveCountdownToCache(countdownId, sourceCountdowndata);
-
-                    // Also fetch user-related data for this countdown
-                    const userRelatedData = await getUserRelatedData(countdownId);
-                    if (userRelatedData) {
-                        window.CountdownUserData = userRelatedData;
-                    }
-                } else {
-                    // DB fetch failed, but if we have cache, continue using it
-                    if (!loadedFromCache) {
-                        console.warn('[Cache] No data from DB and no cache available');
-                    } else {
-                        console.log('[Cache] DB fetch failed, continuing with cached data');
-                    }
-                }
+                if (!sourceCountdowndata) { unavailable(); return; }
+                window.CountdownDataSource = sourceCountdowndata;
+                window.CountdownDataSourceOrigin = "db";
+                window._obtainedData = true;
+                const userRelatedData = await getUserRelatedData(countdownId);
+                if (userRelatedData) window.CountdownUserData = userRelatedData;
             } else if (parameter('date') || parameter('schedule')) {
                 window.CountdownDataSource = window.location.search;
                 window.CountdownDataSourceOrigin = "url";
                 window._obtainedData = true;
             }
             else {
-                //need to init a new countdown, as there are no parameters
+                // New schedules use the same authenticated creation path as countdowns.
+                window.MinutehandCreationType = parameter('create') === 'schedule' ? 'schedule' : 'countdown';
                 window.CountdownDataSource = window.location.search;
+                if (window.MinutehandCreationType === 'schedule') {
+                    const emptySchedule = btoa(JSON.stringify({ schedule_events: [], schedule_exceptions: {} }));
+                    window.CountdownDataSource = '?createnew=1&date=9999-12-30T00:00&title=My%20Schedule&progressposition=bar&schedule=' + emptySchedule;
+                }
                 // If the user is logged in, set CountdownDataSourceOrigin to "db", else "url"
                 if (window.supabaseClient && window.supabaseClient.auth) {
                     const { data: { session } } = await window.supabaseClient.auth.getSession();

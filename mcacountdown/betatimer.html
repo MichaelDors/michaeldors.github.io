@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <link rel="stylesheet" href="motion.css?v=20260926-1">
+    <link rel="stylesheet" href="dropdown.css?v=20261026-1">
     <script src="motion.js?v=20260926-1"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,8 +25,8 @@
     <script src="Dependencies/confetti.js"></script>
     <script src="Dependencies/qrcode.min.js"></script>
 
-	<link rel="stylesheet" id="stylesheetmain" href="betastyle.css?v=20260929-1"/>
-    <link rel="stylesheet" href="responsive.css?v=20260929-2">
+	<link rel="stylesheet" id="stylesheetmain" href="betastyle.css?v=20261026-1"/>
+    <link rel="stylesheet" href="responsive.css?v=20261026-1">
     <link rel="stylesheet" href="countdown-info.css?v=20260930-1">
     <style id="animationHandler"></style>
 
@@ -37,13 +38,15 @@
     <meta property="og:site_name" content="Michael Dors" />
     <link rel="apple-touch-icon" href="Images/countdownhomescreen.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-    <script src="supabaseclient.js"></script>
+    <script src="supabaseclient.js?v=20261026-2"></script>
 
     <script src="timekeeper.js" defer></script>
     <script src="color-pickers.js?v=20260929-1" defer></script>
     <script src="settings-layout.js?v=20260929-1" defer></script>
     <script src="countdown-info.js?v=20260930-1" defer></script>
-    <script src="init.js?v=20260930-1" defer></script>
+    <link rel="stylesheet" href="social.css?v=20261026-1">
+    <script src="social.js?v=20261026-1" defer></script>
+    <script src="init.js?v=20261026-3" defer></script>
     
 </head>
 
@@ -298,13 +301,14 @@
             <nav id="settingssidebarpaneshareable" aria-label="Options sections">
                 <a class="sidebaranchor" href="#generaloptions"><i style="background:#8426FF; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-regular fa-clock"></i> General</a>
                 <br>
+                <a class="sidebaranchor" href="#sharingoptions"><i style="background:#8426FF; color:white;" class="fa-solid fa-user-group"></i> Sharing &amp; editors</a><br>
                 <a class="sidebaranchor" href="#countdowninfooptions"><i style="background:#8426FF; color:white;" class="fa-solid fa-circle-info"></i> Viewer info</a>
                 <br>
                 <a class="sidebaranchor" href="#customizationoptions"><i style="background:#3ab6ff; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-palette"></i> Styling</a>
                 <br>
                 <a id="optionsendinganchor" class="sidebaranchor" href="#endingoptions"><i style="background:#00DF52; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-flag-checkered"></i> Ending</a>
                 <br>
-                <a class="sidebaranchor" href="#scheduleoptions"><i style="background:#FF9900; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-calendar"></i> Schedule</a>
+                <a id="optionsscheduleanchor" class="sidebaranchor" href="#scheduleoptions"><i style="background:#FF9900; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-calendar"></i> Schedule</a>
                 <br>
                 <a id="optionsprogressanchor" class="sidebaranchor" href="#progressoptions"><i style="background:#8426FF; color:white; box-shadow: inset 0 1.54px 0 rgba(255, 255, 255, 0.3), inset 0 -1.3px 0 rgba(0, 0, 0, 0.1);" class="fa-solid fa-spinner"></i> Progress</a>
             </nav>
@@ -449,6 +453,18 @@
                         View your personal shortcut <i class="fa-solid fa-chevron-right"></i>
                     </p>
                 </a>
+                <section class="sharing-settings social-surface" aria-labelledby="sharingoptions" data-social-status>
+                    <h2 id="sharingoptions">Sharing &amp; editors</h2>
+                    <fieldset id="sharing-fields" disabled><label for="countdown-visibility">Who can see this countdown?</label>
+                        <select id="countdown-visibility" aria-describedby="visibility-help"><option value="0">Private</option><option value="1" selected>Unlisted</option><option value="2">Public</option></select>
+                        <p id="visibility-help" class="social-meta"></p>
+                    </fieldset>
+                    <div class="social-actions"><button type="button" id="sharing-copy" class="social-button">Copy countdown link</button><button type="button" id="sharing-retry" class="social-button social-secondary">Refresh</button><a href="profile.html" data-my-profile class="social-button social-secondary">My profile</a></div>
+                    <p id="sharing-status" role="status" aria-live="polite">Loading sharing…</p>
+                    <h3>Editors</h3><div id="countdown-editors"></div>
+                    <form id="invite-editor-form" hidden><label for="editor-person">Invite a mutual follower</label><select id="editor-person" required></select><p id="editor-help" class="social-meta"></p><button id="invite-editor-button" class="social-button" type="submit">Send invitation</button></form>
+                    <div id="countdown-save-conflict" class="social-conflict" role="alert" hidden><p id="countdown-save-message">Another editor saved changes, or your access changed. Your edits have not been saved. Copy them before reloading the saved version.</p><button id="retry-countdown-save" class="social-button" type="button" hidden onclick="syncCountdownToDatabase(window.CountdownDataSource);">Retry save</button> <button id="copy-conflicted-countdown" class="social-button" type="button">Copy my changes</button> <button class="social-button social-secondary" type="button" onclick="window.onbeforeunload=null; location.reload();">Reload saved version</button></div>
+                </section>
                 <section class="countdown-info-editor" aria-labelledby="countdowninfooptions">
                     <h2 id="countdowninfooptions">Viewer information</h2>
                     <p class="texttip" id="countdown-info-help">Add optional text, a website URL, or an address for anyone who can view this countdown. Only share details you want viewers to see.</p>
@@ -550,30 +566,18 @@
                 </p>
                 <a class="aintext texttip" onclick="openPersonalSettings();" href="#eouoptions" style=" text-decoration: underline; margin-bottom:100px;">You can disable ending sounds for all countdowns in your Personal Settings.</a>
 		</div>
+        <section id="schedule-workspace" hidden>
         <div class="options-section-heading" style="width:100%; margin:0px; padding:0px; border-top: #ff990070 2px solid; border-bottom: #ff990070 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #ff990035)">
-            <h1 id="scheduleoptions"><i style="color: #ff9900" class="fa-solid fa-calendar"></i> Countdown Schedule</h1>
+            <h1 id="scheduleoptions"><i style="color: #ff9900" class="fa-solid fa-calendar"></i> Schedule</h1>
         </div>
 
-		    <div id="presetupScheduleContent">
-		<h2 style="font-family: 'Dosis';">Convert to Countdown Schedule</h2>
-		<div style="text-align:left; width:fit-content;">
-		    <h3 style="font-family: 'Dosis', sans-serif; font-size:23px; text-justify:inter-word;">
-			<i style="color:#3ab6ff" class="fa-solid fa-calendar"></i> Keep track of your recurring events
-			<br>
-		    <i style="color:#00FF5E" class="fa-solid fa-briefcase"></i> Set different schedules for different days
-			<br>
-		    <i style="color:#ff9900" class="fa-solid fa-circle-exclamation"></i> Once you convert this Countdown to be a Schedule, it cannot be changed back
-			</h3>
-		</div>
-		<a class="savedash" onclick="startCountdownSchedule();">Supercharge Your Schedule</a>
-		</div>
                 <div class="schedule-editor">
                     <div class="schedule-container">
-                        <div id="scheduleimportcontainer" style="border-radius: 20px; background: #001e30; margin-bottom:75px; color: white !important; padding:20px; min-width:fit-content; max-width: 75%;">
-                            <p style="color: white; font-size: 27px;"><i class="fa-solid fa-table-cells-row-unlock"></i> Import your schedule</p>
-                            <p style="color: white; font-family: 'Dosis', sans-serif; font-size:16px; margin-bottom:20px;">Import an exported calendar from any major calendar service,<br>or create one in seconds with our Custom GPT.</p>
+                        <div id="scheduleimportcontainer" class="schedule-import-panel">
+                            <p class="schedule-import-heading"><i class="fa-solid fa-calendar" aria-hidden="true"></i> Import your schedule</p>
+                            <p class="schedule-import-copy">Import an exported calendar, or add events below.</p>
                             <a class="sharebutton" onclick="importICSFile();"><i class="fa-solid fa-calendar-week"></i> Import Calendar</a>
-                            <a href="http://gpt.dors.fyi/" target="_blank" class="sharebutton"><i class="fa-solid fa-comment"></i> Countdown Schedule GPT</a>
+                            <a href="http://gpt.dors.fyi/" target="_blank" class="sharebutton"><i class="fa-solid fa-comment"></i> Schedule GPT</a>
                             <br>
                             <a style="color: white; font-family:'Dosis'; margin-top:10px; margin-bottom:10px;" href="docs#export-cal-to-schedule" target="_blank" rel="noopener noreferrer" class="aintext"><i class="fa-solid fa-circle-info"></i> How To Export</a>
                         </div>
@@ -629,6 +633,7 @@
                         </div>
                     </div>
                 </div>
+        </section>
 		<div id="optionsprogresscontainer">
                 <div class="options-section-heading" style="width:100%; margin:0px; padding:0px; border-top: #8426FF70 2px solid; border-bottom: #8426FF70 2px solid; margin-top: 150px; margin-bottom:150px; background: linear-gradient(to right, rgba(0,0,0,0), #8426ff27)">
                     <h1 id="progressoptions"><i style="color: #8426FF" class="fa-solid fa-spinner"></i> Progress</h1>
@@ -739,7 +744,7 @@
                 </div>
                 <br>
                 <p class="texttip" style="margin: 4px 0 0 0; line-height:1.2;"><span id="infocreatedverb">Created</span> by</p>
-                <h2 style="margin: 2px 0 0 0; line-height:1.2;"><span id="infocreatorname"></span></h2>
+                <h2 style="margin: 2px 0 0 0; line-height:1.2;"><span id="infocreatorname"></span></h2><a id="creator-profile-link" class="aintext" href="profile.html" hidden>View profile</a>
                 <p class="texttip" style="margin: 2px 0 0 0; line-height:1.2;">on <span id="infocreationdate"></span></p>
                 <br>
                 <div id="infoclonecd">

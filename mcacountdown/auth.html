@@ -113,7 +113,8 @@
                     // User is already signed in, redirect to dashboard
                     const urlParams = new URLSearchParams(window.location.search);
                     const countdownId = urlParams.get('id');
-                    const redirectUrl = countdownId ? `countdowndashboard.html?id=${countdownId}` : 'countdowndashboard.html';
+                    const profileId = urlParams.get('profile');
+                    const redirectUrl = countdownId ? 'betatimer.html?id=' + encodeURIComponent(countdownId) : profileId ? 'profile.html?id=' + encodeURIComponent(profileId) : 'countdowndashboard.html';
                     window.location.href = redirectUrl;
                 }
             } catch (error) {
@@ -128,9 +129,9 @@
             try {
                 const urlParams = new URLSearchParams(window.location.search);
                 const countdownId = urlParams.get('id');
-                const redirectUrl = countdownId 
-                    ? window.location.origin + '/mcacountdown/countdowndashboard.html?id=' + countdownId
-                    : window.location.origin + '/mcacountdown/countdowndashboard.html';
+                const profileId = urlParams.get('profile');
+                const destination = countdownId ? 'countdowndashboard.html?id=' + encodeURIComponent(countdownId) : profileId ? 'countdowndashboard.html?profile=' + encodeURIComponent(profileId) : 'countdowndashboard.html';
+                const redirectUrl = new URL(destination, window.location.href).href;
                 
                 const { error } = await supabaseClient.auth.signInWithOAuth({
                     provider: 'google',
@@ -176,7 +177,8 @@
                 hideLoading();
                 const urlParams = new URLSearchParams(window.location.search);
                 const countdownId = urlParams.get('id');
-                const redirectUrl = countdownId ? `countdowndashboard.html?id=${countdownId}` : 'countdowndashboard.html';
+                const profileId = urlParams.get('profile');
+                    const redirectUrl = countdownId ? 'betatimer.html?id=' + encodeURIComponent(countdownId) : profileId ? 'profile.html?id=' + encodeURIComponent(profileId) : 'countdowndashboard.html';
                 window.location.href = redirectUrl;
                 
             } catch (error) {

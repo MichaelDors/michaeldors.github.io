@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Profile | Minutehand</title>
+    <link rel="icon" href="icon.ico">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dosis:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="countdown-cards.css?v=20261026-1">
+    <link rel="stylesheet" href="social.css?v=20261026-2">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="supabaseclient.js?v=20261026-2"></script>
+    <script src="social.js?v=20261026-2" defer></script>
+</head>
+<body class="profile-page social-surface" data-social-status>
+    <nav class="social-topbar" aria-label="Profile navigation">
+        <a href="countdowndashboard.html">← Dashboard</a>
+        <a href="profile.html" data-my-profile>My profile</a>
+    </nav>
+    <main>
+        <header id="profile-header"><h1>Loading profile…</h1></header>
+        <p id="social-status" role="status" aria-live="polite"></p>
+        <section aria-labelledby="profile-countdowns-heading">
+            <div class="social-section-heading"><div><h2 id="profile-countdowns-heading">Public countdowns</h2><p class="social-meta">Made and shared by this creator.</p></div><button id="social-retry" type="button" class="social-button social-secondary">Refresh</button></div>
+            <div id="profile-countdowns" class="profile-countdown-grid"></div>
+            <button id="profile-more" type="button" class="social-button social-secondary" hidden style="margin-top:24px">Load more</button>
+        </section>
+    </main>
+</body>
+</html>

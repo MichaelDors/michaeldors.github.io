@@ -2,9 +2,14 @@
 <html lang="en">
 
 <head>
-    <link rel="stylesheet" href="dashboard.css?v=20260926-1">
+    <link rel="stylesheet" href="countdown-cards.css?v=20261026-1">
+    <link rel="stylesheet" href="dashboard.css?v=20261026-2">
     <link rel="stylesheet" href="motion.css?v=20260926-1">
+    <link rel="stylesheet" href="dropdown.css?v=20261026-1">
     <script src="motion.js?v=20260926-1"></script>
+    <script src="dashboard-create.js?v=20261026-1" defer></script>
+    <link rel="stylesheet" href="social.css?v=20261026-1">
+    <script src="social.js?v=20261026-1" defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One" rel="stylesheet">
@@ -36,6 +41,7 @@
 </head>
 
 <body>
+    <nav class="social-topbar social-surface" aria-label="Community"><a href="#popular-heading">Discover countdowns</a><a href="profile.html" data-my-profile>My profile</a></nav>
     <div class="notch-container" id="toolbar-notch">
         <svg class="curve left" viewBox="0 0 80 45" preserveAspectRatio="none">
           <path d="M80,0 L80,45 L0,45 C30,45 50,0 80,0" fill="black"/>
@@ -45,7 +51,7 @@
           <path d="M0,0 C30,0 50,45 80,45 L0,45 L0,0" fill="black"/>
         </svg>
       </div>
-      <h1 class="textelement" style="font-family: 'Dosis';">Pinned</h1>
+    <h1 class="textelement" style="font-family: 'Dosis';">Pinned</h1>
     <div class="container">
         <div id="linksContainer" class="links-container">
         </div>
@@ -76,12 +82,36 @@
                 <div class="presetsicon"><i id="presetsright" class="fa-solid fa-angle-right"></i></div>
             </div>
         </div>
-        <h1 class="textelement" style="font-family: 'Dosis';">Your Countdowns</h1>
+        <h1 class="textelement" style="font-family: 'Dosis';">Your Countdowns &amp; Schedules</h1>
         <div id="yourLinksContainer" class="links-container"></div>
-        <h1 class="textelement" style="font-family: 'Dosis';">Shared With You</h1>
+        <div class="social-surface" data-social-status>
+            <section class="social-section" aria-labelledby="shared-heading">
+                <h2 id="shared-heading">Shared with you</h2><p class="social-meta">Countdowns you’re invited to help edit.</p>
+                <div id="shared-countdowns" class="social-grid"></div>
+            </section>
+            <section class="social-section" aria-labelledby="invitations-heading">
+                <h2 id="invitations-heading">Editor invitations</h2><div id="countdown-inbox" class="social-grid"></div>
+            </section>
+            <section class="social-section" aria-labelledby="popular-heading">
+                <div class="social-section-heading"><div><h2 id="popular-heading">Popular countdowns</h2><p class="social-meta">Discover what people are counting down to. Ranked by views over the last 7 days.</p></div><button id="social-retry" class="social-button social-secondary" type="button">Refresh</button></div>
+                <div id="popular-countdowns" class="social-grid"></div>
+            </section>
+            <section class="social-section" aria-labelledby="people-heading">
+                <h2 id="people-heading">Your people</h2><div id="following-people" class="social-people"></div>
+                <form id="people-search" class="social-search" role="search"><label class="social-meta" for="people-query">Find people</label><input id="people-query" type="search" maxlength="80" placeholder="Search by name" autocomplete="off"><button class="social-button" type="submit">Search</button></form>
+                <div id="people-results" class="social-people" role="status" aria-live="polite"></div>
+            </section>
+            <p id="social-status" role="status" aria-live="polite"></p>
+        </div>
         <div style="margin-bottom:300px;"></div>
         <div class="input-container">
-            <a title="Create a new Countdown" href="betatimer?createnew=1" id="newcountdownbutton"><i class="fa-solid fa-circle-plus"></i></a>
+            <div class="dashboard-create-control">
+                <button type="button" title="Create new" aria-label="Create new" aria-expanded="false" aria-controls="dashboard-create-menu" id="newcountdownbutton"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i></button>
+                <div id="dashboard-create-menu" class="dropdown-menu dropup dashboard-create-menu" hidden>
+                    <a class="dropdown-item" href="betatimer?createnew=1"><i class="fa-regular fa-clock" aria-hidden="true"></i> Countdown</a>
+                    <a class="dropdown-item" href="betatimer?createnew=1&amp;create=schedule"><i class="fa-regular fa-calendar" aria-hidden="true"></i> Schedule</a>
+                </div>
+            </div>
             <a title="Import a .minutehand file from another device" onclick="importLinks();"><i class="fa-solid fa-file-import"></i></a>
             <a title="Export as a .minutehand file" id="sharebuttonoptions" onclick="exportLinks();"><i class="fa-solid fa-download"></i></a>
             <a title="Reset all Countdown options and saved data" id="reset" class="warning" onclick="resetall();"><i class="fa-solid fa-trash"></i></a>
@@ -124,6 +154,11 @@
         window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
             if (!session?.user) {
                 window.location.href = 'auth';
+            } else {
+                // Keep the existing OAuth callback URL and resume the shared link.
+                const destination = new URLSearchParams(location.search);
+                if (destination.get('id')) location.replace('betatimer.html?id=' + encodeURIComponent(destination.get('id')));
+                else if (destination.get('profile')) location.replace('profile.html?id=' + encodeURIComponent(destination.get('profile')));
             }
         });
     }
@@ -341,13 +376,23 @@ function renderLinks() {
         card.className = 'card';
         card.setAttribute('data-index', index);
         card.setAttribute('data-url', encodeURIComponent(link.url));
-        card.innerHTML = `
-        	<iframe src="${link.url}${link.url.includes('?') ? '&' : '?'}cardmode=true" title="${link.title}" sandbox="allow-scripts allow-same-origin"></iframe>
-            <div class="card-content">
-                <h3>${link.title}</h3>
-                <i class="remove-button fa-solid fa-thumbtack-slash" onclick="removeLink(${index}, event)" style="cursor:pointer;"></i>
-            </div>
-        `;
+        const frame = document.createElement('iframe');
+        try {
+            const safeURL = new URL(link.url, location.href);
+            if (!['http:', 'https:'].includes(safeURL.protocol)) return;
+            safeURL.searchParams.set('cardmode', 'true');
+            frame.src = safeURL.href;
+        } catch { return; }
+        frame.title = link.title;
+        frame.loading = 'lazy';
+        frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+        const content = document.createElement('div'); content.className = 'card-content';
+        const heading = document.createElement('h3'); heading.textContent = link.title;
+        const remove = document.createElement('button'); remove.type = 'button';
+        remove.className = 'remove-button fa-solid fa-thumbtack-slash';
+        remove.setAttribute('aria-label', 'Unpin ' + link.title);
+        remove.addEventListener('click', event => removeLink(index, event));
+        content.append(heading, remove); card.append(frame, content);
 
         card.addEventListener('mousedown', dragStart);
         linksContainer.appendChild(card);
@@ -1005,6 +1050,21 @@ function updateCountdownCache(userId, countdowns) {
     return cache;
 }
 
+function fillOwnedCountdownCard(card, row, url, title) {
+    const frame = document.createElement('iframe');
+    frame.src = url + (url.includes('?') ? '&' : '?') + 'cardmode=true';
+    frame.title = title;
+    frame.loading = 'lazy';
+    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    const content = document.createElement('div'); content.className = 'card-content';
+    const heading = document.createElement('h3'); heading.textContent = title;
+    const remove = document.createElement('button'); remove.type = 'button';
+    remove.className = 'remove-button fa-solid fa-trash';
+    remove.setAttribute('aria-label', 'Delete ' + title);
+    remove.addEventListener('click', event => { event.stopPropagation(); showDeleteConfirmation(row.id, title); });
+    content.append(heading, remove); card.append(frame, content);
+}
+
 // Load countdowns created by the current user and render using same card format
 async function loadUserCountdowns(userId) {
     try {
@@ -1075,6 +1135,7 @@ async function loadUserCountdowns(userId) {
             }
         }
         
+        if (window.dashboardUserId !== userId) return;
         console.log('[your-countdowns] Rendering', dataArray.length, 'items', usingCache ? '(from cache)' : '(from DB)');
         container.innerHTML = '';
         
@@ -1096,13 +1157,7 @@ async function loadUserCountdowns(userId) {
             card.setAttribute('data-countdown-id', row.id);
             card.setAttribute('data-countdown-title', title);
             const escapedTitle = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            card.innerHTML = `
-            \t<iframe src="${url}${url.includes('?') ? '&' : '?'}cardmode=true" title="${title}" sandbox="allow-scripts allow-same-origin"></iframe>
-                <div class="card-content">
-                    <h3>${title}</h3>
-                    <i class="remove-button fa-solid fa-trash" style="cursor:pointer;" onclick="event.stopPropagation(); showDeleteConfirmation('${row.id}', '${escapedTitle}');"></i>
-                </div>
-            `;
+            fillOwnedCountdownCard(card, row, url, title);
             card.addEventListener('mousedown', dragStart);
             container.appendChild(card);
             console.log(`[your-countdowns] Card ${index} appended to container`);
@@ -1124,7 +1179,7 @@ async function loadUserCountdowns(userId) {
             if (container) {
                 const cache = getCountdownCache(userId);
                 const cachedIds = Object.keys(cache);
-                if (cachedIds.length > 0) {
+                if (cachedIds.length > 0 && window.dashboardUserId === userId) {
                     console.log('[your-countdowns] Attempting emergency cache fallback...');
                     const dataArray = cachedIds.map(id => ({
                         id: id,
@@ -1143,13 +1198,7 @@ async function loadUserCountdowns(userId) {
                         card.setAttribute('data-countdown-id', row.id);
                         card.setAttribute('data-countdown-title', title);
                         const escapedTitle = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                        card.innerHTML = `
-                        \t<iframe src="${url}${url.includes('?') ? '&' : '?'}cardmode=true" title="${title}" sandbox="allow-scripts allow-same-origin"></iframe>
-                            <div class="card-content">
-                                <h3>${title}</h3>
-                                <i class="remove-button fa-solid fa-trash" style="cursor:pointer; color: #ff5353;" onclick="event.stopPropagation(); showDeleteConfirmation('${row.id}', '${escapedTitle}');"></i>
-                            </div>
-                        `;
+                        fillOwnedCountdownCard(card, row, url, title);
                         card.addEventListener('mousedown', dragStart);
                         container.appendChild(card);
                     });
@@ -1346,7 +1395,9 @@ loadLinks().catch(console.error);
 let isInitialLoad = true;
 
 // Set up dashboard-specific auth handling
-supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+supabaseClient.auth.onAuthStateChange((_event, session) => {
+    window.dashboardUserId = session?.user?.id || null;
+    setTimeout(() => {
     console.log('[dashboard] Auth state changed:', _event, session);
     if (session?.user) {
         // Get current user using supabase.auth.getUser() and upsert using correct fields for RLS
@@ -1434,7 +1485,9 @@ supabaseClient.auth.onAuthStateChange(async (_event, session) => {
         // User signed out
         console.log('[dashboard] User signed out');
         isInitialLoad = true; // Reset for next sign in
+        document.getElementById('yourLinksContainer').replaceChildren();
     }
+    }, 0);
 });
 
 // Function to merge local and cloud dashboard data

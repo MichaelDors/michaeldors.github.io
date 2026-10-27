@@ -1,0 +1,112 @@
+/* Scoped so sharing controls inherit the timer's light and dark themes. */
+.social-surface { --social-text: var(--mainforegroundcolor, #20202a); --social-panel: var(--blurbackground, #f5f3fa); color: var(--social-text); font-family: 'Dosis', system-ui, sans-serif; text-align: left; }
+.social-surface *, .social-surface *::before, .social-surface *::after { box-sizing: border-box; }
+.social-surface [hidden] { display: none !important; }
+.social-surface h1, .social-surface h2, .social-surface h3 { color: inherit; font-family: inherit; line-height: 1.2; text-align: inherit; }
+.social-surface h2 { font-size: 28px; margin: 0 0 8px; }
+.social-surface a { color: inherit; text-decoration: none; }
+.social-surface a:hover { text-decoration: underline; }
+.social-surface p { line-height: 1.5; }
+.social-surface :is(button, a, input, select):focus-visible { outline: 3px solid #a877ff; outline-offset: 4px; }
+.social-surface :is(input, select) { font: inherit; font-size: 17px; color: inherit; background: var(--social-panel); border: 1px solid #8886; border-radius: 12px; padding: 12px; min-width: 0; max-width: 100%; margin: 0; }
+.social-surface input { user-select: text; }
+.social-surface select option { background: var(--mainbgcolor, #fff); color: var(--social-text); }
+.social-surface .social-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 17px; margin: 0; border: 1px solid transparent; border-radius: 999px; font: inherit; font-size: 16px; font-weight: 600; color: white; background: #7821e2; cursor: pointer; text-decoration: none; line-height: 1.35; }
+.social-surface .social-button:hover { background: #6520b8; text-decoration: none; }
+.social-surface .social-secondary { background: var(--social-panel); color: inherit; border-color: #8885; }
+.social-surface .social-secondary:hover { background: #8883; }
+.social-surface button:disabled, .social-surface fieldset:disabled { opacity: .55; cursor: default; }
+.social-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.social-section { margin: 44px 0; }
+.social-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.social-section-heading p { margin: 4px 0 0; }
+.social-meta, .social-empty { opacity: .72; font-size: 16px; }
+.social-empty { margin: 12px 0; grid-column: 1 / -1; }
+.social-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(245px, 100%), 1fr)); gap: 16px; }
+.social-countdown { --countdown-accent: #8426ff; display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 24px; border-radius: 22px; background: var(--social-panel); border: 1px solid #8883; box-shadow: inset 0 3px 0 var(--countdown-accent); overflow-wrap: anywhere; }
+.social-countdown-title { font-size: 25px; font-weight: 700; line-height: 1.15; }
+.social-eyebrow { font-size: 11px; letter-spacing: .14em; font-weight: 700; opacity: .65; }
+.social-byline { font-size: 15px; }
+.social-invitation { padding: 22px; background: var(--social-panel); border: 1px solid #8883; border-radius: 22px; overflow-wrap: anywhere; }
+.social-invitation h3 { margin: 0 0 10px; font-size: 24px; }
+.social-invitation [role=status]:empty { display: none; }
+.social-people { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.social-person { display: block; border: 1px solid #8885; padding: 10px 16px; border-radius: 30px; overflow-wrap: anywhere; }
+.social-search { display: flex; gap: 10px; margin: 18px 0; }
+.social-search input { flex: 1; }
+.social-error { color: #bd3838; }
+.social-topbar { max-width: 1160px; margin: 28px auto 0; padding: 0 20px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.profile-page { margin: 0; --mainbgcolor: #faf9fc; --mainforegroundcolor: #211d2c; --blurbackground: #f0edf5; background: var(--mainbgcolor); }
+.profile-page main { max-width: 1100px; padding: 40px 24px 100px; margin: auto; }
+.profile-page #profile-header { max-width: 650px; margin: 24px auto 56px; text-align: center; }
+.profile-page #profile-header h1 { font-size: clamp(32px, 6vw, 48px); margin: 12px 0; overflow-wrap: anywhere; }
+.profile-page #profile-header .social-actions { justify-content: center; }
+.social-avatar { width: 96px; height: 96px; border-radius: 32px; background: #8426ff; color: white; display: grid; place-items: center; margin: 0 auto 24px; font-size: 38px; overflow: hidden; position: relative; }
+.social-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sharing-settings { margin: 32px 0; max-width: 720px; padding: 24px; border: 1px solid #8884; border-radius: 22px; }
+.sharing-settings fieldset { border: 0; margin: 20px 0; padding: 0; min-width: 0; }
+.sharing-settings label { display: block; margin-bottom: 8px; font-weight: 600; }
+.sharing-settings select { width: 100%; }
+.sharing-settings form { margin: 22px 0; }
+.sharing-settings form .social-button { margin-top: 12px; }
+.social-editor { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 0; border-bottom: 1px solid #8883; overflow-wrap: anywhere; }
+.social-editor a { flex: 1; min-width: 80px; }
+.social-editor button { font-size: 14px !important; }
+.social-conflict { margin: 16px; padding: 18px; border: 2px solid #d99b31; border-radius: 18px; background: var(--blurbackground, #fff); }
+.countdown-unavailable { position: fixed; z-index: 2147483647; inset: 0; background: #17141d; color: white; display: grid; align-content: center; justify-items: center; padding: 32px; text-align: center; font: 18px/1.5 system-ui, sans-serif; }
+.countdown-unavailable a, .countdown-unavailable button { color: white; margin: 8px; }
+@media (prefers-color-scheme: dark) {
+    .profile-page { --mainbgcolor: #151319; --mainforegroundcolor: #f7f4fb; --blurbackground: #25212e; }
+    .social-error { color: #ff9292; }
+}
+@media (max-width: 480px) {
+    .sharing-settings { padding: 18px; }
+    .social-search { flex-wrap: wrap; }
+    .social-search input { flex-basis: 100%; }
+    .social-grid { grid-template-columns: 1fr; }
+    .social-topbar { margin-top: 16px; }
+}
+/* Reset the timer's legacy all-anchor button treatment inside these components. */
+.social-surface a { background: transparent; box-shadow: none; margin: 0; padding: 0; border-radius: 0; font-family: inherit; font-weight: inherit; }
+.social-surface a:hover, .social-surface a:active { top: auto; box-shadow: none; }
+.social-surface a.social-button { padding: 10px 17px; border-radius: 999px; background: var(--social-panel); }
+.social-surface a.social-person { padding: 10px 16px; border-radius: 30px; }
+.social-surface a.social-countdown-title { font-weight: 700; }
+.social-surface a.social-button { background: #7821e2; color: white; }
+.social-surface a.social-button.social-secondary { background: var(--social-panel); color: inherit; }
+.social-surface p { font-family: inherit; font-weight: 500; }
+.sharing-settings form { width: 100%; border: 0; border-radius: 0; text-align: left; }
+
+/* Profile countdowns use the dashboard's shared live-preview card surface. */
+.profile-countdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+    gap: 20px;
+    position: relative;
+}
+.profile-page .profile-countdown {
+    --blurbackground: rgba(239, 239, 239, .5);
+    --cardbeforeglow: inset 0 1.54px 0 rgba(255, 255, 255, .3), inset 0 0 18px rgba(255, 255, 255, .3);
+    --cardborder: 1.54px solid rgba(0, 0, 0, .1);
+    min-width: 0;
+}
+.profile-countdown .card-content { box-sizing: content-box; }
+.profile-countdown h3 { font-size: 1.17em; line-height: normal; width: 100%; overflow-wrap: anywhere; }
+.profile-countdown iframe { display: block; flex-shrink: 0; }
+.profile-countdown .profile-countdown-open {
+    position: absolute;
+    inset: 0;
+    z-index: 10001;
+    border-radius: inherit;
+}
+.profile-countdown .profile-countdown-open:focus-visible { outline-offset: -4px; }
+@media (prefers-color-scheme: dark) {
+    .profile-page .profile-countdown {
+        --blurbackground: rgba(40, 40, 40, .5);
+        --cardbeforeglow: inset 0 0 0 transparent;
+        --cardborder: 1.54px solid rgba(255, 255, 255, .1);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .profile-countdown { transition: none; }
+}

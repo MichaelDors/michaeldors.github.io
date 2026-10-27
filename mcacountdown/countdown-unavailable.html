@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Countdown unavailable | Minutehand</title><link rel="stylesheet" href="social.css?v=20261026-1"></head>
+<body><main class="countdown-unavailable"><h1>Countdown unavailable</h1><p>This countdown may be private or removed. Sign in with an invited account or try again.</p><a id="unavailable-signin" href="auth">Sign in</a><a id="unavailable-retry" href="betatimer.html">Try again</a><a href="countdowndashboard.html">Back to dashboard</a></main>
+<script>const id = new URLSearchParams(location.search).get('id'); if (id) { document.getElementById('unavailable-signin').href = 'auth?id=' + encodeURIComponent(id); document.getElementById('unavailable-retry').href = 'betatimer.html?id=' + encodeURIComponent(id); }</script>
+</body></html>

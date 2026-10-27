@@ -367,7 +367,7 @@ function updateTitlePosition(fontSize) {
     } 
 }
   
-  if(parameter('cardmode') !== "1"){
+  if (!countdownIsCard) {
   window.onbeforeunload = unloadPage;
   }
   
@@ -600,7 +600,7 @@ function cardmodemanager(){
           document.getElementById("cdscheduledisclaimer").style.display = "";
           document.getElementById("schedule").style.display = "";
           document.querySelector(".schedule-editor").style.display = "";
-          document.getElementById("presetupScheduleContent").style.display = "none";
+          updateScheduleWorkspace();
           
           // Load schedule from URL
           schedule_loadScheduleFromURL();
@@ -738,7 +738,8 @@ if(!getParameterFromSource('schedule')){
       MinutehandColors.init({ onChange: SetCountDowngeneral, onInput: updateColorAnimations });
       MinutehandColors.loadFromSource(getParameterFromSource);
 
-      //set up countdown schedules
+      // Keep schedule-only controls out of ordinary countdowns.
+      updateScheduleWorkspace();
       const hasActiveSchedule = getParameterFromSource("schedule") !== "null" && Boolean(getParameterFromSource("schedule"));
       if(hasActiveSchedule){
           document.getElementById("clock").style.display = "none"; //hide clock
@@ -752,7 +753,6 @@ if(!getParameterFromSource('schedule')){
       document.getElementById("cdscheduledisclaimer").style.display = ""; //show personal options schedule disclaimer
           document.getElementById("schedule").style.display = ""; //show schedule
       document.querySelector(".schedule-editor").style.display = ""; //show editor
-      document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
   
           if(!getParameterFromSource("date")){
               document.getElementById("autopilotpopup")?.remove(); //removes the Autopilot popup if a schedule exists
@@ -1174,6 +1174,13 @@ class ConfettiManager {
             schedule_loadScheduleFromURL();
             schedule_updateScheduleViewer();
             setInterval(schedule_updateScheduleViewer, 1000);
+
+            if (window.MinutehandCreationType === 'schedule' && !countdownIsCard) {
+                settings(() => {
+                    window.MinutehandSettings?.navigateTo(document.querySelector('.schedule-event-composer'));
+                    document.getElementById('schedule-eventTitle').focus({ preventScroll: true });
+                });
+            }
 
 
     const accountDropdown = document.getElementById('accountDropdown');
@@ -1637,7 +1644,8 @@ function initFloatingIcons() {
             }else{
                 var dbrefresh = window.location.protocol + "//" + window.location.host + window.location.pathname;
             }
-            window.history.replaceState({path: dbrefresh}, '', dbrefresh);
+            const currentAddress = countdownIsCard ? dbrefresh + '&cardmode=true' : dbrefresh;
+            window.history.replaceState({path: currentAddress}, '', currentAddress);
             document.getElementById("linkinput").value = dbrefresh; //refresh the link
             document.getElementById("linkinput-info").value = dbrefresh; //refresh the info pane link
             updatePreviewIframe(previewUrl);
@@ -1686,6 +1694,7 @@ function initFloatingIcons() {
       }
       
       async function syncCountdownToDatabase(countdownData) {
+          if (countdownIsCard || window.CountdownSaveConflict) return;
         console.log("uploading cd to db - init");
           pendingDatabaseSync = countdownData;
 
@@ -1792,7 +1801,7 @@ function initFloatingIcons() {
               
               // Update existing rows without overwriting ownership/collaborators.
               // Insert metadata only when the countdown is first created.
-              let error;
+              let error, savedRevision;
               if (isNewCountdown) {
                   const result = await window.supabaseClient
                       .from('countdown')
@@ -1803,31 +1812,47 @@ function initFloatingIcons() {
                           collaborator_ids: [],
                           visibility: 1 // unlisted by default
                       })
-                      .select('id')
+                      .select('id, revision')
                       .single();
                   error = result.error;
+                  savedRevision = result.data?.revision;
               } else {
-                  const result = await window.supabaseClient
-                      .from('countdown')
-                      .update({ data: dataToSync })
-                      .eq('id', countdownId)
-                      .select('id')
-                      .maybeSingle();
+                  let update = window.supabaseClient.from('countdown').update({ data: dataToSync }).eq('id', countdownId);
+                  if (Number.isInteger(window.CountdownRevision)) update = update.eq('revision', window.CountdownRevision);
+                  const result = await update.select('id, revision').maybeSingle();
                   error = result.error;
-
+                  savedRevision = result.data?.revision;
                   if (!error && !result.data) {
-                      error = new Error('Countdown update did not match an editable row');
+                      window.CountdownSaveConflict = true;
+                      pendingDatabaseSync = null;
+                      clearTimeout(databaseSyncTimeout);
+                      const notice = document.getElementById('countdown-save-conflict');
+                      if (notice) notice.hidden = false;
+                      showToast('Changes were not saved. Another editor updated this countdown, or your access changed. See Sharing & editors.', 'error');
+                      error = new Error('Countdown changed or is no longer editable');
                   }
               }
                   
               if (error) {
+                  const notice = document.getElementById('countdown-save-conflict');
+                  const message = document.getElementById('countdown-save-message');
+                  const retry = document.getElementById('retry-countdown-save');
+                  if (notice) notice.hidden = false;
+                  if (retry) retry.hidden = !!window.CountdownSaveConflict;
+                  if (message) message.textContent = window.CountdownSaveConflict
+                      ? 'Another editor saved changes, or your access changed. Your edits have not been saved. Copy them before reloading the saved version.'
+                      : 'Your latest changes could not be saved. Retry when you are connected, or copy your changes to keep them.';
                   console.error('[syncCountdownToDatabase] Database sync failed:', error.message);
               } else {
+                  const saveNotice = document.getElementById('countdown-save-conflict');
+                  if (saveNotice) saveNotice.hidden = true;
+                  window.CountdownRevision = savedRevision;
                   if (isNewCountdown) {
                       window.CountdownDataID = countdownId;
                       window.gearIconUpdated = false;
                       updateGearIconForUser();
                   }
+                  document.dispatchEvent(new CustomEvent('countdown-saved', { detail: { created: isNewCountdown } }));
                   console.log('[syncCountdownToDatabase] Countdown synced to database');
                   lastDatabaseSync = Date.now();
               }
@@ -3349,25 +3374,6 @@ function contrast(){ //increase contrast set or remove cookie
       });
     }
   
-      const superchargeyourschedulecard = document.getElementById("presetupScheduleContent");
-  
-      superchargeyourschedulecard.addEventListener("mousemove", (e) => {
-          const { left, top, width, height } = superchargeyourschedulecard.getBoundingClientRect();
-          const x = (e.clientX - left) / width - 0.5; // Range: -0.5 to 0.5
-          const y = (e.clientY - top) / height - 0.5; // Range: -0.5 to 0.5
-      
-          const rotateX = y * -15; // Invert Y-axis for natural feel
-          const rotateY = x * 15;
-      
-          superchargeyourschedulecard.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
-      });
-      
-      superchargeyourschedulecard.addEventListener("mouseleave", () => {
-          superchargeyourschedulecard.style.transform = "perspective(1000px) rotateX(0) rotateY(0) scale(1)";
-      });
-
-  
-  
       //set countdown title
       function setcountdowntitle(from) {
           var fronttitlepicker = document.getElementById("countdowntitle");
@@ -3436,49 +3442,20 @@ function contrast(){ //increase contrast set or remove cookie
               }
           }
   
+      function updateScheduleWorkspace() {
+          const enabled = Boolean(getParameterFromSource('schedule') && getParameterFromSource('schedule') !== 'null');
+          document.body.classList.toggle('is-schedule', enabled);
+          document.getElementById('schedule-workspace').hidden = !enabled;
+          document.getElementById('settings').setAttribute('aria-label', enabled ? 'Schedule options' : 'Countdown options');
+          document.getElementById('titletag').textContent = enabled ? 'Schedule name' : 'Title';
+      }
+
           function schedule_updateURL() {
               const encoded = schedule_encodeSchedule();
               history.replaceState(null, '', `?schedule=${encoded}`);
           SetCountDowngeneral();
           }
   
-      function startCountdownSchedule(){
-          history.replaceState(null, '', `?schedule=eyJzY2hlZHVsZV9ldmVudHMiOltdLCJzY2hlZHVsZV9leGNlcHRpb25zIjp7fX0=`);
-          document.querySelector(".datepicker").value = '9999-12-30T00:00';
-  
-           SetCountDowngeneral();
-  
-      document.getElementById("clock").style.display = "none"; //hide clock
-          document.getElementById("countdowntitle").style.display = "none"; //hide title
-      document.getElementById("optionsdatecontainer").style.display = "none"; //hide end date area of options
-      document.getElementById("optionsendingcontainer").style.display = "none"; //hide ending options area of options	
-      document.getElementById("optionsendinganchor").style.opacity = "0.3"; //grey out ending options anchor 	
-      //document.getElementById("optionsprogresscontainer").style.display = "none"; //hide ending options area of options
-      //document.getElementById("optionsprogressanchor").style.opacity = "0.3"; //grey out progress options anchor	
-      document.getElementById("cdscheduledisclaimer").style.display = ""; //show personal options schedule disclaimer
-  
-      document.querySelector(".schedule-editor").style.display = ""; //show the schedule editor
-      document.getElementById("presetupScheduleContent").style.display = "none"; //hide the info preconversion popup
-      schedule_events = [];
-      schedule_exceptions = {};
-      schedule_updateEventList();
-      schedule_updateExceptionList();
-      schedule_resetForm();
-      document.title = "Countdown Schedule";
-      showToast('Schedule created successfully!', 'success');
-
-      document.getElementById("schedule-eventTitle").scrollIntoView();
-
-      if(getParameterFromSource("atc") == "none"){
-        document.getElementById("schedule-currentClass").classList.add("schedulebgcolored");
-    }
-    else{
-        document.getElementById("schedule-currentClass").classList.remove("schedulebgcolored");
-    }
-
-    ProgressPositionBar('manual');
-      }
-
       function schedule_resettimeinputs(){
         document.querySelectorAll('.scheduletimeinput').forEach(input => {
             const now = new Date();
@@ -4466,13 +4443,18 @@ function contrast(){ //increase contrast set or remove cookie
               const tomorrowSchedule = schedule_getScheduleForDay(tomorrow);
   
               if (tomorrowSchedule.length === 0) {
-                  document.getElementById('schedule-classTitle').innerHTML = '<i class="fa-solid fa-calendar-check"></i> Enjoy your time!<p style="font-family:Dosis; color:white;">There are no events on your schedule right now</p>';
+                  const hasEvents = schedule_events.length > 0 || Object.values(schedule_exceptions).some(events => events.length > 0);
+                  document.getElementById('schedule-classTitle').innerHTML = hasEvents
+                      ? '<i class="fa-solid fa-calendar-check"></i> Enjoy your time!<p style="font-family:Dosis;">There are no events on your schedule right now</p>'
+                      : '<i class="fa-regular fa-calendar"></i> No events scheduled<p style="font-family:Dosis;">Your events will appear here</p>';
                   document.getElementById('schedule-timeRemaining').textContent = '';
                   document.getElementById('schedule-remainingText').textContent = '';
                   document.getElementById('schedule-progress').style.width = '0%';
                   document.getElementById('schedule-upcomingClasses').innerHTML = '';
-                  if(getParameterFromSource("schedule") !== "null" && getParameterFromSource("schedule")){
+                  if (hasEvents && getParameterFromSource('schedule') && getParameterFromSource('schedule') !== 'null' && document.getElementById('settings').classList.contains('hidden')) {
                       startConfettiManagerAnimation();
+                  } else {
+                      stopConfettiManagerAnimation();
                   }
                   return;
               }else{
@@ -5565,6 +5547,7 @@ async function updateGearIconForUser() {
 
     // Load owner details independently so a failed request never blocks the pane.
     window.MinutehandInfo?.load();
+    window.MinutehandSocial?.loadTimer();
     
     try {
         const isEditor = await isUserEditor();
@@ -5825,7 +5808,8 @@ function setupAuthListener() {
         const session = data.session;
         
         // Set up auth state change listener
-        window.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        window.supabaseClient.auth.onAuthStateChange((event, session) => {
+            setTimeout(async () => {
             if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
                 // Create/update user in database
                 const user = session.user;
@@ -5872,6 +5856,7 @@ function setupAuthListener() {
                 window.gearIconUpdated = false;
                 updateGearIconForUser();
             }
+            }, 0);
         });
         
         // If we have a session, trigger initial profile pic generation

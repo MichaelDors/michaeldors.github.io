@@ -332,7 +332,7 @@ body.options-open #toast-container { z-index: 10000002; }
     #settings .save-bar { left: 50%; max-width: calc(100% - 32px); }
     #settings .save-text { font-size: 14px; }
     #settings .savedash { font-size: 18px; }
-    #settingsmainpane #presetupScheduleContent, #dangerzone { box-sizing: border-box; width: calc(100% - 40px); max-width: 600px; }
+    #settingsmainpane #dangerzone { box-sizing: border-box; width: calc(100% - 40px); max-width: 600px; }
     #settingsmainpane .texttip { box-sizing: border-box; max-width: min(600px, calc(100% - 40px)); font-size: 16px; line-height: 1.45; }
     #settingsmainpane :is(.datepicker, .progressdatepicker, .input) { padding: 16px 12px; font-size: 16px; }
     #settingsmainpane .datepicker { width: min(380px, calc(100% - 40px)); }
@@ -455,4 +455,20 @@ body.viewer-preview #toast-container { z-index: 100000002; bottom: 100px; }
     #infoPane #infosidebar { width: 100%; }
     body.viewer-preview #infosidebar { padding-bottom: calc(210px + env(safe-area-inset-bottom)); }
     body.viewer-preview #toast-container { bottom: calc(200px + env(safe-area-inset-bottom)); }
+}
+
+/* Schedules are a first-class workspace; countdowns have no conversion step. */
+#schedule-workspace { width: 100%; }
+#schedule-workspace[hidden], body:not(.is-schedule) #optionsscheduleanchor,
+body:not(.is-schedule) #optionsscheduleanchor + br,
+.is-schedule #optionsendinganchor, .is-schedule #optionsendinganchor + br { display: none !important; }
+#settingsmainpane .schedule-import-panel { box-sizing: border-box; width: calc(100% - 40px); max-width: 760px; padding: 26px; margin: 0 auto 32px; border: 1px solid #ff990045; border-radius: 22px; background: linear-gradient(135deg, #ff990018, transparent), var(--inputbackground); color: var(--mainforegroundcolor); text-align: left; }
+.schedule-import-heading { font-size: 25px; margin: 0 0 12px; }
+.schedule-import-heading i { color: #ff9900; }
+.schedule-import-copy { font: 17px/1.5 'Dosis', sans-serif; margin: 0 0 20px; opacity: .75; }
+#scheduleimportcontainer .sharebutton { display: inline-flex; align-items: center; gap: 8px; margin: 6px 8px 6px 0; }
+#scheduleimportcontainer .aintext { color: inherit !important; }
+@media (max-width: 600px) {
+    #settingsmainpane .schedule-import-panel { padding: 20px; }
+    #scheduleimportcontainer .sharebutton { font-size: 16px; }
 }
